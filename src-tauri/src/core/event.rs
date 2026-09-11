@@ -45,6 +45,7 @@ pub enum Event {
     QueueUpdated {
         items: Vec<QueueItem>,
         current_index: Option<usize>,
+        queue_track_ids: Vec<String>,
     },
     PlaybackError {
         message: String,

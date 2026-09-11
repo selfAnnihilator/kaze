@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Play,
   Pause,
@@ -53,8 +53,11 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onDislike,
   onRemoveFeedback,
 }) => {
+  const [seekingValue, setSeekingValue] = useState<number | null>(null);
+
   const duration = playbackState.duration_secs || currentTrack?.duration_secs || 0;
   const position = playbackState.position_secs || 0;
+  const displayPos = seekingValue !== null ? seekingValue : position;
 
   return (
     <footer className="player-bar">
@@ -72,6 +75,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}
+            title={currentTrack?.title}
           >
             {currentTrack?.title || "No Track Selected"}
           </div>
@@ -83,8 +87,9 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}
+            title={currentTrack?.artist_name}
           >
-            {currentTrack?.artist_name || "Select a track to start playback"}
+            {currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "Select a track to start playback")}
           </div>
         </div>
         {currentTrack && (
@@ -150,14 +155,33 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         </div>
 
         <div className="progress-container">
-          <span className="time-label">{formatTime(position)}</span>
+          <span className="time-label">{formatTime(displayPos)}</span>
           <input
             type="range"
             className="scrubber"
             min={0}
             max={duration > 0 ? duration : 100}
-            value={position}
-            onChange={(e) => onSeek(parseFloat(e.target.value))}
+            step={0.5}
+            value={displayPos}
+            onMouseDown={() => setSeekingValue(position)}
+            onTouchStart={() => setSeekingValue(position)}
+            onChange={(e) => setSeekingValue(parseFloat(e.target.value))}
+            onMouseUp={(e) => {
+              const val = parseFloat((e.target as HTMLInputElement).value);
+              onSeek(val);
+              setSeekingValue(null);
+            }}
+            onTouchEnd={() => {
+              if (seekingValue !== null) {
+                onSeek(seekingValue);
+                setSeekingValue(null);
+              }
+            }}
+            onKeyUp={(e) => {
+              const val = parseFloat((e.target as HTMLInputElement).value);
+              onSeek(val);
+              setSeekingValue(null);
+            }}
           />
           <span className="time-label">{formatTime(duration)}</span>
         </div>

@@ -24,7 +24,9 @@ interface PlaylistsViewProps {
   onLaunchSoulseek: (query?: string) => Promise<void>;
   onFetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
   onPlayTrack: (trackId: string) => void;
+  queuedTrackIds?: Set<string>;
   onEnqueueTrack: (trackId: string) => void;
+  onDequeueTrack?: (trackId: string) => void;
 }
 
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
@@ -37,7 +39,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onLaunchSoulseek,
   onFetchPlaylistTracks,
   onPlayTrack,
+  queuedTrackIds,
   onEnqueueTrack,
+  onDequeueTrack,
 }) => {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -480,13 +484,25 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             >
                               <Play size={14} />
                             </button>
-                            <button
-                              className="player-icon-btn"
-                              title="Enqueue Track"
-                              onClick={() => onEnqueueTrack(tr.id)}
-                            >
-                              <Plus size={14} />
-                            </button>
+                            {(() => {
+                              const isEnqueued = queuedTrackIds ? queuedTrackIds.has(tr.id) : false;
+                              return (
+                                <button
+                                  className="player-icon-btn"
+                                  title={isEnqueued ? "In queue (click to remove)" : "Enqueue Track"}
+                                  onClick={() => {
+                                    if (isEnqueued) {
+                                      if (onDequeueTrack) onDequeueTrack(tr.id);
+                                    } else {
+                                      onEnqueueTrack(tr.id);
+                                    }
+                                  }}
+                                  style={{ color: isEnqueued ? "var(--success)" : "var(--text-muted)" }}
+                                >
+                                  {isEnqueued ? <Check size={14} /> : <Plus size={14} />}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>

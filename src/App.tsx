@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Track,
   Artist,
@@ -47,6 +47,9 @@ export const App: React.FC = () => {
 
   // Library & Content Data
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
+  const tracksRef = useRef<Track[]>([]);
+  tracksRef.current = tracks;
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -86,7 +89,19 @@ export const App: React.FC = () => {
     try {
       const res = await executeQuery({ query: "GetPlaybackState" });
       if (res.data) {
-        setPlaybackState((prev) => ({ ...prev, ...res.data }));
+        setPlaybackState((prev) => {
+          const updated = { ...prev, ...res.data };
+          if (res.data.current_track) {
+            updated.current_track = res.data.current_track;
+          } else if (res.data.current_track_id) {
+            const found = tracksRef.current.find((t) => t.id === res.data.current_track_id);
+            if (found) updated.current_track = found;
+          }
+          return updated;
+        });
+        if (Array.isArray(res.data.queue_track_ids)) {
+          setQueuedTrackIds(new Set(res.data.queue_track_ids));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch playback state:", err);
@@ -229,6 +244,59 @@ export const App: React.FC = () => {
       if (!event || !event.event) return;
 
       switch (event.event) {
+        case "PlaybackStarted": {
+          const trackId = event.payload?.track_id;
+          const found = tracksRef.current.find((t) => t.id === trackId);
+          const track: Track = found || {
+            id: trackId,
+            file_path: "",
+            title: event.payload?.title || "Unknown Track",
+            artist_name: event.payload?.artist || "Unknown Artist",
+            duration_secs: event.payload?.duration_secs || 0,
+            format: "mp3",
+            has_cover_art: 0,
+          };
+          setPlaybackState((prev) => ({
+            ...prev,
+            current_track: track,
+            is_playing: true,
+            position_secs: 0,
+            duration_secs: event.payload?.duration_secs || track.duration_secs || prev.duration_secs,
+          }));
+          break;
+        }
+
+        case "PlaybackPaused":
+          setPlaybackState((prev) => ({
+            ...prev,
+            is_playing: false,
+            position_secs: event.payload?.position_secs ?? prev.position_secs,
+          }));
+          break;
+
+        case "PlaybackResumed":
+          setPlaybackState((prev) => ({
+            ...prev,
+            is_playing: true,
+            position_secs: event.payload?.position_secs ?? prev.position_secs,
+          }));
+          break;
+
+        case "PlaybackStopped":
+          setPlaybackState((prev) => ({
+            ...prev,
+            is_playing: false,
+            position_secs: 0,
+          }));
+          break;
+
+        case "PlaybackSeeked":
+          setPlaybackState((prev) => ({
+            ...prev,
+            position_secs: event.payload?.position_secs ?? prev.position_secs,
+          }));
+          break;
+
         case "PlaybackPositionChanged":
           setPlaybackState((prev) => ({
             ...prev,
@@ -236,6 +304,27 @@ export const App: React.FC = () => {
             duration_secs: event.payload?.duration_secs ?? prev.duration_secs,
           }));
           break;
+
+        case "PlaybackVolumeChanged":
+        case "VolumeChanged":
+          setPlaybackState((prev) => ({
+            ...prev,
+            volume: event.payload?.volume ?? prev.volume,
+            is_muted: event.payload?.is_muted ?? prev.is_muted,
+          }));
+          break;
+
+        case "QueueUpdated": {
+          if (Array.isArray(event.payload?.queue_track_ids)) {
+            setQueuedTrackIds(new Set(event.payload.queue_track_ids));
+          } else {
+            const items: any[] = event.payload?.items || [];
+            const curr = event.payload?.current_index;
+            const upcoming = (curr !== null && curr !== undefined) ? items.slice(curr + 1) : items;
+            setQueuedTrackIds(new Set(upcoming.map((i: any) => i.track_id)));
+          }
+          break;
+        }
 
         case "PlaybackStateChanged":
           setPlaybackState((prev) => ({
@@ -250,14 +339,6 @@ export const App: React.FC = () => {
             current_track: event.payload?.track ?? prev.current_track,
             position_secs: 0,
             duration_secs: event.payload?.track?.duration_secs ?? 0,
-          }));
-          break;
-
-        case "VolumeChanged":
-          setPlaybackState((prev) => ({
-            ...prev,
-            volume: event.payload?.volume ?? prev.volume,
-            is_muted: event.payload?.is_muted ?? prev.is_muted,
           }));
           break;
 
@@ -333,6 +414,16 @@ export const App: React.FC = () => {
   // --- Actions & Commands ---
 
   const handlePlayTrack = async (trackId: string) => {
+    const found = tracks.find((t) => t.id === trackId);
+    if (found) {
+      setPlaybackState((prev) => ({
+        ...prev,
+        current_track: found,
+        is_playing: true,
+        position_secs: 0,
+        duration_secs: found.duration_secs || prev.duration_secs,
+      }));
+    }
     await dispatchCommand({
       command: "PlayTrack",
       payload: { track_id: trackId },
@@ -450,9 +541,22 @@ export const App: React.FC = () => {
   };
 
   const handleEnqueueTrack = async (trackId: string) => {
+    setQueuedTrackIds((prev) => new Set(prev).add(trackId));
     await dispatchCommand({
       command: "EnqueueTrack",
       payload: { track_id: trackId, play_next: false },
+    });
+  };
+
+  const handleDequeueTrack = async (trackId: string) => {
+    setQueuedTrackIds((prev) => {
+      const next = new Set(prev);
+      next.delete(trackId);
+      return next;
+    });
+    await dispatchCommand({
+      command: "DequeueTrack",
+      payload: { track_id: trackId },
     });
   };
 
@@ -696,8 +800,10 @@ export const App: React.FC = () => {
         {currentView === "library" && (
           <LibraryView
             tracks={tracks}
+            queuedTrackIds={queuedTrackIds}
             onPlayTrack={handlePlayTrack}
             onEnqueueTrack={handleEnqueueTrack}
+            onDequeueTrack={handleDequeueTrack}
             onLikeTrack={handleLike}
             onDislikeTrack={handleDislike}
             onRemoveFeedback={handleRemoveFeedback}
@@ -744,7 +850,9 @@ export const App: React.FC = () => {
             onLaunchSoulseek={handleLaunchSoulseek}
             onFetchPlaylistTracks={handleFetchPlaylistTracks}
             onPlayTrack={handlePlayTrack}
+            queuedTrackIds={queuedTrackIds}
             onEnqueueTrack={handleEnqueueTrack}
+            onDequeueTrack={handleDequeueTrack}
           />
         )}
 

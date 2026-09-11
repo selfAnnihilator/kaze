@@ -342,6 +342,10 @@ impl CoreProcessor {
                 self.playback_service.enqueue_track(&track_id, play_next).await?;
                 Ok(CommandResponse::Ok)
             }
+            Command::DequeueTrack { track_id } => {
+                self.playback_service.dequeue_track(&track_id).await;
+                Ok(CommandResponse::Ok)
+            }
             Command::ClearQueue => {
                 self.playback_service.clear_queue().await;
                 Ok(CommandResponse::Ok)
@@ -495,8 +499,17 @@ impl CoreProcessor {
         match query {
             Query::GetPlaybackState => {
                 let state = self.playback_service.get_playback_state().await;
-                let val = serde_json::to_value(&state)
+                let mut val = serde_json::to_value(&state)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
+                if let Some(track_id) = &state.current_track_id {
+                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id(track_id).await {
+                        if let Ok(track_val) = serde_json::to_value(track) {
+                            if let Some(obj) = val.as_object_mut() {
+                                obj.insert("current_track".to_string(), track_val);
+                            }
+                        }
+                    }
+                }
                 Ok(QueryResponse::PlaybackState(val))
             }
             Query::GetTopRankings {

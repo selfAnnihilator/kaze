@@ -4,8 +4,10 @@ import { Track } from "../../types";
 
 interface LibraryViewProps {
   tracks: Track[];
+  queuedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
   onEnqueueTrack: (trackId: string) => void;
+  onDequeueTrack?: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onDislikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
@@ -21,8 +23,10 @@ const formatSeconds = (secs: number) => {
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
   tracks,
+  queuedTrackIds,
   onPlayTrack,
   onEnqueueTrack,
+  onDequeueTrack,
   onLikeTrack,
   onDislikeTrack,
   onRemoveFeedback,
@@ -30,7 +34,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onSearch,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [justEnqueuedId, setJustEnqueuedId] = useState<string | null>(null);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -38,12 +41,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onSearch(val);
   };
 
-  const handleEnqueue = (trackId: string) => {
-    onEnqueueTrack(trackId);
-    setJustEnqueuedId(trackId);
-    setTimeout(() => {
-      setJustEnqueuedId((prev) => (prev === trackId ? null : prev));
-    }, 1500);
+  const handleQueueToggle = (trackId: string, isEnqueued: boolean) => {
+    if (isEnqueued) {
+      if (onDequeueTrack) onDequeueTrack(trackId);
+    } else {
+      onEnqueueTrack(trackId);
+    }
   };
 
   return (
@@ -115,7 +118,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             {tracks.map((track, idx) => {
               const isLiked = track.manual_like === 1;
               const isDisliked = track.manual_like === -1;
-              const isEnqueued = justEnqueuedId === track.id;
+              const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
 
               return (
                 <tr key={track.id} className="track-row" onDoubleClick={() => onPlayTrack(track.id)}>
@@ -144,8 +147,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
                       <button
                         className="player-icon-btn"
-                        title={isEnqueued ? "Added to queue!" : "Play next in queue"}
-                        onClick={() => handleEnqueue(track.id)}
+                        title={isEnqueued ? "In queue (click to remove)" : "Add to queue"}
+                        onClick={() => handleQueueToggle(track.id, isEnqueued)}
                         style={{ color: isEnqueued ? "var(--success)" : "var(--text-muted)" }}
                       >
                         {isEnqueued ? <Check size={16} /> : <Plus size={16} />}

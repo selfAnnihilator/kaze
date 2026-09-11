@@ -61,6 +61,20 @@ impl PlaybackQueue {
         Some(removed)
     }
 
+    /// Removes all occurrences of a track ID from the queue.
+    pub fn remove_track(&mut self, track_id: &str) -> bool {
+        let initial_len = self.items.len();
+        let mut idx = 0;
+        while idx < self.items.len() {
+            if self.items[idx].track_id == track_id {
+                self.remove(idx);
+            } else {
+                idx += 1;
+            }
+        }
+        self.items.len() != initial_len
+    }
+
     /// Clears the queue.
     pub fn clear(&mut self) {
         self.items.clear();
@@ -125,6 +139,10 @@ impl PlaybackQueue {
                 self.items.get(curr + 1)
             }
             Some(_) if self.repeat_mode == RepeatMode::All => {
+                self.current_index = Some(0);
+                self.items.first()
+            }
+            None if !self.items.is_empty() => {
                 self.current_index = Some(0);
                 self.items.first()
             }

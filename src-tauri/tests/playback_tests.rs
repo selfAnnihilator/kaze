@@ -273,3 +273,93 @@ async fn test_repeat_modes() {
     };
     assert_eq!(state_wrap["current_queue_index"].as_u64().unwrap(), 0);
 }
+
+#[tokio::test]
+async fn test_queue_enqueue_dequeue_and_playback_state_enrichment() {
+    let (processor, _backend, track1_id, track2_id) = setup_processor_with_tracks().await;
+
+    // 1. Play track 1
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: track1_id.clone(),
+            source: Some("library".into()),
+        })
+        .await
+        .expect("play track");
+
+    // 2. Query GetPlaybackState and verify enriched current_track
+    let state = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(v) => v,
+        _ => panic!("Expected PlaybackState"),
+    };
+    assert_eq!(state["current_track_id"].as_str().unwrap(), track1_id);
+    assert_eq!(state["current_track"]["title"].as_str().unwrap(), "Track One");
+    assert_eq!(state["current_track"]["artist_name"].as_str().unwrap(), "Band Alpha");
+
+    // 3. Enqueue track 2
+    processor
+        .dispatch_command(Command::EnqueueTrack {
+            track_id: track2_id.clone(),
+            play_next: false,
+        })
+        .await
+        .expect("enqueue track 2");
+
+    let state_enqueued = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(v) => v,
+        _ => panic!("Expected PlaybackState"),
+    };
+    let queue_ids: Vec<String> = state_enqueued["queue_track_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(queue_ids, vec![track2_id.clone()]);
+
+    // 4. Dequeue track 2
+    processor
+        .dispatch_command(Command::DequeueTrack {
+            track_id: track2_id.clone(),
+        })
+        .await
+        .expect("dequeue track 2");
+
+    let state_dequeued = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(v) => v,
+        _ => panic!("Expected PlaybackState"),
+    };
+    let queue_ids_after: Vec<String> = state_dequeued["queue_track_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(queue_ids_after.is_empty());
+
+    // 5. Enqueue again and clear queue
+    processor
+        .dispatch_command(Command::EnqueueTrack {
+            track_id: track2_id.clone(),
+            play_next: false,
+        })
+        .await
+        .expect("enqueue track 2 again");
+    processor
+        .dispatch_command(Command::ClearQueue)
+        .await
+        .expect("clear queue");
+
+    let state_cleared = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(v) => v,
+        _ => panic!("Expected PlaybackState"),
+    };
+    let queue_ids_cleared: Vec<String> = state_cleared["queue_track_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert!(queue_ids_cleared.is_empty());
+}
+

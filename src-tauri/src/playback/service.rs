@@ -25,6 +25,7 @@ pub struct PlaybackStateDto {
     pub is_shuffle: bool,
     pub queue_length: usize,
     pub current_queue_index: Option<usize>,
+    pub queue_track_ids: Vec<String>,
 }
 
 pub struct PlaybackService {
@@ -322,6 +323,17 @@ impl PlaybackService {
         Ok(())
     }
 
+    pub async fn dequeue_track(&self, track_id: &str) -> bool {
+        let removed = {
+            let mut q_guard = self.queue.write().await;
+            q_guard.remove_track(track_id)
+        };
+        if removed {
+            self.emit_queue_updated().await;
+        }
+        removed
+    }
+
     pub async fn clear_queue(&self) {
         {
             let mut q_guard = self.queue.write().await;
@@ -356,10 +368,26 @@ impl PlaybackService {
         let duration = *self.current_duration_secs.read().await;
         let vol = *self.volume.read().await;
         let q_guard = self.queue.read().await;
+        let is_playing = !is_paused && !is_finished && duration > 0.0;
+        let has_active_track = duration > 0.0 && (!is_finished || is_paused);
+
+        let queue_track_ids: Vec<String> = if has_active_track {
+            if let Some(curr) = q_guard.current_index() {
+                q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+            } else {
+                q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+            }
+        } else {
+            q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+        };
 
         PlaybackStateDto {
-            current_track_id: q_guard.current().map(|i| i.track_id.clone()),
-            is_playing: !is_paused && !is_finished && duration > 0.0,
+            current_track_id: if has_active_track {
+                q_guard.current().map(|i| i.track_id.clone())
+            } else {
+                None
+            },
+            is_playing,
             is_paused,
             position_secs: pos,
             duration_secs: duration,
@@ -368,14 +396,29 @@ impl PlaybackService {
             is_shuffle: q_guard.is_shuffle(),
             queue_length: q_guard.len(),
             current_queue_index: q_guard.current_index(),
+            queue_track_ids,
         }
     }
 
     async fn emit_queue_updated(&self) {
         let q_guard = self.queue.read().await;
+        let duration = *self.current_duration_secs.read().await;
+        let has_active_track = duration > 0.0;
+
+        let queue_track_ids: Vec<String> = if has_active_track {
+            if let Some(curr) = q_guard.current_index() {
+                q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+            } else {
+                q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+            }
+        } else {
+            q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+        };
+
         let _ = self.event_bus.publish(Event::QueueUpdated {
             items: q_guard.items().to_vec(),
             current_index: q_guard.current_index(),
+            queue_track_ids,
         });
     }
 }

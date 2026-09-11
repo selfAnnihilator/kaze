@@ -67,6 +67,9 @@ pub enum Command {
         track_id: String,
         play_next: bool,
     },
+    DequeueTrack {
+        track_id: String,
+    },
     ClearQueue,
 
     // --- Library & Onboarding Management ---

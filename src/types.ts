@@ -56,6 +56,7 @@ export interface PlaybackState {
   is_muted: boolean;
   repeat_mode: "off" | "one" | "all";
   is_shuffled: boolean;
+  queue_track_ids?: string[];
 }
 
 export interface WishlistItem {
@@ -191,6 +192,7 @@ export type Command =
   | { command: "SetRepeatMode"; payload: { mode: "off" | "one" | "all" } }
   | { command: "SetShuffle"; payload: { enabled: boolean } }
   | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean } }
+  | { command: "DequeueTrack"; payload: { track_id: string } }
   | { command: "ClearQueue" }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
   | { command: "ResetOnboarding" }
