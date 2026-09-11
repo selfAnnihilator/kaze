@@ -936,6 +936,7 @@ export const App: React.FC = () => {
             onSearchDirect={(artist, title) =>
               handleInitiateDirectDownloadSearch(artist, title)
             }
+            onRefresh={fetchDiscovery}
           />
         )}
 

@@ -5,7 +5,7 @@ use crate::database::repositories::{TrackRepository, WishlistRepository};
 use crate::providers::{MetadataProvider, ProviderCoordinator};
 use crate::recommendations::TasteProfileEngine;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,8 +93,106 @@ impl DiscoveryCoordinator {
         Ok(match_result)
     }
 
+    /// Fetches trending hits and popular new music across multiple genres from the public charts.
+    pub async fn fetch_trending_and_genre_candidates(&self) -> AppResult<usize> {
+        let client = match reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(4))
+            .build()
+        {
+            Ok(c) => c,
+            Err(_) => return Ok(0),
+        };
+
+        let url = "https://itunes.apple.com/us/rss/topsongs/limit=50/json";
+        let resp = match client.get(url).send().await {
+            Ok(r) if r.status().is_success() => r,
+            _ => return Ok(0),
+        };
+
+        let json_val: serde_json::Value = match resp.json().await {
+            Ok(v) => v,
+            Err(_) => return Ok(0),
+        };
+
+        let entries = json_val
+            .get("feed")
+            .and_then(|f| f.get("entry"))
+            .and_then(|e| e.as_array());
+
+        let mut ingested_count = 0;
+        if let Some(entries) = entries {
+            for entry in entries {
+                let title = entry
+                    .get("im:name")
+                    .and_then(|n| n.get("label"))
+                    .and_then(|l| l.as_str())
+                    .unwrap_or("")
+                    .trim();
+
+                let artist = entry
+                    .get("im:artist")
+                    .and_then(|a| a.get("label"))
+                    .and_then(|l| l.as_str())
+                    .unwrap_or("")
+                    .trim();
+
+                if title.is_empty() || artist.is_empty() {
+                    continue;
+                }
+
+                let album = entry
+                    .get("im:collection")
+                    .and_then(|c| c.get("im:name"))
+                    .and_then(|n| n.get("label"))
+                    .and_then(|l| l.as_str())
+                    .map(|s| s.to_string());
+
+                let cover_art_url = entry
+                    .get("im:image")
+                    .and_then(|imgs| imgs.as_array())
+                    .and_then(|arr| arr.last())
+                    .and_then(|img| img.get("label"))
+                    .and_then(|l| l.as_str())
+                    .map(|s| s.to_string());
+
+                let itunes_id = entry
+                    .get("id")
+                    .and_then(|i| i.get("attributes"))
+                    .and_then(|a| a.get("im:id"))
+                    .and_then(|id| id.as_str())
+                    .unwrap_or("");
+
+                let genre = entry
+                    .get("category")
+                    .and_then(|c| c.get("attributes"))
+                    .and_then(|a| a.get("label"))
+                    .and_then(|l| l.as_str())
+                    .unwrap_or("Trending");
+
+                let record = ExternalTrackRecord {
+                    id: format!("itunes:{}", if itunes_id.is_empty() { format!("{}:{}", artist, title) } else { itunes_id.to_string() }),
+                    provider: "itunes".to_string(),
+                    provider_id: if itunes_id.is_empty() { title.to_string() } else { itunes_id.to_string() },
+                    title: title.to_string(),
+                    artist: artist.to_string(),
+                    album: album.or_else(|| Some(genre.to_string())),
+                    duration_secs: Some(210.0),
+                    cover_art_url,
+                    match_status: MatchStatus::NotFound.as_str().to_string(),
+                    matched_local_track_id: None,
+                    created_at: chrono::Utc::now().timestamp(),
+                };
+
+                let _ = self.ingest_external_track(record).await;
+                ingested_count += 1;
+            }
+        }
+
+        Ok(ingested_count)
+    }
+
     /// Generates external discovery recommendations tailored to user taste affinities,
-    /// prioritizing tracks that do not currently exist in the user's local library.
+    /// genres, trending charts, and similar artists with strict diversity enforcement.
     pub async fn get_discovery_recommendations(
         &self,
         limit: usize,
@@ -113,12 +211,20 @@ impl DiscoveryCoordinator {
         // 2. Fetch candidate external tracks from database
         let mut ext_tracks = self
             .wishlist_repo
-            .list_external_tracks(None, (limit * 3).max(50) as u32)
+            .list_external_tracks(None, 200)
             .await?;
 
-        // 3. If external tracks pool is small and provider coordinator is available,
-        // discover candidates based on taste profile
-        if ext_tracks.len() < limit {
+        // 3. Check artist diversity in existing external tracks
+        let unique_artists: HashSet<_> = ext_tracks
+            .iter()
+            .map(|t| t.artist.to_lowercase().trim().to_string())
+            .collect();
+
+        // If pool is small or dominated by only 1-2 artists, fetch fresh trending & genre candidates
+        if self.provider_coordinator.is_some() && (unique_artists.len() < 5 || ext_tracks.len() < limit) {
+            let _ = self.fetch_trending_and_genre_candidates().await;
+
+            // Also check taste profile or provider coordinator if available
             if let Ok(profile) = self.taste_engine.compute_taste_profile().await {
                 if let Some(ref pc) = self.provider_coordinator {
                     for artist_aff in profile.top_artists.iter().take(3) {
@@ -131,7 +237,7 @@ impl DiscoveryCoordinator {
                             Vec::new()
                         };
 
-                        for item in res.into_iter().take(5) {
+                        for item in res.into_iter().take(3) {
                             let record = ExternalTrackRecord {
                                 id: format!("{}:{}", item.provider, item.provider_track_id),
                                 provider: item.provider,
@@ -150,16 +256,61 @@ impl DiscoveryCoordinator {
                     }
                 }
             }
+
             // Re-fetch external tracks after ingestion
             ext_tracks = self
                 .wishlist_repo
-                .list_external_tracks(None, (limit * 3).max(50) as u32)
+                .list_external_tracks(None, 200)
                 .await?;
         }
 
-        // 4. Transform candidate external tracks into recommendations
-        let mut recs = Vec::new();
+        // 4. Compute user top genres and artists from local library + taste profile
+        let local_tracks = self.track_repo.list_tracks(0, 50000, None, true).await.unwrap_or_default();
+        let mut top_genres: HashSet<String> = HashSet::new();
+        let mut library_artists: HashSet<String> = HashSet::new();
+
+        for t in &local_tracks {
+            if let Some(ref g) = t.genre_name {
+                let clean = g.to_lowercase().trim().to_string();
+                if !clean.is_empty() {
+                    top_genres.insert(clean);
+                }
+            }
+            if let Some(ref a) = t.artist_name {
+                let clean = a.to_lowercase().trim().to_string();
+                if !clean.is_empty() {
+                    library_artists.insert(clean);
+                }
+            }
+        }
+
+        let mut listened_artists: HashSet<String> = HashSet::new();
+        if let Ok(profile) = self.taste_engine.compute_taste_profile().await {
+            for a in profile.top_artists {
+                listened_artists.insert(a.display_name.to_lowercase().trim().to_string());
+            }
+            for g in profile.top_genres {
+                top_genres.insert(g.display_name.to_lowercase().trim().to_string());
+            }
+        }
+
+        // 5. Enforce STRICT ARTIST DIVERSITY (maximum 2 tracks per artist)
+        let mut artist_counts: HashMap<String, usize> = HashMap::new();
+        let mut diverse_tracks = Vec::new();
+
         for track in ext_tracks {
+            let artist_key = track.artist.to_lowercase().trim().to_string();
+            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
+            if *count >= 2 {
+                continue; // Never allow more than 2 tracks from the same artist!
+            }
+            *count += 1;
+            diverse_tracks.push(track);
+        }
+
+        // 6. Transform into recommendations with tailored intelligent reasons
+        let mut recs = Vec::new();
+        for track in diverse_tracks {
             let status = match track.match_status.as_str() {
                 "EXACT_MATCH" => MatchStatus::ExactMatch,
                 "LIKELY_MATCH" => MatchStatus::LikelyMatch,
@@ -175,15 +326,29 @@ impl DiscoveryCoordinator {
                     track.title.to_lowercase()
                 ));
 
+            let artist_lower = track.artist.to_lowercase().trim().to_string();
+            let album_genre_str = track.album.as_deref().unwrap_or("").to_lowercase();
+
+            let is_matched_genre = top_genres.iter().any(|g| {
+                !g.is_empty() && (album_genre_str.contains(g) || g.contains(&album_genre_str))
+            });
+
             let reason = match status {
-                MatchStatus::NotFound => format!(
-                    "Missing from library - Recommended based on affinity for {}",
-                    track.artist
-                ),
-                MatchStatus::PossibleMatch => {
-                    "Possible alternate version of local track - Check if you want this release".to_string()
+                MatchStatus::NotFound => {
+                    if listened_artists.contains(&artist_lower) {
+                        format!("✨ Similar to your listening habit for {}", track.artist)
+                    } else if library_artists.contains(&artist_lower) {
+                        format!("🎵 New release by your library artist {}", track.artist)
+                    } else if is_matched_genre {
+                        format!("🎧 Popular in {} • Matches your top genre", track.album.as_deref().unwrap_or("Genre"))
+                    } else {
+                        format!("🔥 Trending Chart Hit • Popular discovery across charts")
+                    }
                 }
-                MatchStatus::LikelyMatch => "Likely duplicate or remastered local track".to_string(),
+                MatchStatus::PossibleMatch => {
+                    "Alternate release / version of local track".to_string()
+                }
+                MatchStatus::LikelyMatch => "Remastered edition of local track".to_string(),
                 MatchStatus::ExactMatch => "Already in local library".to_string(),
             };
 
@@ -203,7 +368,7 @@ impl DiscoveryCoordinator {
             });
         }
 
-        // 5. Sort to prioritize unowned music (NotFound > PossibleMatch > LikelyMatch > ExactMatch)
+        // 7. Sort: Unowned first (NotFound > PossibleMatch > LikelyMatch > ExactMatch)
         recs.sort_by(|a, b| {
             let order = |s: MatchStatus| match s {
                 MatchStatus::NotFound => 0,
