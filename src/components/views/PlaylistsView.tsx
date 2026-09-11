@@ -22,7 +22,7 @@ interface PlaylistsViewProps {
   onInspectSpotifyPlaylist: (urlOrId: string) => Promise<SpotifyPlaylistImport | null>;
   onSaveImportedPlaylist: (name: string, trackIds: string[]) => Promise<void>;
   onAddMissingToWishlist: (tracks: any[]) => Promise<void>;
-  onLaunchSoulseek: (query?: string) => Promise<void>;
+  onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onFetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
   onPlayTrack: (trackId: string) => void;
   queuedTrackIds?: Set<string>;
@@ -149,8 +149,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   };
 
   const handleSearchMissingInSoulseek = async (trackTitle: string, artistName: string) => {
-    const query = `${artistName} ${trackTitle}`;
-    await onLaunchSoulseek(query);
+    await onLaunchSoulseek(trackTitle, artistName);
   };
 
   const formatSeconds = (secs?: number) => {

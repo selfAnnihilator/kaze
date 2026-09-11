@@ -22,7 +22,7 @@ interface SettingsViewProps {
   onRemoveFolder: (folderId: string) => Promise<void>;
   onRescanLibrary: () => Promise<void>;
   onRerunOnboarding: () => void;
-  onLaunchSoulseek: (query?: string) => Promise<void>;
+  onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onImportSoulseek: () => Promise<void>;
   isScanning?: boolean;
 }

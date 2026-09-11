@@ -20,7 +20,7 @@ interface DownloadsViewProps {
   onStartDownload: (searchResultId: string, wishlistId?: string) => Promise<void>;
   onCancelDownload: (taskId: string) => Promise<void>;
   onRefreshDownloads: () => Promise<void>;
-  onLaunchSoulseek: (query?: string) => Promise<void>;
+  onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onImportSoulseek: () => Promise<void>;
   initialSearch?: { artist: string; title: string; album?: string } | null;
 }
@@ -351,11 +351,14 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const q = `${searchArtist} ${searchTitle}`.trim();
-                  onLaunchSoulseek(q || undefined);
+                  const title = searchTitle.trim();
+                  const artist = searchArtist.trim();
+                  const query = title || artist;
+                  const filter = title && artist ? artist : undefined;
+                  onLaunchSoulseek(query || undefined, filter);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-sm rounded-lg transition"
-                title="Launch SoulseekQt desktop app with query copied to clipboard"
+                title="Search track in SoulseekQt and filter results by artist name"
               >
                 <ExternalLink size={15} />
                 <span>Search in SoulseekQt</span>

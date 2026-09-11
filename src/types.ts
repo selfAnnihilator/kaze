@@ -210,7 +210,7 @@ export type Command =
   | { command: "AddMissingToWishlist"; payload: { tracks: any[] } }
   | { command: "UpdateWishlistStatus"; payload: { wishlist_id: string; status: "want" | "ignore" | "already_own" | "downloaded" } }
   | { command: "SearchSoulseek"; payload: { artist: string; title: string; album?: string } }
-  | { command: "LaunchSoulseek"; payload: { search_query?: string } }
+  | { command: "LaunchSoulseek"; payload: { search_query?: string; filter_query?: string } }
   | { command: "ImportSoulseekDownloads" }
   | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string } }
   | { command: "CancelDownload"; payload: { task_id: string } };

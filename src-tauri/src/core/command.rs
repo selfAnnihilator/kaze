@@ -142,6 +142,8 @@ pub enum Command {
     },
     LaunchSoulseek {
         search_query: Option<String>,
+        #[serde(default)]
+        filter_query: Option<String>,
     },
     ImportSoulseekDownloads,
     StartDownload {

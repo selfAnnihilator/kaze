@@ -762,7 +762,7 @@ export const App: React.FC = () => {
   };
 
   // Soulseek & Downloads
-  const handleLaunchSoulseek = async (query?: string) => {
+  const handleLaunchSoulseek = async (query?: string, filter?: string) => {
     if (query) {
       try {
         await navigator.clipboard.writeText(query);
@@ -770,7 +770,7 @@ export const App: React.FC = () => {
     }
     await dispatchCommand({
       command: "LaunchSoulseek",
-      payload: { search_query: query },
+      payload: { search_query: query, filter_query: filter },
     });
   };
 
@@ -815,9 +815,10 @@ export const App: React.FC = () => {
 
   // Navigation shortcut to search Soulseek from other views
   const handleInitiateSoulseekSearch = async (artist: string, title: string, album?: string) => {
-    const q = `${artist} ${title}`.trim();
+    const q = title.trim() || artist.trim();
+    const f = title.trim() && artist.trim() ? artist.trim() : undefined;
     setSoulseekSearch({ artist, title, album });
-    await handleLaunchSoulseek(q);
+    await handleLaunchSoulseek(q, f);
     setCurrentView("downloads");
   };
 
