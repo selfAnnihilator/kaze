@@ -26,6 +26,7 @@ pub enum RankingEntity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "query", content = "payload")]
 pub enum Query {
+    GetOnboardingStatus,
     GetLibraryOverview,
     GetTracks {
         offset: u32,
@@ -80,6 +81,11 @@ pub enum Query {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum QueryResponse {
+    OnboardingStatus {
+        completed: bool,
+        default_music_dir: String,
+        configured_folders: Vec<serde_json::Value>,
+    },
     Tracks(Vec<serde_json::Value>),
     Track(Option<serde_json::Value>),
     Artists(Vec<serde_json::Value>),

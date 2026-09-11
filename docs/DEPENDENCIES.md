@@ -19,6 +19,7 @@ All dependencies in this project are strictly free and open-source software (FOS
 | `directories` | 6.x | MIT / Apache-2.0 | Standard OS directory discovery (Config, Data, Cache paths on Linux/Win/macOS) | [dirs-dev/directories-rs](https://github.com/dirs-dev/directories-rs) | dirs crate |
 | `chrono` | 0.4.x | MIT / Apache-2.0 | Datetime representations, timestamps, and rolling window ranking queries | [chronotope/chrono](https://github.com/chronotope/chrono) | time crate |
 | `uuid` | 1.x | MIT / Apache-2.0 | Unique identifier generation for tracks, playlists, sessions, and events | [uuid-rs/uuid](https://github.com/uuid-rs/uuid) | ulid |
+| `sha2` | 0.10.x | MIT / Apache-2.0 | Cryptographic SHA-256 hashing for incremental file change verification | [RustCrypto/hashes](https://github.com/RustCrypto/hashes) | crc32 / md5 |
 | `walkdir` | 2.x | MIT / Unlicense | Fast recursive directory traversal for library scanning | [BurntSushi/walkdir](https://github.com/BurntSushi/walkdir) | std::fs (requires manual recursion) |
 | `lofty` | 0.22.x | MIT / Apache-2.0 | Audio tag reader/writer for MP3, FLAC, OGG, OPUS, M4A, WAV | [Serial-ATA/lofty-rs](https://github.com/Serial-ATA/lofty-rs) | id3, metaflac (fragmented per format) |
 | `rodio` | 0.20.x | MIT / Apache-2.0 | High-level audio playback and stream mixing | [RustAudio/rodio](https://github.com/RustAudio/rodio) | kira, soloud |

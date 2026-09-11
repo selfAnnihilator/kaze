@@ -75,10 +75,13 @@ async fn test_core_processor_commands_and_queries() {
         _ => panic!("Expected validation error"),
     }
 
-    // Successfully add folder
+    // Successfully add folder using a real temporary directory
+    let temp_dir = tempfile::tempdir().expect("tempdir creation");
+    let temp_path = temp_dir.path().to_string_lossy().to_string();
+
     let res = processor
         .dispatch_command(Command::AddLibraryFolder {
-            path: "/home/user/Music".into(),
+            path: temp_path,
         })
         .await
         .expect("Command failed");

@@ -4,31 +4,34 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 1 — Foundation (Active)
+## Phase 1 — Foundation (Completed)
 - [x] Architectural documentation, database schema, event/command contracts, and ADRs.
-- [ ] Project initialization: Rust project structure, Cargo dependencies, and tooling.
-- [ ] Structured logging (`tracing` / `tracing-subscriber`).
-- [ ] Core error handling (`AppError` with `thiserror`).
-- [ ] Configuration subsystem (paths, audio preferences, ranking weights).
-- [ ] SQLite database connection pool (`sqlx`) with WAL mode and initial migrations.
-- [ ] `EventBus` implementation using Tokio broadcast channels.
-- [ ] `CoreProcessor` command dispatcher skeleton.
-- [ ] Foundation unit & integration tests.
+- [x] Project initialization: Rust project structure, Cargo dependencies, and tooling.
+- [x] Structured logging (`tracing` / `tracing-subscriber`).
+- [x] Core error handling (`AppError` with `thiserror`).
+- [x] Configuration subsystem (paths, audio preferences, ranking weights).
+- [x] SQLite database connection pool (`sqlx`) with WAL mode and initial migrations.
+- [x] `EventBus` implementation using Tokio broadcast channels.
+- [x] `CoreProcessor` command dispatcher skeleton.
+- [x] Foundation unit & integration tests.
 
 ---
 
-## Phase 2 — Local Music Library
-- [ ] Library folder registration and persistence.
-- [ ] Recursive filesystem scanner with `lofty` metadata extraction (title, artist, album, genre, year, duration, track/disc numbers, bitrate, cover art detection).
-- [ ] Incremental scan hashing and timestamp checks (avoid re-reading unmodified files).
-- [ ] Normalized text generation and SQLite FTS5 search indexing.
-- [ ] Repository implementations for Tracks, Artists, Albums, and Genres.
-- [ ] Filesystem watcher using `notify` for real-time file addition/deletion.
-- [ ] Scanner performance and integrity tests.
+## Phase 2 — Local Music Library (Completed)
+- [x] Default system music directory lookup and onboarding status management.
+- [x] Library folder registration and persistence.
+- [x] Strict boundary containment (never scans outside root; discards unapproved symlinks).
+- [x] Recursive filesystem scanner with `lofty` metadata extraction (MP3, FLAC, OGG, OPUS, M4A, WAV).
+- [x] Incremental scan caching via file size and modified timestamps.
+- [x] Automatic pruning of deleted files on folder rescan.
+- [x] SQLite FTS5 full-text search index triggers and repository search method.
+- [x] Repositories for Tracks, Artists, Albums, and Genres.
+- [x] Filesystem watcher using `notify` for real-time folder monitoring.
+- [x] Comprehensive integration tests in `tests/library_tests.rs`.
 
 ---
 
-## Phase 3 — Playback Engine
+## Phase 3 — Playback Engine (Active)
 - [ ] AudioBackend abstraction trait.
 - [ ] Native audio implementation using `rodio` and `cpal`.
 - [ ] Playback controls: play, pause, resume, stop, seek, volume attenuation, mute.

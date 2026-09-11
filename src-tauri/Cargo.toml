@@ -42,6 +42,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 directories = "6.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
+sha2 = "0.10"
+walkdir = "2.5"
+
+# Metadata & Filesystem Scanning
+lofty = "0.22"
+notify = "8.0"
 
 [dev-dependencies]
 tempfile = "3.12"

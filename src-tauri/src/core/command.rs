@@ -69,7 +69,11 @@ pub enum Command {
     },
     ClearQueue,
 
-    // --- Library Management ---
+    // --- Library & Onboarding Management ---
+    CompleteOnboarding {
+        music_folders: Vec<String>,
+        start_scan: bool,
+    },
     AddLibraryFolder {
         path: String,
     },
@@ -77,6 +81,7 @@ pub enum Command {
         folder_id: String,
     },
     ScanLibrary {
+        folder_id: Option<String>,
         incremental: bool,
     },
     CancelScan,
@@ -142,4 +147,5 @@ pub enum CommandResponse {
     QueuedIndex(usize),
     ScanStarted { task_id: String },
     MixGenerated { playlist_id: String, track_count: usize },
+    OnboardingCompleted { configured_folders: usize },
 }

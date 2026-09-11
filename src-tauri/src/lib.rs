@@ -1,6 +1,7 @@
 pub mod config;
 pub mod core;
 pub mod database;
+pub mod library;
 pub mod logging;
 
 pub use config::AppConfig;
