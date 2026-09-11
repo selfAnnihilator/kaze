@@ -25,9 +25,14 @@ export type ViewType =
 interface SidebarProps {
   currentView: ViewType;
   onSelectView: (view: ViewType) => void;
+  activeDownloadsCount?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentView,
+  onSelectView,
+  activeDownloadsCount = 0,
+}) => {
   return (
     <aside className="sidebar">
       <div className="logo-container">
@@ -100,6 +105,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
         >
           <Download size={18} />
           <span>Downloads</span>
+          {activeDownloadsCount > 0 && (
+            <span
+              style={{
+                marginLeft: "auto",
+                backgroundColor: "#06b6d4",
+                color: "#000",
+                fontSize: "10px",
+                fontWeight: 700,
+                borderRadius: "9999px",
+                padding: "1px 7px",
+                lineHeight: "15px",
+                animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              }}
+            >
+              {activeDownloadsCount}
+            </span>
+          )}
         </button>
       </div>
 

@@ -829,11 +829,19 @@ export const App: React.FC = () => {
     setCurrentView("downloads");
   };
 
+  const activeDownloadsCount = downloads.filter(
+    (d) => d.status === "DOWNLOADING" || d.status === "QUEUED"
+  ).length;
+
   return (
     <div className="app-container">
       <div className="app-body">
         {/* Left Sidebar Navigation */}
-        <Sidebar currentView={currentView} onSelectView={setCurrentView} />
+        <Sidebar
+          currentView={currentView}
+          onSelectView={setCurrentView}
+          activeDownloadsCount={activeDownloadsCount}
+        />
 
         {/* Main Content Area */}
         <main className="main-content">
