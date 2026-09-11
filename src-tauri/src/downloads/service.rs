@@ -126,7 +126,7 @@ impl DownloadService {
             artist,
             album: None,
             filename: result.filename.clone(),
-            destination_path: Some(dest_str),
+            destination_path: Some(dest_str.clone()),
             file_size: Some(result.file_size),
             bytes_downloaded: 0,
             status: "DOWNLOADING".to_string(),
@@ -143,6 +143,89 @@ impl DownloadService {
             task_id: task.id.clone(),
             title: task.title.clone(),
             artist: task.artist.clone(),
+        });
+
+        // Spawn background polling task to track transfer progress, auto-import on completion,
+        // and stream progress events without requiring client-side polling loops.
+        let repo = self.repo.clone();
+        let provider = self.provider.clone();
+        let event_bus = self.event_bus.clone();
+        let library_service = self.library_service.clone();
+        let wishlist_manager = self.wishlist_manager.clone();
+        let auto_import = self.auto_import;
+        let task_id_clone = task.id.clone();
+        let dest_str_clone = dest_str.clone();
+        let download_dir_clone = self.download_dir.clone();
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+            loop {
+                interval.tick().await;
+                let current_task = match repo.get_task_by_id(&task_id_clone).await {
+                    Ok(Some(t)) => t,
+                    _ => break,
+                };
+
+                if current_task.status != "DOWNLOADING" && current_task.status != "QUEUED" {
+                    break;
+                }
+
+                let pt_id = match current_task.provider_task_id.as_deref() {
+                    Some(id) => id,
+                    None => break,
+                };
+
+                match provider.get_progress(pt_id).await {
+                    Ok(Some(progress)) => {
+                        let _ = repo.update_progress(&task_id_clone, progress.bytes_downloaded).await;
+                        let _ = event_bus.publish(Event::DownloadProgressChanged {
+                            task_id: task_id_clone.clone(),
+                            bytes_downloaded: progress.bytes_downloaded,
+                            total_bytes: progress.total_bytes,
+                            speed_bps: progress.speed_bps,
+                        });
+
+                        if progress.status == DownloadStatus::Completed {
+                            let now = Utc::now().timestamp();
+                            let _ = repo.update_status(&task_id_clone, "COMPLETED", None, None, Some(now)).await;
+                            let file_path = current_task.destination_path.unwrap_or_else(|| dest_str_clone.clone());
+                            let _ = event_bus.publish(Event::DownloadCompleted {
+                                task_id: task_id_clone.clone(),
+                                file_path,
+                            });
+                            if let Some(ref wl_id) = current_task.wishlist_id {
+                                let _ = wishlist_manager.update_status(wl_id, "DOWNLOADED").await;
+                            }
+                            if auto_import {
+                                tracing::info!("Auto-importing newly downloaded music into library");
+                                let dl_dir_str = download_dir_clone.to_string_lossy().to_string();
+                                let _ = library_service.add_folder(&dl_dir_str).await;
+                                let _ = library_service.scan_library(None, true).await;
+                            }
+                            break;
+                        } else if progress.status == DownloadStatus::Failed {
+                            let _ = repo.update_status(
+                                &task_id_clone,
+                                "FAILED",
+                                None,
+                                Some("Transfer failed"),
+                                None,
+                            ).await;
+                            let _ = event_bus.publish(Event::DownloadFailed {
+                                task_id: task_id_clone.clone(),
+                                error: "Transfer failed".to_string(),
+                            });
+                            break;
+                        } else if progress.status == DownloadStatus::Cancelled {
+                            break;
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Error polling download progress");
+                    }
+                }
+            }
         });
 
         Ok(task)
@@ -234,6 +317,8 @@ impl DownloadService {
         // 2. Auto-import downloaded file into local library
         if self.auto_import {
             info!("Auto-importing newly downloaded music into library");
+            let dl_dir_str = self.download_dir.to_string_lossy().to_string();
+            let _ = self.library_service.add_folder(&dl_dir_str).await;
             let _ = self.library_service.scan_library(None, true).await;
         }
 

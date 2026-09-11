@@ -375,14 +375,19 @@ export const App: React.FC = () => {
           setIsScanning(false);
           break;
 
+        case "DownloadQueued":
+          fetchDownloads();
+          break;
+
         case "DownloadProgress":
+        case "DownloadProgressChanged":
           setDownloads((prev) =>
             prev.map((t) =>
               t.id === event.payload?.task_id
                 ? {
                     ...t,
                     bytes_downloaded: event.payload.bytes_downloaded,
-                    file_size: event.payload.file_size || t.file_size,
+                    file_size: event.payload.total_bytes || event.payload.file_size || t.file_size,
                   }
                 : t
             )
@@ -394,6 +399,8 @@ export const App: React.FC = () => {
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
+          fetchArtists();
+          fetchAlbums();
           break;
 
         case "WishlistUpdated":

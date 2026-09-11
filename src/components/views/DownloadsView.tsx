@@ -137,10 +137,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <DownloadCloud className="text-cyan-400" /> Soulseek P2P Downloads
+            <DownloadCloud className="text-cyan-400" /> Music Downloads
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Search peer-to-peer files, monitor transfers, and automatically import completed tracks to your local library.
+            Search and download songs directly to your local library in high quality, or connect and transfer with SoulseekQt.
           </p>
         </div>
 
@@ -192,7 +192,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               : "text-zinc-400 hover:text-white"
           }`}
         >
-          <Search size={14} /> Search Network
+          <Search size={14} /> Search & Download
         </button>
       </div>
 
@@ -221,7 +221,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               <HardDrive size={48} className="mx-auto text-zinc-600 mb-3" />
               <p className="text-zinc-400 font-medium text-lg">No transfers found</p>
               <p className="text-zinc-600 text-sm mt-1">
-                Search Soulseek to find and download music directly to your library!
+                Search online or via Soulseek to find and download music directly to your library!
               </p>
             </div>
           ) : (
@@ -370,7 +370,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-sm rounded-lg transition disabled:opacity-50"
               >
                 {searching ? <RefreshCw className="animate-spin" size={16} /> : <Search size={16} />}
-                <span>{searching ? "Searching Soulseek..." : "Search P2P Network"}</span>
+                <span>{searching ? "Searching..." : "Search & Download Directly"}</span>
               </button>
             </div>
           </form>
@@ -382,14 +382,15 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 <thead>
                   <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-semibold uppercase">
                     <th className="py-3 px-4">Filename</th>
-                    <th className="py-3 px-4 hidden md:table-cell">User / Speed</th>
-                    <th className="py-3 px-4">Quality & Size</th>
+                    <th className="py-3 px-4 hidden md:table-cell">Source / Quality</th>
+                    <th className="py-3 px-4">Audio Format & Size</th>
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
                   {searchResults.map((res) => {
                     const isStarting = downloadingIds.has(res.id);
+                    const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
                     return (
                       <tr key={res.id} className="hover:bg-zinc-800/40 transition">
                         <td className="py-3 px-4 max-w-sm sm:max-w-md truncate">
@@ -398,14 +399,28 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-4 hidden md:table-cell text-xs text-zinc-400">
-                          <div className="flex items-center gap-1.5">
-                            <Users size={12} className="text-zinc-500" />
-                            <span>{res.username}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-zinc-500">
-                            <Zap size={11} className="text-amber-500" />
-                            <span>{(res.speed_bps / 1024).toFixed(0)} KB/s</span>
-                          </div>
+                          {isDirect ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                                <Zap size={12} className="text-emerald-400 fill-emerald-400" />
+                                <span>Direct In-App</span>
+                              </div>
+                              <div className="text-zinc-500 text-[11px] truncate max-w-xs">
+                                {res.username}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <Users size={12} className="text-zinc-500" />
+                                <span>{res.username}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-zinc-500 text-[11px]">
+                                <Zap size={11} className="text-amber-500" />
+                                <span>{(res.speed_bps / 1024).toFixed(0)} KB/s</span>
+                              </div>
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-xs">
                           <div className="font-semibold text-zinc-300">
@@ -417,7 +432,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                           <button
                             onClick={() => handleDownloadClick(res.id)}
                             disabled={isStarting}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-semibold transition disabled:opacity-50 shadow-sm"
                           >
                             <DownloadCloud size={14} />
                             <span>{isStarting ? "Queuing..." : "Download"}</span>

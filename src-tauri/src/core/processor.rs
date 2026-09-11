@@ -112,15 +112,20 @@ impl CoreProcessor {
 
         let download_repo = Arc::new(SqliteDownloadRepository::new(db_pool.clone()));
         let download_provider = custom_download_provider.unwrap_or_else(|| {
-            Arc::new(SoulseekProvider::new(
+            let ytdlp = Arc::new(crate::downloads::YtDlpProvider::new());
+            let soulseek = Arc::new(SoulseekProvider::new(
                 &config.downloads.slskd_host,
                 config.downloads.slskd_port,
                 config.downloads.slskd_api_key.clone(),
-            ))
+            ));
+            Arc::new(crate::downloads::CompositeDownloadProvider::new(ytdlp, soulseek))
         });
         let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
-            config.cache_dir.join("downloads")
+            directories::UserDirs::new()
+                .and_then(|u| u.audio_dir().map(|p| p.join("Downloads")))
+                .unwrap_or_else(|| config.cache_dir.join("downloads"))
         });
+
         let download_service = Arc::new(DownloadService::new(
             download_repo,
             download_provider,
