@@ -1,15 +1,21 @@
 # Project Task Tracking
 
-## Current (Phase 8: Soulseek Integration)
-- [ ] DownloadProvider trait definition.
-- [ ] Soulseek client integration via documented local interfaces/IPC.
-- [ ] Search query dispatch and user-initiated download actions.
-- [ ] Download directory monitoring and auto-import into library.
-
-## Next (Phase 9: Frontend & Shell)
-- [ ] Tauri React/TS frontend and presentation layer (Phase 9).
+## Current (Phase 9: Frontend & Desktop Shell)
+- [ ] Tauri v2 desktop shell initialization with React + TypeScript.
+- [ ] Core layout and views: Library, Now Playing Bar, Playlists, Smart Mixes, Wishlist, Discovery, Downloads, Settings.
+- [ ] Real-time event subscription for position ticking, playback events, and download progress.
+- [ ] End-to-end integration and packaging verification.
 
 ## Completed
+- [x] Phase 8 Soulseek Integration:
+  - [x] `DownloadProvider` trait definition and data types (`DownloadSearchResult`, `DownloadProgress`, `DownloadStatus`).
+  - [x] `download_tasks` SQLite schema migration (`20260911000002_download_tasks.sql`) and repository (`SqliteDownloadRepository`).
+  - [x] `SoulseekProvider` connecting to local Slskd daemon REST API with graceful degradation.
+  - [x] `MockDownloadProvider` for deterministic headless and CI testing.
+  - [x] `DownloadService` coordinating search dispatch, download queueing, progress tracking, and event emission.
+  - [x] Auto-import of completed downloads into library and automatic transition of wishlist items to `DOWNLOADED`.
+  - [x] Wired commands (`SearchSoulseek`, `StartDownload`, `CancelDownload`, `PollDownloadProgress`) and queries (`GetDownloads`) into `CoreProcessor`.
+  - [x] Comprehensive integration tests in `tests/download_tests.rs` (all 5 tests passing).
 - [x] Phase 7 Discovery & Missing Music Matching:
   - [x] Discovery recommendations outside the local library (`DiscoveryCoordinator`).
   - [x] Fuzzy track matching algorithm with multi-stage normalization, Jaro-Winkler, and duration tolerance (`FuzzyTrackMatcher`).

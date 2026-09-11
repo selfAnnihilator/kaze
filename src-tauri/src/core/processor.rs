@@ -6,10 +6,11 @@ use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
 use crate::database::repositories::{
-    PlaylistRepository, SqliteHistoryRepository, SqlitePlaylistRepository, SqliteStatsRepository,
-    SqliteWishlistRepository,
+    PlaylistRepository, SqliteDownloadRepository, SqliteHistoryRepository,
+    SqlitePlaylistRepository, SqliteStatsRepository, SqliteWishlistRepository,
 };
 use crate::discovery::{DiscoveryCoordinator, WishlistManager};
+use crate::downloads::{DownloadProvider, DownloadService, SoulseekProvider};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -37,6 +38,7 @@ pub struct CoreProcessor {
     provider_coordinator: Arc<ProviderCoordinator>,
     wishlist_manager: Arc<WishlistManager>,
     discovery_coordinator: Arc<DiscoveryCoordinator>,
+    download_service: Arc<DownloadService>,
     config: Arc<RwLock<AppConfig>>,
 }
 
@@ -54,6 +56,16 @@ impl CoreProcessor {
         db_pool: SqlitePool,
         config: AppConfig,
         backend: Box<dyn AudioBackend>,
+    ) -> Self {
+        Self::new_with_services(db_pool, config, backend, None)
+    }
+
+    /// Constructs a CoreProcessor instance with optional custom download provider (e.g. Mock for testing).
+    pub fn new_with_services(
+        db_pool: SqlitePool,
+        config: AppConfig,
+        backend: Box<dyn AudioBackend>,
+        custom_download_provider: Option<Arc<dyn DownloadProvider>>,
     ) -> Self {
         let event_bus = Arc::new(EventBus::default());
         let library_service = Arc::new(LibraryService::new(db_pool.clone(), event_bus.clone()));
@@ -98,6 +110,27 @@ impl CoreProcessor {
             Some(provider_coordinator.clone()),
         ));
 
+        let download_repo = Arc::new(SqliteDownloadRepository::new(db_pool.clone()));
+        let download_provider = custom_download_provider.unwrap_or_else(|| {
+            Arc::new(SoulseekProvider::new(
+                &config.downloads.slskd_host,
+                config.downloads.slskd_port,
+                config.downloads.slskd_api_key.clone(),
+            ))
+        });
+        let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
+            config.cache_dir.join("downloads")
+        });
+        let download_service = Arc::new(DownloadService::new(
+            download_repo,
+            download_provider,
+            event_bus.clone(),
+            library_service.clone(),
+            wishlist_manager.clone(),
+            download_dir,
+            config.downloads.auto_import,
+        ));
+
         Self {
             event_bus,
             db_pool,
@@ -112,6 +145,7 @@ impl CoreProcessor {
             provider_coordinator,
             wishlist_manager,
             discovery_coordinator,
+            download_service,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -179,6 +213,11 @@ impl CoreProcessor {
     /// Access the DiscoveryCoordinator handle.
     pub fn discovery_coordinator(&self) -> Arc<DiscoveryCoordinator> {
         self.discovery_coordinator.clone()
+    }
+
+    /// Access the DownloadService handle.
+    pub fn download_service(&self) -> Arc<DownloadService> {
+        self.download_service.clone()
     }
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
@@ -384,8 +423,32 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
-            _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 7");
+            // --- Soulseek & Downloads ---
+            Command::SearchSoulseek { artist, title, album: _ } => {
+                let query = format!("{} {}", artist, title);
+                let results = self.download_service.search(&query).await?;
+                let val: Vec<serde_json::Value> = results
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(CommandResponse::SearchResults(val))
+            }
+            Command::StartDownload {
+                search_result_id,
+                wishlist_id,
+            } => {
+                let task = self
+                    .download_service
+                    .start_download(&search_result_id, wishlist_id)
+                    .await?;
+                Ok(CommandResponse::DownloadStarted { task_id: task.id })
+            }
+            Command::CancelDownload { task_id } => {
+                self.download_service.cancel_download(&task_id).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::PollDownloadProgress { task_id } => {
+                let _ = self.download_service.poll_task(&task_id).await?;
                 Ok(CommandResponse::Ok)
             }
         }
@@ -569,8 +632,19 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::DiscoveryRecommendations(val))
             }
+            Query::GetDownloads { status_filter, limit } => {
+                let tasks = self
+                    .download_service
+                    .list_downloads(status_filter.as_deref(), limit)
+                    .await?;
+                let val: Vec<serde_json::Value> = tasks
+                    .into_iter()
+                    .filter_map(|t| serde_json::to_value(t).ok())
+                    .collect();
+                Ok(QueryResponse::Downloads(val))
+            }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 7");
+                warn!(?query, "Query handler routed to stub during Phase 8");
                 Ok(QueryResponse::Empty)
             }
         }

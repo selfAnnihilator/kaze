@@ -78,15 +78,18 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 8 — Soulseek Integration (Active)
-- [ ] `DownloadProvider` trait definition.
-- [ ] Local Soulseek client integration via documented local interfaces/IPC.
-- [ ] Search query dispatch and user-initiated download actions (no automated piracy).
-- [ ] Download directory monitoring and auto-import into library.
+## Phase 8 — Soulseek Integration (Completed)
+- [x] `DownloadProvider` trait definition and progress metrics.
+- [x] Local Soulseek client integration via Slskd daemon REST API (`SoulseekProvider`).
+- [x] Mock download provider for deterministic offline testing (`MockDownloadProvider`).
+- [x] User-initiated search dispatch and queue management (`DownloadService`).
+- [x] Download directory monitoring and auto-import into library upon completion.
+- [x] Automatic linked wishlist transition to `DOWNLOADED`.
+- [x] Comprehensive integration tests in `tests/download_tests.rs`.
 
 ---
 
-## Phase 9 — UI Refinement & Desktop Polish
+## Phase 9 — UI Refinement & Desktop Polish (Active)
 - [ ] Tauri v2 desktop shell initialization with React + TypeScript.
 - [ ] Thin frontend views: Home, Library, Artists, Albums, Smart Mixes, Discover, Statistics, Wishlist, Settings.
 - [ ] Now Playing bar with real-time waveform/position slider and volume controls.

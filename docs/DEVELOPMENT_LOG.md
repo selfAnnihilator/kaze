@@ -251,9 +251,55 @@ Fuzzy library track matching engine (`FuzzyTrackMatcher`), external candidate tr
 - Missing `updated_at` column in `artists` test table insertion. Resolved by matching actual schema definition.
 
 ### Remaining Work
-- Phase 8: Soulseek Integration (`DownloadProvider` trait, client/daemon IPC, wishlist search dispatch, incoming folder auto-import).
+- Phase 8: Soulseek Integration (Completed).
 - Phase 9: Tauri v2 desktop shell with React + TypeScript frontend.
 
 ### Recommended Next Step
 Proceed to **Phase 8: Soulseek Integration**.
+
+---
+
+## 2026-09-11 (Phase 8: Soulseek Integration)
+
+### Worked On
+`DownloadProvider` trait abstraction, Slskd daemon REST API client (`SoulseekProvider`), `MockDownloadProvider` for offline testing, `download_tasks` SQLite schema and repository (`SqliteDownloadRepository`), `DownloadService` coordinating task queuing, progress tracking, and automated library import upon download completion.
+
+### Changes
+- Created SQLite migration `migrations/20260911000002_download_tasks.sql` for download task tracking.
+- Created `DownloadTaskRecord` model in `src-tauri/src/database/models.rs`.
+- Created `DownloadRepository` trait and `SqliteDownloadRepository` in `src-tauri/src/database/repositories/download_repo.rs`.
+- Defined `DownloadProvider` trait in `src-tauri/src/downloads/traits.rs` (`search`, `start_download`, `get_progress`, `cancel`).
+- Implemented `SoulseekProvider` in `src-tauri/src/downloads/soulseek.rs` interfacing with local Slskd daemon HTTP endpoints (`/api/v0/search`, `/api/v0/transfers/downloads`).
+- Implemented `MockDownloadProvider` in `src-tauri/src/downloads/mock_provider.rs` supporting synthetic and canned search results and controllable transfer progression.
+- Implemented `DownloadService` in `src-tauri/src/downloads/service.rs`:
+  - Search caching and wishlist query translation (`search_wishlist_item`).
+  - Transfer enqueueing and persistence in `download_tasks`.
+  - Event emission (`DownloadQueued`, `DownloadProgressChanged`, `DownloadCompleted`, `DownloadFailed`).
+  - Automated library indexing on completion via `LibraryService::scan_library(None, true)`.
+  - Automatic linked wishlist transition from `WANT` to `DOWNLOADED`.
+- Added `DownloadConfig` to `AppConfig` (`download_dir`, `slskd_host`, `slskd_port`, `slskd_api_key`, `auto_import`, `max_concurrent_downloads`).
+- Wired Commands and Queries in `CoreProcessor`:
+  - `Command::SearchSoulseek`
+  - `Command::StartDownload`
+  - `Command::CancelDownload`
+  - `Command::PollDownloadProgress`
+  - `Query::GetDownloads`
+- Created `docs/DOWNLOADS.md` and ADR `0012-soulseek-and-download-provider-architecture.md`.
+- Implemented comprehensive integration test suite in `tests/download_tests.rs` (5 tests passing; all 32 workspace tests passing).
+
+### Decisions
+- Strictly enforce user-initiated downloads: no automatic downloading without explicit user choice.
+- Decouple protocol implementation behind `DownloadProvider` to allow Slskd, future backends, or mock providers.
+- When downloads complete, trigger incremental library scanning and automatically mark the corresponding wishlist item as `DOWNLOADED`.
+
+### Problems
+- Unused import warnings during test compilation cleanly resolved.
+- Replaced unreachable catch-all match arm in `processor.rs` after achieving 100% explicit command coverage.
+
+### Remaining Work
+- Phase 9: Tauri v2 desktop shell with React + TypeScript frontend.
+
+### Recommended Next Step
+Proceed to **Phase 9: Frontend & Desktop Shell**.
+
 

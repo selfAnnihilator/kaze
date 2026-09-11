@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 7: Discovery & Missing Music Matching (Completed)** -> **Phase 8: Soulseek Integration (Active)**
+**Phase 8: Soulseek Integration (Completed)** -> **Phase 9: Frontend & Desktop Shell (Active)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
@@ -15,17 +15,18 @@
 - **Taste & Recommendations**: Local offline recommendation engine with dual-window affinity modeling (artists, genres, eras), transparent factor explainability breakdown, repetition dampening, and automated smart mix generation (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
 - **External Providers**: Async `MetadataProvider` trait with leaky-bucket rate limiting (MusicBrainz 1 req/s), local artwork caching (`CoverArtArchiveProvider`), optional Client Credentials flow (`SpotifyProvider`), and coordinator for track metadata enrichment.
 - **Discovery & Matching**: Multi-factor fuzzy track matching (`FuzzyTrackMatcher`) with string normalization, Jaro-Winkler similarity, and duration delta tolerance. Download wishlist manager with status transitions (`WANT`, `IGNORE`, `ALREADY_OWN`, `DOWNLOADED`). External discovery coordinator linking external candidate tracks to local library ownership status.
+- **Soulseek & Downloads**: Pluggable `DownloadProvider` trait, Slskd daemon REST bridge (`SoulseekProvider`), deterministic `MockDownloadProvider`, download queueing, progress broadcasting, and automatic library import pipeline upon transfer completion.
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0011`).
-- Complete SQLite relational schema (17 entities + FTS5 full-text search) with embedded migrations.
-- Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization.
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0012`).
+- Complete SQLite relational schema (18 entities + FTS5 full-text search) with embedded migrations.
+- Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization (100% command execution coverage).
 - `AppError` taxonomy with `thiserror`.
-- `AppConfig` supporting OS-standard directories, audio settings, ranking weights, and history thresholds.
+- `AppConfig` supporting OS-standard directories, audio settings, ranking weights, history thresholds, and download configuration.
 - `EventBus` backed by `tokio::sync::broadcast` with graceful zero-subscriber dispatching.
 - `CoreProcessor` command router and query execution coordinator.
 - SQLite connection manager with WAL mode, foreign keys, and 5-second busy timeout.
-- Fully operational headless test suite with 27 integration tests passing.
+- Fully operational headless test suite with 32 integration tests passing.
 - **Default Music Directory Discovery**: Automatic system audio directory lookup via `directories::UserDirs::audio_dir()`.
 - **Onboarding Workflow**: `GetOnboardingStatus` and `CompleteOnboarding` commands letting users confirm the default music folder or choose alternate directories.
 - **Strict Boundary Containment**: Scans are strictly restricted to registered directories and their child subdirectories; symlinks pointing outside the boundary are discarded.
@@ -57,9 +58,11 @@
 - **Fuzzy Track Matching Engine**: Classifies match confidence (`EXACT_MATCH`, `LIKELY_MATCH`, `POSSIBLE_MATCH`, `NOT_FOUND`) combining Jaro-Winkler string similarity and duration difference tolerances.
 - **Download Wishlist Management**: CRUD operations, state transitions (`WANT`, `IGNORE`, `ALREADY_OWN`, `DOWNLOADED`), and status filtering (`WishlistManager`).
 - **External Discovery Coordinator**: Evaluates unowned tracks against user taste profile and surfaces discovery recommendations with explainability reasons.
+- **Soulseek / Slskd Download Integration**: Search query dispatch, user-initiated download actions, progress event emission, cancelation, and task tracking (`DownloadService`).
+- **Automated Library Import & Wishlist Completion**: Automatically indexes completed downloads into the local library and transitions linked wishlist records to `DOWNLOADED`.
 
 ## Partially Implemented Features
-- None (Phases 1, 2, 3, 4, 5, 6, and 7 fully realized and verified).
+- None (Phases 1 through 8 fully realized and verified).
 
 ## Known Broken Features
 - None.
@@ -70,16 +73,18 @@
 - `docs/DATABASE.md` - Complete SQLite schema and optimization PRAGMAs.
 - `docs/EVENTS.md` - Exhaustive Command, Event, and Query catalogs.
 - `docs/DISCOVERY.md` - Fuzzy matching specifications and wishlist architecture.
+- `docs/DOWNLOADS.md` - Download architecture, Soulseek/Slskd integration, and auto-import.
+- `src-tauri/src/downloads/` - `DownloadProvider`, `SoulseekProvider`, `MockDownloadProvider`, `DownloadService`.
 - `src-tauri/src/discovery/` - `FuzzyTrackMatcher`, `WishlistManager`, `DiscoveryCoordinator`.
 - `src-tauri/src/providers/` - `MusicBrainzProvider`, `CoverArtArchiveProvider`, `SpotifyProvider`, `ProviderCoordinator`.
 - `src-tauri/src/core/` - `CoreProcessor`, `EventBus`, `Command`, `Event`, `Query`, `AppError`.
 - `src-tauri/src/playback/` - `PlaybackService`, `PlaybackQueue`, `AudioBackend`.
 - `src-tauri/src/library/` - `LibraryService`, `LibraryScanner`, `LibraryWatcher`.
 - `src-tauri/src/database/` - Connection pooling, models, migrations, and repositories.
-- `src-tauri/tests/` - 7 integration test suites (`foundation_tests.rs`, `library_tests.rs`, `playback_tests.rs`, `history_tests.rs`, `recommendation_tests.rs`, `provider_tests.rs`, `discovery_tests.rs`).
+- `src-tauri/tests/` - 8 integration test suites (`foundation_tests.rs`, `library_tests.rs`, `playback_tests.rs`, `history_tests.rs`, `recommendation_tests.rs`, `provider_tests.rs`, `discovery_tests.rs`, `download_tests.rs`).
 
 ## Current Blockers
 - None.
 
 ## Next Recommended Task
-Begin **Phase 8: Soulseek Integration**: define `DownloadProvider` trait, implement local client/daemon integration via IPC or local RPC, dispatch search queries from wishlist items, and monitor incoming download folders for auto-import into local library.
+Begin **Phase 9: Frontend & Desktop Shell**: initialize Tauri v2 desktop shell with React + TypeScript, create thin presentation views (Home/Library, Player Bar, Smart Mixes, Discovery, Wishlist, Downloads, Settings), wire typed Tauri IPC invocations to the backend `CoreProcessor`, and subscribe to real-time `EventBus` broadcasts.

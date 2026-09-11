@@ -12,6 +12,7 @@ pub struct AppConfig {
     pub ranking: RankingWeightsConfig,
     pub recommendation: RecommendationWeightsConfig,
     pub metadata: MetadataConfig,
+    pub downloads: DownloadConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,6 +120,30 @@ impl Default for MetadataConfig {
     }
 }
 
+/// Soulseek and download provider configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DownloadConfig {
+    pub download_dir: Option<PathBuf>,
+    pub slskd_host: String,
+    pub slskd_port: u16,
+    pub slskd_api_key: Option<String>,
+    pub auto_import: bool,
+    pub max_concurrent_downloads: usize,
+}
+
+impl Default for DownloadConfig {
+    fn default() -> Self {
+        Self {
+            download_dir: None,
+            slskd_host: "localhost".to_string(),
+            slskd_port: 5030,
+            slskd_api_key: None,
+            auto_import: true,
+            max_concurrent_downloads: 2,
+        }
+    }
+}
+
 impl AppConfig {
     /// Constructs default configuration based on standard desktop directories.
     pub fn default_with_dirs() -> Self {
@@ -143,6 +168,7 @@ impl AppConfig {
             ranking: RankingWeightsConfig::default(),
             recommendation: RecommendationWeightsConfig::default(),
             metadata: MetadataConfig::default(),
+            downloads: DownloadConfig::default(),
         }
     }
 }

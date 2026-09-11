@@ -98,4 +98,25 @@ pub enum Event {
         available: bool,
         message: Option<String>,
     },
+
+    // --- Downloads Lifecycle ---
+    DownloadQueued {
+        task_id: String,
+        title: String,
+        artist: String,
+    },
+    DownloadProgressChanged {
+        task_id: String,
+        bytes_downloaded: i64,
+        total_bytes: i64,
+        speed_bps: u64,
+    },
+    DownloadCompleted {
+        task_id: String,
+        file_path: String,
+    },
+    DownloadFailed {
+        task_id: String,
+        error: String,
+    },
 }

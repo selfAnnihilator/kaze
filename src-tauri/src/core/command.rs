@@ -133,6 +133,16 @@ pub enum Command {
         title: String,
         album: Option<String>,
     },
+    StartDownload {
+        search_result_id: String,
+        wishlist_id: Option<String>,
+    },
+    CancelDownload {
+        task_id: String,
+    },
+    PollDownloadProgress {
+        task_id: String,
+    },
     TriggerMetadataRefresh {
         track_id: String,
     },
@@ -148,4 +158,6 @@ pub enum CommandResponse {
     ScanStarted { task_id: String },
     MixGenerated { playlist_id: String, track_count: usize },
     OnboardingCompleted { configured_folders: usize },
+    SearchResults(Vec<serde_json::Value>),
+    DownloadStarted { task_id: String },
 }

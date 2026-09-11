@@ -135,3 +135,23 @@ pub struct ExternalTrackRecord {
     pub matched_local_track_id: Option<String>,
     pub created_at: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DownloadTaskRecord {
+    pub id: String,
+    pub provider: String,
+    pub provider_task_id: Option<String>,
+    pub title: String,
+    pub artist: String,
+    pub album: Option<String>,
+    pub filename: String,
+    pub destination_path: Option<String>,
+    pub file_size: Option<i64>,
+    pub bytes_downloaded: i64,
+    pub status: String,
+    pub error_message: Option<String>,
+    pub wishlist_id: Option<String>,
+    pub created_at: i64,
+    pub completed_at: Option<i64>,
+}
+

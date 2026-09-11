@@ -73,6 +73,10 @@ pub enum Query {
         limit: u32,
     },
     GetWishlist,
+    GetDownloads {
+        status_filter: Option<String>,
+        limit: u32,
+    },
     GetSettings,
     GetPlaybackState,
 }
@@ -101,5 +105,6 @@ pub enum QueryResponse {
     Settings(serde_json::Value),
     Wishlist(Vec<serde_json::Value>),
     DiscoveryRecommendations(Vec<serde_json::Value>),
+    Downloads(Vec<serde_json::Value>),
     Empty,
 }
