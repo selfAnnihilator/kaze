@@ -870,8 +870,28 @@ export const App: React.FC = () => {
           />
         )}
 
-        {(currentView === "playlists" || currentView === "smart_mixes") && (
+        {currentView === "playlists" && (
           <PlaylistsView
+            viewMode="playlists"
+            playlists={playlists}
+            onSelectPlaylist={() => {}}
+            onPlayPlaylist={handlePlayPlaylist}
+            onCreatePlaylist={handleCreatePlaylist}
+            onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+            onSaveImportedPlaylist={handleSaveImportedPlaylist}
+            onAddMissingToWishlist={handleAddMissingToWishlist}
+            onLaunchSoulseek={handleLaunchSoulseek}
+            onFetchPlaylistTracks={handleFetchPlaylistTracks}
+            onPlayTrack={handlePlayTrack}
+            queuedTrackIds={queuedTrackIds}
+            onEnqueueTrack={handleEnqueueTrack}
+            onDequeueTrack={handleDequeueTrack}
+          />
+        )}
+
+        {currentView === "smart_mixes" && (
+          <PlaylistsView
+            viewMode="smart_mixes"
             playlists={playlists}
             onSelectPlaylist={() => {}}
             onPlayPlaylist={handlePlayPlaylist}

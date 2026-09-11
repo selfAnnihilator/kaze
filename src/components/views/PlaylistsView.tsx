@@ -14,6 +14,7 @@ import {
 import { Playlist, Track, SpotifyPlaylistImport } from "../../types";
 
 interface PlaylistsViewProps {
+  viewMode?: "playlists" | "smart_mixes" | "all";
   playlists: Playlist[];
   onSelectPlaylist: (playlistId: string) => void;
   onPlayPlaylist: (playlistId: string) => void;
@@ -30,6 +31,7 @@ interface PlaylistsViewProps {
 }
 
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
+  viewMode = "all",
   playlists,
   onPlayPlaylist,
   onCreatePlaylist,
@@ -60,9 +62,27 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [spotifyMessage, setSpotifyMessage] = useState<string | null>(null);
   const [wishlistAdded, setWishlistAdded] = useState(false);
 
+  // Permanent saving state for mixes
+  const [savingMixId, setSavingMixId] = useState<string | null>(null);
+  const [savedMixIds, setSavedMixIds] = useState<Set<string>>(new Set());
+
   // Split into smart mixes and custom playlists
   const smartMixes = playlists.filter((p) => p.is_smart_mix === 1);
   const customPlaylists = playlists.filter((p) => p.is_smart_mix !== 1);
+
+  const handleSaveMixToUserPlaylist = async (mix: Playlist) => {
+    try {
+      setSavingMixId(mix.id);
+      const tracks = await onFetchPlaylistTracks(mix.id);
+      const trackIds = tracks.map((t) => t.id);
+      await onSaveImportedPlaylist(mix.name, trackIds);
+      setSavedMixIds((prev) => new Set(prev).add(mix.id));
+    } catch (err) {
+      console.error("Failed to save mix as playlist:", err);
+    } finally {
+      setSavingMixId(null);
+    }
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,223 +164,314 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     <div>
       {/* Header */}
       <div className="view-header">
-        <div>
-          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <ListMusic size={28} color="var(--accent-light)" />
-            <span>Playlists & Smart Mixes</span>
-          </h1>
-          <p style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginTop: "4px" }}>
-            Auto-curated library blends, custom tracklists, and Spotify imports
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowSpotifyModal(true)}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
-          >
-            <Share2 size={16} color="#10b981" />
-            <span>Import from Spotify</span>
-          </button>
-
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} />
-            <span>New Playlist</span>
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 1: AUTO-GENERATED SMART MIXES */}
-      <div style={{ marginBottom: "40px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h2 style={{ fontSize: "1.15rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Sparkles size={18} color="var(--accent-light)" />
-            <span>Curated Smart Mixes & Recommendations</span>
-          </h2>
-          <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-            Automatically derived from your genres and library
-          </span>
-        </div>
-
-        {smartMixes.length === 0 ? (
-          <div
-            style={{
-              padding: "30px",
-              borderRadius: "10px",
-              backgroundColor: "var(--bg-card)",
-              border: "1px dashed var(--border)",
-              textAlign: "center",
-              color: "var(--text-dim)",
-            }}
-          >
-            Auto-generating smart mixes from your music tracks...
+        {viewMode === "smart_mixes" ? (
+          <div>
+            <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Sparkles size={28} color="#c084fc" />
+              <span>Smart Mixes</span>
+            </h1>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginTop: "4px" }}>
+              Auto-curated library blends, daily discovery, and genre mixes based on your library
+            </p>
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-              gap: "18px",
-            }}
-          >
-            {smartMixes.map((mix) => (
-              <div
-                key={mix.id}
-                onClick={() => handleOpenPlaylistDetails(mix)}
-                style={{
-                  backgroundColor: "var(--bg-card)",
-                  borderRadius: "12px",
-                  padding: "18px",
-                  border: "1px solid var(--border)",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  transition: "transform 0.15s, background-color 0.15s, border-color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-                  e.currentTarget.style.borderColor = "var(--accent-light)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--bg-card)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+          <div>
+            <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <ListMusic size={28} color="var(--accent-light)" />
+              <span>Playlists</span>
+            </h1>
+            <p style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginTop: "4px" }}>
+              Your custom playlists and imported Spotify collections
+            </p>
+          </div>
+        )}
+
+        {viewMode !== "smart_mixes" && (
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowSpotifyModal(true)}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            >
+              <Share2 size={16} color="#10b981" />
+              <span>Import from Spotify</span>
+            </button>
+
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} />
+              <span>New Playlist</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* SMART MIXES VIEW */}
+      {(viewMode === "smart_mixes" || viewMode === "all") && (
+        <div style={{ marginBottom: viewMode === "all" ? "40px" : "0" }}>
+          {viewMode === "all" && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
+                <Sparkles size={18} color="var(--accent-light)" />
+                <span>Curated Smart Mixes & Recommendations</span>
+              </h2>
+              <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+                Automatically derived from your genres and library
+              </span>
+            </div>
+          )}
+
+          {smartMixes.length === 0 ? (
+            <div
+              style={{
+                padding: "40px 20px",
+                borderRadius: "10px",
+                backgroundColor: "var(--bg-card)",
+                border: "1px dashed var(--border)",
+                textAlign: "center",
+                color: "var(--text-dim)",
+              }}
+            >
+              <Sparkles size={36} color="var(--accent-light)" style={{ margin: "0 auto 12px" }} />
+              <div style={{ fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>Generating Smart Mixes...</div>
+              <p style={{ fontSize: "0.85rem" }}>
+                Auto-curating mixes based on your music library folders and genres.
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+                gap: "18px",
+              }}
+            >
+              {smartMixes.map((mix) => {
+                const isSaved = savedMixIds.has(mix.id);
+                const isSaving = savingMixId === mix.id;
+
+                return (
+                  <div
+                    key={mix.id}
+                    onClick={() => handleOpenPlaylistDetails(mix)}
+                    style={{
+                      backgroundColor: "var(--bg-card)",
+                      borderRadius: "12px",
+                      padding: "18px",
+                      border: "1px solid var(--border)",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      transition: "transform 0.15s, background-color 0.15s, border-color 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
+                      e.currentTarget.style.borderColor = "var(--accent-light)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--bg-card)";
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                    title="Click to view tracks in this mix"
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                        <div
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "10px",
+                            background: "linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(192, 132, 252, 0.15))",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Sparkles size={24} color="#c084fc" />
+                        </div>
+                        <span className="badge badge-exact">Smart Mix</span>
+                      </div>
+
+                      <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#fff", marginBottom: "6px" }}>
+                        {mix.name}
+                      </div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.4, marginBottom: "16px" }}>
+                        {mix.description || mix.generation_reason || "Curated blend of local tracks"}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ flex: 1, justifyContent: "center", fontSize: "0.85rem", padding: "8px 12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPlayPlaylist(mix.id);
+                        }}
+                      >
+                        <Play size={15} fill="currentColor" />
+                        <span>Play Mix</span>
+                      </button>
+
+                      <button
+                        className="btn btn-secondary"
+                        style={{
+                          fontSize: "0.82rem",
+                          padding: "8px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          backgroundColor: isSaved ? "rgba(16, 185, 129, 0.15)" : undefined,
+                          borderColor: isSaved ? "#10b981" : undefined,
+                          color: isSaved ? "#10b981" : undefined,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveMixToUserPlaylist(mix);
+                        }}
+                        disabled={isSaving}
+                        title="Add this mix as a permanent playlist in your library"
+                      >
+                        {isSaved ? (
+                          <>
+                            <Check size={14} color="#10b981" />
+                            <span>Saved</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={14} />
+                            <span>{isSaving ? "Saving..." : "Add to Playlist"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CUSTOM PLAYLISTS VIEW */}
+      {(viewMode === "playlists" || viewMode === "all") && (
+        <div>
+          {viewMode === "all" && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 600 }}>Your Custom Playlists</h2>
+              <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+                {customPlaylists.length} custom {customPlaylists.length === 1 ? "playlist" : "playlists"}
+              </span>
+            </div>
+          )}
+
+          {customPlaylists.length === 0 ? (
+            <div
+              style={{
+                padding: "50px 20px",
+                borderRadius: "10px",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                textAlign: "center",
+                color: "var(--text-dim)",
+              }}
+            >
+              <ListMusic size={40} color="var(--text-dim)" style={{ margin: "0 auto 12px" }} />
+              <div style={{ fontWeight: 600, fontSize: "1.05rem", color: "var(--text-main)", marginBottom: "6px" }}>
+                No custom playlists yet
+              </div>
+              <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
+                Create custom playlists manually, save a Smart Mix as a permanent playlist, or import directly from Spotify.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+                <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                  <Plus size={16} />
+                  <span>Create Playlist</span>
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowSpotifyModal(true)}>
+                  <Share2 size={16} color="#10b981" />
+                  <span>Import from Spotify</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: "18px",
+              }}
+            >
+              {customPlaylists.map((pl) => (
+                <div
+                  key={pl.id}
+                  onClick={() => handleOpenPlaylistDetails(pl)}
+                  style={{
+                    backgroundColor: "var(--bg-card)",
+                    borderRadius: "12px",
+                    padding: "16px",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    transition: "background-color 0.15s, border-color 0.15s, transform 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
+                    e.currentTarget.style.borderColor = "var(--accent-light)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "var(--bg-card)";
+                    e.currentTarget.style.borderColor = "var(--border)";
+                  }}
+                  title="Click to view tracks in this playlist"
+                >
+                  <div>
                     <div
                       style={{
-                        width: "48px",
-                        height: "48px",
-                        borderRadius: "10px",
-                        background: "linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(192, 132, 252, 0.15))",
+                        width: "100%",
+                        aspectRatio: "1/1",
+                        borderRadius: "8px",
+                        backgroundColor: "var(--bg-sidebar)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        marginBottom: "12px",
                       }}
                     >
-                      <Sparkles size={24} color="#c084fc" />
+                      <ListMusic size={42} color="#8b5cf6" />
                     </div>
-                    <span className="badge badge-exact">Smart Mix</span>
+                    <div style={{ fontWeight: 600, fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {pl.name}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "4px" }}>
+                      {pl.description || "User Playlist"}
+                    </div>
                   </div>
 
-                  <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#fff", marginBottom: "6px" }}>
-                    {mix.name}
-                  </div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.4, marginBottom: "16px" }}>
-                    {mix.description || mix.generation_reason || "Curated blend of local tracks"}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", borderTop: "1px solid var(--border)", paddingTop: "10px" }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: "0.8rem", padding: "6px 12px", display: "flex", alignItems: "center", gap: "6px" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPlayPlaylist(pl.id);
+                      }}
+                    >
+                      <Play size={13} fill="currentColor" />
+                      <span>Play</span>
+                    </button>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
+                      {pl.track_count ?? 0} tracks
+                    </span>
                   </div>
                 </div>
-
-                <div style={{ display: "flex", gap: "8px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
-                  <button
-                    className="btn btn-primary"
-                    style={{ flex: 1, justifyContent: "center", fontSize: "0.85rem", padding: "8px 12px" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPlayPlaylist(mix.id);
-                    }}
-                  >
-                    <Play size={15} fill="currentColor" />
-                    <span>Play Mix</span>
-                  </button>
-
-                  <button
-                    className="btn btn-secondary"
-                    style={{ fontSize: "0.85rem", padding: "8px 12px" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenPlaylistDetails(mix);
-                    }}
-                    title="View tracks"
-                  >
-                    <ListMusic size={15} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: CUSTOM PLAYLISTS */}
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h2 style={{ fontSize: "1.15rem", fontWeight: 600 }}>Your Custom Playlists</h2>
-          <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-            {customPlaylists.length} custom {customPlaylists.length === 1 ? "playlist" : "playlists"}
-          </span>
+              ))}
+            </div>
+          )}
         </div>
-
-        {customPlaylists.length === 0 ? (
-          <div
-            style={{
-              padding: "40px 20px",
-              borderRadius: "10px",
-              backgroundColor: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              textAlign: "center",
-              color: "var(--text-dim)",
-            }}
-          >
-            <ListMusic size={36} color="var(--text-dim)" style={{ margin: "0 auto 12px" }} />
-            <div style={{ fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>No custom playlists yet</div>
-            <p style={{ fontSize: "0.85rem", marginBottom: "16px" }}>
-              Create custom playlists manually or import them directly from Spotify.
-            </p>
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-              <Plus size={16} />
-              <span>Create Your First Playlist</span>
-            </button>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-              gap: "18px",
-            }}
-          >
-            {customPlaylists.map((pl) => (
-              <div
-                key={pl.id}
-                onClick={() => handleOpenPlaylistDetails(pl)}
-                style={{
-                  backgroundColor: "var(--bg-card)",
-                  borderRadius: "10px",
-                  padding: "16px",
-                  border: "1px solid var(--border)",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card-hover)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-card)")}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1/1",
-                    borderRadius: "8px",
-                    backgroundColor: "var(--bg-sidebar)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: "12px",
-                  }}
-                >
-                  <ListMusic size={36} color="#9ca3af" />
-                </div>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {pl.name}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "4px" }}>Playlist</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* MODAL 1: CREATE PLAYLIST */}
       {showCreateModal && (
@@ -430,7 +541,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "16px" }}>
               <button
                 className="btn btn-primary"
                 onClick={() => {
@@ -441,7 +552,36 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 <Play size={15} fill="currentColor" />
                 <span>Play Entire Playlist</span>
               </button>
-              <span style={{ alignSelf: "center", fontSize: "0.85rem", color: "var(--text-dim)" }}>
+
+              {selectedPlaylist.is_smart_mix === 1 && (
+                <button
+                  className="btn btn-secondary"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    backgroundColor: savedMixIds.has(selectedPlaylist.id) ? "rgba(16, 185, 129, 0.15)" : undefined,
+                    borderColor: savedMixIds.has(selectedPlaylist.id) ? "#10b981" : undefined,
+                    color: savedMixIds.has(selectedPlaylist.id) ? "#10b981" : undefined,
+                  }}
+                  onClick={() => handleSaveMixToUserPlaylist(selectedPlaylist)}
+                  disabled={savingMixId === selectedPlaylist.id}
+                >
+                  {savedMixIds.has(selectedPlaylist.id) ? (
+                    <>
+                      <Check size={14} color="#10b981" />
+                      <span>Saved to Playlists</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={14} />
+                      <span>{savingMixId === selectedPlaylist.id ? "Saving..." : "Add to Playlists"}</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <span style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginLeft: "auto" }}>
                 {playlistTracks.length} tracks
               </span>
             </div>
