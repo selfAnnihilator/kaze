@@ -274,16 +274,22 @@ export const App: React.FC = () => {
           }));
           break;
 
+        case "LibraryScanStarted":
         case "ScanStarted":
           setIsScanning(true);
           break;
 
+        case "LibraryScanCompleted":
         case "ScanCompleted":
           setIsScanning(false);
           fetchTracks();
           fetchArtists();
           fetchAlbums();
           fetchOnboardingStatus();
+          break;
+
+        case "LibraryScanFailed":
+          setIsScanning(false);
           break;
 
         case "DownloadProgress":
@@ -549,11 +555,12 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* Left Sidebar Navigation */}
-      <Sidebar currentView={currentView} onSelectView={setCurrentView} />
+      <div className="app-body">
+        {/* Left Sidebar Navigation */}
+        <Sidebar currentView={currentView} onSelectView={setCurrentView} />
 
-      {/* Main Content Area */}
-      <main className="main-content">
+        {/* Main Content Area */}
+        <main className="main-content">
         {currentView === "library" && (
           <LibraryView
             tracks={tracks}
@@ -644,6 +651,7 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+      </div>
 
       {/* Bottom Sticky Player Bar */}
       <NowPlayingBar

@@ -260,7 +260,16 @@ impl CoreProcessor {
                     .scan_library(folder_id, incremental)
                     .await?;
                 let total_added: usize = summaries.iter().map(|s| s.added_tracks).sum();
-                info!(total_added = total_added, "Library scan execution finished");
+                let total_updated: usize = summaries.iter().map(|s| s.updated_tracks).sum();
+                let total_unchanged: usize = summaries.iter().map(|s| s.unchanged_tracks).sum();
+                let total_tracks = total_added + total_updated + total_unchanged;
+                info!(
+                    total_tracks,
+                    added = total_added,
+                    updated = total_updated,
+                    unchanged = total_unchanged,
+                    "Library scan execution finished"
+                );
                 Ok(CommandResponse::Ok)
             }
             Command::CancelScan => {
@@ -493,11 +502,19 @@ impl CoreProcessor {
                     .to_string_lossy()
                     .to_string();
                 let folders = self.library_service.get_folders().await?;
-                let folders_val = serde_json::to_value(&folders)
-                    .map_err(|e| AppError::Internal(e.to_string()))?
-                    .as_array()
-                    .cloned()
-                    .unwrap_or_default();
+                let mut folders_val = Vec::new();
+                for f in folders {
+                    let track_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tracks WHERE folder_id = ?")
+                        .bind(&f.id)
+                        .fetch_one(&self.db_pool)
+                        .await
+                        .unwrap_or(0);
+                    let mut v = serde_json::to_value(&f).unwrap_or_default();
+                    if let Some(obj) = v.as_object_mut() {
+                        obj.insert("track_count".to_string(), serde_json::json!(track_count));
+                    }
+                    folders_val.push(v);
+                }
 
                 Ok(QueryResponse::OnboardingStatus {
                     completed,
