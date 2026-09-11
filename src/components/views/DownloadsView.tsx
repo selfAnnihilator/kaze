@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DownloadTask, DownloadSearchResult } from "../../types";
 import {
   DownloadCloud,
@@ -38,7 +38,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   onImportSoulseek,
   initialSearch,
 }) => {
-  const [activeTab, setActiveTab] = useState<"tasks" | "search">("tasks");
+  const [activeTab, setActiveTab] = useState<"search" | "tasks">("search");
   const [searchArtist, setSearchArtist] = useState(initialSearch?.artist || "");
   const [searchTitle, setSearchTitle] = useState(initialSearch?.title || "");
   const [searchAlbum, setSearchAlbum] = useState(initialSearch?.album || "");
@@ -55,7 +55,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   } | null>(null);
 
   // Auto-switch to search tab if initialSearch is provided
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialSearch) {
       setSearchArtist(initialSearch.artist);
       setSearchTitle(initialSearch.title);
@@ -99,7 +99,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
       setFeedbackBanner({
         type: "success",
         title: `Direct download started!`,
-        subtitle: `"${result.filename}" is now downloading directly. Auto-importing to library upon completion.`,
+        subtitle: `\"${result.filename}\" is now downloading directly. Auto-importing to library upon completion.`,
       });
     } catch (err) {
       console.error("Failed to start download:", err);
@@ -131,41 +131,51 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   );
 
   const getStatusBadge = (status: DownloadTask["status"], isDirect: boolean = true) => {
+    const baseStyle: React.CSSProperties = {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "6px",
+      padding: "4px 10px",
+      borderRadius: "9999px",
+      fontSize: "0.75rem",
+      fontWeight: 600,
+      textTransform: "uppercase",
+    };
+
     switch (status) {
       case "QUEUED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span style={{ ...baseStyle, backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
             <Clock size={12} /> Queued
           </span>
         );
       case "DOWNLOADING":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 animate-pulse">
+          <span style={{ ...baseStyle, backgroundColor: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.4)" }}>
             <DownloadCloud size={12} /> {isDirect ? "Direct Downloading" : "Transferring"}
           </span>
         );
       case "COMPLETED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <span style={{ ...baseStyle, backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
             <CheckCircle size={12} /> In Library
           </span>
         );
       case "FAILED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
+          <span style={{ ...baseStyle, backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
             <AlertCircle size={12} /> Failed
           </span>
         );
       case "CANCELLED":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-600/15 text-zinc-400 border border-zinc-600/30">
+          <span style={{ ...baseStyle, backgroundColor: "rgba(107, 114, 128, 0.15)", color: "#9ca3af", border: "1px solid rgba(107, 114, 128, 0.3)" }}>
             <XCircle size={12} /> Cancelled
           </span>
         );
     }
   };
 
-  // Helper matching a search result to any active or completed download task
   const findTaskForResult = (res: DownloadSearchResult): DownloadTask | undefined => {
     return downloads.find(
       (t) => t.filename === res.filename || (res.id.startsWith("ytdlp_") && t.filename.includes(res.username))
@@ -173,73 +183,78 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="view-header" style={{ marginBottom: 0 }}>
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <DownloadCloud className="text-cyan-400" /> Music Downloads
+          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <DownloadCloud size={28} color="var(--accent-light)" />
+            <span>Music Downloads & Transfers</span>
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Search and download songs directly into your library with 1-click in 320kbps MP3, or connect with SoulseekQt.
+          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", marginTop: "6px" }}>
+            Search and download songs directly into your library in 320kbps MP3, or manage active transfers.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <button
             onClick={() => onLaunchSoulseek()}
-            className="btn btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            className="btn btn-secondary"
+            style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem" }}
+            title="Open external SoulseekQt application"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={15} />
             <span>Open SoulseekQt</span>
           </button>
           <button
             onClick={() => onImportSoulseek()}
             className="btn btn-secondary"
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}
-            title="Scan ~/Soulseek Downloads/complete and import into library"
+            style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem" }}
+            title="Scan ~/Soulseek Downloads/complete and auto-import into library"
           >
-            <RefreshCw size={14} />
-            <span>Import Downloads</span>
+            <RefreshCw size={15} />
+            <span>Import Completed</span>
           </button>
           <button
             onClick={() => onRefreshDownloads()}
-            className="p-2 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
-            title="Refresh downloads"
+            className="btn btn-secondary"
+            style={{ padding: "8px 12px" }}
+            title="Refresh status"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={15} />
           </button>
         </div>
       </div>
 
       {/* Main Tabs */}
-      <div className="flex items-center gap-3 border-b border-zinc-800 pb-2">
+      <div className="tab-bar" style={{ margin: 0 }}>
         <button
           onClick={() => setActiveTab("search")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
-            activeTab === "search"
-              ? "bg-zinc-800 text-white shadow border border-zinc-700"
-              : "text-zinc-400 hover:text-white"
-          }`}
+          className={`tab-btn ${activeTab === "search" ? "active" : ""}`}
         >
-          <Search size={15} />
-          <span>Search & Download</span>
+          <Search size={16} />
+          <span>Direct Search & Download</span>
         </button>
 
         <button
           onClick={() => setActiveTab("tasks")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
-            activeTab === "tasks"
-              ? "bg-zinc-800 text-white shadow border border-zinc-700"
-              : "text-zinc-400 hover:text-white"
-          }`}
+          className={`tab-btn ${activeTab === "tasks" ? "active" : ""}`}
         >
-          <HardDrive size={15} />
-          <span>Transfers ({downloads.length})</span>
-          {activeDownloads.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-cyan-500 text-black animate-pulse">
-              {activeDownloads.length} active
+          <HardDrive size={16} />
+          <span>Transfers & Library Imports</span>
+          {downloads.length > 0 && (
+            <span
+              style={{
+                marginLeft: "6px",
+                padding: "2px 8px",
+                borderRadius: "12px",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                backgroundColor: activeDownloads.length > 0 ? "var(--accent)" : "var(--bg-sidebar)",
+                color: activeDownloads.length > 0 ? "#fff" : "var(--text-dim)",
+              }}
+            >
+              {activeDownloads.length > 0 ? `${activeDownloads.length} active` : downloads.length}
             </span>
           )}
         </button>
@@ -247,58 +262,108 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
       {/* Notification Banner */}
       {feedbackBanner && (
-        <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="text-cyan-400 shrink-0" size={20} />
+        <div
+          style={{
+            backgroundColor: "rgba(139, 92, 246, 0.12)",
+            border: "1px solid rgba(139, 92, 246, 0.4)",
+            borderRadius: "10px",
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "14px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <CheckCircle size={20} color="var(--accent-light)" style={{ flexShrink: 0 }} />
             <div>
-              <div className="text-sm font-semibold text-white">{feedbackBanner.title}</div>
+              <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "var(--text-main)" }}>
+                {feedbackBanner.title}
+              </div>
               {feedbackBanner.subtitle && (
-                <div className="text-xs text-zinc-300 mt-0.5">{feedbackBanner.subtitle}</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  {feedbackBanner.subtitle}
+                </div>
               )}
             </div>
           </div>
           <button
             onClick={() => setActiveTab("tasks")}
-            className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition shrink-0 flex items-center gap-1.5"
+            className="btn btn-primary"
+            style={{ fontSize: "0.8rem", padding: "6px 12px", flexShrink: 0 }}
           >
             <span>View in Transfers</span>
-            <ArrowRight size={13} />
+            <ArrowRight size={14} />
           </button>
         </div>
       )}
 
       {/* TAB 1: SEARCH & DIRECT DOWNLOAD */}
       {activeTab === "search" && (
-        <div className="space-y-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           {/* Visual Progress Pipeline Tracker */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4">
-            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
-              <Zap size={14} className="text-cyan-400" />
+          <div className="content-card" style={{ padding: "16px 20px", marginBottom: 0 }}>
+            <div
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--text-dim)",
+                marginBottom: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Zap size={14} color="var(--accent-light)" />
               <span>Direct In-App Music Acquisition Pipeline</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "12px",
+              }}
+            >
               {/* Step 1 */}
               <div
-                className={`p-3 rounded-lg border flex items-center gap-3 transition ${
-                  searching
-                    ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-300 shadow-sm animate-pulse"
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: `1px solid ${
+                    searching
+                      ? "var(--accent)"
+                      : searchStatus === "succeeded"
+                      ? "rgba(16, 185, 129, 0.4)"
+                      : "var(--border)"
+                  }`,
+                  backgroundColor: searching
+                    ? "rgba(139, 92, 246, 0.1)"
                     : searchStatus === "succeeded"
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                }`}
+                    ? "rgba(16, 185, 129, 0.08)"
+                    : "var(--bg-sidebar)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  transition: "all 0.2s ease",
+                }}
               >
-                <div className="shrink-0">
+                <div style={{ flexShrink: 0 }}>
                   {searching ? (
-                    <RefreshCw className="animate-spin text-cyan-400" size={18} />
+                    <RefreshCw size={18} color="var(--accent-light)" className="animate-spin" />
                   ) : searchStatus === "succeeded" ? (
-                    <Check className="text-emerald-400" size={18} />
+                    <Check size={18} color="#10b981" />
                   ) : (
-                    <Search size={18} />
+                    <Search size={18} color="var(--text-dim)" />
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold">1. Online Search</div>
-                  <div className="text-[11px] opacity-80">
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
+                    1. Online Search
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "2px" }}>
                     {searching
                       ? "Querying sources..."
                       : searchStatus === "succeeded"
@@ -310,22 +375,32 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
               {/* Step 2 */}
               <div
-                className={`p-3 rounded-lg border flex items-center gap-3 transition ${
-                  searchResults.length > 0
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                }`}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: `1px solid ${
+                    searchResults.length > 0 ? "rgba(16, 185, 129, 0.4)" : "var(--border)"
+                  }`,
+                  backgroundColor:
+                    searchResults.length > 0 ? "rgba(16, 185, 129, 0.08)" : "var(--bg-sidebar)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  transition: "all 0.2s ease",
+                }}
               >
-                <div className="shrink-0">
+                <div style={{ flexShrink: 0 }}>
                   {searchResults.length > 0 ? (
-                    <Check className="text-emerald-400" size={18} />
+                    <Check size={18} color="#10b981" />
                   ) : (
-                    <Music size={18} />
+                    <Music size={18} color="var(--text-dim)" />
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold">2. Stream Quality</div>
-                  <div className="text-[11px] opacity-80">
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
+                    2. Audio Quality
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "2px" }}>
                     {searchResults.length > 0 ? "320 kbps MP3 Ready" : "High bitrate audio"}
                   </div>
                 </div>
@@ -333,26 +408,42 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
               {/* Step 3 */}
               <div
-                className={`p-3 rounded-lg border flex items-center gap-3 transition ${
-                  activeDownloads.length > 0
-                    ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-300 animate-pulse"
-                    : downloads.some((t) => t.status === "COMPLETED")
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                }`}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: `1px solid ${
+                    activeDownloads.length > 0
+                      ? "var(--accent)"
+                      : downloads.some((t) => t.status === "COMPLETED")
+                      ? "rgba(16, 185, 129, 0.4)"
+                      : "var(--border)"
+                  }`,
+                  backgroundColor:
+                    activeDownloads.length > 0
+                      ? "rgba(139, 92, 246, 0.12)"
+                      : downloads.some((t) => t.status === "COMPLETED")
+                      ? "rgba(16, 185, 129, 0.08)"
+                      : "var(--bg-sidebar)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  transition: "all 0.2s ease",
+                }}
               >
-                <div className="shrink-0">
+                <div style={{ flexShrink: 0 }}>
                   {activeDownloads.length > 0 ? (
-                    <DownloadCloud className="text-cyan-400 animate-bounce" size={18} />
+                    <DownloadCloud size={18} color="var(--accent-light)" />
                   ) : downloads.some((t) => t.status === "COMPLETED") ? (
-                    <Check className="text-emerald-400" size={18} />
+                    <Check size={18} color="#10b981" />
                   ) : (
-                    <Zap size={18} />
+                    <Zap size={18} color="var(--text-dim)" />
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold">3. Direct Download</div>
-                  <div className="text-[11px] opacity-80">
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
+                    3. Direct Download
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "2px" }}>
                     {activeDownloads.length > 0
                       ? `${activeDownloads.length} transfer(s) active`
                       : "Native background transfer"}
@@ -362,22 +453,35 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
               {/* Step 4 */}
               <div
-                className={`p-3 rounded-lg border flex items-center gap-3 transition ${
-                  downloads.some((t) => t.status === "COMPLETED")
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900 border-zinc-800 text-zinc-400"
-                }`}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  border: `1px solid ${
+                    downloads.some((t) => t.status === "COMPLETED")
+                      ? "rgba(16, 185, 129, 0.4)"
+                      : "var(--border)"
+                  }`,
+                  backgroundColor: downloads.some((t) => t.status === "COMPLETED")
+                    ? "rgba(16, 185, 129, 0.08)"
+                    : "var(--bg-sidebar)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  transition: "all 0.2s ease",
+                }}
               >
-                <div className="shrink-0">
+                <div style={{ flexShrink: 0 }}>
                   {downloads.some((t) => t.status === "COMPLETED") ? (
-                    <Check className="text-emerald-400" size={18} />
+                    <Check size={18} color="#10b981" />
                   ) : (
-                    <CheckCircle size={18} />
+                    <CheckCircle size={18} color="var(--text-dim)" />
                   )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold">4. Auto-Import</div>
-                  <div className="text-[11px] opacity-80">
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
+                    4. Auto-Import
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "2px" }}>
                     {downloads.some((t) => t.status === "COMPLETED")
                       ? "Indexed in Library"
                       : "Instant library indexing"}
@@ -393,35 +497,77 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               e.preventDefault();
               handleSearch(searchArtist, searchTitle, searchAlbum);
             }}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow space-y-4"
+            className="content-card"
+            style={{ marginBottom: 0 }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "16px",
+                marginBottom: "20px",
+              }}
+            >
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                  Artist
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--text-dim)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Artist Name
                 </label>
                 <input
                   type="text"
                   value={searchArtist}
                   onChange={(e) => setSearchArtist(e.target.value)}
                   placeholder="e.g. Daft Punk"
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+                  className="input-field"
+                  style={{ width: "100%" }}
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                  Title
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--text-dim)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Song / Track Title
                 </label>
                 <input
                   type="text"
                   value={searchTitle}
                   onChange={(e) => setSearchTitle(e.target.value)}
                   placeholder="e.g. One More Time"
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+                  className="input-field"
+                  style={{ width: "100%" }}
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--text-dim)",
+                    marginBottom: "8px",
+                  }}
+                >
                   Album (Optional)
                 </label>
                 <input
@@ -429,12 +575,13 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   value={searchAlbum}
                   onChange={(e) => setSearchAlbum(e.target.value)}
                   placeholder="e.g. Discovery"
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+                  className="input-field"
+                  style={{ width: "100%" }}
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px" }}>
               <button
                 type="button"
                 onClick={() => {
@@ -444,8 +591,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   const filter = title && artist ? artist : undefined;
                   onLaunchSoulseek(query || undefined, filter);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-sm rounded-lg transition"
+                className="btn btn-secondary"
                 title="Search track in SoulseekQt and filter results by artist name"
+                style={{ fontSize: "0.85rem" }}
               >
                 <ExternalLink size={15} />
                 <span>Search in SoulseekQt</span>
@@ -454,54 +602,106 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               <button
                 type="submit"
                 disabled={searching || (!searchArtist.trim() && !searchTitle.trim())}
-                className="flex items-center gap-2 px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-sm rounded-lg transition disabled:opacity-50 shadow"
+                className="btn btn-primary"
+                style={{
+                  fontSize: "0.88rem",
+                  padding: "9px 20px",
+                  opacity: searching || (!searchArtist.trim() && !searchTitle.trim()) ? 0.6 : 1,
+                  cursor: searching || (!searchArtist.trim() && !searchTitle.trim()) ? "not-allowed" : "pointer",
+                }}
               >
-                {searching ? <RefreshCw className="animate-spin" size={16} /> : <Search size={16} />}
-                <span>{searching ? "Searching Sources..." : "Search & Download Directly"}</span>
+                {searching ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+                <span>{searching ? "Searching Audio Sources..." : "Search & Download Directly"}</span>
               </button>
             </div>
           </form>
 
-          {/* Search Status Banners */}
+          {/* Search Status Feedback Cards */}
           {searchStatus === "searching" && (
-            <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-800/40 flex items-center gap-3">
-              <RefreshCw className="animate-spin text-cyan-400 shrink-0" size={20} />
+            <div
+              style={{
+                backgroundColor: "rgba(139, 92, 246, 0.1)",
+                border: "1px solid rgba(139, 92, 246, 0.3)",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+              }}
+            >
+              <RefreshCw size={20} color="var(--accent-light)" className="animate-spin" />
               <div>
-                <div className="text-sm font-semibold text-cyan-200">
+                <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-main)" }}>
                   Searching high-speed audio sources...
                 </div>
-                <div className="text-xs text-cyan-400/80 mt-0.5">
-                  Querying for "{lastQuery}". Searching 320kbps MP3 audio streams...
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  Querying online databases for \"{lastQuery}\". Looking for 320kbps MP3 audio streams...
                 </div>
               </div>
             </div>
           )}
 
           {searchStatus === "succeeded" && (
-            <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle className="text-emerald-400 shrink-0" size={18} />
+            <div
+              style={{
+                backgroundColor: "rgba(16, 185, 129, 0.1)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                borderRadius: "10px",
+                padding: "14px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <CheckCircle size={18} color="#10b981" style={{ flexShrink: 0 }} />
                 <div>
-                  <span className="text-sm font-semibold text-emerald-200">Search Succeeded!</span>
-                  <span className="text-xs text-emerald-400/80 ml-2">
-                    Found {searchResults.length} direct high-speed audio stream(s) for "{lastQuery}". Click Download below.
+                  <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#10b981" }}>
+                    Search Succeeded!
+                  </span>
+                  <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "8px" }}>
+                    Found {searchResults.length} direct high-speed audio stream(s) for \"{lastQuery}\". Click Download below.
                   </span>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-900/40 px-2.5 py-1 rounded-full border border-emerald-800/50">
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "#10b981",
+                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                  padding: "4px 10px",
+                  borderRadius: "9999px",
+                  flexShrink: 0,
+                }}
+              >
                 Direct In-App
               </span>
             </div>
           )}
 
           {searchStatus === "no_results" && (
-            <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/40 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <AlertCircle className="text-amber-400 shrink-0" size={18} />
+            <div
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                borderRadius: "10px",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <AlertCircle size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
                 <div>
-                  <div className="text-sm font-semibold text-amber-200">No Direct Audio Streams Found</div>
-                  <div className="text-xs text-amber-400/80 mt-0.5">
-                    Could not find direct streams for "{lastQuery}". Try alternate spelling or search via SoulseekQt.
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#f59e0b" }}>
+                    No Direct Streams Found
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Could not find direct streams for \"{lastQuery}\". Check your search terms or try SoulseekQt.
                   </div>
                 </div>
               </div>
@@ -511,9 +711,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   const artist = searchArtist.trim();
                   onLaunchSoulseek(title || artist || undefined, title && artist ? artist : undefined);
                 }}
-                className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold rounded-lg border border-amber-500/30 transition flex items-center gap-1.5 shrink-0"
+                className="btn btn-secondary"
+                style={{ fontSize: "0.8rem", padding: "6px 12px", flexShrink: 0 }}
               >
-                <ExternalLink size={13} />
+                <ExternalLink size={14} />
                 <span>Search SoulseekQt</span>
               </button>
             </div>
@@ -521,50 +722,120 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
           {/* Active Direct Downloads Section on Search Tab */}
           {activeDownloads.length > 0 && (
-            <div className="bg-zinc-900/90 border border-cyan-500/40 rounded-xl p-4 shadow-lg space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-                  </span>
-                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wide">
+            <div
+              className="content-card"
+              style={{
+                borderColor: "var(--accent)",
+                padding: "18px 20px",
+                marginBottom: 0,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "14px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--accent-light)",
+                      boxShadow: "0 0 8px var(--accent)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--accent-light)",
+                    }}
+                  >
                     Direct Downloads Active ({activeDownloads.length})
                   </span>
                 </div>
                 <button
                   onClick={() => setActiveTab("tasks")}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-light)",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
                 >
                   <span>View in Transfers</span>
                   <ArrowRight size={13} />
                 </button>
               </div>
 
-              <div className="space-y-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {activeDownloads.map((task) => {
                   const total = task.file_size || 0;
                   const progress = total > 0 ? Math.min(100, (task.bytes_downloaded / total) * 100) : 0;
                   return (
                     <div
                       key={task.id}
-                      className="p-3 bg-zinc-800/60 rounded-lg border border-zinc-700/50 space-y-1.5"
+                      style={{
+                        padding: "12px 14px",
+                        backgroundColor: "var(--bg-sidebar)",
+                        borderRadius: "8px",
+                        border: "1px solid var(--border)",
+                      }}
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="font-semibold text-zinc-200 truncate max-w-md">
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          fontSize: "0.82rem",
+                          marginBottom: "6px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: "var(--text-main)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "400px",
+                          }}
+                        >
                           {task.title || task.filename}
                         </div>
-                        <div className="text-cyan-400 font-mono font-semibold">
+                        <div
+                          style={{
+                            color: "var(--accent-light)",
+                            fontFamily: "monospace",
+                            fontWeight: 600,
+                          }}
+                        >
                           {progress > 0 ? `${progress.toFixed(1)}%` : "Connecting..."}
                         </div>
                       </div>
-                      <div className="w-full bg-zinc-700/50 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="h-full bg-cyan-500 transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="flex justify-between text-[11px] text-zinc-400">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "0.72rem",
+                          color: "var(--text-dim)",
+                          marginTop: "6px",
+                        }}
+                      >
                         <span>
                           {formatBytes(task.bytes_downloaded)} / {formatBytes(total)}
                         </span>
@@ -579,72 +850,144 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
           {/* Results Table */}
           {searchResults.length > 0 && (
-            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden shadow">
-              <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Found {searchResults.length} Audio Streams
+            <div className="content-card" style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
+              <div
+                style={{
+                  padding: "14px 20px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--text-dim)",
+                  }}
+                >
+                  Found {searchResults.length} Audio Stream(s)
                 </span>
-                <span className="text-xs text-zinc-500">
+                <span style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
                   Downloads save directly to your local library folder
                 </span>
               </div>
-              <table className="w-full text-left border-collapse text-sm">
+
+              <table className="track-table">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-semibold uppercase">
-                    <th className="py-3 px-4">Track / Filename</th>
-                    <th className="py-3 px-4 hidden md:table-cell">Source / Quality</th>
-                    <th className="py-3 px-4">Audio Format & Size</th>
-                    <th className="py-3 px-4 text-right">Download Action</th>
+                  <tr>
+                    <th style={{ width: "42%" }}>Track / Filename</th>
+                    <th>Source & Quality</th>
+                    <th>Format & Size</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60">
+                <tbody>
                   {searchResults.map((res) => {
                     const isStarting = downloadingIds.has(res.id);
                     const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
                     const task = findTaskForResult(res);
 
                     return (
-                      <tr key={res.id} className="hover:bg-zinc-800/40 transition">
-                        <td className="py-3.5 px-4 max-w-sm sm:max-w-md truncate">
-                          <div className="font-medium text-xs text-zinc-200 truncate" title={res.filename}>
+                      <tr key={res.id} className="track-row">
+                        <td className="primary" style={{ maxWidth: "300px" }}>
+                          <div
+                            style={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              fontSize: "0.88rem",
+                            }}
+                            title={res.filename}
+                          >
                             {res.filename}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 hidden md:table-cell text-xs text-zinc-400">
+                        <td>
                           {isDirect ? (
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                                <Zap size={12} className="text-emerald-400 fill-emerald-400" />
-                                <span>Direct In-App High-Speed</span>
+                            <div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  color: "#10b981",
+                                  fontWeight: 600,
+                                  fontSize: "0.8rem",
+                                }}
+                              >
+                                <Zap size={13} color="#10b981" />
+                                <span>Direct High-Speed</span>
                               </div>
-                              <div className="text-zinc-500 text-[11px] truncate max-w-xs">
+                              <div
+                                style={{
+                                  fontSize: "0.72rem",
+                                  color: "var(--text-dim)",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  maxWidth: "200px",
+                                  marginTop: "2px",
+                                }}
+                              >
                                 {res.username}
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <Users size={12} className="text-zinc-500" />
+                            <div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  fontSize: "0.8rem",
+                                  color: "var(--text-muted)",
+                                }}
+                              >
+                                <Users size={13} color="var(--text-dim)" />
                                 <span>{res.username}</span>
                               </div>
-                              <div className="flex items-center gap-1 text-zinc-500 text-[11px]">
-                                <Zap size={11} className="text-amber-500" />
+                              <div
+                                style={{
+                                  fontSize: "0.72rem",
+                                  color: "var(--text-dim)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  marginTop: "2px",
+                                }}
+                              >
+                                <Zap size={11} color="#f59e0b" />
                                 <span>{(res.speed_bps / 1024).toFixed(0)} KB/s</span>
                               </div>
                             </div>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-xs">
-                          <div className="font-semibold text-zinc-300">
+                        <td>
+                          <div style={{ fontWeight: 600, color: "var(--text-main)", fontSize: "0.82rem" }}>
                             {res.format.toUpperCase()} {res.bitrate ? `${res.bitrate} kbps` : "320 kbps"}
                           </div>
-                          <div className="text-zinc-500">{formatBytes(res.file_size)}</div>
+                          <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: "2px" }}>
+                            {formatBytes(res.file_size)}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td style={{ textAlign: "right" }}>
                           {task?.status === "DOWNLOADING" ? (
-                            <div className="inline-flex flex-col items-end gap-1">
-                              <div className="flex items-center gap-1 text-xs font-semibold text-cyan-400">
-                                <DownloadCloud size={13} className="animate-bounce" />
+                            <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 600,
+                                  color: "var(--accent-light)",
+                                }}
+                              >
+                                <DownloadCloud size={14} />
                                 <span>
                                   Downloading{" "}
                                   {task.file_size
@@ -653,9 +996,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                   %
                                 </span>
                               </div>
-                              <div className="w-24 bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                              <div style={{ width: "100px" }} className="progress-track">
                                 <div
-                                  className="h-full bg-cyan-500 transition-all duration-300"
+                                  className="progress-fill"
                                   style={{
                                     width: `${
                                       task.file_size
@@ -667,18 +1010,52 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                               </div>
                               <button
                                 onClick={() => setActiveTab("tasks")}
-                                className="text-[10px] text-zinc-400 hover:text-cyan-300 underline"
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "var(--text-dim)",
+                                  fontSize: "0.72rem",
+                                  cursor: "pointer",
+                                  textDecoration: "underline",
+                                  marginTop: "2px",
+                                }}
                               >
                                 View in Transfers
                               </button>
                             </div>
                           ) : task?.status === "COMPLETED" ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">
-                              <CheckCircle size={13} />
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                backgroundColor: "rgba(16, 185, 129, 0.15)",
+                                color: "#10b981",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              <CheckCircle size={14} />
                               <span>In Library</span>
                             </div>
                           ) : task?.status === "QUEUED" || isStarting ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-semibold">
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 12px",
+                                borderRadius: "8px",
+                                backgroundColor: "rgba(245, 158, 11, 0.15)",
+                                color: "#f59e0b",
+                                border: "1px solid rgba(245, 158, 11, 0.3)",
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                              }}
+                            >
                               <RefreshCw size={13} className="animate-spin" />
                               <span>Starting...</span>
                             </div>
@@ -686,7 +1063,14 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                             <button
                               onClick={() => handleDownloadClick(res)}
                               disabled={isStarting}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-semibold transition disabled:opacity-50 shadow-sm"
+                              className="btn btn-primary"
+                              style={{
+                                fontSize: "0.8rem",
+                                padding: "6px 14px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
                             >
                               <DownloadCloud size={14} />
                               <span>Download</span>
@@ -705,47 +1089,61 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
 
       {/* TAB 2: DOWNLOAD TASKS & TRANSFERS */}
       {activeTab === "tasks" && (
-        <div className="space-y-4">
-          {/* Subfilter */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Subfilter & Info */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               {["ALL", "ACTIVE", "COMPLETED", "FAILED"].map((sub) => (
                 <button
                   key={sub}
                   onClick={() => setStatusFilter(sub)}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold uppercase transition ${
-                    statusFilter === sub
-                      ? "bg-zinc-200 text-black font-bold"
-                      : "bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800"
-                  }`}
+                  className={`subtab-btn ${statusFilter === sub ? "active" : ""}`}
                 >
                   {sub}
                 </button>
               ))}
             </div>
 
-            <span className="text-xs text-zinc-500">
+            <span style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
               Files auto-import into your local library upon 100% completion
             </span>
           </div>
 
           {filteredTasks.length === 0 ? (
-            <div className="text-center py-16 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl">
-              <HardDrive size={48} className="mx-auto text-zinc-600 mb-3" />
-              <p className="text-zinc-400 font-medium text-lg">No transfers found</p>
-              <p className="text-zinc-600 text-sm mt-1">
+            <div
+              className="content-card"
+              style={{
+                textAlign: "center",
+                padding: "60px 20px",
+                borderStyle: "dashed",
+              }}
+            >
+              <HardDrive size={48} color="var(--text-dim)" style={{ margin: "0 auto 14px auto" }} />
+              <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)" }}>
+                No transfers found
+              </div>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "6px" }}>
                 Search online or via Soulseek to find and download music directly to your library!
               </p>
               <button
                 onClick={() => setActiveTab("search")}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500 text-black text-xs font-bold hover:bg-cyan-400 transition"
+                className="btn btn-primary"
+                style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
               >
-                <Search size={14} />
+                <Search size={15} />
                 <span>Search & Download Now</span>
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {filteredTasks.map((task) => {
                 const total = task.file_size || 0;
                 const progress = total > 0 ? Math.min(100, (task.bytes_downloaded / total) * 100) : 0;
@@ -754,33 +1152,80 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 return (
                   <div
                     key={task.id}
-                    className="p-4 bg-zinc-900/70 border border-zinc-800 rounded-xl hover:border-zinc-700 transition space-y-3"
+                    className="content-card"
+                    style={{
+                      padding: "16px 20px",
+                      marginBottom: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                    }}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "10px",
+                      }}
+                    >
                       <div>
-                        <div className="font-semibold text-zinc-100 flex items-center gap-2">
+                        <div style={{ fontWeight: 600, color: "var(--text-main)", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
                           <span>{task.title || task.filename}</span>
-                          <span className="text-xs font-normal text-zinc-500">
-                            by {task.artist || "Unknown"}
+                          <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "var(--text-dim)" }}>
+                            by {task.artist || "Unknown Artist"}
                           </span>
                           {isDirect && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-800/40">
-                              <Zap size={10} className="fill-emerald-400" /> Direct In-App
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                fontSize: "0.7rem",
+                                fontWeight: 700,
+                                color: "#10b981",
+                                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                                padding: "2px 8px",
+                                borderRadius: "9999px",
+                                border: "1px solid rgba(16, 185, 129, 0.25)",
+                              }}
+                            >
+                              <Zap size={10} color="#10b981" /> Direct In-App
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-xl">
+                        <div
+                          style={{
+                            fontSize: "0.78rem",
+                            color: "var(--text-dim)",
+                            marginTop: "4px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "500px",
+                          }}
+                        >
                           {task.destination_path || task.filename}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         {getStatusBadge(task.status, isDirect)}
 
                         {(task.status === "DOWNLOADING" || task.status === "QUEUED") && (
                           <button
                             onClick={() => onCancelDownload(task.id)}
-                            className="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 rounded-md border border-rose-500/20 transition"
+                            style={{
+                              padding: "4px 10px",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              borderRadius: "6px",
+                              backgroundColor: "rgba(239, 68, 68, 0.12)",
+                              color: "#ef4444",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              cursor: "pointer",
+                            }}
                           >
                             Cancel
                           </button>
@@ -788,30 +1233,52 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-zinc-500 font-mono">
+                    {/* Progress Track */}
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "0.75rem",
+                          color: "var(--text-dim)",
+                          fontFamily: "monospace",
+                          marginBottom: "4px",
+                        }}
+                      >
                         <span>
                           {formatBytes(task.bytes_downloaded)} / {formatBytes(total)}
                         </span>
-                        <span className="text-zinc-300 font-semibold">{progress.toFixed(1)}%</span>
+                        <span style={{ color: "var(--text-main)", fontWeight: 600 }}>
+                          {progress.toFixed(1)}%
+                        </span>
                       </div>
-                      <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                      <div className="progress-track">
                         <div
-                          className={`h-full transition-all duration-300 ${
-                            task.status === "COMPLETED"
-                              ? "bg-emerald-500"
-                              : task.status === "FAILED"
-                              ? "bg-rose-500"
-                              : "bg-cyan-500"
-                          }`}
-                          style={{ width: `${progress}%` }}
+                          className="progress-fill"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor:
+                              task.status === "COMPLETED"
+                                ? "var(--success)"
+                                : task.status === "FAILED"
+                                ? "var(--danger)"
+                                : "var(--accent)",
+                          }}
                         />
                       </div>
                     </div>
 
                     {task.error_message && (
-                      <div className="text-xs text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "#ef4444",
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid rgba(239, 68, 68, 0.2)",
+                        }}
+                      >
                         {task.error_message}
                       </div>
                     )}

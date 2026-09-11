@@ -801,7 +801,11 @@ export const App: React.FC = () => {
       command: "SearchSoulseek",
       payload: { artist, title, album },
     });
-    return (res as any)?.results || [];
+    const results = (res as any)?.data || (res as any)?.results;
+    if (Array.isArray(results)) {
+      return results;
+    }
+    return [];
   };
 
   const handleStartDownload = async (searchResultId: string, wishlistId?: string) => {

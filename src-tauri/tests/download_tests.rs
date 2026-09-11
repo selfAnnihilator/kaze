@@ -76,6 +76,26 @@ async fn test_download_provider_search_and_availability() -> AppResult<()> {
 }
 
 #[tokio::test]
+async fn test_core_processor_search_soulseek() -> AppResult<()> {
+    let pool = setup_test_db().await;
+    let config = AppConfig::default_with_dirs();
+    let processor = CoreProcessor::new(pool, config);
+    let res = processor.dispatch_command(Command::SearchSoulseek {
+        artist: "John Michael Howell".to_string(),
+        title: "Pinky Up".to_string(),
+        album: None,
+    }).await?;
+    match res {
+        CommandResponse::SearchResults(results) => {
+            println!("Got {} results!", results.len());
+            assert!(!results.is_empty());
+        }
+        _ => panic!("Unexpected response"),
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_download_service_start_download_and_progress_flow() -> AppResult<()> {
     let pool = setup_test_db().await;
     let temp_dir = tempdir().expect("Failed to create tempdir");
