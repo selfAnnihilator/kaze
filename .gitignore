@@ -1,0 +1,10 @@
+/target
+**/*.rs.bk
+Cargo.lock
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+.cache/
+node_modules/
+dist/

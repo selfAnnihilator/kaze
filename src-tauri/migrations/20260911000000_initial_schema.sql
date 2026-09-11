@@ -1,0 +1,220 @@
+-- Initial Schema for Intelligent Local Music Player
+-- Phase 1 Foundation
+
+-- Library Folders
+CREATE TABLE IF NOT EXISTS library_folders (
+    id TEXT PRIMARY KEY NOT NULL,
+    path TEXT NOT NULL UNIQUE,
+    added_at INTEGER NOT NULL,
+    last_scanned_at INTEGER,
+    enabled INTEGER NOT NULL DEFAULT 1
+);
+
+-- Artists
+CREATE TABLE IF NOT EXISTS artists (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    normalized_name TEXT NOT NULL,
+    musicbrainz_id TEXT,
+    bio TEXT,
+    image_url TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_artists_normalized ON artists(normalized_name);
+
+-- Albums
+CREATE TABLE IF NOT EXISTS albums (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    normalized_title TEXT NOT NULL,
+    artist_id TEXT REFERENCES artists(id) ON DELETE SET NULL,
+    album_artist TEXT,
+    release_year INTEGER,
+    total_tracks INTEGER,
+    cover_art_path TEXT,
+    musicbrainz_id TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
+CREATE INDEX IF NOT EXISTS idx_albums_normalized ON albums(normalized_title);
+
+-- Genres
+CREATE TABLE IF NOT EXISTS genres (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    normalized_name TEXT NOT NULL
+);
+
+-- Tracks
+CREATE TABLE IF NOT EXISTS tracks (
+    id TEXT PRIMARY KEY NOT NULL,
+    file_path TEXT NOT NULL UNIQUE,
+    file_size INTEGER NOT NULL,
+    modified_timestamp INTEGER NOT NULL,
+    file_hash TEXT,
+    title TEXT NOT NULL,
+    normalized_title TEXT NOT NULL,
+    artist_id TEXT REFERENCES artists(id) ON DELETE SET NULL,
+    album_id TEXT REFERENCES albums(id) ON DELETE SET NULL,
+    genre_id TEXT REFERENCES genres(id) ON DELETE SET NULL,
+    track_number INTEGER,
+    disc_number INTEGER DEFAULT 1,
+    year INTEGER,
+    duration_secs REAL NOT NULL,
+    bitrate INTEGER,
+    sample_rate INTEGER,
+    format TEXT NOT NULL,
+    has_cover_art INTEGER NOT NULL DEFAULT 0,
+    musicbrainz_track_id TEXT,
+    spotify_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
+CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
+CREATE INDEX IF NOT EXISTS idx_tracks_genre ON tracks(genre_id);
+CREATE INDEX IF NOT EXISTS idx_tracks_filepath ON tracks(file_path);
+CREATE INDEX IF NOT EXISTS idx_tracks_normalized ON tracks(normalized_title);
+
+-- Full-Text Search (FTS5) for instant library query
+CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(
+    track_id UNINDEXED,
+    title,
+    artist,
+    album,
+    genre,
+    content='tracks',
+    content_rowid='rowid'
+);
+
+-- Playlists
+CREATE TABLE IF NOT EXISTS playlists (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_smart_mix INTEGER NOT NULL DEFAULT 0,
+    mix_type TEXT,
+    generation_reason TEXT,
+    expires_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS playlist_tracks (
+    playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (playlist_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_id);
+
+-- Playback History Log
+CREATE TABLE IF NOT EXISTS playback_history (
+    id TEXT PRIMARY KEY NOT NULL,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER NOT NULL,
+    seconds_listened REAL NOT NULL,
+    percentage_listened REAL NOT NULL,
+    completed INTEGER NOT NULL,
+    skipped INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    playlist_id TEXT,
+    recommendation_session_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_history_track ON playback_history(track_id);
+CREATE INDEX IF NOT EXISTS idx_history_started ON playback_history(started_at);
+
+-- Pre-aggregated Track Statistics
+CREATE TABLE IF NOT EXISTS track_statistics (
+    track_id TEXT PRIMARY KEY NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    play_count INTEGER NOT NULL DEFAULT 0,
+    total_time_listened REAL NOT NULL DEFAULT 0.0,
+    completion_count INTEGER NOT NULL DEFAULT 0,
+    skip_count INTEGER NOT NULL DEFAULT 0,
+    last_played_at INTEGER,
+    manual_like INTEGER NOT NULL DEFAULT 0,
+    playlist_addition_count INTEGER NOT NULL DEFAULT 0
+);
+
+-- Artist Aggregated Statistics
+CREATE TABLE IF NOT EXISTS artist_statistics (
+    artist_id TEXT PRIMARY KEY NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
+    play_count INTEGER NOT NULL DEFAULT 0,
+    total_time_listened REAL NOT NULL DEFAULT 0.0,
+    last_played_at INTEGER,
+    affinity_score REAL NOT NULL DEFAULT 0.0
+);
+
+-- Genre Aggregated Statistics
+CREATE TABLE IF NOT EXISTS genre_statistics (
+    genre_id TEXT PRIMARY KEY NOT NULL REFERENCES genres(id) ON DELETE CASCADE,
+    play_count INTEGER NOT NULL DEFAULT 0,
+    total_time_listened REAL NOT NULL DEFAULT 0.0,
+    last_played_at INTEGER,
+    affinity_score REAL NOT NULL DEFAULT 0.0
+);
+
+-- User Taste Profile Signals
+CREATE TABLE IF NOT EXISTS user_preferences (
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    short_term_affinity REAL NOT NULL DEFAULT 0.0,
+    long_term_affinity REAL NOT NULL DEFAULT 0.0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (entity_type, entity_id)
+);
+
+-- Recommendation Sessions and Recorded Recommendations
+CREATE TABLE IF NOT EXISTS recommendation_sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    generated_at INTEGER NOT NULL,
+    session_type TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recommendations (
+    id TEXT PRIMARY KEY NOT NULL,
+    session_id TEXT NOT NULL REFERENCES recommendation_sessions(id) ON DELETE CASCADE,
+    track_id TEXT REFERENCES tracks(id) ON DELETE CASCADE,
+    external_track_id TEXT,
+    score REAL NOT NULL,
+    reasons_json TEXT NOT NULL,
+    is_discovery INTEGER NOT NULL DEFAULT 0
+);
+
+-- External Discovery Tracks
+CREATE TABLE IF NOT EXISTS external_tracks (
+    id TEXT PRIMARY KEY NOT NULL,
+    provider TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    album TEXT,
+    duration_secs REAL,
+    cover_art_url TEXT,
+    match_status TEXT NOT NULL DEFAULT 'NOT_FOUND',
+    matched_local_track_id TEXT REFERENCES tracks(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE(provider, provider_id)
+);
+
+-- Download Wishlist
+CREATE TABLE IF NOT EXISTS wishlist (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    album TEXT,
+    external_track_id TEXT REFERENCES external_tracks(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'WANT',
+    notes TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- Application Settings
+CREATE TABLE IF NOT EXISTS application_settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
