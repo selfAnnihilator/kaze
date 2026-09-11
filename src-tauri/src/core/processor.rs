@@ -1,10 +1,11 @@
 use crate::config::AppConfig;
 use crate::core::command::{Command, CommandResponse};
 use crate::core::error::{AppError, AppResult};
-use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::library::LibraryService;
+use crate::playback::backend::{AudioBackend, RodioAudioBackend};
+use crate::playback::PlaybackService;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,19 +16,38 @@ pub struct CoreProcessor {
     event_bus: Arc<EventBus>,
     db_pool: SqlitePool,
     library_service: Arc<LibraryService>,
+    playback_service: Arc<PlaybackService>,
     config: Arc<RwLock<AppConfig>>,
 }
 
 impl CoreProcessor {
-    /// Constructs a new CoreProcessor instance with the supplied database pool and configuration.
+    /// Constructs a new CoreProcessor instance with standard Rodio audio backend.
     pub fn new(db_pool: SqlitePool, config: AppConfig) -> Self {
+        let backend = Box::new(RodioAudioBackend::try_new().unwrap_or_else(|_| {
+            panic!("Fatal error creating fallback audio backend");
+        }));
+        Self::new_with_backend(db_pool, config, backend)
+    }
+
+    /// Constructs a CoreProcessor instance with an injected AudioBackend (e.g. for testing).
+    pub fn new_with_backend(
+        db_pool: SqlitePool,
+        config: AppConfig,
+        backend: Box<dyn AudioBackend>,
+    ) -> Self {
         let event_bus = Arc::new(EventBus::default());
         let library_service = Arc::new(LibraryService::new(db_pool.clone(), event_bus.clone()));
+        let playback_service = PlaybackService::new(
+            backend,
+            library_service.track_repo(),
+            event_bus.clone(),
+        );
 
         Self {
             event_bus,
             db_pool,
             library_service,
+            playback_service,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -47,11 +67,17 @@ impl CoreProcessor {
         self.library_service.clone()
     }
 
+    /// Access the PlaybackService handle.
+    pub fn playback_service(&self) -> Arc<PlaybackService> {
+        self.playback_service.clone()
+    }
+
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
     pub async fn dispatch_command(&self, cmd: Command) -> AppResult<CommandResponse> {
         info!(?cmd, "Dispatching command");
 
         match cmd {
+            // --- Library & Onboarding Management ---
             Command::CompleteOnboarding {
                 music_folders,
                 start_scan,
@@ -94,29 +120,72 @@ impl CoreProcessor {
                 info!("Library scan cancel requested");
                 Ok(CommandResponse::Ok)
             }
+
+            // --- Playback Controls ---
+            Command::PlayTrack { track_id, source } => {
+                self.playback_service.play_track(&track_id, source).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::PlayQueueIndex { index } => {
+                self.playback_service.play_queue_index(index).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::Pause => {
+                self.playback_service.pause().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::Resume => {
+                self.playback_service.resume().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::Stop => {
+                self.playback_service.stop().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::NextTrack => {
+                self.playback_service.next().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::PreviousTrack => {
+                self.playback_service.previous().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::Seek { position_secs } => {
+                self.playback_service.seek(position_secs).await?;
+                Ok(CommandResponse::Ok)
+            }
             Command::SetVolume { volume } => {
                 if !(0.0..=1.0).contains(&volume) {
                     return Err(AppError::Validation("Volume must be between 0.0 and 1.0".into()));
                 }
-                self.event_bus.publish(Event::PlaybackVolumeChanged {
-                    volume,
-                    is_muted: volume == 0.0,
-                })?;
+                self.playback_service.set_volume(volume).await?;
                 Ok(CommandResponse::Ok)
             }
-            Command::Pause => {
-                self.event_bus.publish(Event::PlaybackPaused {
-                    track_id: "placeholder".into(),
-                    position_secs: 0.0,
-                })?;
+            Command::ToggleMute => {
+                let state = self.playback_service.get_playback_state().await;
+                let new_vol = if state.volume > 0.0 { 0.0 } else { 0.8 };
+                self.playback_service.set_volume(new_vol).await?;
                 Ok(CommandResponse::Ok)
             }
-            Command::Stop => {
-                self.event_bus.publish(Event::PlaybackStopped)?;
+            Command::SetRepeatMode { mode } => {
+                self.playback_service.set_repeat_mode(mode).await;
                 Ok(CommandResponse::Ok)
             }
+            Command::SetShuffle { enabled } => {
+                self.playback_service.set_shuffle(enabled).await;
+                Ok(CommandResponse::Ok)
+            }
+            Command::EnqueueTrack { track_id, play_next } => {
+                self.playback_service.enqueue_track(&track_id, play_next).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::ClearQueue => {
+                self.playback_service.clear_queue().await;
+                Ok(CommandResponse::Ok)
+            }
+
             _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 2");
+                warn!(?cmd, "Command handler routed to stub during Phase 3");
                 Ok(CommandResponse::Ok)
             }
         }
@@ -127,6 +196,12 @@ impl CoreProcessor {
         info!(?query, "Executing query");
 
         match query {
+            Query::GetPlaybackState => {
+                let state = self.playback_service.get_playback_state().await;
+                let val = serde_json::to_value(&state)
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                Ok(QueryResponse::PlaybackState(val))
+            }
             Query::GetOnboardingStatus => {
                 let completed = self.library_service.is_onboarding_completed().await?;
                 let default_music_dir = LibraryService::get_default_music_dir()
@@ -216,7 +291,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::SearchResults(val))
             }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 2");
+                warn!(?query, "Query handler routed to stub during Phase 3");
                 Ok(QueryResponse::Empty)
             }
         }

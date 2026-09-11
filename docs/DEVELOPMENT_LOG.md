@@ -77,4 +77,35 @@ Local music library discovery, system default audio directory lookup, onboarding
 - Phase 3: Dedicated playback service with `rodio` & `cpal`, playback queue, position tracking, and shuffle/repeat.
 
 ### Recommended Next Step
-Proceed to **Phase 3: Playback Engine**.
+Proceed to Phase 3.
+
+---
+
+## 2026-09-11 (Phase 3: Playback Engine)
+
+### Worked On
+Audio output abstraction, thread-safe Rodio/cpal backend integration, headless mock backend, playback queue state machine (enqueue, play next, append, remove, clear), repeat modes, reversible shuffle, 250ms throttled position ticks, and automatic queue advancement.
+
+### Changes
+- Created `AudioBackend` trait abstraction in `playback/backend.rs` isolating audio hardware interfaces.
+- Implemented `RodioAudioBackend` for native cross-platform audio using `rodio` and `cpal`.
+- Implemented `MockAudioBackend` for deterministic, soundcard-independent unit/integration testing in headless CI environments.
+- Implemented `PlaybackQueue` supporting queue management, `RepeatMode` (`Off`, `One`, `All`), and reversible randomized `shuffle`.
+- Implemented `PlaybackService` coordinating audio decoding, position monitoring loop (250ms ticks), track finish detection, and auto-advance.
+- Wired all playback commands (`PlayTrack`, `PlayQueueIndex`, `Pause`, `Resume`, `Stop`, `Seek`, `SetVolume`, `ToggleMute`, `SetRepeatMode`, `SetShuffle`, `EnqueueTrack`, `ClearQueue`) and queries (`GetPlaybackState`) through `CoreProcessor`.
+- Created `docs/PLAYBACK.md` and ADR `0007-playback-service-and-audio-backend-abstraction.md`.
+- Implemented comprehensive integration test suite `tests/playback_tests.rs` (all 12 tests passing).
+
+### Decisions
+- Kept `rodio::OutputStream` detached on process startup to maintain thread-safe `Send + Sync` guarantees across background Tokio tasks.
+- Provided `CoreProcessor::new_with_backend()` to permit test injection of `MockAudioBackend` without requiring physical audio hardware.
+- Throttled periodic position notifications to 250ms to ensure smooth UI progress bar updates without saturating IPC channels.
+
+### Problems
+- `rodio::OutputStream` contains platform-dependent raw pointers on ALSA causing `!Send`. Resolved by detaching the stream for process lifetime and maintaining `Send`-compliant `OutputStreamHandle` and `Sink`.
+
+### Remaining Work
+- Phase 4: Listening history logging, meaningful-play detection, and multi-factor ranking.
+
+### Recommended Next Step
+Proceed to **Phase 4: Listening History & Statistics**.

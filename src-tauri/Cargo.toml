@@ -49,5 +49,9 @@ walkdir = "2.5"
 lofty = "0.22"
 notify = "8.0"
 
+# Audio Playback
+rodio = { version = "0.20", default-features = false, features = ["symphonia-all"] }
+rand = "0.8"
+
 [dev-dependencies]
 tempfile = "3.12"
