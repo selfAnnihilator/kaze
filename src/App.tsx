@@ -242,6 +242,7 @@ export const App: React.FC = () => {
 
     subscribeBackendEvents((event: any) => {
       if (!event || !event.event) return;
+      console.log("[Backend Event]", event.event, event.payload);
 
       switch (event.event) {
         case "PlaybackStarted": {
@@ -410,6 +411,37 @@ export const App: React.FC = () => {
       if (unlistenFn) unlistenFn();
     };
   }, [fetchTracks, fetchArtists, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist]);
+
+  // Smooth local playback progression ticker while playing
+  useEffect(() => {
+    if (!playbackState.is_playing) return;
+
+    const interval = setInterval(() => {
+      setPlaybackState((prev) => {
+        if (!prev.is_playing) return prev;
+        const maxDur = prev.duration_secs || prev.current_track?.duration_secs || 0;
+        const nextPos = prev.position_secs + 0.25;
+        if (maxDur > 0 && nextPos >= maxDur) {
+          fetchPlaybackState();
+          return { ...prev, position_secs: maxDur };
+        }
+        return { ...prev, position_secs: nextPos };
+      });
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [playbackState.is_playing, fetchPlaybackState]);
+
+  // Periodic state reconciliation with backend while playing
+  useEffect(() => {
+    if (!playbackState.is_playing) return;
+
+    const interval = setInterval(() => {
+      fetchPlaybackState();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [playbackState.is_playing, fetchPlaybackState]);
 
   // --- Actions & Commands ---
 

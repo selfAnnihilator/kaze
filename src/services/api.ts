@@ -27,9 +27,17 @@ export async function executeQuery(query: Query): Promise<QueryResponse> {
 
 export async function subscribeBackendEvents(callback: (event: any) => void): Promise<() => void> {
   if (isTauri()) {
-    const { listen } = await import("@tauri-apps/api/event");
-    const unlisten = await listen("backend-event", (e) => callback(e.payload));
-    return unlisten;
+    try {
+      const { listen } = await import("@tauri-apps/api/event");
+      const unlisten = await listen("backend-event", (e) => {
+        callback(e.payload);
+      });
+      console.log("[Tauri API] Successfully subscribed to backend-event");
+      return unlisten;
+    } catch (err) {
+      console.error("[Tauri API] Failed to subscribe to backend-event:", err);
+      return () => {};
+    }
   } else {
     // In browser, emit periodic mock ticker event for testing if needed
     return () => {};

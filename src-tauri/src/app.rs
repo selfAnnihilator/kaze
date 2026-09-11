@@ -50,8 +50,21 @@ pub fn run() {
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();
                 tauri::async_runtime::spawn(async move {
-                    while let Ok(event) = rx.recv().await {
-                        let _ = emit_handle.emit("backend-event", event);
+                    loop {
+                        match rx.recv().await {
+                            Ok(event) => {
+                                if let Err(e) = emit_handle.emit("backend-event", &event) {
+                                    tracing::error!(?e, "Failed to emit backend-event to webview");
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                                tracing::warn!(skipped, "Event bus receiver lagged behind; continuing");
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                                tracing::info!("Event bus channel closed; exiting event loop");
+                                break;
+                            }
+                        }
                     }
                 });
 
