@@ -16,6 +16,7 @@ export interface Track {
   has_cover_art: number;
   musicbrainz_track_id?: string;
   spotify_id?: string;
+  manual_like?: number; // 1 = liked, -1 = disliked, 0 = neutral
 }
 
 export interface Artist {
@@ -157,6 +158,26 @@ export interface AppSettings {
 
 // --- Commands & Queries ---
 
+export interface SpotifyImportedTrack {
+  spotify_id: string;
+  title: string;
+  artist: string;
+  duration_secs?: number;
+  in_library: boolean;
+  match_status: string;
+  matched_local_track_id?: string;
+}
+
+export interface SpotifyPlaylistImport {
+  playlist_id: string;
+  title: string;
+  cover_url?: string;
+  total_tracks: number;
+  matched_tracks: number;
+  missing_tracks: number;
+  tracks: SpotifyImportedTrack[];
+}
+
 export type Command =
   | { command: "PlayTrack"; payload: { track_id: string; source?: string } }
   | { command: "Pause" }
@@ -172,18 +193,23 @@ export type Command =
   | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean } }
   | { command: "ClearQueue" }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
+  | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
   | { command: "RemoveLibraryFolder"; payload: { folder_id: string } }
   | { command: "ScanLibrary"; payload: { folder_id?: string; incremental: boolean } }
   | { command: "GenerateSmartMix"; payload: { mix_type: string } }
   | { command: "CreatePlaylist"; payload: { name: string; description?: string } }
   | { command: "DeletePlaylist"; payload: { playlist_id: string } }
+  | { command: "AddTrackToPlaylist"; payload: { playlist_id: string; track_id: string } }
   | { command: "LikeTrack"; payload: { track_id: string } }
   | { command: "DislikeTrack"; payload: { track_id: string } }
   | { command: "RemoveTrackFeedback"; payload: { track_id: string } }
   | { command: "AddToWishlist"; payload: { title: string; artist: string; album?: string; external_id?: string } }
+  | { command: "AddMissingToWishlist"; payload: { tracks: any[] } }
   | { command: "UpdateWishlistStatus"; payload: { wishlist_id: string; status: "want" | "ignore" | "already_own" | "downloaded" } }
   | { command: "SearchSoulseek"; payload: { artist: string; title: string; album?: string } }
+  | { command: "LaunchSoulseek"; payload: { search_query?: string } }
+  | { command: "ImportSoulseekDownloads" }
   | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string } }
   | { command: "CancelDownload"; payload: { task_id: string } };
 
@@ -194,6 +220,7 @@ export type Query =
   | { query: "GetArtists"; payload: { offset: number; limit: number } }
   | { query: "GetAlbums"; payload: { offset: number; limit: number } }
   | { query: "GetPlaylists" }
+  | { query: "GetPlaylistTracks"; payload: { playlist_id: string } }
   | { query: "GetSmartMixes" }
   | { query: "GetTasteProfile" }
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
@@ -201,7 +228,8 @@ export type Query =
   | { query: "GetWishlist" }
   | { query: "GetDownloads"; payload: { status_filter?: string; limit: number } }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
-  | { query: "GetSettings" };
+  | { query: "GetSettings" }
+  | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } };
 
 export interface QueryResponse {
   type: string;

@@ -28,6 +28,7 @@ interface NowPlayingBarProps {
   onToggleShuffle: () => void;
   onLike: (trackId: string) => void;
   onDislike: (trackId: string) => void;
+  onRemoveFeedback: (trackId: string) => void;
 }
 
 const formatTime = (seconds: number): string => {
@@ -50,6 +51,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onToggleShuffle,
   onLike,
   onDislike,
+  onRemoveFeedback,
 }) => {
   const duration = playbackState.duration_secs || currentTrack?.duration_secs || 0;
   const position = playbackState.position_secs || 0;
@@ -89,17 +91,27 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
             <button
               className="player-icon-btn"
-              title="Like track"
-              onClick={() => onLike(currentTrack.id)}
+              title={currentTrack.manual_like === 1 ? "Unlike track" : "Like track"}
+              onClick={() =>
+                currentTrack.manual_like === 1
+                  ? onRemoveFeedback(currentTrack.id)
+                  : onLike(currentTrack.id)
+              }
+              style={{ color: currentTrack.manual_like === 1 ? "#ef4444" : "var(--text-muted)" }}
             >
-              <Heart size={16} />
+              <Heart size={16} fill={currentTrack.manual_like === 1 ? "#ef4444" : "none"} />
             </button>
             <button
               className="player-icon-btn"
-              title="Dislike track"
-              onClick={() => onDislike(currentTrack.id)}
+              title={currentTrack.manual_like === -1 ? "Remove dislike" : "Dislike track"}
+              onClick={() =>
+                currentTrack.manual_like === -1
+                  ? onRemoveFeedback(currentTrack.id)
+                  : onDislike(currentTrack.id)
+              }
+              style={{ color: currentTrack.manual_like === -1 ? "#f59e0b" : "var(--text-muted)" }}
             >
-              <ThumbsDown size={16} />
+              <ThumbsDown size={16} fill={currentTrack.manual_like === -1 ? "#f59e0b" : "none"} />
             </button>
           </div>
         )}

@@ -11,6 +11,7 @@ import {
   PlaybackState,
   AppSettings,
   OnboardingStatus,
+  SpotifyPlaylistImport,
 } from "./types";
 import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
 import { Sidebar, ViewType } from "./components/Sidebar";
@@ -404,6 +405,14 @@ export const App: React.FC = () => {
   };
 
   const handleLike = async (trackId: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t))
+    );
+    setPlaybackState((prev) =>
+      prev.current_track?.id === trackId
+        ? { ...prev, current_track: { ...prev.current_track, manual_like: 1 } }
+        : prev
+    );
     await dispatchCommand({
       command: "LikeTrack",
       payload: { track_id: trackId },
@@ -411,8 +420,31 @@ export const App: React.FC = () => {
   };
 
   const handleDislike = async (trackId: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, manual_like: -1 } : t))
+    );
+    setPlaybackState((prev) =>
+      prev.current_track?.id === trackId
+        ? { ...prev, current_track: { ...prev.current_track, manual_like: -1 } }
+        : prev
+    );
     await dispatchCommand({
       command: "DislikeTrack",
+      payload: { track_id: trackId },
+    });
+  };
+
+  const handleRemoveFeedback = async (trackId: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t))
+    );
+    setPlaybackState((prev) =>
+      prev.current_track?.id === trackId
+        ? { ...prev, current_track: { ...prev.current_track, manual_like: 0 } }
+        : prev
+    );
+    await dispatchCommand({
+      command: "RemoveTrackFeedback",
       payload: { track_id: trackId },
     });
   };
@@ -481,6 +513,12 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleRerunOnboarding = async () => {
+    await dispatchCommand({ command: "ResetOnboarding" });
+    await fetchOnboardingStatus();
+    setShowOnboarding(true);
+  };
+
   // Playlists & Smart Mixes
   const handleCreatePlaylist = async (name: string, description?: string) => {
     await dispatchCommand({
@@ -490,12 +528,81 @@ export const App: React.FC = () => {
     fetchPlaylists();
   };
 
-  const handleGenerateSmartMix = async (mixType: string) => {
-    await dispatchCommand({
-      command: "GenerateSmartMix",
-      payload: { mix_type: mixType },
+  const handlePlayPlaylist = async (playlistId: string) => {
+    try {
+      const res = await executeQuery({
+        query: "GetPlaylistTracks",
+        payload: { playlist_id: playlistId },
+      });
+      const plTracks: Track[] = (res.data as any) || [];
+      if (plTracks.length > 0) {
+        await dispatchCommand({ command: "ClearQueue" });
+        await dispatchCommand({
+          command: "PlayTrack",
+          payload: { track_id: plTracks[0].id, source: "playlist" },
+        });
+        for (let i = 1; i < plTracks.length; i++) {
+          await dispatchCommand({
+            command: "EnqueueTrack",
+            payload: { track_id: plTracks[i].id, play_next: false },
+          });
+        }
+        fetchPlaybackState();
+      }
+    } catch (err) {
+      console.error("Failed to play playlist:", err);
+    }
+  };
+
+  const handleFetchPlaylistTracks = async (playlistId: string): Promise<Track[]> => {
+    try {
+      const res = await executeQuery({
+        query: "GetPlaylistTracks",
+        payload: { playlist_id: playlistId },
+      });
+      return (res.data as any) || [];
+    } catch (err) {
+      console.error("Failed to fetch playlist tracks:", err);
+      return [];
+    }
+  };
+
+  const handleInspectSpotifyPlaylist = async (urlOrId: string): Promise<SpotifyPlaylistImport | null> => {
+    try {
+      const res = await executeQuery({
+        query: "ImportSpotifyPlaylist",
+        payload: { url_or_id: urlOrId },
+      });
+      return (res.data as SpotifyPlaylistImport) || null;
+    } catch (err) {
+      console.error("Failed to inspect Spotify playlist:", err);
+      return null;
+    }
+  };
+
+  const handleSaveImportedPlaylist = async (name: string, trackIds: string[]) => {
+    const plRes = await dispatchCommand({
+      command: "CreatePlaylist",
+      payload: { name, description: "Imported from Spotify" },
     });
-    fetchPlaylists();
+    const playlistId = (plRes as any)?.data;
+    if (playlistId) {
+      for (const tid of trackIds) {
+        await dispatchCommand({
+          command: "AddTrackToPlaylist",
+          payload: { playlist_id: playlistId, track_id: tid },
+        });
+      }
+      fetchPlaylists();
+    }
+  };
+
+  const handleAddMissingToWishlist = async (missingTracks: any[]) => {
+    await dispatchCommand({
+      command: "AddMissingToWishlist",
+      payload: { tracks: missingTracks },
+    });
+    fetchWishlist();
   };
 
   // Wishlist
@@ -519,6 +626,29 @@ export const App: React.FC = () => {
   };
 
   // Soulseek & Downloads
+  const handleLaunchSoulseek = async (query?: string) => {
+    if (query) {
+      try {
+        await navigator.clipboard.writeText(query);
+      } catch (e) {}
+    }
+    await dispatchCommand({
+      command: "LaunchSoulseek",
+      payload: { search_query: query },
+    });
+  };
+
+  const handleImportSoulseekDownloads = async () => {
+    setIsScanning(true);
+    await dispatchCommand({
+      command: "ImportSoulseekDownloads",
+    });
+    await fetchTracks();
+    await fetchPlaylists();
+    await fetchWishlist();
+    setIsScanning(false);
+  };
+
   const handleSearchSoulseek = async (
     artist: string,
     title: string,
@@ -548,8 +678,10 @@ export const App: React.FC = () => {
   };
 
   // Navigation shortcut to search Soulseek from other views
-  const handleInitiateSoulseekSearch = (artist: string, title: string, album?: string) => {
+  const handleInitiateSoulseekSearch = async (artist: string, title: string, album?: string) => {
+    const q = `${artist} ${title}`.trim();
     setSoulseekSearch({ artist, title, album });
+    await handleLaunchSoulseek(q);
     setCurrentView("downloads");
   };
 
@@ -568,6 +700,7 @@ export const App: React.FC = () => {
             onEnqueueTrack={handleEnqueueTrack}
             onLikeTrack={handleLike}
             onDislikeTrack={handleDislike}
+            onRemoveFeedback={handleRemoveFeedback}
             onRescan={handleRescanLibrary}
             onSearch={handleSearchLibrary}
           />
@@ -603,8 +736,15 @@ export const App: React.FC = () => {
           <PlaylistsView
             playlists={playlists}
             onSelectPlaylist={() => {}}
+            onPlayPlaylist={handlePlayPlaylist}
             onCreatePlaylist={handleCreatePlaylist}
-            onGenerateSmartMix={handleGenerateSmartMix}
+            onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+            onSaveImportedPlaylist={handleSaveImportedPlaylist}
+            onAddMissingToWishlist={handleAddMissingToWishlist}
+            onLaunchSoulseek={handleLaunchSoulseek}
+            onFetchPlaylistTracks={handleFetchPlaylistTracks}
+            onPlayTrack={handlePlayTrack}
+            onEnqueueTrack={handleEnqueueTrack}
           />
         )}
 
@@ -636,6 +776,8 @@ export const App: React.FC = () => {
             onStartDownload={handleStartDownload}
             onCancelDownload={handleCancelDownload}
             onRefreshDownloads={fetchDownloads}
+            onLaunchSoulseek={handleLaunchSoulseek}
+            onImportSoulseek={handleImportSoulseekDownloads}
             initialSearch={soulseekSearch}
           />
         )}
@@ -647,6 +789,9 @@ export const App: React.FC = () => {
             onAddFolder={handleAddFolder}
             onRemoveFolder={handleRemoveFolder}
             onRescanLibrary={handleRescanLibrary}
+            onRerunOnboarding={handleRerunOnboarding}
+            onLaunchSoulseek={handleLaunchSoulseek}
+            onImportSoulseek={handleImportSoulseekDownloads}
             isScanning={isScanning}
           />
         )}
@@ -667,6 +812,7 @@ export const App: React.FC = () => {
         onToggleShuffle={handleToggleShuffle}
         onLike={handleLike}
         onDislike={handleDislike}
+        onRemoveFeedback={handleRemoveFeedback}
       />
 
       {/* Onboarding Modal */}

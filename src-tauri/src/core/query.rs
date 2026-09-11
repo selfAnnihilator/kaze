@@ -79,6 +79,9 @@ pub enum Query {
     },
     GetSettings,
     GetPlaybackState,
+    ImportSpotifyPlaylist {
+        url_or_id: String,
+    },
 }
 
 /// Query response wrapper.
@@ -106,5 +109,6 @@ pub enum QueryResponse {
     Wishlist(Vec<serde_json::Value>),
     DiscoveryRecommendations(Vec<serde_json::Value>),
     Downloads(Vec<serde_json::Value>),
+    SpotifyPlaylistImport(serde_json::Value),
     Empty,
 }

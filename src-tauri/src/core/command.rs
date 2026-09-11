@@ -74,6 +74,7 @@ pub enum Command {
         music_folders: Vec<String>,
         start_scan: bool,
     },
+    ResetOnboarding,
     AddLibraryFolder {
         path: String,
     },
@@ -124,6 +125,9 @@ pub enum Command {
         album: Option<String>,
         external_id: Option<String>,
     },
+    AddMissingToWishlist {
+        tracks: Vec<serde_json::Value>,
+    },
     UpdateWishlistStatus {
         wishlist_id: String,
         status: WishlistStatus,
@@ -133,6 +137,10 @@ pub enum Command {
         title: String,
         album: Option<String>,
     },
+    LaunchSoulseek {
+        search_query: Option<String>,
+    },
+    ImportSoulseekDownloads,
     StartDownload {
         search_result_id: String,
         wishlist_id: Option<String>,
@@ -160,4 +168,7 @@ pub enum CommandResponse {
     OnboardingCompleted { configured_folders: usize },
     SearchResults(Vec<serde_json::Value>),
     DownloadStarted { task_id: String },
+    SoulseekLaunched { message: String },
+    SoulseekImported { imported_count: usize },
+    WishlistAdded { count: usize },
 }

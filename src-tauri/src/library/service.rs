@@ -68,6 +68,14 @@ impl LibraryService {
         Ok(val.map(|v| v == "true").unwrap_or(false))
     }
 
+    /// Resets the onboarding flag to allow testing onboarding flow again.
+    pub async fn reset_onboarding(&self) -> AppResult<()> {
+        self.settings_repo
+            .set_setting("onboarding_completed", "false")
+            .await?;
+        Ok(())
+    }
+
     /// Completes the onboarding procedure by registering user approved music directories.
     pub async fn complete_onboarding(
         &self,

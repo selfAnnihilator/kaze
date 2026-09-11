@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, Search, RotateCw, Heart, ThumbsDown, Plus } from "lucide-react";
+import { Play, Search, RotateCw, Heart, ThumbsDown, Plus, Check } from "lucide-react";
 import { Track } from "../../types";
 
 interface LibraryViewProps {
@@ -8,6 +8,7 @@ interface LibraryViewProps {
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onDislikeTrack: (trackId: string) => void;
+  onRemoveFeedback: (trackId: string) => void;
   onRescan: () => void;
   onSearch: (query: string) => void;
 }
@@ -24,15 +25,25 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onEnqueueTrack,
   onLikeTrack,
   onDislikeTrack,
+  onRemoveFeedback,
   onRescan,
   onSearch,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [justEnqueuedId, setJustEnqueuedId] = useState<string | null>(null);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchTerm(val);
     onSearch(val);
+  };
+
+  const handleEnqueue = (trackId: string) => {
+    onEnqueueTrack(trackId);
+    setJustEnqueuedId(trackId);
+    setTimeout(() => {
+      setJustEnqueuedId((prev) => (prev === trackId ? null : prev));
+    }, 1500);
   };
 
   return (
@@ -101,56 +112,65 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {tracks.map((track, idx) => (
-              <tr key={track.id} className="track-row" onDoubleClick={() => onPlayTrack(track.id)}>
-                <td style={{ textAlign: "center", color: "var(--text-dim)" }}>{idx + 1}</td>
-                <td className="primary">
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <button
-                      className="player-icon-btn"
-                      onClick={() => onPlayTrack(track.id)}
-                      style={{ color: "var(--accent-light)" }}
-                    >
-                      <Play size={14} />
-                    </button>
-                    <span>{track.title}</span>
-                  </div>
-                </td>
-                <td>{track.artist_name || "Unknown Artist"}</td>
-                <td>{track.album_title || "Unknown Album"}</td>
-                <td>
-                  <span className="badge" style={{ backgroundColor: "var(--border)", color: "var(--text-muted)" }}>
-                    {track.format.toUpperCase()}
-                  </span>
-                </td>
-                <td style={{ textAlign: "right" }}>{formatSeconds(track.duration_secs)}</td>
-                <td>
-                  <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
-                    <button
-                      className="player-icon-btn"
-                      title="Play next in queue"
-                      onClick={() => onEnqueueTrack(track.id)}
-                    >
-                      <Plus size={16} />
-                    </button>
-                    <button
-                      className="player-icon-btn"
-                      title="Like"
-                      onClick={() => onLikeTrack(track.id)}
-                    >
-                      <Heart size={16} />
-                    </button>
-                    <button
-                      className="player-icon-btn"
-                      title="Dislike"
-                      onClick={() => onDislikeTrack(track.id)}
-                    >
-                      <ThumbsDown size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {tracks.map((track, idx) => {
+              const isLiked = track.manual_like === 1;
+              const isDisliked = track.manual_like === -1;
+              const isEnqueued = justEnqueuedId === track.id;
+
+              return (
+                <tr key={track.id} className="track-row" onDoubleClick={() => onPlayTrack(track.id)}>
+                  <td style={{ textAlign: "center", color: "var(--text-dim)" }}>{idx + 1}</td>
+                  <td className="primary">
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <button
+                        className="player-icon-btn"
+                        onClick={() => onPlayTrack(track.id)}
+                        style={{ color: "var(--accent-light)" }}
+                      >
+                        <Play size={14} />
+                      </button>
+                      <span>{track.title}</span>
+                    </div>
+                  </td>
+                  <td>{track.artist_name || "Unknown Artist"}</td>
+                  <td>{track.album_title || "Unknown Album"}</td>
+                  <td>
+                    <span className="badge" style={{ backgroundColor: "var(--border)", color: "var(--text-muted)" }}>
+                      {track.format.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>{formatSeconds(track.duration_secs)}</td>
+                  <td>
+                    <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                      <button
+                        className="player-icon-btn"
+                        title={isEnqueued ? "Added to queue!" : "Play next in queue"}
+                        onClick={() => handleEnqueue(track.id)}
+                        style={{ color: isEnqueued ? "var(--success)" : "var(--text-muted)" }}
+                      >
+                        {isEnqueued ? <Check size={16} /> : <Plus size={16} />}
+                      </button>
+                      <button
+                        className="player-icon-btn"
+                        title={isLiked ? "Unlike track" : "Like track"}
+                        onClick={() => (isLiked ? onRemoveFeedback(track.id) : onLikeTrack(track.id))}
+                        style={{ color: isLiked ? "#ef4444" : "var(--text-muted)" }}
+                      >
+                        <Heart size={16} fill={isLiked ? "#ef4444" : "none"} />
+                      </button>
+                      <button
+                        className="player-icon-btn"
+                        title={isDisliked ? "Remove dislike" : "Dislike track"}
+                        onClick={() => (isDisliked ? onRemoveFeedback(track.id) : onDislikeTrack(track.id))}
+                        style={{ color: isDisliked ? "#f59e0b" : "var(--text-muted)" }}
+                      >
+                        <ThumbsDown size={16} fill={isDisliked ? "#f59e0b" : "none"} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

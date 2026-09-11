@@ -6,6 +6,13 @@
 - [ ] Add scrobbling support for ListenBrainz.
 
 ## Completed
+- [x] Phase 11 User Experience & Integration Enhancements:
+  - [x] Re-run Onboarding Setup: Added dedicated button in Settings to reset onboarding and trigger the directory selection modal from fresh without manual DB manipulation (`Command::ResetOnboarding`).
+  - [x] Auto-Generated Smart Mixes: Cold-start fallback automatically queries library genres (Phonk, Lo-Fi, Rap/Hip Hop, Pop) and generates ready-to-play mixes (`Daily Mix`, `Local Discoveries`, genre mixes) without requiring manual button clicks.
+  - [x] Interactive Playlist Inspector & Direct Playback: Clicking Play Mix loads and plays mix tracks immediately; clicking the mix card inspects tracks with individual play/enqueue controls.
+  - [x] Native SoulseekQt Desktop Integration: One-click launch with `QT_QPA_PLATFORM=xcb`, automatic search query copying to system clipboard, and one-click import of completed tracks from `~/Soulseek Downloads/complete`.
+  - [x] Spotify Playlist Importer & Missing Track Matcher: Inspects public Spotify playlists via URL/ID, fuzzy-matches each track against the local library (`In Library` vs `Missing`), offers one-click save as SoundFlow playlist, batch wishlist addition, and direct search in SoulseekQt.
+  - [x] Visual User Feedback & Quick Enqueue: Clear red heart when liked, amber thumb when disliked, toggle on click, and 1.5s green checkmark confirmation on Plus icon.
 - [x] Phase 10 Final Verification, Packaging & Polish:
   - [x] End-to-end executable compilation (`target/debug/music-player-app` and `target/debug/music-player-cli`).
   - [x] Verified headless initialization, migration execution, and CoreProcessor command execution.

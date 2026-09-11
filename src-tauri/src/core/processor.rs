@@ -238,6 +238,11 @@ impl CoreProcessor {
                     configured_folders: configured,
                 })
             }
+            Command::ResetOnboarding => {
+                self.library_service.reset_onboarding().await?;
+                info!("Reset onboarding status to false");
+                Ok(CommandResponse::Ok)
+            }
             Command::AddLibraryFolder { path } => {
                 if path.trim().is_empty() {
                     return Err(AppError::Validation("Folder path cannot be empty".into()));
@@ -270,6 +275,7 @@ impl CoreProcessor {
                     unchanged = total_unchanged,
                     "Library scan execution finished"
                 );
+                let _ = self.smart_mix_generator.ensure_default_mixes().await;
                 Ok(CommandResponse::Ok)
             }
             Command::CancelScan => {
@@ -432,15 +438,34 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
+            Command::AddMissingToWishlist { tracks } => {
+                let count = self.add_missing_to_wishlist(tracks).await?;
+                Ok(CommandResponse::WishlistAdded { count })
+            }
+
             // --- Soulseek & Downloads ---
             Command::SearchSoulseek { artist, title, album: _ } => {
                 let query = format!("{} {}", artist, title);
-                let results = self.download_service.search(&query).await?;
+                let results = match self.download_service.search(&query).await {
+                    Ok(res) => res,
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Slskd daemon not responding, returning empty search results");
+                        Vec::new()
+                    }
+                };
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
                 Ok(CommandResponse::SearchResults(val))
+            }
+            Command::LaunchSoulseek { search_query } => {
+                let msg = self.launch_soulseek_qt(search_query).await?;
+                Ok(CommandResponse::SoulseekLaunched { message: msg })
+            }
+            Command::ImportSoulseekDownloads => {
+                let count = self.import_soulseek_downloads().await?;
+                Ok(CommandResponse::SoulseekImported { imported_count: count })
             }
             Command::StartDownload {
                 search_result_id,
@@ -607,7 +632,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::Recommendations(val))
             }
             Query::GetSmartMixes => {
-                let mixes = self.playlist_repo.get_smart_mixes().await?;
+                let mixes = self.smart_mix_generator.ensure_default_mixes().await?;
                 let val: Vec<serde_json::Value> = mixes
                     .into_iter()
                     .filter_map(|m| serde_json::to_value(m).ok())
@@ -615,6 +640,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::SmartMixes(val))
             }
             Query::GetPlaylists => {
+                let _ = self.smart_mix_generator.ensure_default_mixes().await;
                 let playlists = self.playlist_repo.get_all_playlists().await?;
                 let val: Vec<serde_json::Value> = playlists
                     .into_iter()
@@ -660,10 +686,242 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::Downloads(val))
             }
+            Query::ImportSpotifyPlaylist { url_or_id } => {
+                let val = self.import_spotify_playlist(&url_or_id).await?;
+                Ok(QueryResponse::SpotifyPlaylistImport(val))
+            }
             _ => {
                 warn!(?query, "Query handler routed to stub during Phase 8");
                 Ok(QueryResponse::Empty)
             }
         }
+    }
+
+    async fn launch_soulseek_qt(&self, search_query: Option<String>) -> AppResult<String> {
+        // 1. If query is provided, copy to clipboard if wl-copy or xclip is available
+        if let Some(ref q) = search_query {
+            let _ = std::process::Command::new("wl-copy")
+                .arg(q)
+                .spawn();
+
+            if let Ok(mut child) = std::process::Command::new("xclip")
+                .args(["-selection", "clipboard"])
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+            {
+                if let Some(mut stdin) = child.stdin.take() {
+                    use std::io::Write;
+                    let _ = stdin.write_all(q.as_bytes());
+                }
+            }
+        }
+
+        // 2. Look for SoulseekQt AppImage
+        let possible_paths = [
+            "/home/abhi/Applications/SoulseekQt-2024-6-30.AppImage",
+            "/home/abhi/Applications/SoulseekQt.AppImage",
+        ];
+
+        let mut launched = false;
+        let mut launched_path = String::new();
+
+        for p in possible_paths {
+            if std::path::Path::new(p).exists() {
+                if let Ok(_) = std::process::Command::new(p)
+                    .env("QT_QPA_PLATFORM", "xcb")
+                    .spawn()
+                {
+                    launched = true;
+                    launched_path = p.to_string();
+                    break;
+                }
+            }
+        }
+
+        if !launched {
+            let _ = std::process::Command::new("gtk-launch")
+                .arg("soulseekqt")
+                .spawn();
+            launched_path = "gtk-launch soulseekqt".to_string();
+        }
+
+        let msg = if let Some(q) = search_query {
+            format!("Launched SoulseekQt! Query \"{}\" copied to clipboard.", q)
+        } else {
+            format!("Launched SoulseekQt ({})", launched_path)
+        };
+
+        info!("{}", msg);
+        Ok(msg)
+    }
+
+    async fn import_soulseek_downloads(&self) -> AppResult<usize> {
+        let soulseek_complete = "/home/abhi/Soulseek Downloads/complete";
+        let path = std::path::PathBuf::from(soulseek_complete);
+        if !path.exists() {
+            return Ok(0);
+        }
+
+        // 1. Add folder if not already present
+        let _ = self.library_service.add_folder(soulseek_complete).await;
+
+        // 2. Scan folder
+        let summaries = self.library_service.scan_library(None, true).await?;
+        let total_added: usize = summaries.iter().map(|s| s.added_tracks).sum();
+
+        // 3. Check wishlist items and update status
+        let wishlist_items = self.wishlist_manager.get_wishlist(None).await?;
+        for item in wishlist_items {
+            if item.status == "want" {
+                let match_res = self
+                    .discovery_coordinator
+                    .match_against_library(&item.title, &item.artist, None)
+                    .await?;
+                if match_res.status == crate::discovery::MatchStatus::ExactMatch
+                    || match_res.status == crate::discovery::MatchStatus::LikelyMatch
+                {
+                    let _ = self
+                        .wishlist_manager
+                        .update_status(&item.id, "downloaded")
+                        .await;
+                }
+            }
+        }
+
+        info!(total_added, "Imported tracks from Soulseek Downloads");
+        Ok(total_added)
+    }
+
+    async fn add_missing_to_wishlist(&self, tracks: Vec<serde_json::Value>) -> AppResult<usize> {
+        let mut count = 0;
+        for t in tracks {
+            let title = t.get("title").and_then(|v| v.as_str()).unwrap_or("").trim();
+            let artist = t.get("artist").and_then(|v| v.as_str()).unwrap_or("").trim();
+            let album = t.get("album").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let external_id = t.get("spotify_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+            if !title.is_empty() && !artist.is_empty() {
+                let _ = self
+                    .wishlist_manager
+                    .add_to_wishlist(title.to_string(), artist.to_string(), album, external_id, None)
+                    .await?;
+                count += 1;
+            }
+        }
+        info!(added = count, "Added missing tracks to wishlist");
+        Ok(count)
+    }
+
+    async fn import_spotify_playlist(&self, url_or_id: &str) -> AppResult<serde_json::Value> {
+        // Clean URL or bare ID
+        let clean_id = if let Some(idx) = url_or_id.find("/playlist/") {
+            let rest = &url_or_id[idx + 10..];
+            rest.split('?').next().unwrap_or(rest).trim()
+        } else {
+            url_or_id.split('?').next().unwrap_or(url_or_id).trim()
+        };
+
+        let embed_url = format!("https://open.spotify.com/embed/playlist/{}", clean_id);
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(12))
+            .build()
+            .unwrap_or_default();
+
+        let resp = client
+            .get(&embed_url)
+            .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64)")
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to reach Spotify embed: {}", e)))?;
+
+        let html = resp
+            .text()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to read Spotify response: {}", e)))?;
+
+        // Extract JSON inside <script id="__NEXT_DATA__" type="application/json">...</script>
+        let script_tag = "<script id=\"__NEXT_DATA__\" type=\"application/json\">";
+        let script_start = html.find(script_tag)
+            .ok_or_else(|| AppError::ExternalApi {
+                provider: "spotify".into(),
+                message: "Unable to parse Spotify playlist payload".into(),
+            })?;
+        let json_start = script_start + script_tag.len();
+        let json_end = html[json_start..].find("</script>")
+            .map(|idx| json_start + idx)
+            .ok_or_else(|| AppError::ExternalApi {
+                provider: "spotify".into(),
+                message: "Invalid Spotify response format".into(),
+            })?;
+
+        let raw_json = &html[json_start..json_end];
+        let root: serde_json::Value = serde_json::from_str(raw_json)
+            .map_err(|e| AppError::ExternalApi {
+                provider: "spotify".into(),
+                message: format!("Failed to parse JSON: {}", e),
+            })?;
+
+        let entity = &root["props"]["pageProps"]["state"]["data"]["entity"];
+        let playlist_title = entity["title"]
+            .as_str()
+            .or_else(|| entity["name"].as_str())
+            .unwrap_or("Imported Spotify Playlist")
+            .to_string();
+
+        let cover_url = entity["coverArt"]["sources"][0]["url"]
+            .as_str()
+            .map(|s| s.to_string());
+
+        let raw_tracks = entity["trackList"].as_array().cloned().unwrap_or_default();
+
+        let mut parsed_tracks = Vec::new();
+        let mut matched_count = 0;
+        let mut missing_count = 0;
+
+        for item in &raw_tracks {
+            let title = item["title"].as_str().unwrap_or("").trim().to_string();
+            let artist = item["subtitle"].as_str().unwrap_or("Unknown Artist").trim().to_string();
+            let duration_ms = item["duration"].as_f64().unwrap_or(0.0);
+            let duration_secs = if duration_ms > 0.0 { Some(duration_ms / 1000.0) } else { None };
+            let spotify_track_id = item["id"].as_str().unwrap_or("").to_string();
+
+            if title.is_empty() {
+                continue;
+            }
+
+            let match_res = self
+                .discovery_coordinator
+                .match_against_library(&title, &artist, duration_secs)
+                .await?;
+
+            let in_library = match_res.status == crate::discovery::MatchStatus::ExactMatch
+                || match_res.status == crate::discovery::MatchStatus::LikelyMatch;
+
+            if in_library {
+                matched_count += 1;
+            } else {
+                missing_count += 1;
+            }
+
+            parsed_tracks.push(serde_json::json!({
+                "spotify_id": spotify_track_id,
+                "title": title,
+                "artist": artist,
+                "duration_secs": duration_secs,
+                "in_library": in_library,
+                "match_status": match_res.status.as_str(),
+                "matched_local_track_id": match_res.matched_track_id,
+            }));
+        }
+
+        Ok(serde_json::json!({
+            "playlist_id": clean_id,
+            "title": playlist_title,
+            "cover_url": cover_url,
+            "total_tracks": parsed_tracks.len(),
+            "matched_tracks": matched_count,
+            "missing_tracks": missing_count,
+            "tracks": parsed_tracks,
+        }))
     }
 }

@@ -11,6 +11,8 @@ import {
   DownloadCloud,
   Database,
   CheckCircle,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 
 interface SettingsViewProps {
@@ -19,6 +21,9 @@ interface SettingsViewProps {
   onAddFolder: (path: string) => Promise<void>;
   onRemoveFolder: (folderId: string) => Promise<void>;
   onRescanLibrary: () => Promise<void>;
+  onRerunOnboarding: () => void;
+  onLaunchSoulseek: (query?: string) => Promise<void>;
+  onImportSoulseek: () => Promise<void>;
   isScanning?: boolean;
 }
 
@@ -28,6 +33,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onAddFolder,
   onRemoveFolder,
   onRescanLibrary,
+  onRerunOnboarding,
+  onLaunchSoulseek,
+  onImportSoulseek,
   isScanning = false,
 }) => {
   const [newFolderPath, setNewFolderPath] = useState("");
@@ -111,14 +119,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => onRescanLibrary()}
-              disabled={isScanning}
-              className="btn btn-secondary"
-            >
-              <RefreshCw size={15} className={isScanning ? "animate-spin" : ""} color={isScanning ? "var(--accent)" : "currentColor"} />
-              <span>{isScanning ? "Scanning Library..." : "Rescan Library"}</span>
-            </button>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => onRerunOnboarding()}
+                className="btn btn-secondary"
+                title="Test initial onboarding flow with default or custom music directory"
+              >
+                <Sparkles size={15} color="var(--accent-light)" />
+                <span>Re-run Onboarding Setup</span>
+              </button>
+
+              <button
+                onClick={() => onRescanLibrary()}
+                disabled={isScanning}
+                className="btn btn-secondary"
+              >
+                <RefreshCw size={15} className={isScanning ? "animate-spin" : ""} color={isScanning ? "var(--accent)" : "currentColor"} />
+                <span>{isScanning ? "Scanning Library..." : "Rescan Library"}</span>
+              </button>
+            </div>
           </div>
 
           {/* Folder List */}
@@ -252,16 +271,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {activeSection === "soulseek" && (
         <div className="content-card">
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", marginBottom: "16px" }}>
-            Soulseek & Slskd Integration
+            Soulseek & SoulseekQt Integration
           </h3>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "16px" }}>
-            Connect to your local Slskd daemon to enable decentralized P2P search, wishlist auto-discovery, and automatic track imports.
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "20px" }}>
+            SoundFlow integrates directly with your system's SoulseekQt desktop installation and local download repository.
           </p>
+
+          {/* SoulseekQt Native Integration Card */}
+          <div
+            style={{
+              padding: "16px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(139, 92, 246, 0.08)",
+              border: "1px solid var(--accent-light)",
+              marginBottom: "24px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <DownloadCloud size={18} color="var(--accent-light)" />
+                  <span>SoulseekQt Desktop Application</span>
+                  <span className="badge badge-exact">Detected</span>
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "6px" }}>
+                  Binary: /home/abhi/Applications/SoulseekQt-2024-6-30.AppImage
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "2px" }}>
+                  Downloads: ~/Soulseek Downloads/complete
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => onLaunchSoulseek()}
+                >
+                  <ExternalLink size={15} />
+                  <span>Launch SoulseekQt</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => onImportSoulseek()}
+                >
+                  <RefreshCw size={15} />
+                  <span>Import Completed Downloads</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
             <div>
               <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase" }}>
-                Slskd Host & Port
+                Slskd Daemon Fallback Host & Port
               </label>
               <div style={{ fontFamily: "monospace", fontSize: "0.95rem", marginTop: "4px" }}>
                 {settings?.downloads.slskd_host || "localhost"}:{settings?.downloads.slskd_port || 5030}

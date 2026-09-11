@@ -177,15 +177,27 @@ impl SmartMixGenerator {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         if rows.is_empty() {
-            // Fallback: top tracks from track_statistics
+            // Fallback 1: top tracks from track_statistics
             let fallback: Vec<String> = sqlx::query_scalar(
-                "SELECT track_id FROM track_statistics ORDER BY play_count DESC LIMIT 20"
+                "SELECT track_id FROM track_statistics WHERE manual_like != -1 ORDER BY play_count DESC LIMIT 25"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+            if !fallback.is_empty() {
+                return Ok(fallback);
+            }
+
+            // Fallback 2: random tracks from tracks
+            let random_fallback: Vec<String> = sqlx::query_scalar(
+                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
             )
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-            return Ok(fallback);
+            return Ok(random_fallback);
         }
 
         Ok(rows)
@@ -209,25 +221,75 @@ impl SmartMixGenerator {
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
+        if rows.is_empty() {
+            // Fallback: tracks from /fav/ folder or with manual_like = 1, or random sample
+            let fallback: Vec<String> = sqlx::query_scalar(
+                "SELECT t.id
+                 FROM tracks t
+                 LEFT JOIN track_statistics ts ON ts.track_id = t.id
+                 WHERE (LOWER(t.file_path) LIKE '%/fav/%' OR ts.manual_like = 1)
+                   AND COALESCE(ts.manual_like, 0) != -1
+                 ORDER BY RANDOM()
+                 LIMIT 25"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+            if !fallback.is_empty() {
+                return Ok(fallback);
+            }
+
+            let general: Vec<String> = sqlx::query_scalar(
+                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+            return Ok(general);
+        }
+
         Ok(rows)
     }
 
     /// Genre mix: tracks matching genre, ordered by performance and affinity.
     async fn generate_genre_mix(&self, genre_name: &str) -> AppResult<Vec<String>> {
+        let clean_genre = genre_name.trim();
+        let pattern = format!("%{}%", clean_genre.to_lowercase());
+        let folder_pattern = format!("%/{}%", clean_genre.to_lowercase().replace('-', ""));
+        let folder_pattern_raw = format!("%/{}%", clean_genre.to_lowercase());
         let rows: Vec<String> = sqlx::query_scalar(
             "SELECT t.id
              FROM tracks t
-             JOIN genres g ON g.id = t.genre_id
+             LEFT JOIN genres g ON g.id = t.genre_id
              LEFT JOIN track_statistics ts ON ts.track_id = t.id
-             WHERE LOWER(g.name) = LOWER(?)
-               AND COALESCE(ts.manual_like, 0) != -1
+             WHERE (
+                 LOWER(COALESCE(g.name, '')) LIKE ?
+                 OR LOWER(t.file_path) LIKE ?
+                 OR LOWER(t.file_path) LIKE ?
+             )
+             AND COALESCE(ts.manual_like, 0) != -1
              ORDER BY COALESCE(ts.play_count, 0) DESC, RANDOM()
-             LIMIT 25"
+             LIMIT 30"
         )
-        .bind(genre_name)
+        .bind(&pattern)
+        .bind(&folder_pattern)
+        .bind(&folder_pattern_raw)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
+
+        if rows.is_empty() {
+            // Fallback: random tracks
+            let fallback: Vec<String> = sqlx::query_scalar(
+                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+            return Ok(fallback);
+        }
 
         Ok(rows)
     }
@@ -339,5 +401,78 @@ impl SmartMixGenerator {
         }
 
         Ok(discovery_tracks)
+    }
+
+    /// Checks if smart mixes exist, and if none exist or only very few, automatically
+    /// generates a rich set of starter smart mixes based on user's library genres and folders.
+    pub async fn ensure_default_mixes(&self) -> AppResult<Vec<PlaylistRecord>> {
+        let existing = self.playlist_repo.get_smart_mixes().await?;
+        if existing.len() >= 3 {
+            return Ok(existing);
+        }
+
+        // Check if there are tracks in the library at all
+        let total_tracks: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tracks")
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(0);
+
+        if total_tracks == 0 {
+            return Ok(existing);
+        }
+
+        tracing::info!("Auto-generating recommended smart mixes based on library...");
+
+        // 1. Daily Mix
+        let _ = self.generate_mix(&SmartMixType::Daily).await;
+
+        // 2. Local Discoveries
+        let _ = self.generate_mix(&SmartMixType::Discovery).await;
+
+        // 3. Check for specific prevalent subfolders/genres: Phonk & Lo-Fi
+        let phonk_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM tracks t LEFT JOIN genres g ON g.id = t.genre_id \
+             WHERE LOWER(COALESCE(g.name, '')) LIKE '%phonk%' OR LOWER(t.file_path) LIKE '%/phonk/%'"
+        )
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
+
+        if phonk_count > 0 {
+            let _ = self.generate_mix(&SmartMixType::Genre("Phonk".to_string())).await;
+        }
+
+        let lofi_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM tracks t LEFT JOIN genres g ON g.id = t.genre_id \
+             WHERE LOWER(COALESCE(g.name, '')) LIKE '%lofi%' OR LOWER(COALESCE(g.name, '')) LIKE '%lo-fi%' OR LOWER(t.file_path) LIKE '%/lofi/%'"
+        )
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
+
+        if lofi_count > 0 {
+            let _ = self.generate_mix(&SmartMixType::Genre("Lo-Fi".to_string())).await;
+        }
+
+        // 4. Query top library genres
+        let top_genres: Vec<String> = sqlx::query_scalar(
+            "SELECT g.name \
+             FROM tracks t \
+             JOIN genres g ON g.id = t.genre_id \
+             WHERE LOWER(g.name) NOT LIKE '%phonk%' AND LOWER(g.name) NOT LIKE '%lofi%' \
+             GROUP BY g.name \
+             HAVING COUNT(t.id) >= 3 \
+             ORDER BY COUNT(t.id) DESC \
+             LIMIT 3"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        for genre in top_genres {
+            let _ = self.generate_mix(&SmartMixType::Genre(genre)).await;
+        }
+
+        self.playlist_repo.get_smart_mixes().await
     }
 }

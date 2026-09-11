@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Users,
   Zap,
+  ExternalLink,
 } from "lucide-react";
 
 interface DownloadsViewProps {
@@ -19,6 +20,8 @@ interface DownloadsViewProps {
   onStartDownload: (searchResultId: string, wishlistId?: string) => Promise<void>;
   onCancelDownload: (taskId: string) => Promise<void>;
   onRefreshDownloads: () => Promise<void>;
+  onLaunchSoulseek: (query?: string) => Promise<void>;
+  onImportSoulseek: () => Promise<void>;
   initialSearch?: { artist: string; title: string; album?: string } | null;
 }
 
@@ -28,6 +31,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   onStartDownload,
   onCancelDownload,
   onRefreshDownloads,
+  onLaunchSoulseek,
+  onImportSoulseek,
   initialSearch,
 }) => {
   const [activeTab, setActiveTab] = useState<"tasks" | "search">("tasks");
@@ -140,6 +145,23 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => onLaunchSoulseek()}
+            className="btn btn-primary"
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <ExternalLink size={14} />
+            <span>Open SoulseekQt</span>
+          </button>
+          <button
+            onClick={() => onImportSoulseek()}
+            className="btn btn-secondary"
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            title="Scan ~/Soulseek Downloads/complete and import into library"
+          >
+            <RefreshCw size={14} />
+            <span>Import Downloads</span>
+          </button>
           <button
             onClick={() => onRefreshDownloads()}
             className="p-2 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition"
@@ -325,7 +347,20 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const q = `${searchArtist} ${searchTitle}`.trim();
+                  onLaunchSoulseek(q || undefined);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-sm rounded-lg transition"
+                title="Launch SoulseekQt desktop app with query copied to clipboard"
+              >
+                <ExternalLink size={15} />
+                <span>Search in SoulseekQt</span>
+              </button>
+
               <button
                 type="submit"
                 disabled={searching || (!searchArtist.trim() && !searchTitle.trim())}
