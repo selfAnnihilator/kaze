@@ -729,43 +729,198 @@ impl CoreProcessor {
             }
         }
 
-        // 2. Look for SoulseekQt AppImage
-        let possible_paths = [
-            "/home/abhi/Applications/SoulseekQt-2024-6-30.AppImage",
-            "/home/abhi/Applications/SoulseekQt.AppImage",
-        ];
-
-        let mut launched = false;
-        let mut launched_path = String::new();
-
-        for p in possible_paths {
-            if std::path::Path::new(p).exists() {
-                if let Ok(_) = std::process::Command::new(p)
-                    .env("QT_QPA_PLATFORM", "xcb")
-                    .spawn()
-                {
-                    launched = true;
-                    launched_path = p.to_string();
-                    break;
-                }
+        // 2. Check if SoulseekQt is currently running
+        let mut is_running = false;
+        if let Ok(output) = std::process::Command::new("pgrep")
+            .arg("-f")
+            .arg("SoulseekQt")
+            .output()
+        {
+            if output.status.success() && !output.stdout.is_empty() {
+                is_running = true;
             }
         }
 
-        if !launched {
-            let _ = std::process::Command::new("gtk-launch")
-                .arg("soulseekqt")
-                .spawn();
-            launched_path = "gtk-launch soulseekqt".to_string();
+        let possible_paths = [
+            "/home/abhi/Applications/SoulseekQt-2024-6-30.AppImage",
+            "/home/abhi/Applications/SoulseekQt.AppImage",
+            "/home/abhi/Documents/SoulseekQt-2024-6-30.AppImage",
+        ];
+
+        let mut launched_path = String::new();
+        if !is_running {
+            let mut launched = false;
+            for p in possible_paths {
+                if std::path::Path::new(p).exists() {
+                    if let Ok(_) = std::process::Command::new(p)
+                        .env("QT_QPA_PLATFORM", "xcb")
+                        .spawn()
+                    {
+                        launched = true;
+                        launched_path = p.to_string();
+                        break;
+                    }
+                }
+            }
+
+            if !launched {
+                let _ = std::process::Command::new("gtk-launch")
+                    .arg("soulseekqt")
+                    .spawn();
+                launched_path = "gtk-launch soulseekqt".to_string();
+            }
+        } else {
+            launched_path = "running instance".to_string();
+        }
+
+        // 3. If a search query is provided, automate SoulseekQt GUI search
+        if let Some(ref q) = search_query {
+            let query = q.clone();
+            let need_wait_for_launch = !is_running;
+            tokio::spawn(async move {
+                Self::automate_soulseek_search(query, need_wait_for_launch).await;
+            });
         }
 
         let msg = if let Some(q) = search_query {
-            format!("Launched SoulseekQt! Query \"{}\" copied to clipboard.", q)
+            format!("Searching for \"{}\" in SoulseekQt...", q)
         } else {
             format!("Launched SoulseekQt ({})", launched_path)
         };
 
         info!("{}", msg);
         Ok(msg)
+    }
+
+    async fn automate_soulseek_search(query: String, need_wait_for_launch: bool) {
+        // Wait for window to appear or initialize
+        if need_wait_for_launch {
+            for _ in 0..30 {
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                if let Ok(out) = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["search", "--class", "soulseek"])
+                    .output()
+                {
+                    if out.status.success() && !out.stdout.is_empty() {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
+                        break;
+                    }
+                }
+            }
+        } else {
+            tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+        }
+
+        // 1. Focus in Niri (Wayland compositor) if running under Niri
+        if let Ok(output) = std::process::Command::new("niri")
+            .args(["msg", "--json", "windows"])
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(windows) = serde_json::from_slice::<Vec<serde_json::Value>>(&output.stdout) {
+                    for win in windows {
+                        let app_id = win.get("app_id").and_then(|v| v.as_str()).unwrap_or("");
+                        let title = win.get("title").and_then(|v| v.as_str()).unwrap_or("");
+                        if app_id.to_lowercase().contains("soulseek") || title.to_lowercase().contains("soulseek") {
+                            if let Some(id) = win.get("id").and_then(|v| v.as_u64()) {
+                                let _ = std::process::Command::new("niri")
+                                    .args(["msg", "action", "focus-window", "--id", &id.to_string()])
+                                    .status();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Find X11 Window ID via xdotool
+        let wid_output = std::process::Command::new("xdotool")
+            .env("DISPLAY", ":0")
+            .args(["search", "--class", "soulseek"])
+            .output();
+
+        let wid = match wid_output {
+            Ok(out) if out.status.success() => {
+                String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .next()
+                    .map(|s| s.trim().to_string())
+            }
+            _ => None,
+        };
+
+        if let Some(wid) = wid {
+            if !wid.is_empty() {
+                // Focus window in X11
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["windowfocus", &wid])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                // 1. Click Search Tab
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["mousemove", "--window", &wid, "265", "52", "click", "1"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+
+                // 2. Click Manual Searches sub-tab
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["mousemove", "--window", &wid, "85", "86", "click", "1"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+
+                // 3. Click Search Input Box
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["mousemove", "--window", &wid, "200", "122", "click", "1"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+
+                // 4. Clear input box
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["key", "ctrl+a", "BackSpace"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+                // 5. Paste query
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["key", "ctrl+v"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
+
+                // 6. Press Return to execute search
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["key", "Return"])
+                    .status();
+
+                tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
+
+                // 7. Click Search button as well
+                let _ = std::process::Command::new("xdotool")
+                    .env("DISPLAY", ":0")
+                    .args(["mousemove", "--window", &wid, "725", "122", "click", "1"])
+                    .status();
+
+                info!(query = %query, wid = %wid, "Automated SoulseekQt search successfully");
+                return;
+            }
+        }
+
+        warn!("Could not locate SoulseekQt window to automate search");
     }
 
     async fn import_soulseek_downloads(&self) -> AppResult<usize> {
