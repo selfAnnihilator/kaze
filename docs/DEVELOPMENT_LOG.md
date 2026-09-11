@@ -105,7 +105,39 @@ Audio output abstraction, thread-safe Rodio/cpal backend integration, headless m
 - `rodio::OutputStream` contains platform-dependent raw pointers on ALSA causing `!Send`. Resolved by detaching the stream for process lifetime and maintaining `Send`-compliant `OutputStreamHandle` and `Sink`.
 
 ### Remaining Work
-- Phase 4: Listening history logging, meaningful-play detection, and multi-factor ranking.
+- Phase 4: Listening history logging, meaningful-play detection, and multi-factor ranking (Completed).
+- Phase 5: Smart local recommendations, taste profiles, and temporary smart mix generators.
 
 ### Recommended Next Step
 Proceed to **Phase 4: Listening History & Statistics**.
+
+---
+
+## 2026-09-11 (Phase 4: Listening History & Statistics)
+
+### Worked On
+Listening history persistence, meaningful play evaluation, multi-factor ranking engine, user preference feedback (likes/dislikes), and stats aggregation across rolling time windows.
+
+### Changes
+- Implemented `HistoryService` in `src-tauri/src/history/service.rs` subscribing asynchronously to `EventBus` to track sessions, seek counts, and accumulated playback duration.
+- Implemented strict meaningful play criteria: `listened_seconds >= 30.0 || percentage >= 50.0% || completed`.
+- Implemented `SqliteHistoryRepository` recording listening history sessions and tracking user preference feedback.
+- Implemented `SqliteStatsRepository` calculating multi-factor scores with time-decay recency, completion weighting, and preference boosts (+30% for likes, -80% for dislikes).
+- Implemented `RankingEngine` supporting rolling windows (`Today`, `Last7Days`, `Last30Days`, `Last6Months`, `LastYear`, `AllTime`) for `Tracks`, `Artists`, `Albums`, and `Genres`.
+- Wired commands (`LikeTrack`, `DislikeTrack`, `RemoveTrackFeedback`) and queries (`GetTopRankings`) into `CoreProcessor`.
+- Created `docs/RANKING.md` and ADR `0008-meaningful-play-and-ranking-engine.md`.
+- Implemented comprehensive integration test suite in `tests/history_tests.rs` (all 15 workspace tests passing).
+
+### Decisions
+- Asynchronously decouple history logging from the audio playback loop using the event bus to prevent I/O jitter.
+- Define meaningful plays with a dual threshold (>=30s or >=50%) to prevent short previews from skewing ranking calculations while properly crediting short songs (<60s).
+- Pre-filter disliked tracks from top ranking calculations unless explicitly queried.
+
+### Problems
+- None encountered; schema `track_stats`, `listening_history`, and `user_feedback` tables were fully provisioned in Phase 1 initial migration.
+
+### Remaining Work
+- Phase 5: Smart local recommendations, taste profiles, and temporary smart mix generators.
+
+### Recommended Next Step
+Proceed to **Phase 5: Smart Local Recommendations & Mixes**.

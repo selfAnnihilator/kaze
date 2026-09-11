@@ -3,9 +3,12 @@ use crate::core::command::{Command, CommandResponse};
 use crate::core::error::{AppError, AppResult};
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
+use crate::database::repositories::{SqliteHistoryRepository, SqliteStatsRepository};
+use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
 use crate::playback::PlaybackService;
+use crate::ranking::RankingEngine;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -17,6 +20,8 @@ pub struct CoreProcessor {
     db_pool: SqlitePool,
     library_service: Arc<LibraryService>,
     playback_service: Arc<PlaybackService>,
+    history_service: Arc<HistoryService>,
+    ranking_engine: Arc<RankingEngine>,
     config: Arc<RwLock<AppConfig>>,
 }
 
@@ -43,11 +48,28 @@ impl CoreProcessor {
             event_bus.clone(),
         );
 
+        let history_repo = Arc::new(SqliteHistoryRepository::new(db_pool.clone()));
+        let stats_repo = Arc::new(SqliteStatsRepository::new(db_pool.clone()));
+
+        let history_service = HistoryService::new(
+            history_repo.clone(),
+            stats_repo.clone(),
+            config.history.clone(),
+            event_bus.clone(),
+        );
+
+        let ranking_engine = Arc::new(RankingEngine::new(
+            stats_repo.clone(),
+            config.ranking.clone(),
+        ));
+
         Self {
             event_bus,
             db_pool,
             library_service,
             playback_service,
+            history_service,
+            ranking_engine,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -70,6 +92,16 @@ impl CoreProcessor {
     /// Access the PlaybackService handle.
     pub fn playback_service(&self) -> Arc<PlaybackService> {
         self.playback_service.clone()
+    }
+
+    /// Access the HistoryService handle.
+    pub fn history_service(&self) -> Arc<HistoryService> {
+        self.history_service.clone()
+    }
+
+    /// Access the RankingEngine handle.
+    pub fn ranking_engine(&self) -> Arc<RankingEngine> {
+        self.ranking_engine.clone()
     }
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
@@ -184,8 +216,22 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
+            // --- User Feedback & Taste ---
+            Command::LikeTrack { track_id } => {
+                self.history_service.set_track_like(&track_id, 1).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::DislikeTrack { track_id } => {
+                self.history_service.set_track_like(&track_id, -1).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RemoveTrackFeedback { track_id } => {
+                self.history_service.set_track_like(&track_id, 0).await?;
+                Ok(CommandResponse::Ok)
+            }
+
             _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 3");
+                warn!(?cmd, "Command handler routed to stub during Phase 4");
                 Ok(CommandResponse::Ok)
             }
         }
@@ -201,6 +247,28 @@ impl CoreProcessor {
                 let val = serde_json::to_value(&state)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::PlaybackState(val))
+            }
+            Query::GetTopRankings {
+                window,
+                entity,
+                limit,
+            } => {
+                let ranked = self.ranking_engine.get_rankings(window, entity, limit).await?;
+                let val = match ranked {
+                    crate::ranking::RankedOutput::Tracks(items) => {
+                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
+                    }
+                    crate::ranking::RankedOutput::Artists(items) => {
+                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
+                    }
+                    crate::ranking::RankedOutput::Albums(items) => {
+                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
+                    }
+                    crate::ranking::RankedOutput::Genres(items) => {
+                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
+                    }
+                };
+                Ok(QueryResponse::Rankings(val))
             }
             Query::GetOnboardingStatus => {
                 let completed = self.library_service.is_onboarding_completed().await?;
@@ -291,7 +359,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::SearchResults(val))
             }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 3");
+                warn!(?query, "Query handler routed to stub during Phase 4");
                 Ok(QueryResponse::Empty)
             }
         }

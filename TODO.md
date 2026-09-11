@@ -1,27 +1,32 @@
 # Project Task Tracking
 
-## Current (Phase 4: Listening History & Statistics)
-- [ ] Playback history database logging (`playback_history` table).
-- [ ] Meaningful-play threshold evaluation (>= 30s or >= 50%).
-- [ ] Incremental track statistics updates (play count, skip count, completion count).
-- [ ] Multi-window aggregated statistics (Today, 7D, 30D, 6M, 1Y, All-Time).
-- [ ] Multi-factor ranking engine (play count, listening duration, completion rate, recency, likes, skips).
-- [ ] Ranking calculations and history verification tests.
-
-## Next (Phase 5: Smart Local Recommendations & Mixes)
-- [ ] User taste profile engine: short-term vs long-term affinity.
+## Current (Phase 5: Smart Local Recommendations & Mixes)
+- [ ] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras.
 - [ ] Local offline recommendation engine with explainability factor breakdown.
 - [ ] Smart temporary mix generator (Daily Mix, On Repeat, Forgotten Favorites, Genre Mixes, Artist Radios).
 - [ ] Repetition avoidance and controlled entropy/randomness.
 - [ ] Recommendation scoring tests.
 
-## Later (Phases 6 - 9)
-- [ ] External metadata providers (MusicBrainz, Spotify) (Phase 6).
+## Next (Phase 6: External Metadata Providers)
+- [ ] MusicBrainz API integration for artist & album metadata enrichment.
+- [ ] Cover Art Archive provider for missing artwork fetching and local caching.
+- [ ] Spotify Web API client for discovery & metadata enrichment.
+- [ ] Rate limiting, token caching, and provider failover architecture.
+
+## Later (Phases 7 - 9)
 - [ ] Discovery recommendations, fuzzy track matcher, and wishlist (Phase 7).
 - [ ] Soulseek client integration (Phase 8).
 - [ ] Tauri React/TS frontend and presentation layer (Phase 9).
 
 ## Completed
+- [x] Phase 4 Listening History & Statistics:
+  - [x] Playback history database logging (`listening_history` table).
+  - [x] Meaningful-play threshold evaluation (>= 30s or >= 50%).
+  - [x] Incremental track statistics updates (play count, skip count, completion count).
+  - [x] Multi-window aggregated statistics (Today, 7D, 30D, 6M, 1Y, All-Time).
+  - [x] Multi-factor ranking engine (play count, listening duration, completion rate, recency, likes, skips).
+  - [x] User preference tracking (likes, dislikes, feedback removal).
+  - [x] Ranking calculations and history verification tests in `tests/history_tests.rs`.
 - [x] Architectural design and technical philosophy specifications.
 - [x] System architecture diagram and module layout (`docs/ARCHITECTURE.md`, `docs/BACKEND.md`).
 - [x] Exhaustive SQLite schema with 17 relational entities and FTS5 search (`docs/DATABASE.md`).

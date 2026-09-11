@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 3: Playback Engine (Completed)** -> **Phase 4: Listening History & Statistics (Ready to Start)**
+**Phase 4: Listening History & Statistics (Completed)** -> **Phase 5: Smart Local Recommendations & Mixes (Active)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
@@ -11,9 +11,10 @@
 - **Audio Engine**: Thread-safe `AudioBackend` trait abstraction implemented via `RodioAudioBackend` (rodio/cpal) and `MockAudioBackend` (in-memory for headless testing).
 - **Metadata**: `lofty` for tag extraction, with provider abstractions for MusicBrainz/Cover Art Archive/Spotify.
 - **Boundary Containment**: Enforces that scans operate strictly inside configured roots and their child directories without traversing outside or across unapproved symlinks.
+- **History & Ranking**: Event-driven `HistoryService` tracking playback sessions and meaningful-play thresholds (>= 30s or >= 50%), with `RankingEngine` for multi-factor time-decayed scoring across rolling windows.
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0007`).
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0008`).
 - Complete SQLite relational schema (17 entities + FTS5 full-text search) with embedded migrations.
 - Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization.
 - `AppError` taxonomy with `thiserror`.
@@ -35,9 +36,14 @@
 - **Queue Management**: Full queue sequencing with `enqueue` (play next or append), removal, clearing, and index navigation (`NextTrack`, `PreviousTrack`).
 - **Repeat & Shuffle**: `RepeatMode` (`Off`, `One`, `All`) and reversible random permutation `shuffle`.
 - **Position Ticker & Auto-Advance**: 250ms throttled `PlaybackPositionChanged` events and automatic track advancement upon stream finish.
+- **Listening History Logging**: Asynchronous session recording decoupled from audio playback.
+- **Meaningful Play Thresholds**: Evaluates qualified listens (`listened_seconds >= 30.0 || percentage >= 50.0% || completed`).
+- **Multi-Window Rolling Rankings**: Dynamic aggregations (`Today`, `Last7Days`, `Last30Days`, `Last6Months`, `LastYear`, `AllTime`) across Tracks, Artists, Albums, and Genres.
+- **Multi-Factor Ranking Formula**: Blends play count, duration, completion rate, time-decay recency, and user preference boosts (likes/dislikes).
+- **User Preference Management**: Feedback system with `LikeTrack`, `DislikeTrack`, and `RemoveTrackFeedback` commands.
 
 ## Partially Implemented Features
-- None (Phases 1, 2, and 3 fully realized and verified).
+- None (Phases 1, 2, 3, and 4 fully realized and verified).
 
 ## Known Broken Features
 - None.

@@ -1,9 +1,11 @@
 pub mod config;
 pub mod core;
 pub mod database;
+pub mod history;
 pub mod library;
 pub mod logging;
 pub mod playback;
+pub mod ranking;
 
 pub use config::AppConfig;
 pub use core::{

@@ -31,28 +31,28 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 3 — Playback Engine (Active)
-- [ ] AudioBackend abstraction trait.
-- [ ] Native audio implementation using `rodio` and `cpal`.
-- [ ] Playback controls: play, pause, resume, stop, seek, volume attenuation, mute.
-- [ ] Playback queue management: play next, enqueue, reorder, clear.
-- [ ] Shuffle and Repeat modes (Repeat Off, Repeat One, Repeat All).
-- [ ] High-frequency position tracking and playback event emission (`TrackStarted`, `PlaybackPaused`, etc.).
-- [ ] Headless playback tests.
+## Phase 3 — Playback Engine (Completed)
+- [x] AudioBackend abstraction trait.
+- [x] Native audio implementation using `rodio` and `cpal`.
+- [x] Playback controls: play, pause, resume, stop, seek, volume attenuation, mute.
+- [x] Playback queue management: play next, enqueue, reorder, clear.
+- [x] Shuffle and Repeat modes (Repeat Off, Repeat One, Repeat All).
+- [x] High-frequency position tracking and playback event emission (`TrackStarted`, `PlaybackPaused`, etc.).
+- [x] Headless playback tests.
 
 ---
 
-## Phase 4 — Listening History & Statistics
-- [ ] Playback session recording with configurable meaningful play threshold (>= 30s or >= 50%).
-- [ ] Listening history database logging.
-- [ ] Incremental track statistics updates (play count, skip count, completion count).
-- [ ] Multi-window aggregated statistics (Today, 7D, 30D, 6M, 1Y, All-Time).
-- [ ] Multi-factor ranking engine (play count, listening duration, completion rate, recency, likes, skips).
-- [ ] Ranking calculations and history verification tests.
+## Phase 4 — Listening History & Statistics (Completed)
+- [x] Playback session recording with configurable meaningful play threshold (>= 30s or >= 50%).
+- [x] Listening history database logging.
+- [x] Incremental track statistics updates (play count, skip count, completion count).
+- [x] Multi-window aggregated statistics (Today, 7D, 30D, 6M, 1Y, All-Time).
+- [x] Multi-factor ranking engine (play count, listening duration, completion rate, recency, likes, skips).
+- [x] Ranking calculations and history verification tests.
 
 ---
 
-## Phase 5 — Smart Local Recommendations & Mixes
+## Phase 5 — Smart Local Recommendations & Mixes (Active)
 - [ ] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras.
 - [ ] Local offline recommendation engine with explainability factor breakdown.
 - [ ] Smart temporary mix generator (Daily Mix, On Repeat, Forgotten Favorites, Genre Mixes, Artist Radios).
