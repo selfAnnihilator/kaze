@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 5: Smart Local Recommendations & Mixes (Completed)** -> **Phase 6: External Metadata Providers (Active)**
+**Phase 6: External Metadata Providers (Completed)** -> **Phase 7: Discovery & Missing Music Matching (Active)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
@@ -9,13 +9,14 @@
 - **Database**: SQLite 3 with WAL mode, managed through `sqlx` and embedded migrations.
 - **Core Pattern**: Central Processor for validated command execution + Tokio broadcast Event Bus for decoupled notifications.
 - **Audio Engine**: Thread-safe `AudioBackend` trait abstraction implemented via `RodioAudioBackend` (rodio/cpal) and `MockAudioBackend` (in-memory for headless testing).
-- **Metadata**: `lofty` for tag extraction, with provider abstractions for MusicBrainz/Cover Art Archive/Spotify.
+- **Metadata**: `lofty` for tag extraction, with provider abstractions for MusicBrainz, Cover Art Archive, and Spotify.
 - **Boundary Containment**: Enforces that scans operate strictly inside configured roots and their child directories without traversing outside or across unapproved symlinks.
 - **History & Ranking**: Event-driven `HistoryService` tracking playback sessions and meaningful-play thresholds (>= 30s or >= 50%), with `RankingEngine` for multi-factor time-decayed scoring across rolling windows.
 - **Taste & Recommendations**: Local offline recommendation engine with dual-window affinity modeling (artists, genres, eras), transparent factor explainability breakdown, repetition dampening, and automated smart mix generation (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
+- **External Providers**: Async `MetadataProvider` trait with leaky-bucket rate limiting (MusicBrainz 1 req/s), local artwork caching (`CoverArtArchiveProvider`), optional Client Credentials flow (`SpotifyProvider`), and coordinator for track metadata enrichment.
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0009`).
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0010`).
 - Complete SQLite relational schema (17 entities + FTS5 full-text search) with embedded migrations.
 - Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization.
 - `AppError` taxonomy with `thiserror`.
@@ -48,9 +49,13 @@
 - **Controlled Entropy & Exploration**: Surfaces unplayed local tracks that align with top affinities (+20% discovery bonus).
 - **Smart Mix Generators**: Auto-generates and persists dynamic playlists (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
 - **Playlist Management**: Full playlist CRUD and track reordering via `SqlitePlaylistRepository`.
+- **MusicBrainz Integration**: Free, rate-limited (1 req/s) canonical metadata retrieval for recordings, releases, and artists.
+- **Cover Art Archive Provider**: Automatic album artwork downloading and permanent local disk caching (`cache_dir/artwork/`).
+- **Spotify Web API Client**: Client Credentials OAuth authentication with token caching and graceful offline degradation when unconfigured.
+- **Provider Coordinator & Track Enrichment**: Background track metadata enrichment with database updates and status notifications.
 
 ## Partially Implemented Features
-- None (Phases 1, 2, 3, 4, and 5 fully realized and verified).
+- None (Phases 1, 2, 3, 4, 5, and 6 fully realized and verified).
 
 ## Known Broken Features
 - None.

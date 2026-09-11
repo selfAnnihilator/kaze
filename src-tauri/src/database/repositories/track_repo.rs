@@ -24,6 +24,8 @@ pub struct TrackDetail {
     pub sample_rate: Option<i64>,
     pub format: String,
     pub has_cover_art: i64,
+    pub musicbrainz_track_id: Option<String>,
+    pub spotify_id: Option<String>,
     pub created_at: i64,
 }
 
@@ -189,7 +191,7 @@ impl TrackRepository for SqliteTrackRepository {
             "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
                     a.name as artist_name, al.title as album_title, g.name as genre_name,
                     t.track_number, t.disc_number, t.year, t.duration_secs, t.bitrate,
-                    t.sample_rate, t.format, t.has_cover_art, t.created_at
+                    t.sample_rate, t.format, t.has_cover_art, t.musicbrainz_track_id, t.spotify_id, t.created_at
              FROM tracks t
              LEFT JOIN artists a ON t.artist_id = a.id
              LEFT JOIN albums al ON t.album_id = al.id
@@ -339,7 +341,7 @@ impl TrackRepository for SqliteTrackRepository {
             "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
                     a.name as artist_name, al.title as album_title, g.name as genre_name,
                     t.track_number, t.disc_number, t.year, t.duration_secs, t.bitrate,
-                    t.sample_rate, t.format, t.has_cover_art, t.created_at
+                    t.sample_rate, t.format, t.has_cover_art, t.musicbrainz_track_id, t.spotify_id, t.created_at
              FROM tracks t
              LEFT JOIN artists a ON t.artist_id = a.id
              LEFT JOIN albums al ON t.album_id = al.id
@@ -370,7 +372,7 @@ impl TrackRepository for SqliteTrackRepository {
             "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
                     a.name as artist_name, al.title as album_title, g.name as genre_name,
                     t.track_number, t.disc_number, t.year, t.duration_secs, t.bitrate,
-                    t.sample_rate, t.format, t.has_cover_art, t.created_at
+                    t.sample_rate, t.format, t.has_cover_art, t.musicbrainz_track_id, t.spotify_id, t.created_at
              FROM tracks_fts fts
              JOIN tracks t ON fts.rowid = t.rowid
              LEFT JOIN artists a ON t.artist_id = a.id

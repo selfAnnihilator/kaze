@@ -32,6 +32,12 @@ pub enum AppError {
     #[error("Configuration error: {0}")]
     Configuration(String),
 
+    #[error("Network error: {0}")]
+    Network(String),
+
+    #[error("I/O error: {0}")]
+    Io(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

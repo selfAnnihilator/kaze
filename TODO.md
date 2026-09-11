@@ -1,21 +1,28 @@
 # Project Task Tracking
 
-## Current (Phase 6: External Metadata Providers)
-- [ ] MusicBrainz API integration for artist & album metadata enrichment.
-- [ ] Cover Art Archive provider for missing artwork fetching and local caching.
-- [ ] Spotify Web API client for discovery & metadata enrichment.
-- [ ] Rate limiting, token caching, and provider failover architecture.
+## Current (Phase 7: Discovery & Missing Music Matching)
+- [ ] Discovery recommendations outside the local library (Spotify, MusicBrainz).
+- [ ] Fuzzy track matching algorithm (Levenshtein, Jaro-Winkler, duration tolerance).
+- [ ] External tracks database table management and status transitions.
+- [ ] Wishlist manager: Wanted, Ignored, Downloaded, Already Own.
 
-## Next (Phase 7: Discovery & Missing Music Matching)
-- [ ] Discovery recommendations, fuzzy track matcher, and wishlist.
-- [ ] Soulseek client integration (Phase 8).
-- [ ] Tauri React/TS frontend and presentation layer (Phase 9).
+## Next (Phase 8: Soulseek Integration)
+- [ ] DownloadProvider trait definition.
+- [ ] Soulseek client integration via documented local interfaces/IPC.
+- [ ] Search query dispatch and user-initiated download actions.
+- [ ] Download directory monitoring and auto-import into library.
 
-## Later (Phases 8 - 9)
-- [ ] Soulseek client integration (Phase 8).
+## Later (Phase 9: Frontend & Shell)
 - [ ] Tauri React/TS frontend and presentation layer (Phase 9).
 
 ## Completed
+- [x] Phase 6 External Metadata Providers:
+  - [x] MusicBrainz API integration for artist & album metadata enrichment (`MusicBrainzProvider`).
+  - [x] Cover Art Archive provider with local disk caching (`CoverArtArchiveProvider`).
+  - [x] Spotify Web API client with Client Credentials auth and token caching (`SpotifyProvider`).
+  - [x] Provider Coordinator orchestrating track metadata enrichment (`ProviderCoordinator`).
+  - [x] Leaky-bucket rate limiting (1 req/s) and provider failover architecture.
+  - [x] Provider integration tests in `tests/provider_tests.rs`.
 - [x] Phase 5 Smart Local Recommendations & Mixes:
   - [x] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras (`TasteProfileEngine`).
   - [x] Local offline recommendation engine with explainability factor breakdown (`LocalRecommender`, `ScoringEngine`).

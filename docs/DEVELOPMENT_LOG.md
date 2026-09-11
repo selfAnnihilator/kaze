@@ -169,7 +169,41 @@ Taste profile modeling (short-term vs long-term dual window), transparent scorin
 - Initial candidate scoring without artist/genre matches produced empty reasons arrays. Resolved by adding a library catalog exploration explanation reason to ensure every recommended candidate has a clear reason.
 
 ### Remaining Work
-- Phase 6: External metadata providers (MusicBrainz, Cover Art Archive, Spotify).
+- Phase 6: External metadata providers (MusicBrainz, Cover Art Archive, Spotify) (Completed).
+- Phase 7: Discovery recommendations, fuzzy matching, and wishlist management.
 
 ### Recommended Next Step
 Proceed to **Phase 6: External Metadata Providers**.
+
+---
+
+## 2026-09-11 (Phase 6: External Metadata Providers)
+
+### Worked On
+Modular async external metadata provider trait, leaky-bucket rate limiting for MusicBrainz, Cover Art Archive integration with local disk image caching, optional Spotify Web API client with Client Credentials authentication and token caching, and Provider Coordinator for track metadata enrichment.
+
+### Changes
+- Defined `MetadataProvider` trait in `src-tauri/src/providers/mod.rs` for searching tracks, artists, albums, and fetching cover art.
+- Implemented `MusicBrainzProvider` in `src-tauri/src/providers/musicbrainz.rs` with leaky-bucket rate limiting (enforcing 1 req/sec) and dedicated User-Agent.
+- Implemented `CoverArtArchiveProvider` in `src-tauri/src/providers/cover_art_archive.rs` with automatic downloading and persistent disk caching in `{cache_dir}/artwork/{mbid}.jpg`.
+- Implemented `SpotifyProvider` in `src-tauri/src/providers/spotify.rs` supporting OAuth Client Credentials flow, token caching with expiration, and graceful degradation when unconfigured.
+- Implemented `ProviderCoordinator` in `src-tauri/src/providers/coordinator.rs` managing provider lifecycles, broadcasting status events (`ProviderStatusChanged`), and enriching local tracks (`musicbrainz_track_id`, `spotify_id`, `has_cover_art`).
+- Enhanced `TrackDetail` model and repository queries with `musicbrainz_track_id` and `spotify_id`.
+- Added `Network` and `Io` variants to `AppError`.
+- Wired `Command::TriggerMetadataRefresh` in `CoreProcessor`.
+- Created `docs/METADATA_PROVIDERS.md` and ADR `0010-external-metadata-providers-and-caching.md`.
+- Implemented comprehensive integration test suite in `tests/provider_tests.rs` (all 23 workspace tests passing).
+
+### Decisions
+- Strictly throttle MusicBrainz requests to 1 req/sec to comply with community API guidelines.
+- Cache cover art directly on disk to minimize network overhead and provide instant image loads.
+- Ensure all providers degrade gracefully: offline or unconfigured states report availability cleanly and never block audio playback or local features.
+
+### Problems
+- `TrackDetail` previously lacked external ID columns, causing compiler errors in integration tests. Resolved by exposing `musicbrainz_track_id` and `spotify_id` on `TrackDetail` and updating repository queries.
+
+### Remaining Work
+- Phase 7: External discovery recommendations, fuzzy track matching engine, external tracks database, and download wishlist management.
+
+### Recommended Next Step
+Proceed to **Phase 7: Discovery & Missing Music Matching**.

@@ -12,6 +12,7 @@ use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
 use crate::playback::PlaybackService;
+use crate::providers::ProviderCoordinator;
 use crate::ranking::RankingEngine;
 use crate::recommendations::{LocalRecommender, SmartMixGenerator, TasteProfileEngine};
 use sqlx::SqlitePool;
@@ -31,6 +32,7 @@ pub struct CoreProcessor {
     taste_engine: Arc<TasteProfileEngine>,
     recommender: Arc<LocalRecommender>,
     smart_mix_generator: Arc<SmartMixGenerator>,
+    provider_coordinator: Arc<ProviderCoordinator>,
     config: Arc<RwLock<AppConfig>>,
 }
 
@@ -76,6 +78,13 @@ impl CoreProcessor {
         let taste_engine = Arc::new(TasteProfileEngine::new(db_pool.clone()));
         let recommender = Arc::new(LocalRecommender::new(db_pool.clone()));
         let smart_mix_generator = Arc::new(SmartMixGenerator::new(db_pool.clone()));
+        let provider_coordinator = Arc::new(ProviderCoordinator::new(
+            db_pool.clone(),
+            event_bus.clone(),
+            config.cache_dir.clone(),
+            None,
+            None,
+        ));
 
         Self {
             event_bus,
@@ -88,6 +97,7 @@ impl CoreProcessor {
             taste_engine,
             recommender,
             smart_mix_generator,
+            provider_coordinator,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -140,6 +150,11 @@ impl CoreProcessor {
     /// Access the SmartMixGenerator handle.
     pub fn smart_mix_generator(&self) -> Arc<SmartMixGenerator> {
         self.smart_mix_generator.clone()
+    }
+
+    /// Access the ProviderCoordinator handle.
+    pub fn provider_coordinator(&self) -> Arc<ProviderCoordinator> {
+        self.provider_coordinator.clone()
     }
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
@@ -316,8 +331,15 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
+            // --- Metadata Providers ---
+            Command::TriggerMetadataRefresh { track_id } => {
+                let enriched = self.provider_coordinator.enrich_track(&track_id).await?;
+                info!(track_id = %track_id, enriched = enriched, "Triggered metadata refresh");
+                Ok(CommandResponse::Ok)
+            }
+
             _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 5");
+                warn!(?cmd, "Command handler routed to stub during Phase 6");
                 Ok(CommandResponse::Ok)
             }
         }

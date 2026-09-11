@@ -61,26 +61,18 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 6 — External Metadata Providers (Active)
-- [ ] MusicBrainz API integration for artist & album metadata enrichment.
-- [ ] Cover Art Archive provider for missing artwork fetching and local caching.
-- [ ] Spotify Web API client for discovery & metadata enrichment.
-- [ ] Rate limiting, token caching, and provider failover architecture.
+## Phase 6 — External Metadata Providers (Completed)
+- [x] MusicBrainz API integration for artist & album metadata enrichment.
+- [x] Cover Art Archive provider for missing artwork fetching and local caching.
+- [x] Spotify Web API client for discovery & metadata enrichment.
+- [x] Rate limiting, token caching, and provider failover architecture.
 
 ---
 
-## Phase 6 — External Metadata Providers
-- [ ] `MetadataProvider` trait architecture.
-- [ ] MusicBrainz API client and Cover Art Archive integration.
-- [ ] Read-only Spotify Web API client for public metadata and artwork.
-- [ ] Provider priority cascade with persistent offline caching.
-- [ ] Resilience verification: offline fallback when external APIs are unreachable.
-
----
-
-## Phase 7 — Discovery & Missing Music Matching
-- [ ] External discovery recommendation coordinator.
+## Phase 7 — Discovery & Missing Music Matching (Active)
+- [ ] Discovery recommendations outside the local library (Spotify, MusicBrainz).
 - [ ] Fuzzy library matching engine (exact match, likely match, possible match, not found) with confidence scoring.
+- [ ] External tracks database table management and status transitions.
 - [ ] Download Wishlist management (Want, Ignore, Already Own, Downloaded).
 - [ ] Match confirmation workflows.
 
