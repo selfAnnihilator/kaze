@@ -69,16 +69,16 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 7 — Discovery & Missing Music Matching (Active)
-- [ ] Discovery recommendations outside the local library (Spotify, MusicBrainz).
-- [ ] Fuzzy library matching engine (exact match, likely match, possible match, not found) with confidence scoring.
-- [ ] External tracks database table management and status transitions.
-- [ ] Download Wishlist management (Want, Ignore, Already Own, Downloaded).
-- [ ] Match confirmation workflows.
+## Phase 7 — Discovery & Missing Music Matching (Completed)
+- [x] Discovery recommendations outside the local library (Spotify, MusicBrainz).
+- [x] Fuzzy library matching engine (exact match, likely match, possible match, not found) with confidence scoring.
+- [x] External tracks database table management and status transitions.
+- [x] Download Wishlist management (Want, Ignore, Already Own, Downloaded).
+- [x] Comprehensive integration tests in `tests/discovery_tests.rs`.
 
 ---
 
-## Phase 8 — Soulseek Integration
+## Phase 8 — Soulseek Integration (Active)
 - [ ] `DownloadProvider` trait definition.
 - [ ] Local Soulseek client integration via documented local interfaces/IPC.
 - [ ] Search query dispatch and user-initiated download actions (no automated piracy).

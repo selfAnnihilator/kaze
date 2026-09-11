@@ -99,5 +99,7 @@ pub enum QueryResponse {
     SearchResults(Vec<serde_json::Value>),
     PlaybackState(serde_json::Value),
     Settings(serde_json::Value),
+    Wishlist(Vec<serde_json::Value>),
+    DiscoveryRecommendations(Vec<serde_json::Value>),
     Empty,
 }

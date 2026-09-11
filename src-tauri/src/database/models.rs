@@ -120,3 +120,18 @@ pub struct WishlistItemRecord {
     pub created_at: i64,
     pub updated_at: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ExternalTrackRecord {
+    pub id: String,
+    pub provider: String,
+    pub provider_id: String,
+    pub title: String,
+    pub artist: String,
+    pub album: Option<String>,
+    pub duration_secs: Option<f64>,
+    pub cover_art_url: Option<String>,
+    pub match_status: String,
+    pub matched_local_track_id: Option<String>,
+    pub created_at: i64,
+}

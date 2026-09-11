@@ -7,6 +7,7 @@ pub mod recommendation_repo;
 pub mod settings_repo;
 pub mod stats_repo;
 pub mod track_repo;
+pub mod wishlist_repo;
 
 pub use album_repo::*;
 pub use artist_repo::*;
@@ -17,3 +18,4 @@ pub use recommendation_repo::*;
 pub use settings_repo::*;
 pub use stats_repo::*;
 pub use track_repo::*;
+pub use wishlist_repo::*;

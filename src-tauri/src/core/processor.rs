@@ -7,7 +7,9 @@ use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
 use crate::database::repositories::{
     PlaylistRepository, SqliteHistoryRepository, SqlitePlaylistRepository, SqliteStatsRepository,
+    SqliteWishlistRepository,
 };
+use crate::discovery::{DiscoveryCoordinator, WishlistManager};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -33,6 +35,8 @@ pub struct CoreProcessor {
     recommender: Arc<LocalRecommender>,
     smart_mix_generator: Arc<SmartMixGenerator>,
     provider_coordinator: Arc<ProviderCoordinator>,
+    wishlist_manager: Arc<WishlistManager>,
+    discovery_coordinator: Arc<DiscoveryCoordinator>,
     config: Arc<RwLock<AppConfig>>,
 }
 
@@ -85,6 +89,14 @@ impl CoreProcessor {
             None,
             None,
         ));
+        let wishlist_repo = Arc::new(SqliteWishlistRepository::new(db_pool.clone()));
+        let wishlist_manager = Arc::new(WishlistManager::new(wishlist_repo.clone()));
+        let discovery_coordinator = Arc::new(DiscoveryCoordinator::new(
+            wishlist_repo.clone(),
+            library_service.track_repo(),
+            taste_engine.clone(),
+            Some(provider_coordinator.clone()),
+        ));
 
         Self {
             event_bus,
@@ -98,6 +110,8 @@ impl CoreProcessor {
             recommender,
             smart_mix_generator,
             provider_coordinator,
+            wishlist_manager,
+            discovery_coordinator,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -155,6 +169,16 @@ impl CoreProcessor {
     /// Access the ProviderCoordinator handle.
     pub fn provider_coordinator(&self) -> Arc<ProviderCoordinator> {
         self.provider_coordinator.clone()
+    }
+
+    /// Access the WishlistManager handle.
+    pub fn wishlist_manager(&self) -> Arc<WishlistManager> {
+        self.wishlist_manager.clone()
+    }
+
+    /// Access the DiscoveryCoordinator handle.
+    pub fn discovery_coordinator(&self) -> Arc<DiscoveryCoordinator> {
+        self.discovery_coordinator.clone()
     }
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
@@ -338,8 +362,30 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
+            // --- Discovery & Wishlist ---
+            Command::AddToWishlist {
+                title,
+                artist,
+                album,
+                external_id,
+            } => {
+                let item = self
+                    .wishlist_manager
+                    .add_to_wishlist(title, artist, album, external_id, None)
+                    .await?;
+                info!(wishlist_id = %item.id, title = %item.title, "Added track to wishlist");
+                Ok(CommandResponse::EntityId(item.id))
+            }
+            Command::UpdateWishlistStatus { wishlist_id, status } => {
+                self.wishlist_manager
+                    .update_status_enum(&wishlist_id, status)
+                    .await?;
+                info!(wishlist_id = %wishlist_id, "Updated wishlist item status");
+                Ok(CommandResponse::Ok)
+            }
+
             _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 6");
+                warn!(?cmd, "Command handler routed to stub during Phase 7");
                 Ok(CommandResponse::Ok)
             }
         }
@@ -504,8 +550,27 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::PlaylistTracks(val))
             }
+            Query::GetWishlist => {
+                let items = self.wishlist_manager.get_wishlist(None).await?;
+                let val: Vec<serde_json::Value> = items
+                    .into_iter()
+                    .filter_map(|w| serde_json::to_value(w).ok())
+                    .collect();
+                Ok(QueryResponse::Wishlist(val))
+            }
+            Query::GetDiscoveryRecommendations { limit } => {
+                let recs = self
+                    .discovery_coordinator
+                    .get_discovery_recommendations(limit as usize)
+                    .await?;
+                let val: Vec<serde_json::Value> = recs
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(QueryResponse::DiscoveryRecommendations(val))
+            }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 5");
+                warn!(?query, "Query handler routed to stub during Phase 7");
                 Ok(QueryResponse::Empty)
             }
         }

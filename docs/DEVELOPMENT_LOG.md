@@ -203,7 +203,57 @@ Modular async external metadata provider trait, leaky-bucket rate limiting for M
 - `TrackDetail` previously lacked external ID columns, causing compiler errors in integration tests. Resolved by exposing `musicbrainz_track_id` and `spotify_id` on `TrackDetail` and updating repository queries.
 
 ### Remaining Work
-- Phase 7: External discovery recommendations, fuzzy track matching engine, external tracks database, and download wishlist management.
+- Phase 7: Discovery & Missing Music Matching (Completed).
+- Phase 8: Soulseek Integration.
+- Phase 9: Frontend & Desktop Shell.
 
 ### Recommended Next Step
 Proceed to **Phase 7: Discovery & Missing Music Matching**.
+
+---
+
+## 2026-09-11 (Phase 7: Discovery & Missing Music Matching)
+
+### Worked On
+Fuzzy library track matching engine (`FuzzyTrackMatcher`), external candidate track ingestion and status tracking, download wishlist subsystem (`WishlistManager`), taste-aligned discovery recommendation coordinator (`DiscoveryCoordinator`), and integration into `CoreProcessor`.
+
+### Changes
+- Implemented `FuzzyTrackMatcher` in `src-tauri/src/discovery/matcher.rs`:
+  - Multi-stage string normalization (stripping brackets, editions, featured artists, punctuation, and leading articles `the `, `a `, `an `).
+  - Jaro-Winkler string similarity computation for title and artist.
+  - Duration difference delta tolerance classification (`EXACT_MATCH`, `LIKELY_MATCH`, `POSSIBLE_MATCH`, `NOT_FOUND`).
+  - Implemented `find_best_match` over local candidate collections.
+- Implemented `SqliteWishlistRepository` in `src-tauri/src/database/repositories/wishlist_repo.rs` managing `wishlist` and `external_tracks` tables.
+- Implemented `WishlistManager` in `src-tauri/src/discovery/wishlist.rs`:
+  - Item creation, status transitions (`WANT`, `IGNORE`, `ALREADY_OWN`, `DOWNLOADED`), status filtering, retrieval, and deletion.
+  - Foreign key safety: automatically ensures referenced external tracks exist in `external_tracks`.
+- Implemented `DiscoveryCoordinator` in `src-tauri/src/discovery/coordinator.rs`:
+  - Fuzzy matching of external candidate tracks against the local library.
+  - Integration with user taste profile to discover external recommendations outside the local library.
+  - Cross-referencing against wishlist to flag `in_wishlist = true/false`.
+  - Prioritizing unowned music (`NotFound` > `PossibleMatch` > `LikelyMatch` > `ExactMatch`).
+- Wired Commands and Queries in `CoreProcessor`:
+  - `Command::AddToWishlist`
+  - `Command::UpdateWishlistStatus`
+  - `Query::GetWishlist`
+  - `Query::GetDiscoveryRecommendations`
+- Added `QueryResponse::Wishlist` and `QueryResponse::DiscoveryRecommendations`.
+- Created `docs/DISCOVERY.md` and ADR `0011-fuzzy-library-matching-and-wishlist.md`.
+- Implemented comprehensive integration test suite in `tests/discovery_tests.rs` (4 tests passing; all 27 workspace tests passing).
+
+### Decisions
+- Strip leading English articles ("the ", "a ", "an ") in normalization to prevent band name prefixes from causing false negatives.
+- When adding to the wishlist with an `external_track_id`, auto-upsert a stub record in `external_tracks` if it does not yet exist to respect SQLite foreign key constraints.
+- Prioritize unowned tracks in discovery recommendations while clearly flagging matching status and explainability reasons.
+
+### Problems
+- Initial SQLite foreign key violation when adding wishlist items with un-indexed external track IDs. Resolved by auto-upserting external track stubs in `WishlistManager::add_to_wishlist`.
+- Missing `updated_at` column in `artists` test table insertion. Resolved by matching actual schema definition.
+
+### Remaining Work
+- Phase 8: Soulseek Integration (`DownloadProvider` trait, client/daemon IPC, wishlist search dispatch, incoming folder auto-import).
+- Phase 9: Tauri v2 desktop shell with React + TypeScript frontend.
+
+### Recommended Next Step
+Proceed to **Phase 8: Soulseek Integration**.
+

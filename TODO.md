@@ -1,21 +1,22 @@
 # Project Task Tracking
 
-## Current (Phase 7: Discovery & Missing Music Matching)
-- [ ] Discovery recommendations outside the local library (Spotify, MusicBrainz).
-- [ ] Fuzzy track matching algorithm (Levenshtein, Jaro-Winkler, duration tolerance).
-- [ ] External tracks database table management and status transitions.
-- [ ] Wishlist manager: Wanted, Ignored, Downloaded, Already Own.
-
-## Next (Phase 8: Soulseek Integration)
+## Current (Phase 8: Soulseek Integration)
 - [ ] DownloadProvider trait definition.
 - [ ] Soulseek client integration via documented local interfaces/IPC.
 - [ ] Search query dispatch and user-initiated download actions.
 - [ ] Download directory monitoring and auto-import into library.
 
-## Later (Phase 9: Frontend & Shell)
+## Next (Phase 9: Frontend & Shell)
 - [ ] Tauri React/TS frontend and presentation layer (Phase 9).
 
 ## Completed
+- [x] Phase 7 Discovery & Missing Music Matching:
+  - [x] Discovery recommendations outside the local library (`DiscoveryCoordinator`).
+  - [x] Fuzzy track matching algorithm with multi-stage normalization, Jaro-Winkler, and duration tolerance (`FuzzyTrackMatcher`).
+  - [x] External tracks database repository and match status management (`SqliteWishlistRepository`, `external_tracks`).
+  - [x] Wishlist manager with state transitions (`WANT`, `IGNORE`, `ALREADY_OWN`, `DOWNLOADED`).
+  - [x] Command and Query integration into `CoreProcessor` (`AddToWishlist`, `UpdateWishlistStatus`, `GetWishlist`, `GetDiscoveryRecommendations`).
+  - [x] Comprehensive integration tests in `tests/discovery_tests.rs` (all 4 tests passing).
 - [x] Phase 6 External Metadata Providers:
   - [x] MusicBrainz API integration for artist & album metadata enrichment (`MusicBrainzProvider`).
   - [x] Cover Art Archive provider with local disk caching (`CoverArtArchiveProvider`).

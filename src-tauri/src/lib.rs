@@ -1,6 +1,7 @@
 pub mod config;
 pub mod core;
 pub mod database;
+pub mod discovery;
 pub mod history;
 pub mod library;
 pub mod logging;
