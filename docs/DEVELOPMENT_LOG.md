@@ -297,9 +297,58 @@ Proceed to **Phase 8: Soulseek Integration**.
 - Replaced unreachable catch-all match arm in `processor.rs` after achieving 100% explicit command coverage.
 
 ### Remaining Work
-- Phase 9: Tauri v2 desktop shell with React + TypeScript frontend.
+- Phase 9: Tauri v2 desktop shell with React + TypeScript frontend (Completed).
+- Phase 10: Final verification and release packaging.
 
 ### Recommended Next Step
 Proceed to **Phase 9: Frontend & Desktop Shell**.
+
+---
+
+## 2026-09-11 (Phase 9: Frontend & Desktop Shell)
+
+### Worked On
+Tauri v2 desktop shell integration, React 19 + TypeScript + Vite frontend application, typed IPC command and query dispatching, asynchronous backend-event streaming, onboarding directory verification modal, sticky now playing bar, and comprehensive views across library, artists, albums, playlists, discovery, wishlist, downloads, and settings.
+
+### Changes
+- Configured Tauri v2 integration:
+  - Updated `src-tauri/Cargo.toml` with `tauri = "2.0"` and `tauri-build = "2.0"`.
+  - Created `src-tauri/build.rs`, `src-tauri/tauri.conf.json`, and valid PNG icons in `src-tauri/icons/`.
+  - Implemented `src-tauri/src/app.rs` with `execute_command` and `execute_query` Tauri command handlers and Tokio broadcast event forwarder (`app_handle.emit("backend-event", payload)`).
+  - Configured project root `package.json` (React 19, TypeScript, Vite 6, `@tauri-apps/api` 2.1.1, `lucide-react`).
+- Created frontend application architecture:
+  - `src/types.ts`: Exhaustive domain interfaces, Command/Query unions matching Rust serde serialization.
+  - `src/services/api.ts`: Dual-mode IPC client automatically detecting Tauri environment with graceful mock fallback for headless/browser execution.
+  - `src/index.css`: Dark-themed modern layout with high contrast, responsive typography, and micro-interactions.
+  - `src/components/Sidebar.tsx`: Navigation across 8 views with active state indicators.
+  - `src/components/NowPlayingBar.tsx`: Sticky audio bar with scrub slider, volume, repeat (`off`/`one`/`all`), shuffle, track information, and like/dislike buttons.
+  - `src/components/OnboardingModal.tsx`: Enforces system audio directory inspection, custom folder selection, and strict boundary containment.
+  - `src/components/views/LibraryView.tsx`: Complete track table with live FTS5 search, sorting, queueing, and feedback.
+  - `src/components/views/ArtistsView.tsx`: Grid of artists with track counts and direct library drill-down.
+  - `src/components/views/AlbumsView.tsx`: Grid of albums with release years and cover art.
+  - `src/components/views/PlaylistsView.tsx`: Custom playlist creation and smart mix generators (`Daily`, `On Repeat`, `Forgotten Favorites`, `Discovery`, `Late Night`).
+  - `src/components/views/DiscoveryView.tsx`: Recommendations with match status badges (`In Library`, `Likely Owned`, `Alternate Version`, `Missing Track`), "Add to Wishlist", and "Find on Soulseek".
+  - `src/components/views/WishlistView.tsx`: Missing music wishlist with status workflows (`WANT`, `DOWNLOADED`, `ALREADY_OWN`, `IGNORE`), custom additions, and Soulseek search triggers.
+  - `src/components/views/DownloadsView.tsx`: Soulseek P2P transfers tracking with progress bars, cancellation, and network search.
+  - `src/components/views/SettingsView.tsx`: Music folder management, audio engine defaults, external metadata toggles, and Slskd connection settings.
+  - `src/App.tsx`: Central coordinator managing domain data, playback state, and event subscriptions.
+  - `src/main.tsx`: React application entry point.
+- Created `docs/FRONTEND.md` and ADR `0013-frontend-desktop-shell-architecture.md`.
+- Verified build: `npm run build` exits 0 with sub-second production bundle; `cargo check` in `src-tauri` exits 0; `cargo test` exits 0 with all 32 integration tests passing.
+
+### Decisions
+- Maintain thin frontend: zero audio decoding, ranking algorithms, or file system traversal in JavaScript. All logic executes strictly in the Rust backend.
+- Expose dual-mode API client to enable instant headless bundling and fast component development in browser without requiring Tauri webview binaries during test runs.
+- Wire cross-view actions: user clicking "Find on Soulseek" in Discovery or Wishlist seamlessly navigates to Downloads with prepopulated search query.
+
+### Problems
+- Unused variables flagged by TypeScript `noUnusedLocals: true` during initial `npm run build`. Cleanly removed and verified.
+
+### Remaining Work
+- Phase 10: Packaging, Verification, and Polishing.
+
+### Recommended Next Step
+Proceed to **Phase 10: Packaging, Verification, and Polishing**.
+
 
 

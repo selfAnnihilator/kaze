@@ -14,6 +14,10 @@ path = "src/lib.rs"
 name = "music-player-cli"
 path = "src/main.rs"
 
+[[bin]]
+name = "music-player-app"
+path = "src/app.rs"
+
 [dependencies]
 # Async Runtime
 tokio = { version = "1", features = ["full"] }
@@ -56,6 +60,12 @@ rand = "0.8"
 
 # Networking & External Providers
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Desktop Shell & Tauri IPC
+tauri = { version = "2.0", default-features = false, features = ["wry"] }
+
+[build-dependencies]
+tauri-build = { version = "2.0", default-features = false }
 
 [dev-dependencies]
 tempfile = "3.12"

@@ -8,3 +8,4 @@ Cargo.lock
 .cache/
 node_modules/
 dist/
+**/gen/schemas

@@ -1,11 +1,11 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 8: Soulseek Integration (Completed)** -> **Phase 9: Frontend & Desktop Shell (Active)**
+**Phase 9: Frontend & Desktop Shell (Completed)** -> **Phase 10: Packaging & Polishing (Active)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
-- **IPC & Desktop Shell**: Tauri v2 with React + TypeScript.
+- **IPC & Desktop Shell**: Tauri v2 with React 19 + TypeScript + Vite.
 - **Database**: SQLite 3 with WAL mode, managed through `sqlx` and embedded migrations.
 - **Core Pattern**: Central Processor for validated command execution + Tokio broadcast Event Bus for decoupled notifications.
 - **Audio Engine**: Thread-safe `AudioBackend` trait abstraction implemented via `RodioAudioBackend` (rodio/cpal) and `MockAudioBackend` (in-memory for headless testing).
@@ -16,9 +16,10 @@
 - **External Providers**: Async `MetadataProvider` trait with leaky-bucket rate limiting (MusicBrainz 1 req/s), local artwork caching (`CoverArtArchiveProvider`), optional Client Credentials flow (`SpotifyProvider`), and coordinator for track metadata enrichment.
 - **Discovery & Matching**: Multi-factor fuzzy track matching (`FuzzyTrackMatcher`) with string normalization, Jaro-Winkler similarity, and duration delta tolerance. Download wishlist manager with status transitions (`WANT`, `IGNORE`, `ALREADY_OWN`, `DOWNLOADED`). External discovery coordinator linking external candidate tracks to local library ownership status.
 - **Soulseek & Downloads**: Pluggable `DownloadProvider` trait, Slskd daemon REST bridge (`SoulseekProvider`), deterministic `MockDownloadProvider`, download queueing, progress broadcasting, and automatic library import pipeline upon transfer completion.
+- **Desktop Shell & Frontend**: React 19 + TypeScript + Vite desktop GUI hosted in Tauri v2, with typed IPC bridge (`execute_command`, `execute_query`), streaming `backend-event` integration, persistent player bar, onboarding wizard, and dedicated views for Library, Artists, Albums, Playlists, Discovery, Wishlist, Downloads, and Settings.
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0012`).
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0013`).
 - Complete SQLite relational schema (18 entities + FTS5 full-text search) with embedded migrations.
 - Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization (100% command execution coverage).
 - `AppError` taxonomy with `thiserror`.
@@ -27,6 +28,18 @@
 - `CoreProcessor` command router and query execution coordinator.
 - SQLite connection manager with WAL mode, foreign keys, and 5-second busy timeout.
 - Fully operational headless test suite with 32 integration tests passing.
+- Complete React 19 desktop GUI with sub-second production bundle generation (`dist/index.html`).
+- **All 8 Primary Views**:
+  - `LibraryView`: Searchable table with instant playback, enqueueing, and like/dislike rating.
+  - `ArtistsView`: Artist collection cards with indexed track statistics.
+  - `AlbumsView`: Album grid with cover art and release year metadata.
+  - `PlaylistsView`: Custom playlists and smart mix generators (`Daily`, `On Repeat`, `Forgotten Favorites`, `Discovery`, `Late Night`).
+  - `DiscoveryView`: External recommendations with ownership badges (`In Library`, `Likely Owned`, `Alternate Version`, `Missing Track`).
+  - `WishlistView`: Missing music wishlist with status workflows (`WANT`, `DOWNLOADED`, `ALREADY_OWN`, `IGNORE`).
+  - `DownloadsView`: Active/completed transfers progress tracking, download cancellation, and Soulseek network search.
+  - `SettingsView`: Music folder management, audio defaults, external metadata toggles, and Slskd connection settings.
+- **NowPlayingBar**: Real-time position scrub slider, volume, repeat (`off`, `one`, `all`), shuffle, track details, and instant feedback.
+- **OnboardingModal**: System audio root verification and strict directory containment guarantee.
 - **Default Music Directory Discovery**: Automatic system audio directory lookup via `directories::UserDirs::audio_dir()`.
 - **Onboarding Workflow**: `GetOnboardingStatus` and `CompleteOnboarding` commands letting users confirm the default music folder or choose alternate directories.
 - **Strict Boundary Containment**: Scans are strictly restricted to registered directories and their child subdirectories; symlinks pointing outside the boundary are discarded.

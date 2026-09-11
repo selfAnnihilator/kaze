@@ -89,8 +89,17 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 9 — UI Refinement & Desktop Polish (Active)
-- [ ] Tauri v2 desktop shell initialization with React + TypeScript.
-- [ ] Thin frontend views: Home, Library, Artists, Albums, Smart Mixes, Discover, Statistics, Wishlist, Settings.
-- [ ] Now Playing bar with real-time waveform/position slider and volume controls.
-- [ ] Full end-to-end integration and release packaging.
+## Phase 9 — UI Refinement & Desktop Shell (Completed)
+- [x] Tauri v2 desktop shell initialization with React 19 + TypeScript + Vite.
+- [x] Thin frontend views: Library, Artists, Albums, Playlists, Smart Mixes, Discovery, Wishlist, Downloads, Settings.
+- [x] Now Playing bar with real-time scrub slider, volume, repeat, shuffle, and feedback controls.
+- [x] Onboarding modal enforcing system audio directory inspection and strict boundary containment.
+- [x] Typed IPC command/query dispatcher and reactive backend-event listener bridge.
+- [x] Headless web fallback mode for decoupled UI development.
+
+---
+
+## Phase 10 — Packaging & Release Polish (Active)
+- [ ] End-to-end integration workflows across live audio, scan, discovery, and transfers.
+- [ ] Native bundle packaging verification.
+- [ ] Final release optimization.

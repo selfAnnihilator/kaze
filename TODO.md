@@ -1,12 +1,30 @@
 # Project Task Tracking
 
-## Current (Phase 9: Frontend & Desktop Shell)
-- [ ] Tauri v2 desktop shell initialization with React + TypeScript.
-- [ ] Core layout and views: Library, Now Playing Bar, Playlists, Smart Mixes, Wishlist, Discovery, Downloads, Settings.
-- [ ] Real-time event subscription for position ticking, playback events, and download progress.
-- [ ] End-to-end integration and packaging verification.
+## Current (Phase 10: Final Verification & Polishing)
+- [ ] End-to-end user workflow verification across all 8 views.
+- [ ] Cross-platform desktop bundling and release build checks.
+- [ ] Performance and memory profiling under large library simulation.
 
 ## Completed
+- [x] Phase 9 Frontend & Desktop Shell:
+  - [x] Tauri v2 desktop shell initialization with React 19 + TypeScript + Vite (`src-tauri/tauri.conf.json`, `src-tauri/src/app.rs`).
+  - [x] IPC bridge with typed `execute_command`, `execute_query`, and asynchronous `backend-event` streaming.
+  - [x] Universal API layer (`src/services/api.ts`) supporting both Tauri desktop webview and standalone browser environments.
+  - [x] Dark-theme responsive UI with high contrast and smooth micro-interactions (`src/index.css`).
+  - [x] Application coordinator (`src/App.tsx`) managing playback state, domain data, and event subscriptions.
+  - [x] Persistent playback bar (`src/components/NowPlayingBar.tsx`) with scrub slider, volume, repeat, shuffle, and like/dislike buttons.
+  - [x] Onboarding modal (`src/components/OnboardingModal.tsx`) enforcing system audio directory inspection and strict boundary containment.
+  - [x] All 8 primary views:
+    - [x] `LibraryView`: Complete track list with FTS5 search, sorting, queueing, and feedback.
+    - [x] `ArtistsView`: Artist collection overview with indexed track counts.
+    - [x] `AlbumsView`: Album grid with release years and cover art.
+    - [x] `PlaylistsView`: Custom playlists and smart mix generators (`Daily`, `On Repeat`, `Forgotten Favorites`, `Discovery`, `Late Night`).
+    - [x] `DiscoveryView`: External recommendations with ownership match status badges and quick wishlist/download actions.
+    - [x] `WishlistView`: Missing music wishlist with status workflows (`WANT`, `DOWNLOADED`, `ALREADY_OWN`, `IGNORE`).
+    - [x] `DownloadsView`: Active/completed transfers progress tracking, download cancellation, and Soulseek network search.
+    - [x] `SettingsView`: Music folder management, audio defaults, external metadata toggles, and Slskd connection settings.
+  - [x] Architecture documentation in `docs/FRONTEND.md` and ADR 0013.
+  - [x] Verified build (`npm run build` exits 0 with sub-second bundle generation; `cargo test` exits 0 with all 32 tests passing).
 - [x] Phase 8 Soulseek Integration:
   - [x] `DownloadProvider` trait definition and data types (`DownloadSearchResult`, `DownloadProgress`, `DownloadStatus`).
   - [x] `download_tasks` SQLite schema migration (`20260911000002_download_tasks.sql`) and repository (`SqliteDownloadRepository`).
