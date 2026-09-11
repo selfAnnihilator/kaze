@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 4: Listening History & Statistics (Completed)** -> **Phase 5: Smart Local Recommendations & Mixes (Active)**
+**Phase 5: Smart Local Recommendations & Mixes (Completed)** -> **Phase 6: External Metadata Providers (Active)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
@@ -12,9 +12,10 @@
 - **Metadata**: `lofty` for tag extraction, with provider abstractions for MusicBrainz/Cover Art Archive/Spotify.
 - **Boundary Containment**: Enforces that scans operate strictly inside configured roots and their child directories without traversing outside or across unapproved symlinks.
 - **History & Ranking**: Event-driven `HistoryService` tracking playback sessions and meaningful-play thresholds (>= 30s or >= 50%), with `RankingEngine` for multi-factor time-decayed scoring across rolling windows.
+- **Taste & Recommendations**: Local offline recommendation engine with dual-window affinity modeling (artists, genres, eras), transparent factor explainability breakdown, repetition dampening, and automated smart mix generation (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0008`).
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0009`).
 - Complete SQLite relational schema (17 entities + FTS5 full-text search) with embedded migrations.
 - Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization.
 - `AppError` taxonomy with `thiserror`.
@@ -41,9 +42,15 @@
 - **Multi-Window Rolling Rankings**: Dynamic aggregations (`Today`, `Last7Days`, `Last30Days`, `Last6Months`, `LastYear`, `AllTime`) across Tracks, Artists, Albums, and Genres.
 - **Multi-Factor Ranking Formula**: Blends play count, duration, completion rate, time-decay recency, and user preference boosts (likes/dislikes).
 - **User Preference Management**: Feedback system with `LikeTrack`, `DislikeTrack`, and `RemoveTrackFeedback` commands.
+- **Dual-Window Taste Profiling**: Calculates short-term (14-day) and long-term (90-day) musical affinities for artists, genres, and release eras.
+- **Explainability Scoring Algorithm**: Evaluates candidate tracks across 5 weighted factors with transparent human-readable explanations.
+- **Repetition Fatigue Avoidance**: Exponential dampening for tracks played within 24 hours (-50%), 3 days (-30%), or 7 days (-15%).
+- **Controlled Entropy & Exploration**: Surfaces unplayed local tracks that align with top affinities (+20% discovery bonus).
+- **Smart Mix Generators**: Auto-generates and persists dynamic playlists (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
+- **Playlist Management**: Full playlist CRUD and track reordering via `SqlitePlaylistRepository`.
 
 ## Partially Implemented Features
-- None (Phases 1, 2, 3, and 4 fully realized and verified).
+- None (Phases 1, 2, 3, 4, and 5 fully realized and verified).
 
 ## Known Broken Features
 - None.

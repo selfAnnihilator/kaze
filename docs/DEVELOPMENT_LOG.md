@@ -137,7 +137,39 @@ Listening history persistence, meaningful play evaluation, multi-factor ranking 
 - None encountered; schema `track_stats`, `listening_history`, and `user_feedback` tables were fully provisioned in Phase 1 initial migration.
 
 ### Remaining Work
-- Phase 5: Smart local recommendations, taste profiles, and temporary smart mix generators.
+- Phase 5: Smart local recommendations, taste profiles, and temporary smart mix generators (Completed).
+- Phase 6: External metadata providers (MusicBrainz, Cover Art Archive, Spotify).
 
 ### Recommended Next Step
 Proceed to **Phase 5: Smart Local Recommendations & Mixes**.
+
+---
+
+## 2026-09-11 (Phase 5: Smart Local Recommendations & Mixes)
+
+### Worked On
+Taste profile modeling (short-term vs long-term dual window), transparent scoring engine with explainability factor breakdown, repetition dampening, diversity constraints, dynamic smart mix generation (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`), and playlist/recommendation persistence.
+
+### Changes
+- Implemented `TasteProfileEngine` in `src-tauri/src/recommendations/taste.rs` computing normalized affinities across artists, genres, and eras (60% short-term 14d + 40% long-term 90d).
+- Implemented `ScoringEngine` in `src-tauri/src/recommendations/scoring.rs` calculating candidate scores with explicit likes (+25%), dislikes (exclusion), repetition penalties (-50% <24h, -30% <72h, -15% <7d), and discovery picks (+20%).
+- Implemented `LocalRecommender` in `src-tauri/src/recommendations/local.rs` evaluating candidate tracks and enforcing artist diversity (maximum 2 tracks per artist per mix).
+- Implemented `SmartMixGenerator` in `src-tauri/src/recommendations/mixes.rs` building dynamic smart playlists.
+- Implemented `SqlitePlaylistRepository` and `SqliteRecommendationRepository` in `src-tauri/src/database/repositories/` persisting playlists, tracks, sessions, and user affinities.
+- Wired commands (`GenerateSmartMix`, `CreatePlaylist`, `DeletePlaylist`, `AddTrackToPlaylist`, `RemoveTrackFromPlaylist`) and queries (`GetTasteProfile`, `GetLocalRecommendations`, `GetSmartMixes`, `GetPlaylists`, `GetPlaylistTracks`) into `CoreProcessor`.
+- Created `docs/RECOMMENDATIONS.md` and ADR `0009-offline-recommendations-and-smart-mixes.md`.
+- Implemented comprehensive integration test suite in `tests/recommendation_tests.rs` (all 19 workspace tests passing).
+
+### Decisions
+- Maintain 100% offline functionality without external neural models or remote recommendations for local library mixes.
+- Provide human-readable explainability strings alongside every recommendation.
+- Use `track_statistics.manual_like` for user preference state.
+
+### Problems
+- Initial candidate scoring without artist/genre matches produced empty reasons arrays. Resolved by adding a library catalog exploration explanation reason to ensure every recommended candidate has a clear reason.
+
+### Remaining Work
+- Phase 6: External metadata providers (MusicBrainz, Cover Art Archive, Spotify).
+
+### Recommended Next Step
+Proceed to **Phase 6: External Metadata Providers**.

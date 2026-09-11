@@ -1,14 +1,19 @@
 use crate::config::AppConfig;
 use crate::core::command::{Command, CommandResponse};
 use crate::core::error::{AppError, AppResult};
+use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
-use crate::database::repositories::{SqliteHistoryRepository, SqliteStatsRepository};
+use crate::database::models::PlaylistRecord;
+use crate::database::repositories::{
+    PlaylistRepository, SqliteHistoryRepository, SqlitePlaylistRepository, SqliteStatsRepository,
+};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
 use crate::playback::PlaybackService;
 use crate::ranking::RankingEngine;
+use crate::recommendations::{LocalRecommender, SmartMixGenerator, TasteProfileEngine};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -22,6 +27,10 @@ pub struct CoreProcessor {
     playback_service: Arc<PlaybackService>,
     history_service: Arc<HistoryService>,
     ranking_engine: Arc<RankingEngine>,
+    playlist_repo: Arc<SqlitePlaylistRepository>,
+    taste_engine: Arc<TasteProfileEngine>,
+    recommender: Arc<LocalRecommender>,
+    smart_mix_generator: Arc<SmartMixGenerator>,
     config: Arc<RwLock<AppConfig>>,
 }
 
@@ -63,6 +72,11 @@ impl CoreProcessor {
             config.ranking.clone(),
         ));
 
+        let playlist_repo = Arc::new(SqlitePlaylistRepository::new(db_pool.clone()));
+        let taste_engine = Arc::new(TasteProfileEngine::new(db_pool.clone()));
+        let recommender = Arc::new(LocalRecommender::new(db_pool.clone()));
+        let smart_mix_generator = Arc::new(SmartMixGenerator::new(db_pool.clone()));
+
         Self {
             event_bus,
             db_pool,
@@ -70,6 +84,10 @@ impl CoreProcessor {
             playback_service,
             history_service,
             ranking_engine,
+            playlist_repo,
+            taste_engine,
+            recommender,
+            smart_mix_generator,
             config: Arc::new(RwLock::new(config)),
         }
     }
@@ -102,6 +120,26 @@ impl CoreProcessor {
     /// Access the RankingEngine handle.
     pub fn ranking_engine(&self) -> Arc<RankingEngine> {
         self.ranking_engine.clone()
+    }
+
+    /// Access the PlaylistRepository handle.
+    pub fn playlist_repo(&self) -> Arc<SqlitePlaylistRepository> {
+        self.playlist_repo.clone()
+    }
+
+    /// Access the TasteProfileEngine handle.
+    pub fn taste_engine(&self) -> Arc<TasteProfileEngine> {
+        self.taste_engine.clone()
+    }
+
+    /// Access the LocalRecommender handle.
+    pub fn recommender(&self) -> Arc<LocalRecommender> {
+        self.recommender.clone()
+    }
+
+    /// Access the SmartMixGenerator handle.
+    pub fn smart_mix_generator(&self) -> Arc<SmartMixGenerator> {
+        self.smart_mix_generator.clone()
     }
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
@@ -230,8 +268,56 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
 
+            // --- Playlists & Recommendations ---
+            Command::GenerateSmartMix { mix_type } => {
+                let playlist = self.smart_mix_generator.generate_mix(&mix_type).await?;
+                let tracks = self.playlist_repo.get_playlist_tracks(&playlist.id).await?;
+                let track_count = tracks.len();
+                let mix_type_name = playlist.mix_type.clone().unwrap_or_else(|| "custom".to_string());
+
+                let _ = self.event_bus.publish(Event::SmartMixGenerated {
+                    playlist_id: playlist.id.clone(),
+                    mix_type: mix_type_name,
+                    track_count,
+                });
+
+                Ok(CommandResponse::MixGenerated {
+                    playlist_id: playlist.id,
+                    track_count,
+                })
+            }
+            Command::CreatePlaylist { name, description } => {
+                let now = chrono::Utc::now().timestamp();
+                let id = format!("pl_{}", uuid::Uuid::new_v4());
+                let record = PlaylistRecord {
+                    id: id.clone(),
+                    name,
+                    description,
+                    is_smart_mix: 0,
+                    mix_type: None,
+                    generation_reason: None,
+                    expires_at: None,
+                    created_at: now,
+                    updated_at: now,
+                };
+                self.playlist_repo.create_playlist(&record).await?;
+                Ok(CommandResponse::EntityId(id))
+            }
+            Command::DeletePlaylist { playlist_id } => {
+                self.playlist_repo.delete_playlist(&playlist_id).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::AddTrackToPlaylist { playlist_id, track_id } => {
+                self.playlist_repo.add_track(&playlist_id, &track_id, None).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RemoveTrackFromPlaylist { playlist_id, track_id } => {
+                self.playlist_repo.remove_track(&playlist_id, &track_id).await?;
+                Ok(CommandResponse::Ok)
+            }
+
             _ => {
-                warn!(?cmd, "Command handler routed to stub during Phase 4");
+                warn!(?cmd, "Command handler routed to stub during Phase 5");
                 Ok(CommandResponse::Ok)
             }
         }
@@ -358,8 +444,46 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::SearchResults(val))
             }
+            Query::GetTasteProfile => {
+                let profile = self.taste_engine.compute_taste_profile().await?;
+                let val = serde_json::to_value(&profile)
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                Ok(QueryResponse::TasteProfile(val))
+            }
+            Query::GetLocalRecommendations { limit } => {
+                let recs = self.recommender.recommend(limit as usize).await?;
+                let val: Vec<serde_json::Value> = recs
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(QueryResponse::Recommendations(val))
+            }
+            Query::GetSmartMixes => {
+                let mixes = self.playlist_repo.get_smart_mixes().await?;
+                let val: Vec<serde_json::Value> = mixes
+                    .into_iter()
+                    .filter_map(|m| serde_json::to_value(m).ok())
+                    .collect();
+                Ok(QueryResponse::SmartMixes(val))
+            }
+            Query::GetPlaylists => {
+                let playlists = self.playlist_repo.get_all_playlists().await?;
+                let val: Vec<serde_json::Value> = playlists
+                    .into_iter()
+                    .filter_map(|p| serde_json::to_value(p).ok())
+                    .collect();
+                Ok(QueryResponse::Playlists(val))
+            }
+            Query::GetPlaylistTracks { playlist_id } => {
+                let tracks = self.playlist_repo.get_playlist_tracks(&playlist_id).await?;
+                let val: Vec<serde_json::Value> = tracks
+                    .into_iter()
+                    .filter_map(|t| serde_json::to_value(t).ok())
+                    .collect();
+                Ok(QueryResponse::PlaylistTracks(val))
+            }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 4");
+                warn!(?query, "Query handler routed to stub during Phase 5");
                 Ok(QueryResponse::Empty)
             }
         }

@@ -52,12 +52,20 @@ This roadmap defines the sequential, incremental progression of the music player
 
 ---
 
-## Phase 5 — Smart Local Recommendations & Mixes (Active)
-- [ ] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras.
-- [ ] Local offline recommendation engine with explainability factor breakdown.
-- [ ] Smart temporary mix generator (Daily Mix, On Repeat, Forgotten Favorites, Genre Mixes, Artist Radios).
-- [ ] Repetition avoidance and controlled entropy/randomness.
-- [ ] Recommendation scoring tests.
+## Phase 5 — Smart Local Recommendations & Mixes (Completed)
+- [x] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras.
+- [x] Local offline recommendation engine with explainability factor breakdown.
+- [x] Smart temporary mix generator (Daily Mix, On Repeat, Forgotten Favorites, Genre Mixes, Artist Radios, Late Night, Discovery).
+- [x] Repetition avoidance and controlled entropy/randomness.
+- [x] Recommendation scoring tests.
+
+---
+
+## Phase 6 — External Metadata Providers (Active)
+- [ ] MusicBrainz API integration for artist & album metadata enrichment.
+- [ ] Cover Art Archive provider for missing artwork fetching and local caching.
+- [ ] Spotify Web API client for discovery & metadata enrichment.
+- [ ] Rate limiting, token caching, and provider failover architecture.
 
 ---
 

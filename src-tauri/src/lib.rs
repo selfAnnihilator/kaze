@@ -6,6 +6,7 @@ pub mod library;
 pub mod logging;
 pub mod playback;
 pub mod ranking;
+pub mod recommendations;
 
 pub use config::AppConfig;
 pub use core::{

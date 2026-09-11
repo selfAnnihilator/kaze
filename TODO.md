@@ -1,24 +1,28 @@
 # Project Task Tracking
 
-## Current (Phase 5: Smart Local Recommendations & Mixes)
-- [ ] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras.
-- [ ] Local offline recommendation engine with explainability factor breakdown.
-- [ ] Smart temporary mix generator (Daily Mix, On Repeat, Forgotten Favorites, Genre Mixes, Artist Radios).
-- [ ] Repetition avoidance and controlled entropy/randomness.
-- [ ] Recommendation scoring tests.
-
-## Next (Phase 6: External Metadata Providers)
+## Current (Phase 6: External Metadata Providers)
 - [ ] MusicBrainz API integration for artist & album metadata enrichment.
 - [ ] Cover Art Archive provider for missing artwork fetching and local caching.
 - [ ] Spotify Web API client for discovery & metadata enrichment.
 - [ ] Rate limiting, token caching, and provider failover architecture.
 
-## Later (Phases 7 - 9)
-- [ ] Discovery recommendations, fuzzy track matcher, and wishlist (Phase 7).
+## Next (Phase 7: Discovery & Missing Music Matching)
+- [ ] Discovery recommendations, fuzzy track matcher, and wishlist.
+- [ ] Soulseek client integration (Phase 8).
+- [ ] Tauri React/TS frontend and presentation layer (Phase 9).
+
+## Later (Phases 8 - 9)
 - [ ] Soulseek client integration (Phase 8).
 - [ ] Tauri React/TS frontend and presentation layer (Phase 9).
 
 ## Completed
+- [x] Phase 5 Smart Local Recommendations & Mixes:
+  - [x] User taste profile engine: short-term vs long-term affinity for artists, genres, and eras (`TasteProfileEngine`).
+  - [x] Local offline recommendation engine with explainability factor breakdown (`LocalRecommender`, `ScoringEngine`).
+  - [x] Smart temporary mix generator (`Daily`, `OnRepeat`, `ForgottenFavorites`, `Genre`, `Artist`, `LateNight`, `Discovery`).
+  - [x] Repetition avoidance (-50% <24h, -30% <72h, -15% <7d) and controlled entropy/randomness.
+  - [x] Playlist repository and persistence (`SqlitePlaylistRepository`, `SqliteRecommendationRepository`).
+  - [x] Recommendation scoring and diversity tests in `tests/recommendation_tests.rs`.
 - [x] Phase 4 Listening History & Statistics:
   - [x] Playback history database logging (`listening_history` table).
   - [x] Meaningful-play threshold evaluation (>= 30s or >= 50%).
