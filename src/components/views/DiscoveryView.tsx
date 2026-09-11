@@ -1,17 +1,17 @@
 import React from "react";
-import { Download, Sparkles, Check, Bookmark } from "lucide-react";
+import { DownloadCloud, Sparkles, Check, Bookmark } from "lucide-react";
 import { DiscoveryRecommendation } from "../../types";
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
-  onSearchSoulseek: (artist: string, title: string) => void;
+  onSearchDirect: (artist: string, title: string) => void;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   recommendations,
   onAddToWishlist,
-  onSearchSoulseek,
+  onSearchDirect,
 }) => {
   const getBadgeClass = (status: string) => {
     switch (status) {
@@ -93,11 +93,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => onSearchSoulseek(rec.artist, rec.title)}
-                  title="Search Soulseek network for this track"
+                  onClick={() => onSearchDirect(rec.artist, rec.title)}
+                  title="Search & download directly in-app"
                 >
-                  <Download size={15} />
-                  <span>Search</span>
+                  <DownloadCloud size={15} color="var(--accent-light)" />
+                  <span>Download Direct</span>
                 </button>
 
                 {rec.in_wishlist ? (

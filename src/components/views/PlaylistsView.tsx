@@ -23,6 +23,7 @@ interface PlaylistsViewProps {
   onSaveImportedPlaylist: (name: string, trackIds: string[]) => Promise<void>;
   onAddMissingToWishlist: (tracks: any[]) => Promise<void>;
   onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
+  onSearchDirect?: (artist: string, title: string, album?: string) => void;
   onFetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
   onPlayTrack: (trackId: string) => void;
   queuedTrackIds?: Set<string>;
@@ -39,6 +40,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onSaveImportedPlaylist,
   onAddMissingToWishlist,
   onLaunchSoulseek,
+  onSearchDirect,
   onFetchPlaylistTracks,
   onPlayTrack,
   queuedTrackIds,
@@ -770,21 +772,40 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                     )}
 
                     {spotifyResult.missing_tracks > 0 && (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => {
-                          const firstMissing = spotifyResult.tracks.find((t) => !t.in_library);
-                          if (firstMissing) {
-                            handleSearchMissingInSoulseek(firstMissing.title, firstMissing.artist);
-                          } else {
-                            onLaunchSoulseek();
-                          }
-                        }}
-                        title="Launch SoulseekQt to search and download missing tracks"
-                      >
-                        <DownloadCloud size={15} color="var(--accent-light)" />
-                        <span>Open SoulseekQt</span>
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {onSearchDirect && (
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                              const firstMissing = spotifyResult.tracks.find((t) => !t.in_library);
+                              if (firstMissing) {
+                                onSearchDirect(firstMissing.artist, firstMissing.title);
+                              }
+                            }}
+                            title="Directly search and download missing tracks in-app"
+                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                          >
+                            <DownloadCloud size={15} />
+                            <span>Download Missing Direct</span>
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            const firstMissing = spotifyResult.tracks.find((t) => !t.in_library);
+                            if (firstMissing) {
+                              handleSearchMissingInSoulseek(firstMissing.title, firstMissing.artist);
+                            } else {
+                              onLaunchSoulseek();
+                            }
+                          }}
+                          title="Optional: Launch SoulseekQt to search and download missing tracks"
+                          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Open SoulseekQt</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -798,7 +819,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         <th>Track</th>
                         <th>Artist</th>
                         <th style={{ width: "130px", textAlign: "center" }}>Status</th>
-                        <th style={{ width: "160px", textAlign: "center" }}>Soulseek</th>
+                        <th style={{ width: "190px", textAlign: "center" }}>Download Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -821,15 +842,28 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                           </td>
                           <td style={{ textAlign: "center" }}>
                             {!tr.in_library && (
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                                onClick={() => handleSearchMissingInSoulseek(tr.title, tr.artist)}
-                                title="Search and download in SoulseekQt"
-                              >
-                                <ExternalLink size={12} />
-                                <span>Find in SoulseekQt</span>
-                              </button>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                {onSearchDirect && (
+                                  <button
+                                    className="btn btn-primary"
+                                    style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    onClick={() => onSearchDirect(tr.artist, tr.title)}
+                                    title="Search & download directly in-app"
+                                  >
+                                    <DownloadCloud size={12} />
+                                    <span>Direct</span>
+                                  </button>
+                                )}
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                  onClick={() => handleSearchMissingInSoulseek(tr.title, tr.artist)}
+                                  title="Search in SoulseekQt"
+                                >
+                                  <ExternalLink size={12} />
+                                  <span>Soulseek</span>
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>

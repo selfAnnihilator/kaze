@@ -117,19 +117,31 @@ impl DownloadProvider for YtDlpProvider {
                     .and_then(|v| v.as_f64())
                     .unwrap_or(180.0) as i64;
 
-                // Approximate file size for 320kbps MP3 (40 KB per second)
-                let approx_size = duration_secs * 40_000;
-
-                // Sanitize filename for local storage
-                let clean_filename =
-                    sanitize_filename(&format!("{} - {}.mp3", uploader, raw_title));
-
+                // 1. Lossless FLAC stream option (Audiophile 24-bit/48kHz)
+                let flac_filename =
+                    sanitize_filename(&format!("{} - {}.flac", uploader, raw_title));
                 results.push(DownloadSearchResult {
-                    id: format!("ytdlp_{}", vid_id),
+                    id: format!("ytdlp_flac_{}", vid_id),
                     provider: "yt-dlp".to_string(),
                     username: uploader.to_string(),
-                    filename: clean_filename,
-                    file_size: approx_size,
+                    filename: flac_filename,
+                    file_size: duration_secs * 120_000,
+                    bitrate: None,
+                    sample_rate: Some(48000),
+                    format: "flac".to_string(),
+                    slots_free: true,
+                    speed_bps: 20_000_000,
+                });
+
+                // 2. High-speed 320kbps MP3 option (Standard High Quality)
+                let mp3_filename =
+                    sanitize_filename(&format!("{} - {}.mp3", uploader, raw_title));
+                results.push(DownloadSearchResult {
+                    id: format!("ytdlp_mp3_{}", vid_id),
+                    provider: "yt-dlp".to_string(),
+                    username: uploader.to_string(),
+                    filename: mp3_filename,
+                    file_size: duration_secs * 40_000,
                     bitrate: Some(320),
                     sample_rate: Some(44100),
                     format: "mp3".to_string(),
@@ -148,11 +160,16 @@ impl DownloadProvider for YtDlpProvider {
         result: &DownloadSearchResult,
         destination_dir: &Path,
     ) -> AppResult<String> {
-        let video_id = result
-            .id
-            .strip_prefix("ytdlp_")
-            .unwrap_or(&result.id)
-            .to_string();
+        let is_flac = result.id.starts_with("ytdlp_flac_") || result.format.to_lowercase() == "flac";
+        let video_id = if let Some(vid) = result.id.strip_prefix("ytdlp_flac_") {
+            vid.to_string()
+        } else if let Some(vid) = result.id.strip_prefix("ytdlp_mp3_") {
+            vid.to_string()
+        } else if let Some(vid) = result.id.strip_prefix("ytdlp_") {
+            vid.to_string()
+        } else {
+            result.id.clone()
+        };
         let task_id = Uuid::new_v4().to_string();
 
         let clean_filename = sanitize_filename(&result.filename);
@@ -189,19 +206,22 @@ impl DownloadProvider for YtDlpProvider {
         tokio::spawn(async move {
             let url = format!("https://www.youtube.com/watch?v={}", video_id);
             let mut cmd = tokio::process::Command::new(&binary_path);
-            cmd.args([
-                &url,
+            let mut args = vec![
+                url.as_str(),
                 "-x",
                 "--audio-format",
-                "mp3",
+                if is_flac { "flac" } else { "mp3" },
                 "--audio-quality",
                 "0",
-                "--embed-thumbnail",
                 "--add-metadata",
                 "--no-playlist",
                 "--newline",
-                "-o",
-            ]);
+            ];
+            if !is_flac {
+                args.push("--embed-thumbnail");
+            }
+            args.push("-o");
+            cmd.args(&args);
             cmd.arg(&out_template);
             cmd.stdout(Stdio::piped());
             cmd.stderr(Stdio::piped());

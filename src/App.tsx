@@ -824,12 +824,9 @@ export const App: React.FC = () => {
     fetchDownloads();
   };
 
-  // Navigation shortcut to search Soulseek from other views
-  const handleInitiateSoulseekSearch = async (artist: string, title: string, album?: string) => {
-    const q = title.trim() || artist.trim();
-    const f = title.trim() && artist.trim() ? artist.trim() : undefined;
+  // Navigation shortcut to search & download directly in-app from other views
+  const handleInitiateDirectDownloadSearch = (artist: string, title: string, album?: string) => {
     setSoulseekSearch({ artist, title, album });
-    await handleLaunchSoulseek(q, f);
     setCurrentView("downloads");
   };
 
@@ -901,6 +898,7 @@ export const App: React.FC = () => {
             onSaveImportedPlaylist={handleSaveImportedPlaylist}
             onAddMissingToWishlist={handleAddMissingToWishlist}
             onLaunchSoulseek={handleLaunchSoulseek}
+            onSearchDirect={handleInitiateDirectDownloadSearch}
             onFetchPlaylistTracks={handleFetchPlaylistTracks}
             onPlayTrack={handlePlayTrack}
             queuedTrackIds={queuedTrackIds}
@@ -920,6 +918,7 @@ export const App: React.FC = () => {
             onSaveImportedPlaylist={handleSaveImportedPlaylist}
             onAddMissingToWishlist={handleAddMissingToWishlist}
             onLaunchSoulseek={handleLaunchSoulseek}
+            onSearchDirect={handleInitiateDirectDownloadSearch}
             onFetchPlaylistTracks={handleFetchPlaylistTracks}
             onPlayTrack={handlePlayTrack}
             queuedTrackIds={queuedTrackIds}
@@ -934,8 +933,8 @@ export const App: React.FC = () => {
             onAddToWishlist={(rec) =>
               handleAddToWishlist(rec.title, rec.artist, rec.album)
             }
-            onSearchSoulseek={(artist, title) =>
-              handleInitiateSoulseekSearch(artist, title)
+            onSearchDirect={(artist, title) =>
+              handleInitiateDirectDownloadSearch(artist, title)
             }
           />
         )}
@@ -945,7 +944,8 @@ export const App: React.FC = () => {
             wishlist={wishlist}
             onAddToWishlist={handleAddToWishlist}
             onUpdateStatus={handleUpdateWishlistStatus}
-            onSearchSoulseek={handleInitiateSoulseekSearch}
+            onSearchDirect={handleInitiateDirectDownloadSearch}
+            onLaunchSoulseek={handleLaunchSoulseek}
           />
         )}
 

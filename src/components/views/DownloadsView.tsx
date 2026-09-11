@@ -47,6 +47,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
   const [searchStatus, setSearchStatus] = useState<"idle" | "searching" | "succeeded" | "no_results" | "error">("idle");
   const [lastQuery, setLastQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [formatFilter, setFormatFilter] = useState<"ALL" | "FLAC" | "MP3">("ALL");
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
   const [feedbackBanner, setFeedbackBanner] = useState<{
     type: "success" | "info";
@@ -119,6 +120,16 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
+
+  const displayedResults = searchResults.filter((res) => {
+    if (formatFilter === "ALL") return true;
+    if (formatFilter === "FLAC") return res.format.toLowerCase() === "flac";
+    if (formatFilter === "MP3") return res.format.toLowerCase() === "mp3";
+    return true;
+  });
+
+  const flacCount = searchResults.filter((r) => r.format.toLowerCase() === "flac").length;
+  const mp3Count = searchResults.filter((r) => r.format.toLowerCase() === "mp3").length;
 
   const filteredTasks = downloads.filter((task) => {
     if (statusFilter === "ALL") return true;
@@ -398,10 +409,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 </div>
                 <div>
                   <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
-                    2. Audio Quality
+                    2. Quality & Formats
                   </div>
                   <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {searchResults.length > 0 ? "320 kbps MP3 Ready" : "High bitrate audio"}
+                    {searchResults.length > 0 ? "FLAC Lossless & 320k MP3" : "Studio FLAC & 320kbps MP3"}
                   </div>
                 </div>
               </div>
@@ -596,7 +607,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 style={{ fontSize: "0.85rem" }}
               >
                 <ExternalLink size={15} />
-                <span>Search in SoulseekQt</span>
+                <span>Search SoulseekQt (External)</span>
               </button>
 
               <button
@@ -858,21 +869,62 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "12px",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: "var(--text-dim)",
-                  }}
-                >
-                  Found {searchResults.length} Audio Stream(s)
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--text-dim)",
+                    }}
+                  >
+                    Found {searchResults.length} Audio Stream(s)
+                  </span>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setFormatFilter("ALL")}
+                      className={`subtab-btn ${formatFilter === "ALL" ? "active" : ""}`}
+                    >
+                      All ({searchResults.length})
+                    </button>
+                    {flacCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormatFilter("FLAC")}
+                        className={`subtab-btn ${formatFilter === "FLAC" ? "active" : ""}`}
+                        style={{
+                          color: formatFilter === "FLAC" ? "#000" : "var(--accent-light)",
+                          borderColor: "rgba(139, 92, 246, 0.4)",
+                        }}
+                      >
+                        FLAC Lossless ({flacCount})
+                      </button>
+                    )}
+                    {mp3Count > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormatFilter("MP3")}
+                        className={`subtab-btn ${formatFilter === "MP3" ? "active" : ""}`}
+                        style={{
+                          color: formatFilter === "MP3" ? "#000" : "#10b981",
+                          borderColor: "rgba(16, 185, 129, 0.4)",
+                        }}
+                      >
+                        MP3 320k ({mp3Count})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <span style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
-                  Downloads save directly to your local library folder
+                  Downloads auto-import into your local library upon completion
                 </span>
               </div>
 
@@ -886,7 +938,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {searchResults.map((res) => {
+                  {displayedResults.map((res) => {
                     const isStarting = downloadingIds.has(res.id);
                     const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
                     const task = findTaskForResult(res);
@@ -914,13 +966,13 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "6px",
-                                  color: "#10b981",
+                                  color: res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "#10b981",
                                   fontWeight: 600,
                                   fontSize: "0.8rem",
                                 }}
                               >
-                                <Zap size={13} color="#10b981" />
-                                <span>Direct High-Speed</span>
+                                <Zap size={13} color={res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "#10b981"} />
+                                <span>{res.format.toLowerCase() === "flac" ? "Direct Lossless Studio" : "Direct High-Speed 320k"}</span>
                               </div>
                               <div
                                 style={{
@@ -967,8 +1019,37 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                           )}
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600, color: "var(--text-main)", fontSize: "0.82rem" }}>
-                            {res.format.toUpperCase()} {res.bitrate ? `${res.bitrate} kbps` : "320 kbps"}
+                          <div style={{ fontWeight: 600, color: "var(--text-main)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span>{res.format.toUpperCase()}</span>
+                            {res.format.toLowerCase() === "flac" ? (
+                              <span
+                                style={{
+                                  fontSize: "0.68rem",
+                                  fontWeight: 700,
+                                  color: "var(--accent-light)",
+                                  backgroundColor: "rgba(139, 92, 246, 0.15)",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  border: "1px solid rgba(139, 92, 246, 0.3)",
+                                }}
+                              >
+                                24-BIT LOSSLESS
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: "0.68rem",
+                                  fontWeight: 700,
+                                  color: "#10b981",
+                                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                                }}
+                              >
+                                320 KBPS
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: "2px" }}>
                             {formatBytes(res.file_size)}
@@ -1070,10 +1151,11 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "6px",
+                                backgroundColor: res.format.toLowerCase() === "flac" ? "var(--accent)" : undefined,
                               }}
                             >
                               <DownloadCloud size={14} />
-                              <span>Download</span>
+                              <span>{res.format.toLowerCase() === "flac" ? "Download FLAC" : "Download MP3"}</span>
                             </button>
                           )}
                         </td>

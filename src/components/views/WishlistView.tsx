@@ -4,7 +4,8 @@ import {
   Bookmark,
   Search,
   Plus,
-  CloudDownload,
+  DownloadCloud,
+  ExternalLink,
   CheckCircle2,
   XCircle,
   Clock,
@@ -17,14 +18,16 @@ interface WishlistViewProps {
     id: string,
     status: "want" | "ignore" | "already_own" | "downloaded"
   ) => Promise<void>;
-  onSearchSoulseek: (artist: string, title: string, album?: string) => void;
+  onSearchDirect: (artist: string, title: string, album?: string) => void;
+  onLaunchSoulseek?: (query?: string, filter?: string) => Promise<void>;
 }
 
 export const WishlistView: React.FC<WishlistViewProps> = ({
   wishlist,
   onAddToWishlist,
   onUpdateStatus,
-  onSearchSoulseek,
+  onSearchDirect,
+  onLaunchSoulseek,
 }) => {
   const [filter, setFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
@@ -258,15 +261,31 @@ export const WishlistView: React.FC<WishlistViewProps> = ({
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
                       <button
-                        onClick={() => onSearchSoulseek(item.artist, item.title, item.album)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold transition border border-emerald-500/30"
-                        title="Search and download on Soulseek"
+                        onClick={() => onSearchDirect(item.artist, item.title, item.album)}
+                        className="btn btn-primary"
+                        style={{ fontSize: "0.8rem", padding: "5px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                        title="Search & download directly in-app"
                       >
-                        <CloudDownload size={14} />
-                        <span>Find on Soulseek</span>
+                        <DownloadCloud size={14} />
+                        <span>Direct Download</span>
                       </button>
+                      {onLaunchSoulseek && (
+                        <button
+                          onClick={() => {
+                            const query = item.title.trim() || item.artist.trim();
+                            const filter = item.title.trim() && item.artist.trim() ? item.artist.trim() : undefined;
+                            onLaunchSoulseek(query, filter);
+                          }}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "0.78rem", padding: "5px 10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                          title="Optional: search in external SoulseekQt app"
+                        >
+                          <ExternalLink size={12} />
+                          <span>Soulseek</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
