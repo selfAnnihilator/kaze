@@ -42,6 +42,8 @@ impl WishlistManager {
                     album: album.clone(),
                     duration_secs: None,
                     cover_art_url: None,
+                    preview_url: None,
+                    genre: None,
                     match_status: "NOT_FOUND".to_string(),
                     matched_local_track_id: None,
                     created_at: now,

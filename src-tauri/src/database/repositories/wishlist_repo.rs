@@ -134,14 +134,16 @@ impl WishlistRepository for SqliteWishlistRepository {
         sqlx::query(
             "INSERT INTO external_tracks (
                 id, provider, provider_id, title, artist, album,
-                duration_secs, cover_art_url, match_status, matched_local_track_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                duration_secs, cover_art_url, preview_url, genre, match_status, matched_local_track_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(provider, provider_id) DO UPDATE SET
                 title = excluded.title,
                 artist = excluded.artist,
                 album = excluded.album,
                 duration_secs = excluded.duration_secs,
                 cover_art_url = excluded.cover_art_url,
+                preview_url = excluded.preview_url,
+                genre = excluded.genre,
                 match_status = excluded.match_status,
                 matched_local_track_id = excluded.matched_local_track_id"
         )
@@ -153,6 +155,8 @@ impl WishlistRepository for SqliteWishlistRepository {
         .bind(&track.album)
         .bind(track.duration_secs)
         .bind(&track.cover_art_url)
+        .bind(&track.preview_url)
+        .bind(&track.genre)
         .bind(&track.match_status)
         .bind(&track.matched_local_track_id)
         .bind(track.created_at)
@@ -166,7 +170,7 @@ impl WishlistRepository for SqliteWishlistRepository {
     async fn get_external_track(&self, id: &str) -> AppResult<Option<ExternalTrackRecord>> {
         let track = sqlx::query_as::<_, ExternalTrackRecord>(
             "SELECT id, provider, provider_id, title, artist, album,
-                    duration_secs, cover_art_url, match_status, matched_local_track_id, created_at
+                    duration_secs, cover_art_url, preview_url, genre, match_status, matched_local_track_id, created_at
              FROM external_tracks WHERE id = ?"
         )
         .bind(id)
@@ -204,7 +208,7 @@ impl WishlistRepository for SqliteWishlistRepository {
         let tracks = if let Some(status) = match_status {
             sqlx::query_as::<_, ExternalTrackRecord>(
                 "SELECT id, provider, provider_id, title, artist, album,
-                        duration_secs, cover_art_url, match_status, matched_local_track_id, created_at
+                        duration_secs, cover_art_url, preview_url, genre, match_status, matched_local_track_id, created_at
                  FROM external_tracks
                  WHERE match_status = ?
                  ORDER BY created_at DESC
@@ -217,7 +221,7 @@ impl WishlistRepository for SqliteWishlistRepository {
         } else {
             sqlx::query_as::<_, ExternalTrackRecord>(
                 "SELECT id, provider, provider_id, title, artist, album,
-                        duration_secs, cover_art_url, match_status, matched_local_track_id, created_at
+                        duration_secs, cover_art_url, preview_url, genre, match_status, matched_local_track_id, created_at
                  FROM external_tracks
                  ORDER BY created_at DESC
                  LIMIT ?"

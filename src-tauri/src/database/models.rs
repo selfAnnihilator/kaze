@@ -131,6 +131,8 @@ pub struct ExternalTrackRecord {
     pub album: Option<String>,
     pub duration_secs: Option<f64>,
     pub cover_art_url: Option<String>,
+    pub preview_url: Option<String>,
+    pub genre: Option<String>,
     pub match_status: String,
     pub matched_local_track_id: Option<String>,
     pub created_at: i64,

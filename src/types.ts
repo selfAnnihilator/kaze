@@ -111,6 +111,8 @@ export interface DiscoveryRecommendation {
   album?: string;
   duration_secs?: number;
   cover_art_url?: string;
+  preview_url?: string;
+  genre?: string;
   match_status: "EXACT_MATCH" | "LIKELY_MATCH" | "POSSIBLE_MATCH" | "NOT_FOUND";
   matched_local_track_id?: string;
   recommendation_reason: string;
