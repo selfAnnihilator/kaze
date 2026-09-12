@@ -9,8 +9,9 @@ use crate::database::repositories::{
     PlaylistRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteStatsRepository, SqliteWishlistRepository,
 };
-use crate::discovery::{DiscoveryCoordinator, WishlistManager};
+use crate::discovery::{DiscoveryCoordinator, DiscoveryRecommendation, FuzzyTrackMatcher, WishlistManager};
 use crate::downloads::{DownloadProvider, DownloadService, SoulseekProvider};
+use std::collections::HashSet;
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -685,10 +686,13 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::Wishlist(val))
             }
-            Query::GetDiscoveryRecommendations { limit } => {
+            Query::GetDiscoveryRecommendations {
+                limit,
+                force_refresh,
+            } => {
                 let recs = self
                     .discovery_coordinator
-                    .get_discovery_recommendations(limit as usize)
+                    .get_discovery_recommendations(limit as usize, force_refresh.unwrap_or(false))
                     .await?;
                 let val: Vec<serde_json::Value> = recs
                     .into_iter()
@@ -726,6 +730,98 @@ impl CoreProcessor {
                         "Full track stream not available".to_string(),
                     ))
                 }
+            }
+            Query::SearchOnlineMusic { query, limit } => {
+                info!(query = %query, "Processor dispatching SearchOnlineMusic");
+                let limit_val = limit.unwrap_or(30) as usize;
+                let mut results = self
+                    .discovery_coordinator
+                    .search_online_music(&query, limit_val)
+                    .await
+                    .unwrap_or_else(|e| {
+                        warn!(error = %e, "search_online_music failed, falling back to empty list");
+                        Vec::new()
+                    });
+
+                // Dual-source fallback: If online iTunes search returns few or zero items,
+                // fall back to download network (yt-dlp / YouTube), which captures regional, indie, and unreleased music
+                if results.len() < 5 {
+                    info!(query = %query, existing_count = results.len(), "Augmenting online search with audio download network");
+                    if let Ok(dl_results) = self.download_service.search(&query).await {
+                        let mut seen_keys: HashSet<String> = results
+                            .iter()
+                            .map(|r| format!("{}:{}", r.artist.to_lowercase().trim(), r.title.to_lowercase().trim()))
+                            .collect();
+
+                        let local_tracks = self
+                            .library_service
+                            .track_repo()
+                            .list_tracks(0, 10000, None, true)
+                            .await
+                            .unwrap_or_default();
+                        let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
+                            .iter()
+                            .map(|t| (t.id.as_str(), t.title.as_str(), t.artist_name.as_deref().unwrap_or(""), t.duration_secs))
+                            .collect();
+
+                        let wishlist_items = self.wishlist_manager.get_wishlist(None).await.unwrap_or_default();
+                        let wishlist_keys: HashSet<String> = wishlist_items
+                            .iter()
+                            .map(|w| format!("{}:{}", w.artist.to_lowercase().trim(), w.title.to_lowercase().trim()))
+                            .collect();
+
+                        for dl_res in dl_results {
+                            let raw_name = dl_res.filename.trim_end_matches(".mp3").trim_end_matches(".flac");
+                            let (artist, title) = if let Some((a, t)) = raw_name.split_once(" - ") {
+                                (a.trim().to_string(), t.trim().to_string())
+                            } else {
+                                (dl_res.username.clone(), raw_name.to_string())
+                            };
+
+                            let key = format!("{}:{}", artist.to_lowercase().trim(), title.to_lowercase().trim());
+                            if seen_keys.contains(&key) {
+                                continue;
+                            }
+                            seen_keys.insert(key.clone());
+
+                            let match_res = FuzzyTrackMatcher::find_best_match(
+                                &title,
+                                &artist,
+                                None,
+                                candidate_local_tuples.iter().copied(),
+                            );
+                            let in_wishlist = wishlist_keys.contains(&key);
+
+                            results.push(DiscoveryRecommendation {
+                                external_track_id: format!("download:{}", dl_res.id),
+                                provider: dl_res.provider.clone(),
+                                provider_id: dl_res.id.clone(),
+                                title,
+                                artist,
+                                album: None,
+                                duration_secs: Some(210.0),
+                                cover_art_url: None,
+                                preview_url: None,
+                                genre: Some("Online Audio Stream".to_string()),
+                                match_status: match_res.status,
+                                matched_local_track_id: match_res.matched_track_id,
+                                recommendation_reason: format!("Stream source for \"{}\"", query.trim()),
+                                in_wishlist,
+                            });
+
+                            if results.len() >= limit_val {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                info!(count = results.len(), "Processor returning SearchOnlineMusic recommendations");
+                let json_arr: Vec<serde_json::Value> = results
+                    .into_iter()
+                    .map(|r| serde_json::to_value(r).unwrap_or_default())
+                    .collect();
+                Ok(QueryResponse::DiscoveryRecommendations(json_arr))
             }
             _ => {
                 warn!(?query, "Query handler routed to stub during Phase 8");

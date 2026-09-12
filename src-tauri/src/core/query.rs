@@ -71,6 +71,8 @@ pub enum Query {
     },
     GetDiscoveryRecommendations {
         limit: u32,
+        #[serde(default)]
+        force_refresh: Option<bool>,
     },
     GetWishlist,
     GetDownloads {
@@ -85,6 +87,11 @@ pub enum Query {
     ResolveFullTrackAudio {
         artist: String,
         title: String,
+    },
+    SearchOnlineMusic {
+        query: String,
+        #[serde(default)]
+        limit: Option<u32>,
     },
 }
 

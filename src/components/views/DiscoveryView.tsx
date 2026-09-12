@@ -13,6 +13,8 @@ import {
   Volume2,
   X,
   Headphones,
+  Search,
+  Globe,
 } from "lucide-react";
 import { DiscoveryRecommendation } from "../../types";
 import { executeQuery } from "../../services/api";
@@ -21,7 +23,7 @@ interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onSearchDirect: (artist: string, title: string) => void;
-  onRefresh?: () => Promise<void>;
+  onRefresh?: (force?: boolean) => Promise<void>;
   onPausePlayback?: () => void;
 }
 
@@ -34,6 +36,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [refreshing, setRefreshing] = useState(false);
+
+  // Online Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [searchResults, setSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
 
   // Audio Preview State & Cache for Full Track Streams
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
@@ -138,15 +145,79 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     });
   };
 
+  const handleSearchOnline = async (queryOverride?: string) => {
+    const q = (typeof queryOverride === "string" ? queryOverride : searchQuery).trim();
+    if (!q) {
+      setSearchResults(null);
+      return;
+    }
+    setIsSearchingOnline(true);
+    try {
+      const res = await executeQuery({
+        query: "SearchOnlineMusic",
+        payload: { query: q, limit: 35 },
+      });
+      console.log("[DiscoveryView] SearchOnlineMusic response:", res);
+      
+      let incoming: DiscoveryRecommendation[] = [];
+      if (res && Array.isArray(res.data)) {
+        incoming = res.data;
+      }
+
+      // Case-insensitive merge with loaded recommendations matching query
+      // so songs that were already displayed on screen never vanish
+      const qLower = q.toLowerCase();
+      const seenKeys = new Set(
+        incoming.map((r) => `${r.artist.toLowerCase().trim()}:${r.title.toLowerCase().trim()}`)
+      );
+
+      for (const rec of recommendations) {
+        const key = `${rec.artist.toLowerCase().trim()}:${rec.title.toLowerCase().trim()}`;
+        if (!seenKeys.has(key)) {
+          if (
+            rec.title.toLowerCase().includes(qLower) ||
+            rec.artist.toLowerCase().includes(qLower) ||
+            (rec.album && rec.album.toLowerCase().includes(qLower)) ||
+            (rec.genre && rec.genre.toLowerCase().includes(qLower))
+          ) {
+            incoming.push(rec);
+            seenKeys.add(key);
+          }
+        }
+      }
+
+      setSearchResults(incoming);
+    } catch (err) {
+      console.error("Online music search failed:", err);
+      // Fallback: Show loaded recommendations matching the query case-insensitively
+      const qLower = q.toLowerCase();
+      const fallbackMatches = recommendations.filter(
+        (rec) =>
+          rec.title.toLowerCase().includes(qLower) ||
+          rec.artist.toLowerCase().includes(qLower) ||
+          (rec.album && rec.album.toLowerCase().includes(qLower))
+      );
+      setSearchResults(fallbackMatches);
+    } finally {
+      setIsSearchingOnline(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setSearchResults(null);
+  };
+
   const fetchFullSongStream = async (rec: DiscoveryRecommendation) => {
     setResolvingId(rec.external_track_id);
+    let streamResolved = false;
     try {
       const res = await executeQuery({
         query: "ResolveFullTrackAudio",
         payload: { artist: rec.artist, title: rec.title },
       });
 
-      if (res && res.type === "FullTrackAudio" && res.data) {
+      if (res && res.type === "FullTrackAudio" && res.data && res.data.stream_url) {
         const streamUrl = res.data.stream_url;
         const duration = res.data.duration_secs || 240;
 
@@ -160,12 +231,25 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           setIsFullSongActive(true);
           setActiveDuration(duration);
           setupAndPlayAudio(streamUrl, duration, 0);
+          streamResolved = true;
         }
       }
     } catch (e) {
       console.warn("Could not resolve full song stream:", e);
     } finally {
       setResolvingId((curr) => (curr === rec.external_track_id ? null : curr));
+    }
+
+    // Graceful fallback: If full song stream could not be resolved, fallback to preview snippet so it NEVER hangs
+    if (!streamResolved && playingPreviewIdRef.current === rec.external_track_id) {
+      if (rec.preview_url) {
+        console.info("Full stream unavailable, playing 30s preview snippet for:", rec.title);
+        setIsFullSongActive(false);
+        setActiveDuration(30);
+        setupAndPlayAudio(rec.preview_url, 30, 0);
+      } else {
+        handleStopPreview();
+      }
     }
   };
 
@@ -237,11 +321,17 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setPreviewCurrentTime(clickPos * dur);
   };
 
-  const handleRefreshClick = async () => {
-    if (!onRefresh) return;
+  const handleRefreshSection = async () => {
     setRefreshing(true);
     try {
-      await onRefresh();
+      if (isSearchActive && searchQuery.trim()) {
+        await handleSearchOnline(searchQuery.trim());
+        if (onRefresh) {
+          onRefresh(true).catch((e) => console.warn("Background discovery refresh error:", e));
+        }
+      } else if (onRefresh) {
+        await onRefresh(true);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -280,7 +370,26 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     return `${m}:${rem < 10 ? "0" : ""}${rem}`;
   };
 
-  const filteredRecs = recommendations.filter((rec) => {
+  const isSearchActive = searchResults !== null;
+  const currentList = isSearchActive ? searchResults : recommendations;
+
+  const qClean = searchQuery.trim();
+  const qLower = qClean.toLowerCase();
+
+  const filteredRecs = currentList.filter((rec) => {
+    if (isSearchActive) return true;
+
+    // Instant case-insensitive filtering on loaded recommendations
+    if (qLower) {
+      const matchTitle = rec.title.toLowerCase().includes(qLower);
+      const matchArtist = rec.artist.toLowerCase().includes(qLower);
+      const matchAlbum = rec.album ? rec.album.toLowerCase().includes(qLower) : false;
+      const matchGenre = rec.genre ? rec.genre.toLowerCase().includes(qLower) : false;
+      if (!matchTitle && !matchArtist && !matchAlbum && !matchGenre) {
+        return false;
+      }
+    }
+
     if (filter === "ALL") return true;
     const r = rec.recommendation_reason.toLowerCase();
     if (filter === "TRENDING") return r.includes("trending") || r.includes("chart");
@@ -320,25 +429,213 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             <span>Music Discovery</span>
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", marginTop: "4px" }}>
-            Trending music tailored to your taste profile, top genres, and artist listening habits.
+            Explore trending charts, user-tailored genres, or search any music online worldwide.
           </p>
         </div>
-
-        {onRefresh && (
-          <button
-            onClick={handleRefreshClick}
-            disabled={refreshing}
-            className="btn btn-secondary"
-            style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem" }}
-            title="Refresh discovery recommendations"
-          >
-            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-            <span>{refreshing ? "Refreshing..." : "Refresh Discovery"}</span>
-          </button>
-        )}
       </div>
 
-      {recommendations.length > 0 && (
+      {/* Online Music Search Bar */}
+      <div
+        className="content-card"
+        style={{
+          marginBottom: 0,
+          padding: "16px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          backgroundColor: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+        }}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearchOnline();
+          }}
+          style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              backgroundColor: "var(--bg-main)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              padding: "9px 14px",
+              flex: 1,
+            }}
+          >
+            <Search size={18} color="var(--accent-light)" />
+            <input
+              type="text"
+              placeholder="Search any music online (artist, song title, album, or genre)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                background: "none",
+                border: "none",
+                outline: "none",
+                color: "#fff",
+                fontSize: "0.92rem",
+                width: "100%",
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-dim)",
+                  padding: 0,
+                  display: "flex",
+                }}
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSearchingOnline || !searchQuery.trim()}
+            className="btn btn-primary"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 20px",
+              fontSize: "0.88rem",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isSearchingOnline ? (
+              <>
+                <RefreshCw size={15} className="animate-spin" />
+                <span>Searching...</span>
+              </>
+            ) : (
+              <>
+                <Globe size={15} />
+                <span>Search Online</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRefreshSection}
+            disabled={refreshing || isSearchingOnline}
+            className="btn btn-secondary"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              fontSize: "0.88rem",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+            }}
+            title={isSearchActive ? "Refresh current search results" : "Refresh discovery recommendations"}
+          >
+            <RefreshCw size={15} className={refreshing || isSearchingOnline ? "animate-spin" : ""} />
+            <span>{refreshing ? "Refreshing..." : isSearchActive ? "Refresh Results" : "Refresh"}</span>
+          </button>
+        </form>
+
+        {/* Quick query chips */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "0.76rem", color: "var(--text-dim)", fontWeight: 500 }}>
+            Try:
+          </span>
+          {[
+            "Malayalam Hits",
+            "Pavizha Mazha",
+            "Eminem",
+            "Arijit Singh",
+            "Coldplay",
+            "Hip-Hop",
+            "EDM",
+            "Taylor Swift",
+          ].map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => {
+                setSearchQuery(suggestion);
+                handleSearchOnline(suggestion);
+              }}
+              style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid var(--border)",
+                borderRadius: "14px",
+                padding: "3px 10px",
+                fontSize: "0.75rem",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
+                e.currentTarget.style.borderColor = "var(--accent)";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Search Results Banner */}
+      {isSearchActive && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "rgba(99, 102, 241, 0.12)",
+            border: "1px solid rgba(99, 102, 241, 0.3)",
+            borderRadius: "10px",
+            padding: "10px 18px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Globe size={18} color="var(--accent-light)" />
+            <span style={{ fontSize: "0.92rem", fontWeight: 600, color: "#fff" }}>
+              Online Search: {searchResults.length} {searchResults.length === 1 ? "track" : "tracks"} found for &ldquo;{searchQuery}&rdquo;
+            </span>
+          </div>
+          <button
+            onClick={handleClearSearch}
+            className="btn btn-secondary"
+            style={{
+              padding: "5px 12px",
+              fontSize: "0.8rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <X size={14} />
+            <span>Clear & Show Recommendations</span>
+          </button>
+        </div>
+      )}
+
+      {/* Curated Category Tabs (Only when not in active online search) */}
+      {!isSearchActive && recommendations.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <button
             onClick={() => setFilter("ALL")}
@@ -384,22 +681,43 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           className="content-card"
           style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
         >
-          <Sparkles size={40} color="var(--accent-light)" style={{ marginBottom: "14px" }} />
-          <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
-            No discovery recommendations found in this view
-          </p>
-          <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "500px", margin: "0 auto" }}>
-            Listen to your local library or click Refresh Discovery to discover fresh trending and genre tracks.
-          </p>
-          {onRefresh && (
-            <button
-              onClick={handleRefreshClick}
-              className="btn btn-primary"
-              style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
-            >
-              <RefreshCw size={15} />
-              <span>Refresh Discovery Now</span>
-            </button>
+          {isSearchActive ? (
+            <>
+              <Globe size={40} color="var(--accent-light)" style={{ marginBottom: "14px" }} />
+              <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+                No online songs found matching &ldquo;{searchQuery}&rdquo;
+              </p>
+              <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "500px", margin: "0 auto" }}>
+                Try searching for another artist or title, or browse the curated recommendations.
+              </p>
+              <button
+                onClick={handleClearSearch}
+                className="btn btn-secondary"
+                style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
+              >
+                <span>Return to Recommendations</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Sparkles size={40} color="var(--accent-light)" style={{ marginBottom: "14px" }} />
+              <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+                No discovery recommendations found in this view
+              </p>
+              <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "500px", margin: "0 auto" }}>
+                Listen to your local library or click Refresh Discovery to discover fresh trending and genre tracks.
+              </p>
+              {onRefresh && (
+                <button
+                  onClick={handleRefreshSection}
+                  className="btn btn-primary"
+                  style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
+                >
+                  <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+                  <span>{refreshing ? "Refreshing..." : "Refresh Discovery Now"}</span>
+                </button>
+              )}
+            </>
           )}
         </div>
       ) : (

@@ -186,11 +186,11 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const fetchDiscovery = useCallback(async () => {
+  const fetchDiscovery = useCallback(async (forceRefresh: boolean = false) => {
     try {
       const res = await executeQuery({
         query: "GetDiscoveryRecommendations",
-        payload: { limit: 25 },
+        payload: { limit: 25, force_refresh: forceRefresh },
       });
       if (Array.isArray(res.data)) {
         setDiscoveryRecs(res.data);
@@ -369,6 +369,7 @@ export const App: React.FC = () => {
           fetchArtists();
           fetchAlbums();
           fetchOnboardingStatus();
+          fetchDiscovery();
           break;
 
         case "LibraryScanFailed":
@@ -401,6 +402,7 @@ export const App: React.FC = () => {
           fetchTracks();
           fetchArtists();
           fetchAlbums();
+          fetchDiscovery();
           break;
 
         case "WishlistUpdated":

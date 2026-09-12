@@ -46,6 +46,19 @@ async fn test_fuzzy_track_matcher_classifications() {
     assert_eq!(res_exact.matched_track_id, Some("loc_1".to_string()));
     assert!(res_exact.confidence >= 0.90);
 
+    // 1b. Exact Match with 30s preview snippet and featured artist format
+    let res_eminem = FuzzyTrackMatcher::compare(
+        "'Till I Collapse (feat. Nate Dogg)",
+        "Eminem",
+        Some(30.0),
+        "loc_em",
+        "Till I Collapse",
+        "Eminem, Nate Dogg",
+        297.9,
+    );
+    assert_eq!(res_eminem.status, MatchStatus::ExactMatch);
+    assert_eq!(res_eminem.matched_track_id, Some("loc_em".to_string()));
+
     // 2. Likely Match: high similarity with slight variation / duration delta <= 10s
     let res_likely = FuzzyTrackMatcher::compare(
         "Hotel California",
@@ -253,7 +266,7 @@ async fn test_discovery_coordinator_matching_and_recommendations() -> AppResult<
         .await?;
 
     // Query discovery recommendations
-    let recs = coordinator.get_discovery_recommendations(10).await?;
+    let recs = coordinator.get_discovery_recommendations(10, false).await?;
     assert_eq!(recs.len(), 2);
 
     // Missing track should be sorted first (priority over ExactMatch) and marked as in_wishlist = true
@@ -323,12 +336,45 @@ async fn test_core_processor_discovery_and_wishlist_integration() -> AppResult<(
 
     // 5. Query discovery recommendations via Query
     let disc_res = processor
-        .execute_query(Query::GetDiscoveryRecommendations { limit: 5 })
+        .execute_query(Query::GetDiscoveryRecommendations {
+            limit: 5,
+            force_refresh: None,
+        })
         .await?;
     match disc_res {
         QueryResponse::DiscoveryRecommendations(recs) => {
             // Returns typed list (empty or populated without error)
             assert!(recs.is_empty() || !recs.is_empty());
+        }
+        _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
+    }
+
+    // 6. Test Query::SearchOnlineMusic query execution with case-insensitivity
+    let search_res = processor
+        .execute_query(Query::SearchOnlineMusic {
+            query: "was it real".to_string(),
+            limit: Some(10),
+        })
+        .await?;
+    match search_res {
+        QueryResponse::DiscoveryRecommendations(recs) => {
+            println!("Got {} search results for 'was it real'", recs.len());
+            assert!(!recs.is_empty());
+        }
+        _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
+    }
+
+    // 6b. Test uppercase query - MUST return results identically (case-insensitive)
+    let search_upper = processor
+        .execute_query(Query::SearchOnlineMusic {
+            query: "WAS IT REAL".to_string(),
+            limit: Some(10),
+        })
+        .await?;
+    match search_upper {
+        QueryResponse::DiscoveryRecommendations(recs) => {
+            println!("Got {} search results for 'WAS IT REAL'", recs.len());
+            assert!(!recs.is_empty());
         }
         _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
     }

@@ -90,14 +90,45 @@ impl FuzzyTrackMatcher {
         let norm_ext_artist = Self::normalize_string(ext_artist);
         let norm_local_artist = Self::normalize_string(local_artist);
 
-        let title_sim = jaro_winkler(&norm_ext_title, &norm_local_title);
-        let artist_sim = jaro_winkler(&norm_ext_artist, &norm_local_artist);
+        let raw_title_sim = jaro_winkler(&norm_ext_title, &norm_local_title);
+        let title_contained = !norm_ext_title.is_empty()
+            && !norm_local_title.is_empty()
+            && (norm_local_title == norm_ext_title
+                || norm_local_title.starts_with(&norm_ext_title)
+                || norm_ext_title.starts_with(&norm_local_title));
 
-        let duration_diff = ext_duration.map(|ed| (ed - local_duration).abs());
+        let title_sim = if title_contained {
+            raw_title_sim.max(0.96)
+        } else {
+            raw_title_sim
+        };
+
+        let raw_artist_sim = jaro_winkler(&norm_ext_artist, &norm_local_artist);
+        let artist_contained = !norm_ext_artist.is_empty()
+            && !norm_local_artist.is_empty()
+            && (norm_local_artist == norm_ext_artist
+                || norm_local_artist.starts_with(&norm_ext_artist)
+                || norm_ext_artist.starts_with(&norm_local_artist)
+                || norm_local_artist.contains(&norm_ext_artist)
+                || norm_ext_artist.contains(&norm_local_artist));
+
+        let artist_sim = if artist_contained {
+            raw_artist_sim.max(0.92)
+        } else {
+            raw_artist_sim
+        };
+
+        // If external duration is <= 35.0s, it's an iTunes 30s preview snippet, NOT the full song length!
+        let is_preview_duration = ext_duration.map_or(true, |ed| ed <= 35.0);
+        let duration_diff = if is_preview_duration {
+            None
+        } else {
+            ext_duration.map(|ed| (ed - local_duration).abs())
+        };
 
         // Evaluation criteria:
         // 1. EXACT_MATCH: very high title & artist similarity + close duration (<= 4s)
-        if title_sim >= 0.95 && artist_sim >= 0.90 {
+        if title_sim >= 0.95 && artist_sim >= 0.88 {
             if let Some(diff) = duration_diff {
                 if diff <= 4.0 {
                     return MatchResult {
@@ -113,7 +144,7 @@ impl FuzzyTrackMatcher {
                     };
                 }
             } else {
-                // If duration is unknown, high string similarity qualifies
+                // If duration is unknown or preview snippet, high string similarity qualifies
                 return MatchResult {
                     status: MatchStatus::ExactMatch,
                     confidence: (title_sim * 0.6 + artist_sim * 0.4).clamp(0.0, 1.0),

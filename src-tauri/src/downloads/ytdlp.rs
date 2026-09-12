@@ -304,7 +304,7 @@ impl DownloadProvider for YtDlpProvider {
         let yt_query = format!("ytsearch1:{}", clean);
         info!(query = %yt_query, "Resolving full song audio stream URL via yt-dlp");
 
-        let output = tokio::process::Command::new(&self.binary_path)
+        let resolver_future = tokio::process::Command::new(&self.binary_path)
             .args([
                 "--print",
                 "%(url)s",
@@ -316,9 +316,15 @@ impl DownloadProvider for YtDlpProvider {
                 "--no-playlist",
                 &yt_query,
             ])
-            .output()
-            .await
-            .map_err(|e| AppError::Internal(format!("Failed to run yt-dlp stream resolver: {}", e)))?;
+            .output();
+
+        let output = match tokio::time::timeout(std::time::Duration::from_secs(12), resolver_future).await {
+            Ok(res) => res.map_err(|e| AppError::Internal(format!("Failed to run yt-dlp stream resolver: {}", e)))?,
+            Err(_) => {
+                warn!(query = %yt_query, "yt-dlp stream resolution timed out after 12s");
+                return Ok(None);
+            }
+        };
 
         if !output.status.success() {
             return Ok(None);

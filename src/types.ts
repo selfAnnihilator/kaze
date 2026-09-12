@@ -228,13 +228,14 @@ export type Query =
   | { query: "GetSmartMixes" }
   | { query: "GetTasteProfile" }
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
-  | { query: "GetDiscoveryRecommendations"; payload: { limit: number } }
+  | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean } }
   | { query: "GetWishlist" }
   | { query: "GetDownloads"; payload: { status_filter?: string; limit: number } }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
   | { query: "GetSettings" }
   | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
-  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } };
+  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } }
+  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } };
 
 export interface QueryResponse {
   type: string;
