@@ -54,13 +54,25 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   }, [playingPreviewId]);
 
   // Clean up audio playback when component unmounts
+  const cleanupCurrentAudio = () => {
+    if (audioRef.current) {
+      const a = audioRef.current;
+      a.onended = null;
+      a.onerror = null;
+      a.ontimeupdate = null;
+      a.onplay = null;
+      a.onpause = null;
+      a.onloadedmetadata = null;
+      a.pause();
+      a.removeAttribute("src");
+      a.load();
+      audioRef.current = null;
+    }
+  };
+
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
+      cleanupCurrentAudio();
     };
   }, []);
 
@@ -76,10 +88,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   }, [activePreviewTrack]);
 
   const setupAndPlayAudio = (url: string, duration: number, startAt: number = 0) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-    }
+    cleanupCurrentAudio();
 
     const audio = new Audio(url);
     audioRef.current = audio;
@@ -92,6 +101,14 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       setPreviewCurrentTime(audio.currentTime);
     };
 
+    audio.onplay = () => {
+      setIsPreviewPlaying(true);
+    };
+
+    audio.onpause = () => {
+      setIsPreviewPlaying(false);
+    };
+
     audio.onended = () => {
       setIsPreviewPlaying(false);
       setPreviewProgress(0);
@@ -101,20 +118,21 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       setIsFullSongActive(false);
     };
 
-    audio.onerror = () => {
+    audio.onerror = (err) => {
+      console.warn("Preview audio playback error:", err);
       setIsPreviewPlaying(false);
-      setPlayingPreviewId(null);
-      setActivePreviewTrack(null);
-      setIsFullSongActive(false);
     };
 
     if (startAt > 0) {
-      audio.currentTime = startAt;
+      audio.onloadedmetadata = () => {
+        try {
+          audio.currentTime = Math.min(startAt, audio.duration || startAt);
+        } catch (_) {}
+      };
     }
 
-    audio.play().then(() => {
-      setIsPreviewPlaying(true);
-    }).catch((err) => {
+    setIsPreviewPlaying(true);
+    audio.play().catch((err) => {
       console.warn("Audio play prevented:", err);
       setIsPreviewPlaying(false);
     });
@@ -208,11 +226,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   };
 
   const handleStopPreview = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
+    cleanupCurrentAudio();
     setIsPreviewPlaying(false);
     setPlayingPreviewId(null);
     setActivePreviewTrack(null);
@@ -466,14 +480,14 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                       )}
 
                       {/* Clean Hover / Playing Overlay */}
-                      <div className={`discovery-thumb-overlay ${isPlayingThis ? "is-playing" : ""}`}>
-                        {isPlayingThis ? (
+                      <div className={`discovery-thumb-overlay ${isSelected && isPreviewPlaying ? "is-playing" : ""}`}>
+                        {isSelected && isPreviewPlaying ? (
                           <div className="discovery-eq-container">
                             <span className="discovery-eq-bar" />
                             <span className="discovery-eq-bar" />
                             <span className="discovery-eq-bar" />
                           </div>
-                        ) : isResolvingThis ? (
+                        ) : isResolvingThis && !isSelected ? (
                           <RefreshCw size={18} color="#fff" className="animate-spin" />
                         ) : (
                           <Play size={18} color="#fff" style={{ marginLeft: "2px" }} />
@@ -551,8 +565,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                       className={`btn ${isSelected ? "btn-primary" : "btn-secondary"}`}
                       onClick={() => handleTogglePreview(rec)}
                       title={
-                        isPlayingThis
-                          ? "Pause Full Song Preview"
+                        isSelected && isPreviewPlaying
+                          ? "Pause Preview"
+                          : isSelected && !isPreviewPlaying
+                          ? "Resume Preview"
                           : isResolvingThis
                           ? "Loading full song stream..."
                           : "Preview full song before downloading"
@@ -565,20 +581,25 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                         gap: "6px",
                       }}
                     >
-                      {isPlayingThis ? (
+                      {isSelected && isPreviewPlaying ? (
                         <>
                           <Pause size={14} />
-                          <span>Pause</span>
+                          <span>Pause Preview</span>
+                        </>
+                      ) : isSelected && !isPreviewPlaying ? (
+                        <>
+                          <Play size={14} />
+                          <span>Resume Preview</span>
                         </>
                       ) : isResolvingThis ? (
                         <>
-                          <RefreshCw size={14} className="animate-spin" color={isSelected ? "#fff" : "var(--accent-light)"} />
+                          <RefreshCw size={14} className="animate-spin" color="var(--accent-light)" />
                           <span>Loading Song...</span>
                         </>
                       ) : (
                         <>
-                          <Headphones size={14} color={isSelected ? "#fff" : "var(--accent-light)"} />
-                          <span>{isFullSongActive && isSelected ? "Playing Full Song" : "Preview"}</span>
+                          <Headphones size={14} color="var(--accent-light)" />
+                          <span>Preview</span>
                         </>
                       )}
                     </button>
