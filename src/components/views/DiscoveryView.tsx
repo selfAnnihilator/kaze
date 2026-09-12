@@ -138,7 +138,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     });
   };
 
-  const fetchFullSongStream = async (rec: DiscoveryRecommendation, playWhenReady: boolean = false) => {
+  const fetchFullSongStream = async (rec: DiscoveryRecommendation) => {
     setResolvingId(rec.external_track_id);
     try {
       const res = await executeQuery({
@@ -155,17 +155,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           [rec.external_track_id]: { streamUrl, duration },
         }));
 
-        // If user is still listening to this track, upgrade smoothly to full song!
+        // If user is still selected on this track, play the full song directly!
         if (playingPreviewIdRef.current === rec.external_track_id) {
           setIsFullSongActive(true);
           setActiveDuration(duration);
-
-          if (audioRef.current && !playWhenReady) {
-            const curTime = audioRef.current.currentTime;
-            setupAndPlayAudio(streamUrl, duration, curTime);
-          } else if (playWhenReady) {
-            setupAndPlayAudio(streamUrl, duration, 0);
-          }
+          setupAndPlayAudio(streamUrl, duration, 0);
         }
       }
     } catch (e) {
@@ -177,6 +171,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 
   const handleTogglePreview = (rec: DiscoveryRecommendation) => {
     if (playingPreviewId === rec.external_track_id) {
+      if (resolvingId === rec.external_track_id) {
+        // Clicking while fetching cancels/stops
+        handleStopPreview();
+        return;
+      }
       if (isPreviewPlaying) {
         audioRef.current?.pause();
         setIsPreviewPlaying(false);
@@ -191,10 +190,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     }
 
     // Stop current preview audio if playing
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-    }
+    cleanupCurrentAudio();
 
     // Pause main library playback if active
     onPausePlayback?.();
@@ -207,21 +203,15 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     const cached = resolvedAudios[rec.external_track_id];
 
     if (cached) {
-      // Instant full song playback
+      // Instant full song playback from cache
       setIsFullSongActive(true);
       setActiveDuration(cached.duration);
       setupAndPlayAudio(cached.streamUrl, cached.duration, 0);
-    } else if (rec.preview_url) {
-      // Play 30s snippet with 0 latency, while streaming full song in background
-      setIsFullSongActive(false);
-      setActiveDuration(30);
-      setupAndPlayAudio(rec.preview_url, 30, 0);
-      fetchFullSongStream(rec, false);
     } else {
-      // No preview_url available: fetch and play full song stream directly
+      // Only fetch full song and play directly, never play the 30s snippet
       setIsFullSongActive(false);
       setActiveDuration(240);
-      fetchFullSongStream(rec, true);
+      fetchFullSongStream(rec);
     }
   };
 
@@ -581,7 +571,12 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                         gap: "6px",
                       }}
                     >
-                      {isSelected && isPreviewPlaying ? (
+                      {isSelected && isResolvingThis ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" color={isSelected ? "#fff" : "var(--accent-light)"} />
+                          <span>Loading Full Song...</span>
+                        </>
+                      ) : isSelected && isPreviewPlaying ? (
                         <>
                           <Pause size={14} />
                           <span>Pause Preview</span>
