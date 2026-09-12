@@ -82,7 +82,14 @@ pub fn genre_matches(candidate_genre: &str, user_genre: &str) -> bool {
     let is_rnb = (cg.contains("r&b") || cg.contains("soul"))
         && (ug.contains("r&b") || ug.contains("soul"));
 
-    is_rap_hiphop || is_electronic || is_rock_alt || is_rnb
+    let is_asian = (cg.contains("asian") || cg.contains("j-pop") || cg.contains("anime") || cg.contains("k-pop") || cg.contains("japanese"))
+        && (ug.contains("asian") || ug.contains("j-pop") || ug.contains("anime") || ug.contains("k-pop") || ug.contains("japanese"));
+    let is_latin_brazil = (cg.contains("brazil") || cg.contains("latin") || cg.contains("samba") || cg.contains("bossa"))
+        && (ug.contains("brazil") || ug.contains("latin") || ug.contains("samba") || ug.contains("bossa"));
+    let is_indian = (cg.contains("bollywood") || cg.contains("indian") || cg.contains("desi") || cg.contains("hindi") || cg.contains("punjabi"))
+        && (ug.contains("bollywood") || ug.contains("indian") || ug.contains("desi") || ug.contains("hindi") || ug.contains("punjabi"));
+
+    is_rap_hiphop || is_electronic || is_rock_alt || is_rnb || is_asian || is_latin_brazil || is_indian
 }
 
 impl DiscoveryCoordinator {
@@ -152,6 +159,7 @@ impl DiscoveryCoordinator {
     pub async fn fetch_trending_and_genre_candidates(
         &self,
         genre_ids: &[u32],
+        storefronts: &[String],
     ) -> AppResult<usize> {
         let client = match reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(4))
@@ -161,8 +169,17 @@ impl DiscoveryCoordinator {
             Err(_) => return Ok(0),
         };
 
-        // Always query overall top songs (25), PLUS top 25 for each user taste genre
-        let mut urls = vec!["https://itunes.apple.com/us/rss/topsongs/limit=25/json".to_string()];
+        let mut urls = Vec::new();
+
+        // Query trending charts for each detected storefront (e.g. "us", "jp", "kr", "in", "br")
+        for sf in storefronts {
+            urls.push(format!(
+                "https://itunes.apple.com/{}/rss/topsongs/limit=25/json",
+                sf
+            ));
+        }
+
+        // Query top 25 for each user taste genre
         for &gid in genre_ids.iter().take(3) {
             urls.push(format!(
                 "https://itunes.apple.com/us/rss/topsongs/limit=25/genre={}/json",
@@ -365,6 +382,63 @@ impl DiscoveryCoordinator {
             .list_external_tracks(None, 300)
             .await?;
 
+        // Detect regional storefronts based on user's library genres and artists
+        let mut storefronts = vec!["us".to_string()];
+
+        let has_japanese = ranked_user_genres.iter().any(|(g, _)| {
+            let lower = g.to_lowercase();
+            lower.contains("asian") || lower.contains("j-pop") || lower.contains("japanese") || lower.contains("anime")
+        }) || library_artists.iter().any(|a| {
+            a.contains("ado")
+                || a.contains("yoasobi")
+                || a.contains("kajiura")
+                || a.contains("nemu")
+                || a.chars().any(|c| {
+                    (c >= '\u{3040}' && c <= '\u{30ff}') || (c >= '\u{4e00}' && c <= '\u{9fff}')
+                })
+        });
+
+        let has_korean = ranked_user_genres.iter().any(|(g, _)| {
+            let lower = g.to_lowercase();
+            lower.contains("k-pop") || lower.contains("korean")
+        }) || library_artists
+            .iter()
+            .any(|a| a.chars().any(|c| c >= '\u{ac00}' && c <= '\u{d7af}'));
+
+        let has_indian = ranked_user_genres.iter().any(|(g, _)| {
+            let lower = g.to_lowercase();
+            lower.contains("bollywood")
+                || lower.contains("indian")
+                || lower.contains("hindi")
+                || lower.contains("punjabi")
+                || lower.contains("desi")
+        }) || library_artists
+            .iter()
+            .any(|a| a.chars().any(|c| c >= '\u{0900}' && c <= '\u{097f}'));
+
+        let has_brazilian = ranked_user_genres.iter().any(|(g, _)| {
+            let lower = g.to_lowercase();
+            lower.contains("brazil") || lower.contains("samba") || lower.contains("bossa")
+        });
+
+        let has_latin = ranked_user_genres.iter().any(|(g, _)| {
+            let lower = g.to_lowercase();
+            lower.contains("latin") || lower.contains("reggaeton") || lower.contains("spanish")
+        });
+
+        if has_japanese && !storefronts.contains(&"jp".to_string()) {
+            storefronts.push("jp".to_string());
+        }
+        if has_korean && !storefronts.contains(&"kr".to_string()) {
+            storefronts.push("kr".to_string());
+        }
+        if has_indian && !storefronts.contains(&"in".to_string()) {
+            storefronts.push("in".to_string());
+        }
+        if (has_brazilian || has_latin) && !storefronts.contains(&"br".to_string()) {
+            storefronts.push("br".to_string());
+        }
+
         // 4. Check if pool needs refreshment (e.g. missing previews or too few candidates)
         let unique_artists: HashSet<_> = ext_tracks
             .iter()
@@ -375,7 +449,9 @@ impl DiscoveryCoordinator {
         if self.provider_coordinator.is_some()
             && (unique_artists.len() < 10 || ext_tracks.len() < limit || !has_previews)
         {
-            let _ = self.fetch_trending_and_genre_candidates(&target_itunes_genre_ids).await;
+            let _ = self
+                .fetch_trending_and_genre_candidates(&target_itunes_genre_ids, &storefronts)
+                .await;
 
             // Re-fetch external tracks after fresh ingestion
             ext_tracks = self

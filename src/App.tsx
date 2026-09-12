@@ -937,6 +937,11 @@ export const App: React.FC = () => {
               handleInitiateDirectDownloadSearch(artist, title)
             }
             onRefresh={fetchDiscovery}
+            onPausePlayback={() => {
+              if (playbackState.is_playing) {
+                handlePlayPause();
+              }
+            }}
           />
         )}
 
