@@ -75,4 +75,12 @@ impl DownloadProvider for CompositeDownloadProvider {
         let _ = self.soulseek.cancel(provider_task_id).await;
         Ok(())
     }
+
+    async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64)>> {
+        if self.ytdlp.is_available() {
+            self.ytdlp.resolve_stream_url(query).await
+        } else {
+            Ok(None)
+        }
+    }
 }

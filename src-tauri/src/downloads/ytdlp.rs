@@ -294,6 +294,51 @@ impl DownloadProvider for YtDlpProvider {
         }
         Ok(())
     }
+
+    async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64)>> {
+        let clean = query.trim();
+        if clean.is_empty() {
+            return Ok(None);
+        }
+
+        let yt_query = format!("ytsearch1:{}", clean);
+        info!(query = %yt_query, "Resolving full song audio stream URL via yt-dlp");
+
+        let output = tokio::process::Command::new(&self.binary_path)
+            .args([
+                "--print",
+                "%(url)s",
+                "--print",
+                "%(duration)s",
+                "-f",
+                "bestaudio[ext=m4a]/bestaudio/best",
+                "--no-warnings",
+                "--no-playlist",
+                &yt_query,
+            ])
+            .output()
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to run yt-dlp stream resolver: {}", e)))?;
+
+        if !output.status.success() {
+            return Ok(None);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let lines: Vec<&str> = stdout.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+        if lines.is_empty() {
+            return Ok(None);
+        }
+
+        let stream_url = lines[0].to_string();
+        let duration = if lines.len() > 1 {
+            lines[1].parse::<f64>().unwrap_or(240.0)
+        } else {
+            240.0
+        };
+
+        Ok(Some((stream_url, duration)))
+    }
 }
 
 /// Helper parsing percentage float from yt-dlp stdout line: "[download]  42.4% of ..."

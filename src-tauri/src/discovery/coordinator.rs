@@ -88,8 +88,10 @@ pub fn genre_matches(candidate_genre: &str, user_genre: &str) -> bool {
         && (ug.contains("brazil") || ug.contains("latin") || ug.contains("samba") || ug.contains("bossa"));
     let is_indian = (cg.contains("bollywood") || cg.contains("indian") || cg.contains("desi") || cg.contains("hindi") || cg.contains("punjabi"))
         && (ug.contains("bollywood") || ug.contains("indian") || ug.contains("desi") || ug.contains("hindi") || ug.contains("punjabi"));
+    let is_malayalam = (cg.contains("malayalam") || cg.contains("regional indian") || cg.contains("indian"))
+        && (ug.contains("malayalam") || ug.contains("asian") || ug.contains("indian") || ug.contains("soundtrack"));
 
-    is_rap_hiphop || is_electronic || is_rock_alt || is_rnb || is_asian || is_latin_brazil || is_indian
+    is_rap_hiphop || is_electronic || is_rock_alt || is_rnb || is_asian || is_latin_brazil || is_indian || is_malayalam
 }
 
 impl DiscoveryCoordinator {
@@ -160,6 +162,7 @@ impl DiscoveryCoordinator {
         &self,
         genre_ids: &[u32],
         storefronts: &[String],
+        regional_queries: &[String],
     ) -> AppResult<usize> {
         let client = match reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(4))
@@ -303,6 +306,94 @@ impl DiscoveryCoordinator {
             }
         }
 
+        // Query targeted regional terms (e.g. "malayalam", "malayalam hits")
+        for query in regional_queries {
+            let encoded = query.replace(' ', "+");
+            let url = format!(
+                "https://itunes.apple.com/search?term={}&country=in&media=music&entity=song&limit=25",
+                encoded
+            );
+            let resp = match client.get(&url).send().await {
+                Ok(r) if r.status().is_success() => r,
+                _ => continue,
+            };
+
+            let json_val: serde_json::Value = match resp.json().await {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            if let Some(results) = json_val.get("results").and_then(|r| r.as_array()) {
+                for item in results {
+                    let title = item
+                        .get("trackName")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("")
+                        .trim();
+                    let artist = item
+                        .get("artistName")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("")
+                        .trim();
+
+                    if title.is_empty() || artist.is_empty() {
+                        continue;
+                    }
+
+                    let album = item
+                        .get("collectionName")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string());
+                    let cover_art_url = item
+                        .get("artworkUrl100")
+                        .and_then(|a| a.as_str())
+                        .map(|s| s.to_string());
+                    let preview_url = item
+                        .get("previewUrl")
+                        .and_then(|p| p.as_str())
+                        .map(|s| s.to_string());
+                    let track_id = item
+                        .get("trackId")
+                        .map(|id| id.to_string())
+                        .unwrap_or_default();
+                    let genre = item
+                        .get("primaryGenreName")
+                        .and_then(|g| g.as_str())
+                        .map(|s| s.to_string());
+
+                    let record = ExternalTrackRecord {
+                        id: format!(
+                            "itunes:{}",
+                            if track_id.is_empty() {
+                                format!("{}:{}", artist, title)
+                            } else {
+                                track_id.clone()
+                            }
+                        ),
+                        provider: "itunes".to_string(),
+                        provider_id: if track_id.is_empty() {
+                            title.to_string()
+                        } else {
+                            track_id
+                        },
+                        title: title.to_string(),
+                        artist: artist.to_string(),
+                        album,
+                        duration_secs: Some(30.0),
+                        cover_art_url,
+                        preview_url,
+                        genre: genre.or_else(|| Some("Malayalam".to_string())),
+                        match_status: MatchStatus::NotFound.as_str().to_string(),
+                        matched_local_track_id: None,
+                        created_at: chrono::Utc::now().timestamp(),
+                    };
+
+                    let _ = self.ingest_external_track(record).await;
+                    ingested_count += 1;
+                }
+            }
+        }
+
         Ok(ingested_count)
     }
 
@@ -432,9 +523,39 @@ impl DiscoveryCoordinator {
         if has_korean && !storefronts.contains(&"kr".to_string()) {
             storefronts.push("kr".to_string());
         }
-        if has_indian && !storefronts.contains(&"in".to_string()) {
+        let has_malayalam = library_artists.iter().any(|a| {
+            let al = a.to_lowercase();
+            al.contains("sushin")
+                || al.contains("dabzee")
+                || al.contains("shaan rahman")
+                || al.contains("yesudas")
+                || al.contains("hanumankind")
+                || al.contains("ranjin raj")
+                || al.contains("anirudh")
+                || al.contains("chithra")
+                || al.contains("malayalam")
+                || a.chars().any(|c| c >= '\u{0d00}' && c <= '\u{0d7f}')
+        }) || local_tracks.iter().any(|t| {
+            let tl = t.title.to_lowercase();
+            tl.contains("illuminati")
+                || tl.contains("malare")
+                || tl.contains("poomuthole")
+                || tl.contains("aalolam")
+                || t.title.chars().any(|c| c >= '\u{0d00}' && c <= '\u{0d7f}')
+        }) || ranked_user_genres.iter().any(|(g, _)| {
+            g.to_lowercase().contains("malayalam")
+        });
+
+        if (has_indian || has_malayalam) && !storefronts.contains(&"in".to_string()) {
             storefronts.push("in".to_string());
         }
+
+        let mut regional_queries = Vec::new();
+        if has_malayalam {
+            regional_queries.push("malayalam".to_string());
+            regional_queries.push("malayalam hits".to_string());
+        }
+
         if (has_brazilian || has_latin) && !storefronts.contains(&"br".to_string()) {
             storefronts.push("br".to_string());
         }
@@ -450,7 +571,11 @@ impl DiscoveryCoordinator {
             && (unique_artists.len() < 10 || ext_tracks.len() < limit || !has_previews)
         {
             let _ = self
-                .fetch_trending_and_genre_candidates(&target_itunes_genre_ids, &storefronts)
+                .fetch_trending_and_genre_candidates(
+                    &target_itunes_genre_ids,
+                    &storefronts,
+                    &regional_queries,
+                )
                 .await;
 
             // Re-fetch external tracks after fresh ingestion
@@ -486,7 +611,7 @@ impl DiscoveryCoordinator {
             let is_listened_artist = listened_artists.contains(&artist_lower);
             let is_library_artist = library_artists.contains(&artist_lower);
 
-            let mut genre_score = 0.0;
+            let mut genre_score: f64 = 0.0;
             let mut matched_genre_display: Option<String> = None;
 
             for (idx, (ug, _)) in ranked_user_genres.iter().enumerate() {
@@ -502,6 +627,10 @@ impl DiscoveryCoordinator {
                         Some(track.genre.clone().unwrap_or_else(|| ug.clone()));
                     break;
                 }
+            }
+
+            if has_malayalam && (track_genre.contains("malayalam") || track_album.contains("malayalam")) {
+                genre_score = genre_score.max(85.0);
             }
 
             let mut base_score = 15.0; // baseline chart presence
@@ -526,6 +655,8 @@ impl DiscoveryCoordinator {
                         )
                     } else if is_library_artist {
                         format!("🎵 Trending hit by your library artist {}", track.artist)
+                    } else if track_genre.contains("malayalam") || track_album.contains("malayalam") {
+                        format!("🔥 Trending in Malayalam • Matches your library favorites")
                     } else if let Some(ref gd) = matched_genre_display {
                         format!("🔥 Trending in {} • Matches your top genre", gd)
                     } else {

@@ -28,4 +28,9 @@ pub trait DownloadProvider: Send + Sync {
 
     /// Cancels or aborts an active transfer.
     async fn cancel(&self, provider_task_id: &str) -> AppResult<()>;
+
+    /// Resolves direct streamable audio URL and duration for full-song previewing.
+    async fn resolve_stream_url(&self, _query: &str) -> AppResult<Option<(String, f64)>> {
+        Ok(None)
+    }
 }

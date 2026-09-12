@@ -69,6 +69,16 @@ impl DownloadService {
         Ok(results)
     }
 
+    /// Resolves a playable direct stream URL and duration for full-song previewing.
+    pub async fn resolve_full_track_audio(
+        &self,
+        artist: &str,
+        title: &str,
+    ) -> AppResult<Option<(String, f64)>> {
+        let query = format!("{} {}", artist, title);
+        self.provider.resolve_stream_url(&query).await
+    }
+
     /// Searches the network for a specific wishlist item.
     pub async fn search_wishlist_item(&self, wishlist_id: &str) -> AppResult<Vec<DownloadSearchResult>> {
         let item = self

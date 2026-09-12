@@ -82,6 +82,10 @@ pub enum Query {
     ImportSpotifyPlaylist {
         url_or_id: String,
     },
+    ResolveFullTrackAudio {
+        artist: String,
+        title: String,
+    },
 }
 
 /// Query response wrapper.
@@ -110,5 +114,9 @@ pub enum QueryResponse {
     DiscoveryRecommendations(Vec<serde_json::Value>),
     Downloads(Vec<serde_json::Value>),
     SpotifyPlaylistImport(serde_json::Value),
+    FullTrackAudio {
+        stream_url: String,
+        duration_secs: f64,
+    },
     Empty,
 }

@@ -15,6 +15,7 @@ import {
   Headphones,
 } from "lucide-react";
 import { DiscoveryRecommendation } from "../../types";
+import { executeQuery } from "../../services/api";
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
@@ -34,14 +35,23 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Audio Preview State
+  // Audio Preview State & Cache for Full Track Streams
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
   const [previewProgress, setPreviewProgress] = useState<number>(0);
   const [previewCurrentTime, setPreviewCurrentTime] = useState<number>(0);
   const [activePreviewTrack, setActivePreviewTrack] = useState<DiscoveryRecommendation | null>(null);
+  const [activeDuration, setActiveDuration] = useState<number>(30);
+  const [isFullSongActive, setIsFullSongActive] = useState<boolean>(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolvedAudios, setResolvedAudios] = useState<Record<string, { streamUrl: string; duration: number }>>({});
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playingPreviewIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    playingPreviewIdRef.current = playingPreviewId;
+  }, [playingPreviewId]);
 
   // Clean up audio playback when component unmounts
   useEffect(() => {
@@ -65,9 +75,89 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activePreviewTrack]);
 
-  const handleTogglePreview = (rec: DiscoveryRecommendation) => {
-    if (!rec.preview_url) return;
+  const setupAndPlayAudio = (url: string, duration: number, startAt: number = 0) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
 
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setActiveDuration(duration);
+
+    audio.ontimeupdate = () => {
+      const dur = audio.duration && !isNaN(audio.duration) && audio.duration > 0 ? audio.duration : duration;
+      setActiveDuration(dur);
+      setPreviewProgress((audio.currentTime / dur) * 100);
+      setPreviewCurrentTime(audio.currentTime);
+    };
+
+    audio.onended = () => {
+      setIsPreviewPlaying(false);
+      setPreviewProgress(0);
+      setPreviewCurrentTime(0);
+      setPlayingPreviewId(null);
+      setActivePreviewTrack(null);
+      setIsFullSongActive(false);
+    };
+
+    audio.onerror = () => {
+      setIsPreviewPlaying(false);
+      setPlayingPreviewId(null);
+      setActivePreviewTrack(null);
+      setIsFullSongActive(false);
+    };
+
+    if (startAt > 0) {
+      audio.currentTime = startAt;
+    }
+
+    audio.play().then(() => {
+      setIsPreviewPlaying(true);
+    }).catch((err) => {
+      console.warn("Audio play prevented:", err);
+      setIsPreviewPlaying(false);
+    });
+  };
+
+  const fetchFullSongStream = async (rec: DiscoveryRecommendation, playWhenReady: boolean = false) => {
+    setResolvingId(rec.external_track_id);
+    try {
+      const res = await executeQuery({
+        query: "ResolveFullTrackAudio",
+        payload: { artist: rec.artist, title: rec.title },
+      });
+
+      if (res && res.type === "FullTrackAudio" && res.data) {
+        const streamUrl = res.data.stream_url;
+        const duration = res.data.duration_secs || 240;
+
+        setResolvedAudios((prev) => ({
+          ...prev,
+          [rec.external_track_id]: { streamUrl, duration },
+        }));
+
+        // If user is still listening to this track, upgrade smoothly to full song!
+        if (playingPreviewIdRef.current === rec.external_track_id) {
+          setIsFullSongActive(true);
+          setActiveDuration(duration);
+
+          if (audioRef.current && !playWhenReady) {
+            const curTime = audioRef.current.currentTime;
+            setupAndPlayAudio(streamUrl, duration, curTime);
+          } else if (playWhenReady) {
+            setupAndPlayAudio(streamUrl, duration, 0);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not resolve full song stream:", e);
+    } finally {
+      setResolvingId((curr) => (curr === rec.external_track_id ? null : curr));
+    }
+  };
+
+  const handleTogglePreview = (rec: DiscoveryRecommendation) => {
     if (playingPreviewId === rec.external_track_id) {
       if (isPreviewPlaying) {
         audioRef.current?.pause();
@@ -91,38 +181,30 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     // Pause main library playback if active
     onPausePlayback?.();
 
-    const audio = new Audio(rec.preview_url);
-    audioRef.current = audio;
     setPlayingPreviewId(rec.external_track_id);
     setActivePreviewTrack(rec);
-    setIsPreviewPlaying(true);
     setPreviewProgress(0);
     setPreviewCurrentTime(0);
 
-    audio.ontimeupdate = () => {
-      const dur = audio.duration && !isNaN(audio.duration) && audio.duration > 0 ? audio.duration : 30;
-      setPreviewProgress((audio.currentTime / dur) * 100);
-      setPreviewCurrentTime(audio.currentTime);
-    };
+    const cached = resolvedAudios[rec.external_track_id];
 
-    audio.onended = () => {
-      setIsPreviewPlaying(false);
-      setPreviewProgress(0);
-      setPreviewCurrentTime(0);
-      setPlayingPreviewId(null);
-      setActivePreviewTrack(null);
-    };
-
-    audio.onerror = () => {
-      setIsPreviewPlaying(false);
-      setPlayingPreviewId(null);
-      setActivePreviewTrack(null);
-    };
-
-    audio.play().catch((err) => {
-      console.warn("Audio play prevented:", err);
-      setIsPreviewPlaying(false);
-    });
+    if (cached) {
+      // Instant full song playback
+      setIsFullSongActive(true);
+      setActiveDuration(cached.duration);
+      setupAndPlayAudio(cached.streamUrl, cached.duration, 0);
+    } else if (rec.preview_url) {
+      // Play 30s snippet with 0 latency, while streaming full song in background
+      setIsFullSongActive(false);
+      setActiveDuration(30);
+      setupAndPlayAudio(rec.preview_url, 30, 0);
+      fetchFullSongStream(rec, false);
+    } else {
+      // No preview_url available: fetch and play full song stream directly
+      setIsFullSongActive(false);
+      setActiveDuration(240);
+      fetchFullSongStream(rec, true);
+    }
   };
 
   const handleStopPreview = () => {
@@ -134,6 +216,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setIsPreviewPlaying(false);
     setPlayingPreviewId(null);
     setActivePreviewTrack(null);
+    setIsFullSongActive(false);
     setPreviewProgress(0);
     setPreviewCurrentTime(0);
   };
@@ -144,7 +227,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     const clickPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const dur = audioRef.current.duration && !isNaN(audioRef.current.duration) && audioRef.current.duration > 0
       ? audioRef.current.duration
-      : 30;
+      : activeDuration;
     audioRef.current.currentTime = clickPos * dur;
     setPreviewProgress(clickPos * 100);
     setPreviewCurrentTime(clickPos * dur);
@@ -320,6 +403,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           {filteredRecs.map((rec) => {
             const isPlayingThis = playingPreviewId === rec.external_track_id && isPreviewPlaying;
             const isSelected = playingPreviewId === rec.external_track_id;
+            const isResolvingThis = resolvingId === rec.external_track_id;
 
             return (
               <div
@@ -350,8 +434,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     {/* Album Cover Thumbnail with interactive hover / playing overlay */}
                     <div
                       className={`discovery-thumb-container ${isPlayingThis ? "is-playing" : ""}`}
-                      onClick={() => rec.preview_url && handleTogglePreview(rec)}
-                      title={rec.preview_url ? (isPlayingThis ? "Pause Preview" : "Play 30s Preview") : undefined}
+                      onClick={() => handleTogglePreview(rec)}
+                      title={isPlayingThis ? "Pause Preview" : "Play Full Song Preview"}
+                      style={{ cursor: "pointer" }}
                     >
                       {rec.cover_art_url ? (
                         <img
@@ -381,19 +466,19 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                       )}
 
                       {/* Clean Hover / Playing Overlay */}
-                      {rec.preview_url && (
-                        <div className={`discovery-thumb-overlay ${isPlayingThis ? "is-playing" : ""}`}>
-                          {isPlayingThis ? (
-                            <div className="discovery-eq-container">
-                              <span className="discovery-eq-bar" />
-                              <span className="discovery-eq-bar" />
-                              <span className="discovery-eq-bar" />
-                            </div>
-                          ) : (
-                            <Play size={18} color="#fff" style={{ marginLeft: "2px" }} />
-                          )}
-                        </div>
-                      )}
+                      <div className={`discovery-thumb-overlay ${isPlayingThis ? "is-playing" : ""}`}>
+                        {isPlayingThis ? (
+                          <div className="discovery-eq-container">
+                            <span className="discovery-eq-bar" />
+                            <span className="discovery-eq-bar" />
+                            <span className="discovery-eq-bar" />
+                          </div>
+                        ) : isResolvingThis ? (
+                          <RefreshCw size={18} color="#fff" className="animate-spin" />
+                        ) : (
+                          <Play size={18} color="#fff" style={{ marginLeft: "2px" }} />
+                        )}
+                      </div>
                     </div>
 
                     {/* Track Info */}
@@ -461,33 +546,42 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 
                   {/* Right Actions */}
                   <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
-                    {/* 30s Audio Preview Button */}
-                    {rec.preview_url && (
-                      <button
-                        className={`btn ${isSelected ? "btn-primary" : "btn-secondary"}`}
-                        onClick={() => handleTogglePreview(rec)}
-                        title={isPlayingThis ? "Pause Preview (30s)" : "Preview Track (30s snippet)"}
-                        style={{
-                          fontSize: "0.8rem",
-                          padding: "6px 12px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        {isPlayingThis ? (
-                          <>
-                            <Pause size={14} />
-                            <span>Pause Preview</span>
-                          </>
-                        ) : (
-                          <>
-                            <Headphones size={14} color={isSelected ? "#fff" : "var(--accent-light)"} />
-                            <span>Preview</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+                    {/* Full Song Preview Button */}
+                    <button
+                      className={`btn ${isSelected ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => handleTogglePreview(rec)}
+                      title={
+                        isPlayingThis
+                          ? "Pause Full Song Preview"
+                          : isResolvingThis
+                          ? "Loading full song stream..."
+                          : "Preview full song before downloading"
+                      }
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "6px 12px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      {isPlayingThis ? (
+                        <>
+                          <Pause size={14} />
+                          <span>Pause</span>
+                        </>
+                      ) : isResolvingThis ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" color={isSelected ? "#fff" : "var(--accent-light)"} />
+                          <span>Loading Song...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Headphones size={14} color={isSelected ? "#fff" : "var(--accent-light)"} />
+                          <span>{isFullSongActive && isSelected ? "Playing Full Song" : "Preview"}</span>
+                        </>
+                      )}
+                    </button>
 
                     {/* Direct Download */}
                     <button
@@ -584,8 +678,44 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     </div>
 
                     <span style={{ fontSize: "0.74rem", color: "var(--text-dim)", minWidth: "30px" }}>
-                      {formatSeconds(30)}
+                      {formatSeconds(activeDuration)}
                     </span>
+
+                    {isFullSongActive ? (
+                      <span
+                        style={{
+                          fontSize: "0.72rem",
+                          color: "#10b981",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          fontWeight: 600,
+                          backgroundColor: "rgba(16, 185, 129, 0.12)",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                        }}
+                      >
+                        <Sparkles size={11} />
+                        <span>Full Song Stream</span>
+                      </span>
+                    ) : isResolvingThis ? (
+                      <span
+                        style={{
+                          fontSize: "0.72rem",
+                          color: "var(--accent-light)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>Fetching full track...</span>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
+                        30s Preview
+                      </span>
+                    )}
 
                     <button
                       className="btn btn-secondary"
@@ -728,24 +858,66 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             </div>
 
             <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", minWidth: "32px" }}>
-              {formatSeconds(30)}
+              {formatSeconds(activeDuration)}
             </span>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--accent-light)" }}>
-              <Volume2 size={15} />
-              <span style={{ fontSize: "0.72rem", fontWeight: 500 }}>30s Preview</span>
-            </div>
+            {isFullSongActive ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  color: "#10b981",
+                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Sparkles size={12} />
+                <span>Full Song Stream</span>
+              </div>
+            ) : resolvingId === activePreviewTrack.external_track_id ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  color: "var(--accent-light)",
+                  fontSize: "0.72rem",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <RefreshCw size={12} className="animate-spin" />
+                <span>Loading Full Track...</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--accent-light)" }}>
+                <Volume2 size={15} />
+                <span style={{ fontSize: "0.72rem", fontWeight: 500 }}>Preview</span>
+              </div>
+            )}
           </div>
 
           {/* Actions & Close */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
-              className="btn btn-secondary"
+              className="btn btn-primary"
               onClick={() => onSearchDirect(activePreviewTrack.artist, activePreviewTrack.title)}
-              style={{ fontSize: "0.78rem", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+              style={{
+                fontSize: "0.78rem",
+                padding: "6px 14px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                fontWeight: 600,
+              }}
+              title="Liked this track? Download the full audio directly to your library"
             >
-              <DownloadCloud size={13} color="var(--accent-light)" />
-              <span>Download Direct</span>
+              <DownloadCloud size={14} />
+              <span>Download This Song</span>
             </button>
 
             <button

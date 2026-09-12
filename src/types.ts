@@ -233,7 +233,8 @@ export type Query =
   | { query: "GetDownloads"; payload: { status_filter?: string; limit: number } }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
   | { query: "GetSettings" }
-  | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } };
+  | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
+  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } };
 
 export interface QueryResponse {
   type: string;

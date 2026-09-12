@@ -711,6 +711,22 @@ impl CoreProcessor {
                 let val = self.import_spotify_playlist(&url_or_id).await?;
                 Ok(QueryResponse::SpotifyPlaylistImport(val))
             }
+            Query::ResolveFullTrackAudio { artist, title } => {
+                let res = self
+                    .download_service
+                    .resolve_full_track_audio(&artist, &title)
+                    .await?;
+                if let Some((stream_url, duration_secs)) = res {
+                    Ok(QueryResponse::FullTrackAudio {
+                        stream_url,
+                        duration_secs,
+                    })
+                } else {
+                    Err(crate::core::error::AppError::NotFound(
+                        "Full track stream not available".to_string(),
+                    ))
+                }
+            }
             _ => {
                 warn!(?query, "Query handler routed to stub during Phase 8");
                 Ok(QueryResponse::Empty)
