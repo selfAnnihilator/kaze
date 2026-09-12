@@ -212,16 +212,12 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
             zIndex: 3,
           }}
-          title={isPlaying ? (isHovered ? "Stop / Pause playback" : "Now Playing") : "Play"}
+          title={isPlaying ? "Pause / Stop playback" : "Play"}
         >
           {isLoading ? (
             <RefreshCw size={16} className="animate-spin" />
           ) : isPlaying ? (
-            isHovered ? (
-              <Pause size={17} fill="#fff" />
-            ) : (
-              <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
-            )
+            <Pause size={17} fill="#fff" />
           ) : (
             <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
           )}
