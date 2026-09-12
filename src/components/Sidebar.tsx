@@ -40,6 +40,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <span className="logo-title">SoundFlow</span>
       </div>
 
+      <div className="nav-section" style={{ marginTop: "6px" }}>
+        <button
+          className={`nav-button ${currentView === "discovery" ? "active" : ""}`}
+          onClick={() => onSelectView("discovery")}
+        >
+          <Compass size={18} />
+          <span>Discover Music</span>
+        </button>
+      </div>
+
       <div className="nav-section">
         <span className="nav-section-title">Local Library</span>
         <button
@@ -47,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => onSelectView("library")}
         >
           <Music size={18} />
-          <span>All Tracks</span>
+          <span>Downloaded Tracks</span>
         </button>
         <button
           className={`nav-button ${currentView === "artists" ? "active" : ""}`}
@@ -85,13 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="nav-section">
         <span className="nav-section-title">Acquisition</span>
-        <button
-          className={`nav-button ${currentView === "discovery" ? "active" : ""}`}
-          onClick={() => onSelectView("discovery")}
-        >
-          <Compass size={18} />
-          <span>Discover Music</span>
-        </button>
         <button
           className={`nav-button ${currentView === "wishlist" ? "active" : ""}`}
           onClick={() => onSelectView("wishlist")}

@@ -8,6 +8,7 @@ import {
   DownloadTask,
   DownloadSearchResult,
   DiscoveryRecommendation,
+  OnlinePlayingTrack,
   PlaybackState,
   AppSettings,
   OnboardingStatus,
@@ -33,6 +34,10 @@ export const App: React.FC = () => {
   // Onboarding
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Online Preview / Stream Playback (Integrated into bottom NowPlayingBar)
+  const [onlineTrack, setOnlineTrack] = useState<OnlinePlayingTrack | null>(null);
+  const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Playback
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -454,7 +459,161 @@ export const App: React.FC = () => {
 
   // --- Actions & Commands ---
 
+  const handleStopOnlineAudio = useCallback(() => {
+    if (onlineAudioRef.current) {
+      onlineAudioRef.current.pause();
+      onlineAudioRef.current.removeAttribute("src");
+      onlineAudioRef.current.load();
+      onlineAudioRef.current = null;
+    }
+    setOnlineTrack(null);
+  }, []);
+
+  const handlePlayOnlineTrack = useCallback(
+    async (rec: DiscoveryRecommendation) => {
+      // 1. If this track is in local library, play it locally through Rodio!
+      if (rec.matched_local_track_id) {
+        handleStopOnlineAudio();
+        await handlePlayTrack(rec.matched_local_track_id);
+        return;
+      }
+
+      // 2. If it's already the active online track, toggle play/pause
+      if (onlineAudioRef.current && onlineTrack?.id === rec.external_track_id) {
+        if (onlineTrack.isPlaying) {
+          onlineAudioRef.current.pause();
+          setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+        } else {
+          onlineAudioRef.current.play().catch(console.warn);
+          setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: true } : null));
+        }
+        return;
+      }
+
+      // 3. Stop local playback if active
+      if (playbackState.is_playing) {
+        await dispatchCommand({ command: "Pause" });
+        setPlaybackState((prev) => ({ ...prev, is_playing: false }));
+      }
+
+      // 4. Stop existing online audio
+      handleStopOnlineAudio();
+
+      // Initial state on player bar
+      setOnlineTrack({
+        id: rec.external_track_id,
+        title: rec.title,
+        artist: rec.artist,
+        cover_art_url: rec.cover_art_url,
+        duration: rec.duration_secs || 210,
+        currentTime: 0,
+        isPlaying: true,
+        isLoading: true,
+      });
+
+      // 5. Resolve full song stream via backend
+      let streamUrl = rec.preview_url || "";
+      let duration = rec.duration_secs || 210;
+
+      try {
+        const res = await executeQuery({
+          query: "ResolveFullTrackAudio",
+          payload: { artist: rec.artist, title: rec.title },
+        });
+        if (res && res.type === "FullTrackAudio" && res.data && res.data.stream_url) {
+          streamUrl = res.data.stream_url;
+          if (res.data.duration_secs) {
+            duration = res.data.duration_secs;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not resolve full stream, falling back to preview URL:", err);
+      }
+
+      if (!streamUrl) {
+        setOnlineTrack(null);
+        return;
+      }
+
+      const audio = new Audio(streamUrl);
+      audio.volume = playbackState.is_muted ? 0 : playbackState.volume;
+      onlineAudioRef.current = audio;
+
+      audio.ontimeupdate = () => {
+        const dur =
+          audio.duration && !isNaN(audio.duration) && audio.duration > 0
+            ? audio.duration
+            : duration;
+        setOnlineTrack((prev) =>
+          prev && prev.id === rec.external_track_id
+            ? { ...prev, currentTime: audio.currentTime, duration: dur, isLoading: false }
+            : prev
+        );
+      };
+
+      audio.onplay = () => {
+        setOnlineTrack((prev) =>
+          prev && prev.id === rec.external_track_id
+            ? { ...prev, isPlaying: true, isLoading: false }
+            : prev
+        );
+      };
+
+      audio.onpause = () => {
+        setOnlineTrack((prev) =>
+          prev && prev.id === rec.external_track_id
+            ? { ...prev, isPlaying: false }
+            : prev
+        );
+      };
+
+      audio.onended = () => {
+        handleStopOnlineAudio();
+      };
+
+      audio.onerror = () => {
+        if (rec.preview_url && streamUrl !== rec.preview_url) {
+          const fallback = new Audio(rec.preview_url);
+          fallback.volume = playbackState.is_muted ? 0 : playbackState.volume;
+          onlineAudioRef.current = fallback;
+          fallback.ontimeupdate = () => {
+            setOnlineTrack((prev) =>
+              prev && prev.id === rec.external_track_id
+                ? { ...prev, currentTime: fallback.currentTime, duration: 30, isLoading: false }
+                : prev
+            );
+          };
+          fallback.onplay = () => {
+            setOnlineTrack((prev) =>
+              prev && prev.id === rec.external_track_id
+                ? { ...prev, isPlaying: true, isLoading: false }
+                : prev
+            );
+          };
+          fallback.onpause = () => {
+            setOnlineTrack((prev) =>
+              prev && prev.id === rec.external_track_id
+                ? { ...prev, isPlaying: false }
+                : prev
+            );
+          };
+          fallback.onended = () => handleStopOnlineAudio();
+          fallback.play().catch(console.warn);
+        } else {
+          handleStopOnlineAudio();
+        }
+      };
+
+      audio.play().catch((e) => {
+        console.warn("Online audio play prevented:", e);
+        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false, isLoading: false } : null));
+      });
+    },
+    [playbackState.is_playing, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio]
+  );
+
   const handlePlayTrack = async (trackId: string) => {
+    handleStopOnlineAudio();
     const found = tracks.find((t) => t.id === trackId);
     if (found) {
       setPlaybackState((prev) => ({
@@ -483,6 +642,20 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleUnifiedPlayPause = async () => {
+    if (onlineTrack && onlineAudioRef.current) {
+      if (onlineTrack.isPlaying) {
+        onlineAudioRef.current.pause();
+        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+      } else {
+        onlineAudioRef.current.play().catch(console.warn);
+        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: true } : null));
+      }
+      return;
+    }
+    handlePlayPause();
+  };
+
   const handleNextTrack = async () => {
     await dispatchCommand({ command: "NextTrack" });
   };
@@ -499,7 +672,19 @@ export const App: React.FC = () => {
     setPlaybackState((prev) => ({ ...prev, position_secs }));
   };
 
+  const handleUnifiedSeek = async (position_secs: number) => {
+    if (onlineTrack && onlineAudioRef.current) {
+      onlineAudioRef.current.currentTime = position_secs;
+      setOnlineTrack((prev) => (prev ? { ...prev, currentTime: position_secs } : null));
+      return;
+    }
+    handleSeek(position_secs);
+  };
+
   const handleVolumeChange = async (volume: number) => {
+    if (onlineAudioRef.current) {
+      onlineAudioRef.current.volume = volume;
+    }
     await dispatchCommand({
       command: "SetVolume",
       payload: { volume },
@@ -508,6 +693,9 @@ export const App: React.FC = () => {
   };
 
   const handleToggleMute = async () => {
+    if (onlineAudioRef.current) {
+      onlineAudioRef.current.muted = !playbackState.is_muted;
+    }
     await dispatchCommand({ command: "ToggleMute" });
     setPlaybackState((prev) => ({ ...prev, is_muted: !prev.is_muted }));
   };
@@ -939,11 +1127,10 @@ export const App: React.FC = () => {
               handleInitiateDirectDownloadSearch(artist, title)
             }
             onRefresh={fetchDiscovery}
-            onPausePlayback={() => {
-              if (playbackState.is_playing) {
-                handlePlayPause();
-              }
-            }}
+            onPlayOnlineTrack={handlePlayOnlineTrack}
+            activeOnlineTrackId={onlineTrack?.id || null}
+            isOnlinePlaying={!!onlineTrack?.isPlaying}
+            isOnlineLoading={!!onlineTrack?.isLoading}
           />
         )}
 
@@ -986,14 +1173,15 @@ export const App: React.FC = () => {
       </main>
       </div>
 
-      {/* Bottom Sticky Player Bar */}
+      {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
       <NowPlayingBar
         playbackState={playbackState}
         currentTrack={playbackState.current_track}
-        onPlayPause={handlePlayPause}
+        onlineTrack={onlineTrack}
+        onPlayPause={handleUnifiedPlayPause}
         onNext={handleNextTrack}
         onPrevious={handlePreviousTrack}
-        onSeek={handleSeek}
+        onSeek={handleUnifiedSeek}
         onVolumeChange={handleVolumeChange}
         onToggleMute={handleToggleMute}
         onToggleRepeat={handleToggleRepeat}
@@ -1001,6 +1189,7 @@ export const App: React.FC = () => {
         onLike={handleLike}
         onDislike={handleDislike}
         onRemoveFeedback={handleRemoveFeedback}
+        onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
       />
 
       {/* Onboarding Modal */}

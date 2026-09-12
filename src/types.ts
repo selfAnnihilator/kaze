@@ -119,6 +119,17 @@ export interface DiscoveryRecommendation {
   in_wishlist: boolean;
 }
 
+export interface OnlinePlayingTrack {
+  id: string;
+  title: string;
+  artist: string;
+  cover_art_url?: string;
+  duration: number;
+  currentTime: number;
+  isPlaying: boolean;
+  isLoading?: boolean;
+}
+
 export interface TasteProfile {
   top_artists: Array<{ id_or_name: string; display_name: string; affinity: number }>;
   top_genres: Array<{ id_or_name: string; display_name: string; affinity: number }>;

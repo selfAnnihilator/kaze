@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   DownloadCloud,
   Sparkles,
-  Check,
   Bookmark,
   RefreshCw,
   Flame,
@@ -10,21 +9,294 @@ import {
   Music2,
   Play,
   Pause,
-  Volume2,
   X,
-  Headphones,
   Search,
   Globe,
+  CheckCircle2,
 } from "lucide-react";
 import { DiscoveryRecommendation } from "../../types";
 import { executeQuery } from "../../services/api";
+
+interface DiscoveryTrackCardProps {
+  rec: DiscoveryRecommendation;
+  isPlaying: boolean;
+  isLoading: boolean;
+  isSelected: boolean;
+  onPlay: (rec: DiscoveryRecommendation) => void;
+  onArtistClick: (artist: string) => void;
+  onAddToWishlist: (rec: DiscoveryRecommendation) => void;
+  onDownload: (artist: string, title: string) => void;
+}
+
+const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
+  rec,
+  isPlaying,
+  isLoading,
+  isSelected,
+  onPlay,
+  onArtistClick,
+  onAddToWishlist,
+  onDownload,
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const isDownloaded =
+    rec.provider === "library" ||
+    rec.match_status === "EXACT_MATCH" ||
+    !!rec.matched_local_track_id;
+
+  return (
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onPlay(rec)}
+      style={{
+        backgroundColor: isSelected ? "rgba(99, 102, 241, 0.12)" : "var(--bg-card)",
+        border: isSelected
+          ? "1px solid var(--accent-light)"
+          : isHovered
+          ? "1px solid rgba(255, 255, 255, 0.22)"
+          : "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "10px",
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        position: "relative",
+        transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-4px)" : "none",
+        boxShadow: isHovered
+          ? "0 10px 24px rgba(0, 0, 0, 0.4)"
+          : isSelected
+          ? "0 4px 18px rgba(99, 102, 241, 0.2)"
+          : "0 2px 8px rgba(0, 0, 0, 0.15)",
+      }}
+    >
+      {/* 1. Thumbnail (Biggest element, passport aspect ratio) */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          borderRadius: "8px",
+          overflow: "hidden",
+          backgroundColor: "rgba(255, 255, 255, 0.04)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {rec.cover_art_url ? (
+          <img
+            src={rec.cover_art_url}
+            alt={rec.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            loading="lazy"
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15))",
+            }}
+          >
+            <Music2 size={36} color="var(--text-dim)" />
+          </div>
+        )}
+
+        {/* Downloaded Symbol (tick in circle icon) on top right of thumbnail */}
+        {isDownloaded && (
+          <div
+            style={{
+              position: "absolute",
+              top: "7px",
+              right: "7px",
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(4px)",
+              borderRadius: "50%",
+              padding: "3px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              zIndex: 2,
+            }}
+            title="Downloaded & in your local library"
+          >
+            <CheckCircle2 size={16} color="#10b981" />
+          </div>
+        )}
+
+        {/* Hover Play Button (Fades in, bottom-left corner of thumbnail) */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay(rec);
+          }}
+          style={{
+            position: "absolute",
+            bottom: "8px",
+            left: "8px",
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            backgroundColor: isPlaying ? "#10b981" : "var(--accent)",
+            border: "none",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.6)",
+            cursor: "pointer",
+            opacity: isHovered || isPlaying || isLoading ? 1 : 0,
+            transform: isHovered || isPlaying || isLoading ? "scale(1)" : "scale(0.85)",
+            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            zIndex: 3,
+          }}
+          title={isPlaying ? "Pause" : "Play"}
+        >
+          {isLoading ? (
+            <RefreshCw size={16} className="animate-spin" />
+          ) : isPlaying ? (
+            <Pause size={16} fill="#fff" />
+          ) : (
+            <Play size={16} fill="#fff" style={{ marginLeft: "2px" }} />
+          )}
+        </button>
+      </div>
+
+      {/* 2. Name (Below thumbnail, bold, smaller than thumbnail) */}
+      <div
+        style={{
+          marginTop: "10px",
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          color: isPlaying ? "var(--accent-light)" : "#fff",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.3",
+        }}
+        title={rec.title}
+      >
+        {rec.title}
+      </div>
+
+      {/* 3. Artist (Below name, even smaller than title, not bold, clickable to search) */}
+      <div
+        style={{
+          marginTop: "3px",
+          fontWeight: 400,
+          fontSize: "0.78rem",
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          cursor: "pointer",
+          transition: "color 0.15s ease",
+        }}
+        title={`Search other songs by ${rec.artist}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onArtistClick(rec.artist);
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.color = "var(--accent-light)";
+          (e.currentTarget as HTMLElement).style.textDecoration = "underline";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+          (e.currentTarget as HTMLElement).style.textDecoration = "none";
+        }}
+      >
+        {rec.artist}
+      </div>
+
+      {/* 4. Footer Actions (Download / Wishlist) */}
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+        }}
+      >
+        {isDownloaded ? (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "0.72rem",
+              color: "#10b981",
+              fontWeight: 500,
+            }}
+          >
+            <CheckCircle2 size={13} />
+            <span>Downloaded</span>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{
+              padding: "3px 8px",
+              fontSize: "0.72rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload(rec.artist, rec.title);
+            }}
+            title="Download song directly to library"
+          >
+            <DownloadCloud size={12} />
+            <span>Download</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: rec.in_wishlist ? "var(--accent-light)" : "var(--text-dim)",
+            padding: "4px",
+            display: "flex",
+            alignItems: "center",
+            transition: "color 0.15s ease",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToWishlist(rec);
+          }}
+          title={rec.in_wishlist ? "In Wishlist" : "Add to Wishlist"}
+        >
+          <Bookmark size={14} fill={rec.in_wishlist ? "currentColor" : "none"} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onSearchDirect: (artist: string, title: string) => void;
   onRefresh?: (force?: boolean) => Promise<void>;
-  onPausePlayback?: () => void;
+  onPlayOnlineTrack: (rec: DiscoveryRecommendation) => void;
+  activeOnlineTrackId?: string | null;
+  isOnlinePlaying?: boolean;
+  isOnlineLoading?: boolean;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -32,7 +304,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onAddToWishlist,
   onSearchDirect,
   onRefresh,
-  onPausePlayback,
+  onPlayOnlineTrack,
+  activeOnlineTrackId,
+  isOnlinePlaying = false,
+  isOnlineLoading = false,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [refreshing, setRefreshing] = useState(false);
@@ -41,109 +316,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
   const [searchResults, setSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
-
-  // Audio Preview State & Cache for Full Track Streams
-  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
-  const [previewProgress, setPreviewProgress] = useState<number>(0);
-  const [previewCurrentTime, setPreviewCurrentTime] = useState<number>(0);
-  const [activePreviewTrack, setActivePreviewTrack] = useState<DiscoveryRecommendation | null>(null);
-  const [activeDuration, setActiveDuration] = useState<number>(30);
-  const [isFullSongActive, setIsFullSongActive] = useState<boolean>(false);
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
-  const [resolvedAudios, setResolvedAudios] = useState<Record<string, { streamUrl: string; duration: number }>>({});
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const playingPreviewIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    playingPreviewIdRef.current = playingPreviewId;
-  }, [playingPreviewId]);
-
-  // Clean up audio playback when component unmounts
-  const cleanupCurrentAudio = () => {
-    if (audioRef.current) {
-      const a = audioRef.current;
-      a.onended = null;
-      a.onerror = null;
-      a.ontimeupdate = null;
-      a.onplay = null;
-      a.onpause = null;
-      a.onloadedmetadata = null;
-      a.pause();
-      a.removeAttribute("src");
-      a.load();
-      audioRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      cleanupCurrentAudio();
-    };
-  }, []);
-
-  // Keyboard shortcut: Escape closes preview
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && activePreviewTrack) {
-        handleStopPreview();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activePreviewTrack]);
-
-  const setupAndPlayAudio = (url: string, duration: number, startAt: number = 0) => {
-    cleanupCurrentAudio();
-
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    setActiveDuration(duration);
-
-    audio.ontimeupdate = () => {
-      const dur = audio.duration && !isNaN(audio.duration) && audio.duration > 0 ? audio.duration : duration;
-      setActiveDuration(dur);
-      setPreviewProgress((audio.currentTime / dur) * 100);
-      setPreviewCurrentTime(audio.currentTime);
-    };
-
-    audio.onplay = () => {
-      setIsPreviewPlaying(true);
-    };
-
-    audio.onpause = () => {
-      setIsPreviewPlaying(false);
-    };
-
-    audio.onended = () => {
-      setIsPreviewPlaying(false);
-      setPreviewProgress(0);
-      setPreviewCurrentTime(0);
-      setPlayingPreviewId(null);
-      setActivePreviewTrack(null);
-      setIsFullSongActive(false);
-    };
-
-    audio.onerror = (err) => {
-      console.warn("Preview audio playback error:", err);
-      setIsPreviewPlaying(false);
-    };
-
-    if (startAt > 0) {
-      audio.onloadedmetadata = () => {
-        try {
-          audio.currentTime = Math.min(startAt, audio.duration || startAt);
-        } catch (_) {}
-      };
-    }
-
-    setIsPreviewPlaying(true);
-    audio.play().catch((err) => {
-      console.warn("Audio play prevented:", err);
-      setIsPreviewPlaying(false);
-    });
-  };
 
   const handleSearchOnline = async (queryOverride?: string) => {
     const q = (typeof queryOverride === "string" ? queryOverride : searchQuery).trim();
@@ -158,7 +330,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         payload: { query: q, limit: 35 },
       });
       console.log("[DiscoveryView] SearchOnlineMusic response:", res);
-      
+
       let incoming: DiscoveryRecommendation[] = [];
       if (res && Array.isArray(res.data)) {
         incoming = res.data;
@@ -208,119 +380,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setSearchResults(null);
   };
 
-  const fetchFullSongStream = async (rec: DiscoveryRecommendation) => {
-    setResolvingId(rec.external_track_id);
-    let streamResolved = false;
-    try {
-      const res = await executeQuery({
-        query: "ResolveFullTrackAudio",
-        payload: { artist: rec.artist, title: rec.title },
-      });
-
-      if (res && res.type === "FullTrackAudio" && res.data && res.data.stream_url) {
-        const streamUrl = res.data.stream_url;
-        const duration = res.data.duration_secs || 240;
-
-        setResolvedAudios((prev) => ({
-          ...prev,
-          [rec.external_track_id]: { streamUrl, duration },
-        }));
-
-        // If user is still selected on this track, play the full song directly!
-        if (playingPreviewIdRef.current === rec.external_track_id) {
-          setIsFullSongActive(true);
-          setActiveDuration(duration);
-          setupAndPlayAudio(streamUrl, duration, 0);
-          streamResolved = true;
-        }
-      }
-    } catch (e) {
-      console.warn("Could not resolve full song stream:", e);
-    } finally {
-      setResolvingId((curr) => (curr === rec.external_track_id ? null : curr));
-    }
-
-    // Graceful fallback: If full song stream could not be resolved, fallback to preview snippet so it NEVER hangs
-    if (!streamResolved && playingPreviewIdRef.current === rec.external_track_id) {
-      if (rec.preview_url) {
-        console.info("Full stream unavailable, playing 30s preview snippet for:", rec.title);
-        setIsFullSongActive(false);
-        setActiveDuration(30);
-        setupAndPlayAudio(rec.preview_url, 30, 0);
-      } else {
-        handleStopPreview();
-      }
-    }
-  };
-
-  const handleTogglePreview = (rec: DiscoveryRecommendation) => {
-    if (playingPreviewId === rec.external_track_id) {
-      if (resolvingId === rec.external_track_id) {
-        // Clicking while fetching cancels/stops
-        handleStopPreview();
-        return;
-      }
-      if (isPreviewPlaying) {
-        audioRef.current?.pause();
-        setIsPreviewPlaying(false);
-      } else {
-        onPausePlayback?.();
-        audioRef.current?.play().catch((err) => {
-          console.warn("Playback prevented:", err);
-        });
-        setIsPreviewPlaying(true);
-      }
-      return;
-    }
-
-    // Stop current preview audio if playing
-    cleanupCurrentAudio();
-
-    // Pause main library playback if active
-    onPausePlayback?.();
-
-    setPlayingPreviewId(rec.external_track_id);
-    setActivePreviewTrack(rec);
-    setPreviewProgress(0);
-    setPreviewCurrentTime(0);
-
-    const cached = resolvedAudios[rec.external_track_id];
-
-    if (cached) {
-      // Instant full song playback from cache
-      setIsFullSongActive(true);
-      setActiveDuration(cached.duration);
-      setupAndPlayAudio(cached.streamUrl, cached.duration, 0);
-    } else {
-      // Only fetch full song and play directly, never play the 30s snippet
-      setIsFullSongActive(false);
-      setActiveDuration(240);
-      fetchFullSongStream(rec);
-    }
-  };
-
-  const handleStopPreview = () => {
-    cleanupCurrentAudio();
-    setIsPreviewPlaying(false);
-    setPlayingPreviewId(null);
-    setActivePreviewTrack(null);
-    setIsFullSongActive(false);
-    setPreviewProgress(0);
-    setPreviewCurrentTime(0);
-  };
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!audioRef.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const dur = audioRef.current.duration && !isNaN(audioRef.current.duration) && audioRef.current.duration > 0
-      ? audioRef.current.duration
-      : activeDuration;
-    audioRef.current.currentTime = clickPos * dur;
-    setPreviewProgress(clickPos * 100);
-    setPreviewCurrentTime(clickPos * dur);
-  };
-
   const handleRefreshSection = async () => {
     setRefreshing(true);
     try {
@@ -335,39 +394,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const getBadgeClass = (status: string) => {
-    switch (status) {
-      case "EXACT_MATCH":
-        return "badge badge-exact";
-      case "LIKELY_MATCH":
-        return "badge badge-likely";
-      case "POSSIBLE_MATCH":
-        return "badge badge-possible";
-      default:
-        return "badge badge-missing";
-    }
-  };
-
-  const getBadgeLabel = (status: string) => {
-    switch (status) {
-      case "EXACT_MATCH":
-        return "In Library";
-      case "LIKELY_MATCH":
-        return "Likely Owned";
-      case "POSSIBLE_MATCH":
-        return "Alternate Version";
-      default:
-        return "Missing Track";
-    }
-  };
-
-  const formatSeconds = (secs: number) => {
-    const s = Math.floor(secs);
-    const m = Math.floor(s / 60);
-    const rem = s % 60;
-    return `${m}:${rem < 10 ? "0" : ""}${rem}`;
   };
 
   const isSearchActive = searchResults !== null;
@@ -419,7 +445,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         display: "flex",
         flexDirection: "column",
         gap: "20px",
-        paddingBottom: activePreviewTrack ? "140px" : "30px",
+        paddingBottom: "30px",
       }}
     >
       <div className="view-header" style={{ marginBottom: 0 }}>
@@ -434,7 +460,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
       </div>
 
-      {/* Online Music Search Bar */}
+      {/* Online Music Search Bar with integrated Refresh button */}
       <div
         className="content-card"
         style={{
@@ -583,7 +609,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
-                e.currentTarget.style.borderColor = "var(--accent)";
+                e.currentTarget.style.borderColor = "var(--accent-light)";
                 e.currentTarget.style.color = "#fff";
               }}
               onMouseLeave={(e) => {
@@ -721,552 +747,38 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           )}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {filteredRecs.map((rec) => {
-            const isPlayingThis = playingPreviewId === rec.external_track_id && isPreviewPlaying;
-            const isSelected = playingPreviewId === rec.external_track_id;
-            const isResolvingThis = resolvingId === rec.external_track_id;
-
-            return (
-              <div
-                key={rec.external_track_id}
-                className="content-card"
-                style={{
-                  marginBottom: 0,
-                  padding: "14px 18px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: isSelected ? "12px" : "0px",
-                  border: isSelected ? "1px solid var(--accent)" : "1px solid var(--border)",
-                  backgroundColor: isSelected ? "rgba(99, 102, 241, 0.07)" : "var(--bg-card)",
-                  boxShadow: isSelected ? "0 4px 20px rgba(99, 102, 241, 0.12)" : undefined,
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {/* Main Card Row */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
-                    {/* Album Cover Thumbnail with interactive hover / playing overlay */}
-                    <div
-                      className={`discovery-thumb-container ${isPlayingThis ? "is-playing" : ""}`}
-                      onClick={() => handleTogglePreview(rec)}
-                      title={isPlayingThis ? "Pause Preview" : "Play Full Song Preview"}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {rec.cover_art_url ? (
-                        <img
-                          src={rec.cover_art_url}
-                          alt={rec.title}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            backgroundColor: "var(--bg-sidebar)",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            backgroundColor: "var(--bg-sidebar)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            border: "1px solid var(--border)",
-                          }}
-                        >
-                          <Music2 size={22} color="var(--accent-light)" />
-                        </div>
-                      )}
-
-                      {/* Clean Hover / Playing Overlay */}
-                      <div className={`discovery-thumb-overlay ${isSelected && isPreviewPlaying ? "is-playing" : ""}`}>
-                        {isSelected && isPreviewPlaying ? (
-                          <div className="discovery-eq-container">
-                            <span className="discovery-eq-bar" />
-                            <span className="discovery-eq-bar" />
-                            <span className="discovery-eq-bar" />
-                          </div>
-                        ) : isResolvingThis && !isSelected ? (
-                          <RefreshCw size={18} color="#fff" className="animate-spin" />
-                        ) : (
-                          <Play size={18} color="#fff" style={{ marginLeft: "2px" }} />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Track Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px", flexWrap: "wrap" }}>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            fontSize: "0.95rem",
-                            color: "var(--text-main)",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                          title={rec.title}
-                        >
-                          {rec.title}
-                        </span>
-                        <span className={getBadgeClass(rec.match_status)}>
-                          {getBadgeLabel(rec.match_status)}
-                        </span>
-                        {rec.genre && (
-                          <span
-                            style={{
-                              fontSize: "0.7rem",
-                              padding: "2px 7px",
-                              borderRadius: "10px",
-                              backgroundColor: "rgba(255, 255, 255, 0.07)",
-                              color: "var(--text-muted)",
-                              border: "1px solid var(--border)",
-                            }}
-                          >
-                            {rec.genre}
-                          </span>
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "var(--text-muted)",
-                          marginBottom: "4px",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {rec.artist} {rec.album && rec.album !== rec.genre ? `— ${rec.album}` : ""}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "0.76rem",
-                          color: "var(--text-dim)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        <Sparkles size={11} color="var(--accent-light)" />
-                        <span>{rec.recommendation_reason}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Actions */}
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
-                    {/* Full Song Preview Button */}
-                    <button
-                      className={`btn ${isSelected ? "btn-primary" : "btn-secondary"}`}
-                      onClick={() => handleTogglePreview(rec)}
-                      title={
-                        isSelected && isPreviewPlaying
-                          ? "Pause Preview"
-                          : isSelected && !isPreviewPlaying
-                          ? "Resume Preview"
-                          : isResolvingThis
-                          ? "Loading full song stream..."
-                          : "Preview full song before downloading"
-                      }
-                      style={{
-                        fontSize: "0.8rem",
-                        padding: "6px 12px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      {isSelected && isResolvingThis ? (
-                        <>
-                          <RefreshCw size={14} className="animate-spin" color={isSelected ? "#fff" : "var(--accent-light)"} />
-                          <span>Loading Full Song...</span>
-                        </>
-                      ) : isSelected && isPreviewPlaying ? (
-                        <>
-                          <Pause size={14} />
-                          <span>Pause Preview</span>
-                        </>
-                      ) : isSelected && !isPreviewPlaying ? (
-                        <>
-                          <Play size={14} />
-                          <span>Resume Preview</span>
-                        </>
-                      ) : isResolvingThis ? (
-                        <>
-                          <RefreshCw size={14} className="animate-spin" color="var(--accent-light)" />
-                          <span>Loading Song...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Headphones size={14} color="var(--accent-light)" />
-                          <span>Preview</span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* Direct Download */}
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => onSearchDirect(rec.artist, rec.title)}
-                      title="Search & download directly in-app"
-                      style={{ fontSize: "0.8rem", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                    >
-                      <DownloadCloud size={14} color="var(--accent-light)" />
-                      <span>Download Direct</span>
-                    </button>
-
-                    {/* Wishlist Status */}
-                    {rec.in_wishlist ? (
-                      <button
-                        className="btn btn-secondary"
-                        disabled
-                        style={{ opacity: 0.6, cursor: "default", fontSize: "0.8rem", padding: "6px 12px" }}
-                      >
-                        <Check size={14} color="var(--success)" />
-                        <span>In Wishlist</span>
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => onAddToWishlist(rec)}
-                        style={{ fontSize: "0.8rem", padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                      >
-                        <Bookmark size={14} />
-                        <span>Add to Wishlist</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Inline Card Preview Player (Only rendered on the active track) */}
-                {isSelected && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "8px 12px",
-                      backgroundColor: "rgba(0, 0, 0, 0.2)",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(99, 102, 241, 0.25)",
-                    }}
-                  >
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleTogglePreview(rec)}
-                      style={{
-                        width: "28px",
-                        height: "28px",
-                        padding: 0,
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                      title={isPlayingThis ? "Pause" : "Resume"}
-                    >
-                      {isPlayingThis ? <Pause size={13} /> : <Play size={13} style={{ marginLeft: "1px" }} />}
-                    </button>
-
-                    <span style={{ fontSize: "0.74rem", color: "var(--text-dim)", minWidth: "30px" }}>
-                      {formatSeconds(previewCurrentTime)}
-                    </span>
-
-                    {/* Interactive Scrubbable Progress Bar */}
-                    <div
-                      style={{
-                        flex: 1,
-                        height: "6px",
-                        backgroundColor: "rgba(255, 255, 255, 0.1)",
-                        borderRadius: "3px",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        position: "relative",
-                      }}
-                      onClick={handleSeek}
-                      title="Click to seek preview"
-                    >
-                      <div
-                        style={{
-                          width: `${previewProgress}%`,
-                          height: "100%",
-                          backgroundColor: "var(--accent-light)",
-                          borderRadius: "3px",
-                          transition: "width 0.1s linear",
-                        }}
-                      />
-                    </div>
-
-                    <span style={{ fontSize: "0.74rem", color: "var(--text-dim)", minWidth: "30px" }}>
-                      {formatSeconds(activeDuration)}
-                    </span>
-
-                    {isFullSongActive ? (
-                      <span
-                        style={{
-                          fontSize: "0.72rem",
-                          color: "#10b981",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                          fontWeight: 600,
-                          backgroundColor: "rgba(16, 185, 129, 0.12)",
-                          padding: "2px 8px",
-                          borderRadius: "10px",
-                        }}
-                      >
-                        <Sparkles size={11} />
-                        <span>Full Song Stream</span>
-                      </span>
-                    ) : isResolvingThis ? (
-                      <span
-                        style={{
-                          fontSize: "0.72rem",
-                          color: "var(--accent-light)",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <RefreshCw size={11} className="animate-spin" />
-                        <span>Fetching full track...</span>
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
-                        30s Preview
-                      </span>
-                    )}
-
-                    <button
-                      className="btn btn-secondary"
-                      onClick={handleStopPreview}
-                      title="Stop Preview"
-                      style={{
-                        padding: "3px 8px",
-                        fontSize: "0.72rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      Stop
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Floating Bottom Preview Player Bar (Docked cleanly above player bar) */}
-      {activePreviewTrack && (
+        /* Passport-like card grid layout */
         <div
           style={{
-            position: "fixed",
-            bottom: "102px",
-            left: "272px",
-            right: "32px",
-            backgroundColor: "rgba(22, 24, 34, 0.95)",
-            borderRadius: "12px",
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(99, 102, 241, 0.4)",
-            border: "1px solid var(--accent)",
-            padding: "10px 18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
             gap: "18px",
-            zIndex: 60,
-            backdropFilter: "blur(16px)",
           }}
         >
-          {/* Active Track Info */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: "200px", maxWidth: "320px" }}>
-            {activePreviewTrack.cover_art_url ? (
-              <img
-                src={activePreviewTrack.cover_art_url}
-                alt={activePreviewTrack.title}
-                style={{ width: "40px", height: "40px", borderRadius: "6px", objectFit: "cover" }}
+          {filteredRecs.map((rec) => {
+            const isPlayingThis =
+              activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
+            const isSelected = activeOnlineTrackId === rec.external_track_id;
+            const isResolvingThis =
+              activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
+
+            return (
+              <DiscoveryTrackCard
+                key={rec.external_track_id}
+                rec={rec}
+                isPlaying={isPlayingThis}
+                isLoading={isResolvingThis}
+                isSelected={isSelected}
+                onPlay={onPlayOnlineTrack}
+                onArtistClick={(artist) => {
+                  setSearchQuery(artist);
+                  handleSearchOnline(artist);
+                }}
+                onAddToWishlist={onAddToWishlist}
+                onDownload={onSearchDirect}
               />
-            ) : (
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "6px",
-                  backgroundColor: "var(--bg-sidebar)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Music2 size={18} color="var(--accent-light)" />
-              </div>
-            )}
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontWeight: 600,
-                  fontSize: "0.88rem",
-                  color: "var(--text-main)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {activePreviewTrack.title}
-              </div>
-              <div
-                style={{
-                  fontSize: "0.76rem",
-                  color: "var(--text-muted)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {activePreviewTrack.artist}
-              </div>
-            </div>
-          </div>
-
-          {/* Progress & Controls */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "12px", maxWidth: "550px" }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => handleTogglePreview(activePreviewTrack)}
-              style={{
-                width: "34px",
-                height: "34px",
-                padding: 0,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-              title={isPreviewPlaying ? "Pause Preview" : "Play Preview"}
-            >
-              {isPreviewPlaying ? <Pause size={16} /> : <Play size={16} style={{ marginLeft: "1.5px" }} />}
-            </button>
-
-            <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", minWidth: "32px" }}>
-              {formatSeconds(previewCurrentTime)}
-            </span>
-
-            {/* Preview Progress Bar */}
-            <div
-              style={{
-                flex: 1,
-                height: "6px",
-                backgroundColor: "rgba(255, 255, 255, 0.12)",
-                borderRadius: "3px",
-                overflow: "hidden",
-                cursor: "pointer",
-                position: "relative",
-              }}
-              onClick={handleSeek}
-              title="Click to seek"
-            >
-              <div
-                style={{
-                  width: `${previewProgress}%`,
-                  height: "100%",
-                  backgroundColor: "var(--accent-light)",
-                  borderRadius: "3px",
-                  transition: "width 0.1s linear",
-                }}
-              />
-            </div>
-
-            <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", minWidth: "32px" }}>
-              {formatSeconds(activeDuration)}
-            </span>
-
-            {isFullSongActive ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  color: "#10b981",
-                  backgroundColor: "rgba(16, 185, 129, 0.15)",
-                  padding: "3px 8px",
-                  borderRadius: "12px",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Sparkles size={12} />
-                <span>Full Song Stream</span>
-              </div>
-            ) : resolvingId === activePreviewTrack.external_track_id ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  color: "var(--accent-light)",
-                  fontSize: "0.72rem",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <RefreshCw size={12} className="animate-spin" />
-                <span>Loading Full Track...</span>
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--accent-light)" }}>
-                <Volume2 size={15} />
-                <span style={{ fontSize: "0.72rem", fontWeight: 500 }}>Preview</span>
-              </div>
-            )}
-          </div>
-
-          {/* Actions & Close */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => onSearchDirect(activePreviewTrack.artist, activePreviewTrack.title)}
-              style={{
-                fontSize: "0.78rem",
-                padding: "6px 14px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                fontWeight: 600,
-              }}
-              title="Liked this track? Download the full audio directly to your library"
-            >
-              <DownloadCloud size={14} />
-              <span>Download This Song</span>
-            </button>
-
-            <button
-              className="btn btn-secondary"
-              onClick={handleStopPreview}
-              title="Close Preview (Esc)"
-              style={{
-                padding: "6px",
-                borderRadius: "6px",
-                color: "var(--text-dim)",
-              }}
-            >
-              <X size={16} />
-            </button>
-          </div>
+            );
+          })}
         </div>
       )}
     </div>
