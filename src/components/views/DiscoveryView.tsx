@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   DownloadCloud,
   Sparkles,
@@ -13,8 +13,11 @@ import {
   Search,
   Globe,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
 } from "lucide-react";
-import { DiscoveryRecommendation, Track } from "../../types";
+import { DiscoveryRecommendation, Track, Playlist } from "../../types";
 import { executeQuery } from "../../services/api";
 
 interface DiscoveryTrackCardProps {
@@ -343,8 +346,287 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   );
 };
 
+interface MixItem {
+  id: string;
+  name: string;
+  subtitle: string;
+  bgGradient: string;
+  accentColor: string;
+  searchQuery?: string;
+  playlistId?: string;
+}
+
+const MixCard: React.FC<{ mix: MixItem; onPlay: () => void }> = ({ mix, onPlay }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onPlay}
+      style={{
+        backgroundColor: "var(--bg-card)",
+        border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "10px",
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        position: "relative",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-4px)" : "none",
+        boxShadow: isHovered ? "0 10px 24px rgba(0, 0, 0, 0.4)" : "0 2px 8px rgba(0, 0, 0, 0.15)",
+        width: "100%",
+        height: "100%",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          borderRadius: "8px",
+          overflow: "hidden",
+          background: mix.bgGradient,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px",
+          textAlign: "center",
+        }}
+      >
+        <Sparkles size={38} color="#fff" style={{ opacity: 0.9, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }} />
+        <span
+          style={{
+            marginTop: "8px",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            letterSpacing: "1px",
+            color: "rgba(255, 255, 255, 0.9)",
+            textTransform: "uppercase",
+            textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+          }}
+        >
+          MIX
+        </span>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay();
+          }}
+          style={{
+            position: "absolute",
+            bottom: "8px",
+            left: "8px",
+            width: "38px",
+            height: "38px",
+            borderRadius: "50%",
+            backgroundColor: "var(--accent)",
+            border: "none",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.6)",
+            cursor: "pointer",
+            opacity: isHovered ? 1 : 0,
+            transform: isHovered ? "scale(1)" : "scale(0.85)",
+            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            zIndex: 3,
+          }}
+          title={`Play ${mix.name}`}
+        >
+          <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+        </button>
+      </div>
+
+      <div
+        style={{
+          marginTop: "10px",
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          color: "#fff",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.3",
+        }}
+        title={mix.name}
+      >
+        {mix.name}
+      </div>
+
+      <div
+        style={{
+          marginTop: "3px",
+          fontWeight: 400,
+          fontSize: "0.76rem",
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.3",
+        }}
+        title={mix.subtitle}
+      >
+        {mix.subtitle}
+      </div>
+    </div>
+  );
+};
+
+interface ChartItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  chartNumber: string;
+  region: string;
+  bgGradient: string;
+  badgeBg: string;
+  searchQuery: string;
+}
+
+const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void }> = ({ chart, onPlay }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onPlay}
+      style={{
+        backgroundColor: "var(--bg-card)",
+        border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "10px",
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        position: "relative",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-4px)" : "none",
+        boxShadow: isHovered ? "0 10px 24px rgba(0, 0, 0, 0.4)" : "0 2px 8px rgba(0, 0, 0, 0.15)",
+        width: "100%",
+        height: "100%",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          borderRadius: "8px",
+          overflow: "hidden",
+          background: chart.bgGradient,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "12px",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: "rgba(0,0,0,0.38)",
+            backdropFilter: "blur(4px)",
+            padding: "3px 8px",
+            borderRadius: "6px",
+            fontSize: "0.68rem",
+            fontWeight: 800,
+            letterSpacing: "1.5px",
+            color: "#fff",
+            marginBottom: "6px",
+          }}
+        >
+          TOP 50
+        </div>
+        <div
+          style={{
+            fontSize: "1.05rem",
+            fontWeight: 900,
+            letterSpacing: "0.5px",
+            color: "#fff",
+            textShadow: "0 2px 8px rgba(0,0,0,0.6)",
+          }}
+        >
+          {chart.chartNumber}
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay();
+          }}
+          style={{
+            position: "absolute",
+            bottom: "8px",
+            left: "8px",
+            width: "38px",
+            height: "38px",
+            borderRadius: "50%",
+            backgroundColor: chart.badgeBg || "var(--accent)",
+            border: "none",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.6)",
+            cursor: "pointer",
+            opacity: isHovered ? 1 : 0,
+            transform: isHovered ? "scale(1)" : "scale(0.85)",
+            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            zIndex: 3,
+          }}
+          title={`Play ${chart.title}`}
+        >
+          <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+        </button>
+      </div>
+
+      <div
+        style={{
+          marginTop: "10px",
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          color: "#fff",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.3",
+        }}
+        title={chart.title}
+      >
+        {chart.title}
+      </div>
+
+      <div
+        style={{
+          marginTop: "3px",
+          fontWeight: 400,
+          fontSize: "0.76rem",
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          lineHeight: "1.3",
+        }}
+        title={chart.subtitle}
+      >
+        {chart.subtitle}
+      </div>
+    </div>
+  );
+};
+
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
+  playlists?: Playlist[];
+  onPlayPlaylist?: (id: string) => void;
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onSearchDirect: (artist: string, title: string) => void;
   onRefresh?: (force?: boolean) => Promise<void>;
@@ -359,6 +641,8 @@ interface DiscoveryViewProps {
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   recommendations,
+  playlists = [],
+  onPlayPlaylist,
   onAddToWishlist,
   onSearchDirect,
   onRefresh,
@@ -500,28 +784,185 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     return s.includes("similar") || s.includes("listening") || s.includes("library artist");
   }).length;
 
+  const songsScrollRef = useRef<HTMLDivElement>(null);
+  const mixesScrollRef = useRef<HTMLDivElement>(null);
+  const chartsScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") => {
+    if (ref.current) {
+      const amount = direction === "left" ? -500 : 500;
+      ref.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
+
+  const userSmartMixes: MixItem[] = (playlists || [])
+    .filter((p) => p.is_smart_mix === 1 || (p.track_count && p.track_count > 0))
+    .map((p, idx) => {
+      const gradients = [
+        "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        "linear-gradient(135deg, #059669 0%, #0d9488 100%)",
+        "linear-gradient(135deg, #dc2626 0%, #ea580c 100%)",
+        "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
+        "linear-gradient(135deg, #d946ef 0%, #ec4899 100%)",
+      ];
+      return {
+        id: p.id,
+        name: p.name,
+        subtitle: p.description || p.generation_reason || `${p.track_count || 0} tracks`,
+        bgGradient: gradients[idx % gradients.length],
+        accentColor: "#a78bfa",
+        playlistId: p.id,
+      };
+    });
+
+  const curatedMixes: MixItem[] = [
+    {
+      id: "daily_mix_1",
+      name: "Daily Mix 1",
+      subtitle: "Personalized blend tailored to your recent favorites",
+      bgGradient: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+      accentColor: "#818cf8",
+      searchQuery: "Daily Mix Hits",
+    },
+    {
+      id: "chill_vibes",
+      name: "Chill Vibes",
+      subtitle: "Mellow acoustic, lo-fi, and downtempo ambient melodies",
+      bgGradient: "linear-gradient(135deg, #059669 0%, #0d9488 100%)",
+      accentColor: "#34d399",
+      searchQuery: "Chill Lo-Fi Vibes",
+    },
+    {
+      id: "hiphop_urban",
+      name: "Hip-Hop & Urban",
+      subtitle: "Hard-hitting beats, lyrical flows, and urban anthems",
+      bgGradient: "linear-gradient(135deg, #dc2626 0%, #ea580c 100%)",
+      accentColor: "#f87171",
+      searchQuery: "Hip-Hop Hits",
+    },
+    {
+      id: "late_night_drive",
+      name: "Late Night Drive",
+      subtitle: "Moody synths, atmospheric basslines, and nocturnal rhythms",
+      bgGradient: "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
+      accentColor: "#a5b4fc",
+      searchQuery: "Synthwave Night Drive",
+    },
+    {
+      id: "pop_viral_hits",
+      name: "Pop & Viral Hits",
+      subtitle: "Catchy melodies, trending hooks, and radio favorites",
+      bgGradient: "linear-gradient(135deg, #d946ef 0%, #ec4899 100%)",
+      accentColor: "#f472b6",
+      searchQuery: "Top Pop Hits",
+    },
+    {
+      id: "acoustic_afternoon",
+      name: "Acoustic Afternoon",
+      subtitle: "Warm acoustic guitars, gentle keys, and soul-stirring vocals",
+      bgGradient: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+      accentColor: "#fbbf24",
+      searchQuery: "Acoustic Pop Indie",
+    },
+    {
+      id: "edm_dance_mix",
+      name: "EDM Energy",
+      subtitle: "Festival bangers, dance floor anthems, and club beats",
+      bgGradient: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+      accentColor: "#38bdf8",
+      searchQuery: "EDM Dance Hits",
+    },
+  ];
+
+  const allMixes = [...userSmartMixes, ...curatedMixes];
+
+  const topCharts: ChartItem[] = [
+    {
+      id: "chart_top50_global",
+      title: "Top 50 - Global",
+      subtitle: "The most played tracks worldwide right now",
+      chartNumber: "GLOBAL",
+      region: "Worldwide",
+      bgGradient: "linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)",
+      badgeBg: "#10b981",
+      searchQuery: "Top 50 Global",
+    },
+    {
+      id: "chart_top50_india",
+      title: "Top 50 - India",
+      subtitle: "Trending blockbusters, Hindi, Punjabi, and Indian indie hits",
+      chartNumber: "INDIA",
+      region: "India",
+      bgGradient: "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)",
+      badgeBg: "#f97316",
+      searchQuery: "Top 50 India",
+    },
+    {
+      id: "chart_viral50_global",
+      title: "Viral 50 - Global",
+      subtitle: "The tracks going viral on social and streaming charts",
+      chartNumber: "VIRAL",
+      region: "Worldwide",
+      bgGradient: "linear-gradient(135deg, #831843 0%, #be185d 50%, #ec4899 100%)",
+      badgeBg: "#f43f5e",
+      searchQuery: "Viral 50 Global",
+    },
+    {
+      id: "chart_top50_usa",
+      title: "Top 50 - USA",
+      subtitle: "Hottest charting tracks and Billboard favorites in the United States",
+      chartNumber: "USA",
+      region: "United States",
+      bgGradient: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%)",
+      badgeBg: "#3b82f6",
+      searchQuery: "Top 50 USA",
+    },
+    {
+      id: "chart_bollywood_punjabi",
+      title: "Top 50 - Bollywood & Punjabi",
+      subtitle: "Blockbuster film songs, Punjabi hits, and Desi pop anthems",
+      chartNumber: "DESI",
+      region: "India / Global",
+      bgGradient: "linear-gradient(135deg, #701a75 0%, #a21caf 50%, #c026d3 100%)",
+      badgeBg: "#d946ef",
+      searchQuery: "Bollywood Punjabi Hits",
+    },
+    {
+      id: "chart_top50_dance_edm",
+      title: "Top 50 - Dance & EDM",
+      subtitle: "Top club anthems, festival bangers, and electronic dance hits",
+      chartNumber: "DANCE",
+      region: "Worldwide",
+      bgGradient: "linear-gradient(135deg, #0e7490 0%, #06b6d4 50%, #22d3ee 100%)",
+      badgeBg: "#06b6d4",
+      searchQuery: "Top 50 EDM Dance",
+    },
+  ];
+
+  const handlePlayMixItem = (mix: MixItem) => {
+    if (mix.playlistId && onPlayPlaylist) {
+      onPlayPlaylist(mix.playlistId);
+    } else if (mix.searchQuery) {
+      setSearchQuery(mix.searchQuery);
+      handleSearchOnline(mix.searchQuery);
+    }
+  };
+
+  const handlePlayChartItem = (chart: ChartItem) => {
+    setSearchQuery(chart.searchQuery);
+    handleSearchOnline(chart.searchQuery);
+  };
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "20px",
-        paddingBottom: "30px",
+        gap: "28px",
+        paddingBottom: "40px",
       }}
     >
-      <div className="view-header" style={{ marginBottom: 0 }}>
-        <div>
-          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Sparkles size={26} color="var(--accent-light)" />
-            <span>Music Discovery</span>
-          </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", marginTop: "4px" }}>
-            Explore trending charts, user-tailored genres, or search any music online worldwide.
-          </p>
-        </div>
-      </div>
-
-      {/* Online Music Search Bar with integrated Refresh button */}
+      {/* 1. Online Music Search Bar with integrated Refresh button (ABOVE Music Discovery title) */}
       <div
         className="content-card"
         style={{
@@ -642,6 +1083,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             Try:
           </span>
           {[
+            "Top 50 Global",
+            "Top 50 India",
             "Malayalam Hits",
             "Pavizha Mazha",
             "Eminem",
@@ -682,6 +1125,19 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               {suggestion}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* 2. Music Discovery Title (BELOW search bar) */}
+      <div className="view-header" style={{ marginBottom: 0 }}>
+        <div>
+          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Sparkles size={26} color="var(--accent-light)" />
+            <span>Music Discovery</span>
+          </h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", marginTop: "4px" }}>
+            Explore trending charts, user-tailored genres, or search any music online worldwide.
+          </p>
         </div>
       </div>
 
@@ -763,97 +1219,242 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
       )}
 
-      {filteredRecs.length === 0 ? (
-        <div
-          className="content-card"
-          style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
-        >
-          {isSearchActive ? (
-            <>
-              <Globe size={40} color="var(--accent-light)" style={{ marginBottom: "14px" }} />
-              <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
-                No online songs found matching &ldquo;{searchQuery}&rdquo;
-              </p>
-              <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "500px", margin: "0 auto" }}>
-                Try searching for another artist or title, or browse the curated recommendations.
-              </p>
-              <button
-                onClick={handleClearSearch}
-                className="btn btn-secondary"
-                style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
-              >
-                <span>Return to Recommendations</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <Sparkles size={40} color="var(--accent-light)" style={{ marginBottom: "14px" }} />
-              <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
-                No discovery recommendations found in this view
-              </p>
-              <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", maxWidth: "500px", margin: "0 auto" }}>
-                Listen to your local library or click Refresh Discovery to discover fresh trending and genre tracks.
-              </p>
-              {onRefresh && (
-                <button
-                  onClick={handleRefreshSection}
-                  className="btn btn-primary"
-                  style={{ marginTop: "18px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
-                >
-                  <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-                  <span>{refreshing ? "Refreshing..." : "Refresh Discovery Now"}</span>
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        /* Passport-like card grid layout */
+      {/* SECTION 1: Trending & Recommended Songs (Horizontal Scroll) */}
+      <div>
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-            gap: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "12px",
           }}
         >
-          {filteredRecs.map((rec) => {
-            const isPlayingLocal =
-              isLocalPlaying &&
-              !!currentLocalTrack &&
-              ((rec.matched_local_track_id && rec.matched_local_track_id === currentLocalTrack.id) ||
-                rec.external_track_id === currentLocalTrack.id ||
-                (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
-                  currentLocalTrack.artist_name &&
-                  rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
+          <div>
+            <h2
+              style={{
+                fontSize: "1.18rem",
+                fontWeight: 700,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Music2 size={18} color="var(--accent-light)" />
+              <span>{isSearchActive ? `Search Results (${filteredRecs.length})` : "Trending Songs"}</span>
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              {isSearchActive
+                ? `Songs found online for "${searchQuery}"`
+                : "Top recommended songs tailored to your taste"}
+            </p>
+          </div>
 
-            const isPlayingOnline =
-              activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
-
-            const isPlayingThis = isPlayingLocal || isPlayingOnline;
-            const isSelected = isPlayingThis || activeOnlineTrackId === rec.external_track_id;
-            const isResolvingThis =
-              activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
-
-            return (
-              <DiscoveryTrackCard
-                key={rec.external_track_id}
-                rec={rec}
-                isPlaying={isPlayingThis}
-                isLoading={isResolvingThis}
-                isSelected={isSelected}
-                onPlay={onPlayOnlineTrack}
-                onStop={onStopTrack || onPlayOnlineTrack}
-                onArtistClick={(artist) => {
-                  setSearchQuery(artist);
-                  handleSearchOnline(artist);
-                }}
-                onAddToWishlist={onAddToWishlist}
-                onDownload={onSearchDirect}
-              />
-            );
-          })}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(songsScrollRef, "left")}
+              title="Scroll left"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(songsScrollRef, "right")}
+              title="Scroll right"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
-      )}
+
+        {filteredRecs.length === 0 ? (
+          <div
+            className="content-card"
+            style={{ textAlign: "center", padding: "45px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
+          >
+            {isSearchActive ? (
+              <>
+                <Globe size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
+                <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+                  No online songs found matching &ldquo;{searchQuery}&rdquo;
+                </p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
+                  Try searching for another artist or title, or browse our curated mixes below.
+                </p>
+              </>
+            ) : (
+              <>
+                <Sparkles size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
+                <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+                  No recommendations found
+                </p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
+                  Click Refresh to discover fresh trending and genre tracks.
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div ref={songsScrollRef} className="horizontal-scroll-row">
+            {filteredRecs.map((rec) => {
+              const isPlayingLocal =
+                isLocalPlaying &&
+                !!currentLocalTrack &&
+                ((rec.matched_local_track_id && rec.matched_local_track_id === currentLocalTrack.id) ||
+                  rec.external_track_id === currentLocalTrack.id ||
+                  (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
+                    currentLocalTrack.artist_name &&
+                    rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
+
+              const isPlayingOnline =
+                activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
+
+              const isPlayingThis = isPlayingLocal || isPlayingOnline;
+              const isSelected = isPlayingThis || activeOnlineTrackId === rec.external_track_id;
+              const isResolvingThis =
+                activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
+
+              return (
+                <div key={rec.external_track_id} style={{ flex: "0 0 174px", width: "174px" }}>
+                  <DiscoveryTrackCard
+                    rec={rec}
+                    isPlaying={isPlayingThis}
+                    isLoading={isResolvingThis}
+                    isSelected={isSelected}
+                    onPlay={onPlayOnlineTrack}
+                    onStop={onStopTrack || onPlayOnlineTrack}
+                    onArtistClick={(artist) => {
+                      setSearchQuery(artist);
+                      handleSearchOnline(artist);
+                    }}
+                    onAddToWishlist={onAddToWishlist}
+                    onDownload={onSearchDirect}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: Mixes For You (Horizontal Scroll) */}
+      <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "12px",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                fontSize: "1.18rem",
+                fontWeight: 700,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Sparkles size={18} color="#c084fc" />
+              <span>Mixes For You</span>
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              Personalized blends and custom smart mixes curated for your listening style
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(mixesScrollRef, "left")}
+              title="Scroll left"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(mixesScrollRef, "right")}
+              title="Scroll right"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div ref={mixesScrollRef} className="horizontal-scroll-row">
+          {allMixes.map((mix) => (
+            <div key={mix.id} style={{ flex: "0 0 174px", width: "174px" }}>
+              <MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 3: Top Charts (Horizontal Scroll) */}
+      <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "12px",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                fontSize: "1.18rem",
+                fontWeight: 700,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <TrendingUp size={18} color="#f59e0b" />
+              <span>Top Charts</span>
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              Top 50 Global, Top 50 India, and trending viral music charts worldwide
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(chartsScrollRef, "left")}
+              title="Scroll left"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className="scroll-arrow-btn"
+              onClick={() => handleScroll(chartsScrollRef, "right")}
+              title="Scroll right"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div ref={chartsScrollRef} className="horizontal-scroll-row">
+          {topCharts.map((chart) => (
+            <div key={chart.id} style={{ flex: "0 0 174px", width: "174px" }}>
+              <ChartCard chart={chart} onPlay={() => handlePlayChartItem(chart)} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

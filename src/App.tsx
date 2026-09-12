@@ -1160,6 +1160,8 @@ export const App: React.FC = () => {
         {currentView === "discovery" && (
           <DiscoveryView
             recommendations={discoveryRecs}
+            playlists={playlists}
+            onPlayPlaylist={handlePlayPlaylist}
             onAddToWishlist={(rec) =>
               handleAddToWishlist(rec.title, rec.artist, rec.album)
             }

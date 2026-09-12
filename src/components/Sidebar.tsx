@@ -84,13 +84,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <ListMusic size={18} />
           <span>Playlists</span>
         </button>
-        <button
-          className={`nav-button ${currentView === "smart_mixes" ? "active" : ""}`}
-          onClick={() => onSelectView("smart_mixes")}
-        >
-          <Sparkles size={18} />
-          <span>Smart Mixes</span>
-        </button>
       </div>
 
       <div className="nav-section">
