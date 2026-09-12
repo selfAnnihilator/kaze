@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { DiscoveryRecommendation, Track, Playlist } from "../../types";
 import { executeQuery } from "../../services/api";
+import { CollectionData } from "./CollectionDetailView";
 
 interface DiscoveryTrackCardProps {
   rec: DiscoveryRecommendation;
@@ -356,14 +357,18 @@ interface MixItem {
   playlistId?: string;
 }
 
-const MixCard: React.FC<{ mix: MixItem; onPlay: () => void }> = ({ mix, onPlay }) => {
+const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void }> = ({
+  mix,
+  onPlay,
+  onOpen,
+}) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onPlay}
+      onClick={onOpen || onPlay}
       style={{
         backgroundColor: "var(--bg-card)",
         border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
@@ -489,14 +494,18 @@ interface ChartItem {
   searchQuery: string;
 }
 
-const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void }> = ({ chart, onPlay }) => {
+const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () => void }> = ({
+  chart,
+  onPlay,
+  onOpen,
+}) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onPlay}
+      onClick={onOpen || onPlay}
       style={{
         backgroundColor: "var(--bg-card)",
         border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
@@ -637,6 +646,7 @@ interface DiscoveryViewProps {
   isOnlineLoading?: boolean;
   currentLocalTrack?: Track | null;
   isLocalPlaying?: boolean;
+  onOpenCollection?: (collection: CollectionData) => void;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -653,6 +663,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   isOnlineLoading = false,
   currentLocalTrack,
   isLocalPlaying = false,
+  onOpenCollection,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [refreshing, setRefreshing] = useState(false);
@@ -938,6 +949,41 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       searchQuery: "Top 50 EDM Dance",
     },
   ];
+
+  const handleOpenMix = (mix: MixItem) => {
+    if (onOpenCollection) {
+      onOpenCollection({
+        id: mix.id,
+        type: "mix",
+        title: mix.name,
+        subtitle: mix.subtitle,
+        tag: "SMART MIX",
+        bgGradient: mix.bgGradient,
+        accentColor: mix.accentColor,
+        searchQuery: mix.searchQuery,
+        playlistId: mix.playlistId,
+      });
+    } else {
+      handlePlayMixItem(mix);
+    }
+  };
+
+  const handleOpenChart = (chart: ChartItem) => {
+    if (onOpenCollection) {
+      onOpenCollection({
+        id: chart.id,
+        type: "chart",
+        title: chart.title,
+        subtitle: chart.subtitle,
+        tag: `TOP CHART • ${chart.region.toUpperCase()}`,
+        bgGradient: chart.bgGradient,
+        accentColor: chart.badgeBg,
+        searchQuery: chart.searchQuery,
+      });
+    } else {
+      handlePlayChartItem(chart);
+    }
+  };
 
   const handlePlayMixItem = (mix: MixItem) => {
     if (mix.playlistId && onPlayPlaylist) {
@@ -1392,7 +1438,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         <div ref={mixesScrollRef} className="horizontal-scroll-row">
           {allMixes.map((mix) => (
             <div key={mix.id} style={{ flex: "0 0 174px", width: "174px" }}>
-              <MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} />
+              <MixCard
+                mix={mix}
+                onPlay={() => handlePlayMixItem(mix)}
+                onOpen={() => handleOpenMix(mix)}
+              />
             </div>
           ))}
         </div>
@@ -1450,7 +1500,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         <div ref={chartsScrollRef} className="horizontal-scroll-row">
           {topCharts.map((chart) => (
             <div key={chart.id} style={{ flex: "0 0 174px", width: "174px" }}>
-              <ChartCard chart={chart} onPlay={() => handlePlayChartItem(chart)} />
+              <ChartCard
+                chart={chart}
+                onPlay={() => handlePlayChartItem(chart)}
+                onOpen={() => handleOpenChart(chart)}
+              />
             </div>
           ))}
         </div>

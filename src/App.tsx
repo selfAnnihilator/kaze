@@ -26,10 +26,17 @@ import { DiscoveryView } from "./components/views/DiscoveryView";
 import { WishlistView } from "./components/views/WishlistView";
 import { DownloadsView } from "./components/views/DownloadsView";
 import { SettingsView } from "./components/views/SettingsView";
+import {
+  CollectionDetailView,
+  CollectionData,
+  CollectionTrackItem,
+} from "./components/views/CollectionDetailView";
 
 export const App: React.FC = () => {
   // Navigation
   const [currentView, setCurrentView] = useState<ViewType>("library");
+  const [activeCollection, setActiveCollection] = useState<CollectionData | null>(null);
+  const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
 
   // Onboarding
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
@@ -38,6 +45,7 @@ export const App: React.FC = () => {
   // Online Preview / Stream Playback (Integrated into bottom NowPlayingBar)
   const [onlineTrack, setOnlineTrack] = useState<OnlinePlayingTrack | null>(null);
   const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeOnlinePlayIdRef = useRef<number>(0);
 
   // Playback
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -460,6 +468,7 @@ export const App: React.FC = () => {
   // --- Actions & Commands ---
 
   const handleStopOnlineAudio = useCallback(() => {
+    activeOnlinePlayIdRef.current++;
     if (onlineAudioRef.current) {
       onlineAudioRef.current.pause();
       onlineAudioRef.current.removeAttribute("src");
@@ -471,11 +480,15 @@ export const App: React.FC = () => {
 
   const handleStopTrack = useCallback(
     async (rec?: DiscoveryRecommendation) => {
+      activeOnlinePlayIdRef.current++;
       if (onlineTrack && (!rec || onlineTrack.id === rec.external_track_id)) {
         if (onlineAudioRef.current) {
           onlineAudioRef.current.pause();
+          onlineAudioRef.current.removeAttribute("src");
+          onlineAudioRef.current.load();
+          onlineAudioRef.current = null;
         }
-        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+        setOnlineTrack(null);
         return;
       }
 
@@ -487,10 +500,36 @@ export const App: React.FC = () => {
 
       if (onlineAudioRef.current) {
         onlineAudioRef.current.pause();
-        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+        onlineAudioRef.current.removeAttribute("src");
+        onlineAudioRef.current.load();
+        onlineAudioRef.current = null;
+        setOnlineTrack(null);
       }
     },
     [onlineTrack, playbackState.is_playing]
+  );
+
+  const handlePlayTrack = useCallback(
+    async (trackId: string) => {
+      handleStopOnlineAudio();
+      const found = tracks.find((t) => t.id === trackId);
+      if (found) {
+        setPlaybackState((prev) => ({
+          ...prev,
+          current_track: found,
+          is_playing: true,
+          position_secs: 0,
+          duration_secs: found.duration_secs || prev.duration_secs,
+        }));
+      }
+      await dispatchCommand({
+        command: "PlayTrack",
+        payload: { track_id: trackId },
+      });
+      // Immediately fetch updated track/state
+      fetchPlaybackState();
+    },
+    [tracks, handleStopOnlineAudio, fetchPlaybackState]
   );
 
   const handlePlayOnlineTrack = useCallback(
@@ -536,8 +575,9 @@ export const App: React.FC = () => {
         setPlaybackState((prev) => ({ ...prev, is_playing: false }));
       }
 
-      // 5. Stop existing online audio
+      // 5. Stop existing online audio & acquire new playId token
       handleStopOnlineAudio();
+      const playId = ++activeOnlinePlayIdRef.current;
 
       // Initial state on player bar
       setOnlineTrack({
@@ -551,7 +591,7 @@ export const App: React.FC = () => {
         isLoading: true,
       });
 
-      // 5. Resolve full song stream via backend
+      // 6. Resolve full song stream via backend
       let streamUrl = rec.preview_url || "";
       let duration = rec.duration_secs || 210;
 
@@ -560,6 +600,7 @@ export const App: React.FC = () => {
           query: "ResolveFullTrackAudio",
           payload: { artist: rec.artist, title: rec.title },
         });
+        if (activeOnlinePlayIdRef.current !== playId) return;
         if (res && res.type === "FullTrackAudio" && res.data && res.data.stream_url) {
           streamUrl = res.data.stream_url;
           if (res.data.duration_secs) {
@@ -567,7 +608,12 @@ export const App: React.FC = () => {
           }
         }
       } catch (err) {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         console.warn("Could not resolve full stream, falling back to preview URL:", err);
+      }
+
+      if (activeOnlinePlayIdRef.current !== playId) {
+        return;
       }
 
       if (!streamUrl) {
@@ -580,6 +626,7 @@ export const App: React.FC = () => {
       onlineAudioRef.current = audio;
 
       audio.ontimeupdate = () => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         const dur =
           audio.duration && !isNaN(audio.duration) && audio.duration > 0
             ? audio.duration
@@ -592,6 +639,7 @@ export const App: React.FC = () => {
       };
 
       audio.onplay = () => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         setOnlineTrack((prev) =>
           prev && prev.id === rec.external_track_id
             ? { ...prev, isPlaying: true, isLoading: false }
@@ -600,6 +648,7 @@ export const App: React.FC = () => {
       };
 
       audio.onpause = () => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         setOnlineTrack((prev) =>
           prev && prev.id === rec.external_track_id
             ? { ...prev, isPlaying: false }
@@ -608,15 +657,18 @@ export const App: React.FC = () => {
       };
 
       audio.onended = () => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         handleStopOnlineAudio();
       };
 
       audio.onerror = () => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         if (rec.preview_url && streamUrl !== rec.preview_url) {
           const fallback = new Audio(rec.preview_url);
           fallback.volume = playbackState.is_muted ? 0 : playbackState.volume;
           onlineAudioRef.current = fallback;
           fallback.ontimeupdate = () => {
+            if (activeOnlinePlayIdRef.current !== playId) return;
             setOnlineTrack((prev) =>
               prev && prev.id === rec.external_track_id
                 ? { ...prev, currentTime: fallback.currentTime, duration: 30, isLoading: false }
@@ -624,6 +676,7 @@ export const App: React.FC = () => {
             );
           };
           fallback.onplay = () => {
+            if (activeOnlinePlayIdRef.current !== playId) return;
             setOnlineTrack((prev) =>
               prev && prev.id === rec.external_track_id
                 ? { ...prev, isPlaying: true, isLoading: false }
@@ -631,13 +684,17 @@ export const App: React.FC = () => {
             );
           };
           fallback.onpause = () => {
+            if (activeOnlinePlayIdRef.current !== playId) return;
             setOnlineTrack((prev) =>
               prev && prev.id === rec.external_track_id
                 ? { ...prev, isPlaying: false }
                 : prev
             );
           };
-          fallback.onended = () => handleStopOnlineAudio();
+          fallback.onended = () => {
+            if (activeOnlinePlayIdRef.current !== playId) return;
+            handleStopOnlineAudio();
+          };
           fallback.play().catch(console.warn);
         } else {
           handleStopOnlineAudio();
@@ -645,32 +702,13 @@ export const App: React.FC = () => {
       };
 
       audio.play().catch((e) => {
+        if (activeOnlinePlayIdRef.current !== playId) return;
         console.warn("Online audio play prevented:", e);
         setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false, isLoading: false } : null));
       });
     },
-    [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio]
+    [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio, handlePlayTrack]
   );
-
-  const handlePlayTrack = async (trackId: string) => {
-    handleStopOnlineAudio();
-    const found = tracks.find((t) => t.id === trackId);
-    if (found) {
-      setPlaybackState((prev) => ({
-        ...prev,
-        current_track: found,
-        is_playing: true,
-        position_secs: 0,
-        duration_secs: found.duration_secs || prev.duration_secs,
-      }));
-    }
-    await dispatchCommand({
-      command: "PlayTrack",
-      payload: { track_id: trackId },
-    });
-    // Immediately fetch updated track/state
-    fetchPlaybackState();
-  };
 
   const handlePlayPause = async () => {
     if (playbackState.is_playing) {
@@ -683,6 +721,11 @@ export const App: React.FC = () => {
   };
 
   const handleUnifiedPlayPause = async () => {
+    if (playbackState.is_playing) {
+      handleStopOnlineAudio();
+      handlePlayPause();
+      return;
+    }
     if (onlineTrack && onlineAudioRef.current) {
       if (onlineTrack.isPlaying) {
         onlineAudioRef.current.pause();
@@ -902,6 +945,7 @@ export const App: React.FC = () => {
   };
 
   const handlePlayPlaylist = async (playlistId: string) => {
+    handleStopOnlineAudio();
     try {
       const res = await executeQuery({
         query: "GetPlaylistTracks",
@@ -940,6 +984,173 @@ export const App: React.FC = () => {
     }
   };
 
+  // --- Collection Detail Handlers (Mixes, Top Charts, Playlists) ---
+  const handleOpenCollection = useCallback(async (collection: CollectionData) => {
+    setActiveCollection(collection);
+    if (collection.tracks && collection.tracks.length > 0) {
+      return;
+    }
+
+    setIsLoadingCollectionTracks(true);
+    try {
+      if (collection.playlistId) {
+        const res = await executeQuery({
+          query: "GetPlaylistTracks",
+          payload: { playlist_id: collection.playlistId },
+        });
+        const plTracks: Track[] = (res.data as any) || [];
+        const items: CollectionTrackItem[] = plTracks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist_name || "Unknown Artist",
+          album: t.album_title,
+          duration_secs: t.duration_secs,
+          is_downloaded: true,
+          matched_local_track_id: t.id,
+          rawLocalTrack: t,
+        }));
+        setActiveCollection((prev) =>
+          prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
+        );
+      } else if (collection.searchQuery) {
+        const res = await executeQuery({
+          query: "SearchOnlineMusic",
+          payload: { query: collection.searchQuery, limit: 50 },
+        });
+        const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
+        const items: CollectionTrackItem[] = onlineRecs.map((r) => ({
+          id: r.external_track_id,
+          title: r.title,
+          artist: r.artist,
+          album: r.album,
+          duration_secs: r.duration_secs || 210,
+          cover_art_url: r.cover_art_url,
+          preview_url: r.preview_url,
+          is_downloaded: !!r.matched_local_track_id,
+          matched_local_track_id: r.matched_local_track_id,
+          rawRecommendation: r,
+        }));
+        setActiveCollection((prev) =>
+          prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
+        );
+      }
+    } catch (err) {
+      console.error("Failed to load collection tracks:", err);
+    } finally {
+      setIsLoadingCollectionTracks(false);
+    }
+  }, []);
+
+  const handlePlayCollectionTrack = useCallback(
+    async (item: CollectionTrackItem) => {
+      const isCurrentlyPlaying =
+        (item.matched_local_track_id &&
+          playbackState.is_playing &&
+          playbackState.current_track?.id === item.matched_local_track_id) ||
+        (onlineTrack &&
+          onlineTrack.isPlaying &&
+          (onlineTrack.id === item.id || (item.matched_local_track_id && onlineTrack.id === item.matched_local_track_id)));
+
+      if (isCurrentlyPlaying) {
+        handleUnifiedPlayPause();
+        return;
+      }
+
+      if (item.matched_local_track_id) {
+        handleStopOnlineAudio();
+        await handlePlayTrack(item.matched_local_track_id);
+        return;
+      }
+
+      if (item.rawRecommendation) {
+        await handlePlayOnlineTrack(item.rawRecommendation);
+        return;
+      }
+
+      const rec: DiscoveryRecommendation = {
+        external_track_id: item.id,
+        provider: "online",
+        provider_id: item.id,
+        title: item.title,
+        artist: item.artist,
+        album: item.album,
+        duration_secs: item.duration_secs,
+        cover_art_url: item.cover_art_url,
+        preview_url: item.preview_url,
+        match_status: item.matched_local_track_id ? "EXACT_MATCH" : "NOT_FOUND",
+        matched_local_track_id: item.matched_local_track_id,
+        recommendation_reason: "From collection",
+        in_wishlist: false,
+      };
+      await handlePlayOnlineTrack(rec);
+    },
+    [playbackState.is_playing, playbackState.current_track, onlineTrack, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayTrack, handlePlayOnlineTrack]
+  );
+
+  const handlePlayAllCollection = useCallback(async () => {
+    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+      return;
+    }
+
+    const isCurrentlyPlaying =
+      playbackState.is_playing || (!!onlineTrack && onlineTrack.isPlaying);
+    if (isCurrentlyPlaying) {
+      handleUnifiedPlayPause();
+      return;
+    }
+
+    const tracks = activeCollection.tracks;
+    const first = tracks[0];
+    if (first.matched_local_track_id) {
+      handleStopOnlineAudio();
+      await dispatchCommand({ command: "ClearQueue" });
+      await dispatchCommand({
+        command: "PlayTrack",
+        payload: { track_id: first.matched_local_track_id, source: "collection" },
+      });
+      for (let i = 1; i < tracks.length; i++) {
+        const tid = tracks[i].matched_local_track_id;
+        if (tid) {
+          await dispatchCommand({
+            command: "EnqueueTrack",
+            payload: { track_id: tid, play_next: false },
+          });
+        }
+      }
+      fetchPlaybackState();
+    } else {
+      handlePlayCollectionTrack(first);
+    }
+  }, [activeCollection, playbackState.is_playing, onlineTrack, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
+
+  const handleShuffleCollection = useCallback(async () => {
+    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+      return;
+    }
+    const shuffled = [...activeCollection.tracks].sort(() => Math.random() - 0.5);
+    const first = shuffled[0];
+    if (first.matched_local_track_id) {
+      handleStopOnlineAudio();
+      await dispatchCommand({ command: "ClearQueue" });
+      await dispatchCommand({
+        command: "PlayTrack",
+        payload: { track_id: first.matched_local_track_id, source: "collection_shuffle" },
+      });
+      for (let i = 1; i < shuffled.length; i++) {
+        const tid = shuffled[i].matched_local_track_id;
+        if (tid) {
+          await dispatchCommand({
+            command: "EnqueueTrack",
+            payload: { track_id: tid, play_next: false },
+          });
+        }
+      }
+      fetchPlaybackState();
+    } else {
+      handlePlayCollectionTrack(first);
+    }
+  }, [activeCollection, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
+
   const handleInspectSpotifyPlaylist = async (urlOrId: string): Promise<SpotifyPlaylistImport | null> => {
     try {
       const res = await executeQuery({
@@ -953,22 +1164,45 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSaveImportedPlaylist = async (name: string, trackIds: string[]) => {
-    const plRes = await dispatchCommand({
-      command: "CreatePlaylist",
-      payload: { name, description: "Imported from Spotify" },
-    });
-    const playlistId = (plRes as any)?.data;
-    if (playlistId) {
-      for (const tid of trackIds) {
-        await dispatchCommand({
-          command: "AddTrackToPlaylist",
-          payload: { playlist_id: playlistId, track_id: tid },
-        });
+  const handleSaveImportedPlaylist = useCallback(
+    async (name: string, trackIds: string[]) => {
+      const plRes = await dispatchCommand({
+        command: "CreatePlaylist",
+        payload: { name, description: "Imported from Spotify" },
+      });
+      const playlistId = (plRes as any)?.data;
+      if (playlistId) {
+        for (const tid of trackIds) {
+          await dispatchCommand({
+            command: "AddTrackToPlaylist",
+            payload: { playlist_id: playlistId, track_id: tid },
+          });
+        }
+        fetchPlaylists();
       }
-      fetchPlaylists();
-    }
-  };
+    },
+    [fetchPlaylists]
+  );
+
+  const handleSaveCollectionToPlaylists = useCallback(
+    async (collection: CollectionData) => {
+      try {
+        const localTrackIds = (collection.tracks || [])
+          .filter((t) => t.matched_local_track_id)
+          .map((t) => t.matched_local_track_id as string);
+
+        if (localTrackIds.length > 0) {
+          await handleSaveImportedPlaylist(collection.title, localTrackIds);
+        } else {
+          await handleCreatePlaylist(collection.title, collection.subtitle);
+          alert(`Playlist "${collection.title}" created. Tracks can be added as you download them.`);
+        }
+      } catch (err) {
+        console.error("Failed to save collection to playlists:", err);
+      }
+    },
+    [handleSaveImportedPlaylist, handleCreatePlaylist]
+  );
 
   const handleAddMissingToWishlist = async (missingTracks: any[]) => {
     await dispatchCommand({
@@ -1070,150 +1304,184 @@ export const App: React.FC = () => {
         {/* Left Sidebar Navigation */}
         <Sidebar
           currentView={currentView}
-          onSelectView={setCurrentView}
+          onSelectView={(view) => {
+            setActiveCollection(null);
+            setCurrentView(view);
+          }}
           activeDownloadsCount={activeDownloadsCount}
         />
 
         {/* Main Content Area */}
         <main className="main-content">
-        {currentView === "library" && (
-          <LibraryView
-            tracks={tracks}
-            queuedTrackIds={queuedTrackIds}
-            onPlayTrack={handlePlayTrack}
-            onEnqueueTrack={handleEnqueueTrack}
-            onDequeueTrack={handleDequeueTrack}
-            onLikeTrack={handleLike}
-            onDislikeTrack={handleDislike}
-            onRemoveFeedback={handleRemoveFeedback}
-            onRescan={handleRescanLibrary}
-            onSearch={handleSearchLibrary}
-          />
-        )}
-
-        {currentView === "artists" && (
-          <ArtistsView
-            artists={artists}
-            onSelectArtist={(artistId) => {
-              const artist = artists.find((a) => a.id === artistId);
-              if (artist) {
-                handleSearchLibrary(artist.name);
-                setCurrentView("library");
-              }
-            }}
-          />
-        )}
-
-        {currentView === "albums" && (
-          <AlbumsView
-            albums={albums}
-            onSelectAlbum={(albumId) => {
-              const album = albums.find((al) => al.id === albumId);
-              if (album) {
-                handleSearchLibrary(album.title);
-                setCurrentView("library");
-              }
-            }}
-          />
-        )}
-
-        {currentView === "playlists" && (
-          <PlaylistsView
-            viewMode="playlists"
-            playlists={playlists}
-            onSelectPlaylist={() => {}}
-            onPlayPlaylist={handlePlayPlaylist}
-            onCreatePlaylist={handleCreatePlaylist}
-            onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-            onSaveImportedPlaylist={handleSaveImportedPlaylist}
-            onAddMissingToWishlist={handleAddMissingToWishlist}
-            onLaunchSoulseek={handleLaunchSoulseek}
-            onSearchDirect={handleInitiateDirectDownloadSearch}
-            onFetchPlaylistTracks={handleFetchPlaylistTracks}
-            onPlayTrack={handlePlayTrack}
-            queuedTrackIds={queuedTrackIds}
-            onEnqueueTrack={handleEnqueueTrack}
-            onDequeueTrack={handleDequeueTrack}
-          />
-        )}
-
-        {currentView === "smart_mixes" && (
-          <PlaylistsView
-            viewMode="smart_mixes"
-            playlists={playlists}
-            onSelectPlaylist={() => {}}
-            onPlayPlaylist={handlePlayPlaylist}
-            onCreatePlaylist={handleCreatePlaylist}
-            onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-            onSaveImportedPlaylist={handleSaveImportedPlaylist}
-            onAddMissingToWishlist={handleAddMissingToWishlist}
-            onLaunchSoulseek={handleLaunchSoulseek}
-            onSearchDirect={handleInitiateDirectDownloadSearch}
-            onFetchPlaylistTracks={handleFetchPlaylistTracks}
-            onPlayTrack={handlePlayTrack}
-            queuedTrackIds={queuedTrackIds}
-            onEnqueueTrack={handleEnqueueTrack}
-            onDequeueTrack={handleDequeueTrack}
-          />
-        )}
-
-        {currentView === "discovery" && (
-          <DiscoveryView
-            recommendations={discoveryRecs}
-            playlists={playlists}
-            onPlayPlaylist={handlePlayPlaylist}
-            onAddToWishlist={(rec) =>
-              handleAddToWishlist(rec.title, rec.artist, rec.album)
+        {activeCollection ? (
+          <CollectionDetailView
+            collection={activeCollection}
+            isLoadingTracks={isLoadingCollectionTracks}
+            onBack={() => setActiveCollection(null)}
+            onPlayTrack={handlePlayCollectionTrack}
+            onPlayAll={handlePlayAllCollection}
+            onShuffleAll={handleShuffleCollection}
+            onAddToWishlist={(track) =>
+              handleAddToWishlist(track.title, track.artist, track.album)
             }
-            onSearchDirect={(artist, title) =>
+            onDownload={(artist, title) =>
               handleInitiateDirectDownloadSearch(artist, title)
             }
-            onRefresh={fetchDiscovery}
-            onPlayOnlineTrack={handlePlayOnlineTrack}
-            onStopTrack={handleStopTrack}
-            activeOnlineTrackId={onlineTrack?.id || null}
-            isOnlinePlaying={!!onlineTrack?.isPlaying}
-            isOnlineLoading={!!onlineTrack?.isLoading}
-            currentLocalTrack={playbackState.current_track}
-            isLocalPlaying={playbackState.is_playing}
+            onSaveToPlaylists={handleSaveCollectionToPlaylists}
+            currentPlayingTrackId={
+              playbackState.is_playing
+                ? playbackState.current_track?.id
+                : onlineTrack?.id
+            }
+            isPlaying={
+              playbackState.is_playing || (!!onlineTrack && onlineTrack.isPlaying)
+            }
           />
-        )}
+        ) : (
+          <>
+            {currentView === "library" && (
+              <LibraryView
+                tracks={tracks}
+                queuedTrackIds={queuedTrackIds}
+                onPlayTrack={handlePlayTrack}
+                onEnqueueTrack={handleEnqueueTrack}
+                onDequeueTrack={handleDequeueTrack}
+                onLikeTrack={handleLike}
+                onDislikeTrack={handleDislike}
+                onRemoveFeedback={handleRemoveFeedback}
+                onRescan={handleRescanLibrary}
+                onSearch={handleSearchLibrary}
+              />
+            )}
 
-        {currentView === "wishlist" && (
-          <WishlistView
-            wishlist={wishlist}
-            onAddToWishlist={handleAddToWishlist}
-            onUpdateStatus={handleUpdateWishlistStatus}
-            onSearchDirect={handleInitiateDirectDownloadSearch}
-            onLaunchSoulseek={handleLaunchSoulseek}
-          />
-        )}
+            {currentView === "artists" && (
+              <ArtistsView
+                artists={artists}
+                onSelectArtist={(artistId) => {
+                  const artist = artists.find((a) => a.id === artistId);
+                  if (artist) {
+                    handleSearchLibrary(artist.name);
+                    setCurrentView("library");
+                  }
+                }}
+              />
+            )}
 
-        {currentView === "downloads" && (
-          <DownloadsView
-            downloads={downloads}
-            onSearchSoulseek={handleSearchSoulseek}
-            onStartDownload={handleStartDownload}
-            onCancelDownload={handleCancelDownload}
-            onRefreshDownloads={fetchDownloads}
-            onLaunchSoulseek={handleLaunchSoulseek}
-            onImportSoulseek={handleImportSoulseekDownloads}
-            initialSearch={soulseekSearch}
-          />
-        )}
+            {currentView === "albums" && (
+              <AlbumsView
+                albums={albums}
+                onSelectAlbum={(albumId) => {
+                  const album = albums.find((al) => al.id === albumId);
+                  if (album) {
+                    handleSearchLibrary(album.title);
+                    setCurrentView("library");
+                  }
+                }}
+              />
+            )}
 
-        {currentView === "settings" && (
-          <SettingsView
-            settings={settings}
-            configuredFolders={onboardingStatus?.configured_folders || []}
-            onAddFolder={handleAddFolder}
-            onRemoveFolder={handleRemoveFolder}
-            onRescanLibrary={handleRescanLibrary}
-            onRerunOnboarding={handleRerunOnboarding}
-            onLaunchSoulseek={handleLaunchSoulseek}
-            onImportSoulseek={handleImportSoulseekDownloads}
-            isScanning={isScanning}
-          />
+            {currentView === "playlists" && (
+              <PlaylistsView
+                viewMode="playlists"
+                playlists={playlists}
+                onSelectPlaylist={() => {}}
+                onPlayPlaylist={handlePlayPlaylist}
+                onCreatePlaylist={handleCreatePlaylist}
+                onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                onAddMissingToWishlist={handleAddMissingToWishlist}
+                onLaunchSoulseek={handleLaunchSoulseek}
+                onSearchDirect={handleInitiateDirectDownloadSearch}
+                onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                onPlayTrack={handlePlayTrack}
+                queuedTrackIds={queuedTrackIds}
+                onEnqueueTrack={handleEnqueueTrack}
+                onDequeueTrack={handleDequeueTrack}
+                onOpenCollection={handleOpenCollection}
+              />
+            )}
+
+            {currentView === "smart_mixes" && (
+              <PlaylistsView
+                viewMode="smart_mixes"
+                playlists={playlists}
+                onSelectPlaylist={() => {}}
+                onPlayPlaylist={handlePlayPlaylist}
+                onCreatePlaylist={handleCreatePlaylist}
+                onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                onAddMissingToWishlist={handleAddMissingToWishlist}
+                onLaunchSoulseek={handleLaunchSoulseek}
+                onSearchDirect={handleInitiateDirectDownloadSearch}
+                onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                onPlayTrack={handlePlayTrack}
+                queuedTrackIds={queuedTrackIds}
+                onEnqueueTrack={handleEnqueueTrack}
+                onDequeueTrack={handleDequeueTrack}
+                onOpenCollection={handleOpenCollection}
+              />
+            )}
+
+            {currentView === "discovery" && (
+              <DiscoveryView
+                recommendations={discoveryRecs}
+                playlists={playlists}
+                onPlayPlaylist={handlePlayPlaylist}
+                onAddToWishlist={(rec) =>
+                  handleAddToWishlist(rec.title, rec.artist, rec.album)
+                }
+                onSearchDirect={(artist, title) =>
+                  handleInitiateDirectDownloadSearch(artist, title)
+                }
+                onRefresh={fetchDiscovery}
+                onPlayOnlineTrack={handlePlayOnlineTrack}
+                onStopTrack={handleStopTrack}
+                activeOnlineTrackId={onlineTrack?.id || null}
+                isOnlinePlaying={!!onlineTrack?.isPlaying}
+                isOnlineLoading={!!onlineTrack?.isLoading}
+                currentLocalTrack={playbackState.current_track}
+                isLocalPlaying={playbackState.is_playing}
+                onOpenCollection={handleOpenCollection}
+              />
+            )}
+
+            {currentView === "wishlist" && (
+              <WishlistView
+                wishlist={wishlist}
+                onAddToWishlist={handleAddToWishlist}
+                onUpdateStatus={handleUpdateWishlistStatus}
+                onSearchDirect={handleInitiateDirectDownloadSearch}
+                onLaunchSoulseek={handleLaunchSoulseek}
+              />
+            )}
+
+            {currentView === "downloads" && (
+              <DownloadsView
+                downloads={downloads}
+                onSearchSoulseek={handleSearchSoulseek}
+                onStartDownload={handleStartDownload}
+                onCancelDownload={handleCancelDownload}
+                onRefreshDownloads={fetchDownloads}
+                onLaunchSoulseek={handleLaunchSoulseek}
+                onImportSoulseek={handleImportSoulseekDownloads}
+                initialSearch={soulseekSearch}
+              />
+            )}
+
+            {currentView === "settings" && (
+              <SettingsView
+                settings={settings}
+                configuredFolders={onboardingStatus?.configured_folders || []}
+                onAddFolder={handleAddFolder}
+                onRemoveFolder={handleRemoveFolder}
+                onRescanLibrary={handleRescanLibrary}
+                onRerunOnboarding={handleRerunOnboarding}
+                onLaunchSoulseek={handleLaunchSoulseek}
+                onImportSoulseek={handleImportSoulseekDownloads}
+                isScanning={isScanning}
+              />
+            )}
+          </>
         )}
       </main>
       </div>

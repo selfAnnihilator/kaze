@@ -13,6 +13,7 @@ import {
   ThumbsDown,
   Music,
   Download,
+  RefreshCw,
 } from "lucide-react";
 import { OnlinePlayingTrack, PlaybackState, Track } from "../types";
 
@@ -60,7 +61,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
 }) => {
   const [seekingValue, setSeekingValue] = useState<number | null>(null);
 
-  const isOnline = !!onlineTrack;
+  const isOnline = !!onlineTrack && !playbackState.is_playing;
   const activeTitle = isOnline ? onlineTrack.title : currentTrack?.title || "No Track Selected";
   const activeArtist = isOnline
     ? onlineTrack.artist
@@ -212,7 +213,13 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             title={isPlaying ? "Pause" : "Play"}
             onClick={onPlayPause}
           >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+            {isOnline && onlineTrack?.isLoading ? (
+              <RefreshCw size={18} className="animate-spin" />
+            ) : isPlaying ? (
+              <Pause size={18} />
+            ) : (
+              <Play size={18} />
+            )}
           </button>
           <button
             className="player-icon-btn"

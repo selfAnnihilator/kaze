@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Playlist, Track, SpotifyPlaylistImport } from "../../types";
+import { CollectionData } from "./CollectionDetailView";
 
 interface PlaylistsViewProps {
   viewMode?: "playlists" | "smart_mixes" | "all";
@@ -29,6 +30,7 @@ interface PlaylistsViewProps {
   queuedTrackIds?: Set<string>;
   onEnqueueTrack: (trackId: string) => void;
   onDequeueTrack?: (trackId: string) => void;
+  onOpenCollection?: (collection: CollectionData) => void;
 }
 
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
@@ -46,6 +48,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   queuedTrackIds,
   onEnqueueTrack,
   onDequeueTrack,
+  onOpenCollection,
 }) => {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -96,6 +99,17 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   };
 
   const handleOpenPlaylistDetails = async (pl: Playlist) => {
+    if (onOpenCollection) {
+      onOpenCollection({
+        id: pl.id,
+        type: pl.is_smart_mix === 1 ? "mix" : "playlist",
+        title: pl.name,
+        subtitle: pl.description || (pl.is_smart_mix === 1 ? "Custom algorithmic smart mix" : "Created playlist"),
+        tag: pl.is_smart_mix === 1 ? "SMART MIX" : "PUBLIC PLAYLIST",
+        playlistId: pl.id,
+      });
+      return;
+    }
     setSelectedPlaylist(pl);
     setLoadingTracks(true);
     try {
