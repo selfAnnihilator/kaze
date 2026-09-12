@@ -14,7 +14,7 @@ import {
   Globe,
   CheckCircle2,
 } from "lucide-react";
-import { DiscoveryRecommendation } from "../../types";
+import { DiscoveryRecommendation, Track } from "../../types";
 import { executeQuery } from "../../services/api";
 
 interface DiscoveryTrackCardProps {
@@ -23,6 +23,7 @@ interface DiscoveryTrackCardProps {
   isLoading: boolean;
   isSelected: boolean;
   onPlay: (rec: DiscoveryRecommendation) => void;
+  onStop: (rec: DiscoveryRecommendation) => void;
   onArtistClick: (artist: string) => void;
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onDownload: (artist: string, title: string) => void;
@@ -34,6 +35,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   isLoading,
   isSelected,
   onPlay,
+  onStop,
   onArtistClick,
   onAddToWishlist,
   onDownload,
@@ -44,14 +46,37 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
     rec.match_status === "EXACT_MATCH" ||
     !!rec.matched_local_track_id;
 
+  const handleCardClick = () => {
+    if (isPlaying) {
+      onStop(rec);
+    } else {
+      onPlay(rec);
+    }
+  };
+
+  const handlePlayBtnClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPlaying) {
+      onStop(rec);
+    } else {
+      onPlay(rec);
+    }
+  };
+
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onPlay(rec)}
+      onClick={handleCardClick}
       style={{
-        backgroundColor: isSelected ? "rgba(99, 102, 241, 0.12)" : "var(--bg-card)",
-        border: isSelected
+        backgroundColor: isPlaying
+          ? "rgba(16, 185, 129, 0.09)"
+          : isSelected
+          ? "rgba(99, 102, 241, 0.12)"
+          : "var(--bg-card)",
+        border: isPlaying
+          ? "1.5px solid #10b981"
+          : isSelected
           ? "1px solid var(--accent-light)"
           : isHovered
           ? "1px solid rgba(255, 255, 255, 0.22)"
@@ -62,9 +87,11 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         transform: isHovered ? "translateY(-4px)" : "none",
-        boxShadow: isHovered
+        boxShadow: isPlaying
+          ? "0 0 20px rgba(16, 185, 129, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
+          : isHovered
           ? "0 10px 24px rgba(0, 0, 0, 0.4)"
           : isSelected
           ? "0 4px 18px rgba(99, 102, 241, 0.2)"
@@ -130,19 +157,47 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           </div>
         )}
 
+        {/* Now Playing Animated Equalizer Badge on top left of thumbnail */}
+        {isPlaying && (
+          <div
+            style={{
+              position: "absolute",
+              top: "7px",
+              left: "7px",
+              backgroundColor: "rgba(16, 185, 129, 0.92)",
+              backdropFilter: "blur(4px)",
+              borderRadius: "20px",
+              padding: "2px 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              zIndex: 2,
+            }}
+            title="Now Playing"
+          >
+            <div className="discovery-eq-container" style={{ height: "11px" }}>
+              <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
+              <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
+              <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
+            </div>
+            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#fff", letterSpacing: "0.4px" }}>
+              PLAYING
+            </span>
+          </div>
+        )}
+
         {/* Hover Play Button (Fades in, bottom-left corner of thumbnail) */}
+        {/* On hover when playing, play icon becomes pause and clicking stops music */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onPlay(rec);
-          }}
+          onClick={handlePlayBtnClick}
           style={{
             position: "absolute",
             bottom: "8px",
             left: "8px",
-            width: "36px",
-            height: "36px",
+            width: "38px",
+            height: "38px",
             borderRadius: "50%",
             backgroundColor: isPlaying ? "#10b981" : "var(--accent)",
             border: "none",
@@ -157,14 +212,18 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
             zIndex: 3,
           }}
-          title={isPlaying ? "Pause" : "Play"}
+          title={isPlaying ? (isHovered ? "Stop / Pause playback" : "Now Playing") : "Play"}
         >
           {isLoading ? (
             <RefreshCw size={16} className="animate-spin" />
           ) : isPlaying ? (
-            <Pause size={16} fill="#fff" />
+            isHovered ? (
+              <Pause size={17} fill="#fff" />
+            ) : (
+              <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+            )
           ) : (
-            <Play size={16} fill="#fff" style={{ marginLeft: "2px" }} />
+            <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
           )}
         </button>
       </div>
@@ -175,7 +234,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: isPlaying ? "var(--accent-light)" : "#fff",
+          color: isPlaying ? "#10b981" : "#fff",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -294,9 +353,12 @@ interface DiscoveryViewProps {
   onSearchDirect: (artist: string, title: string) => void;
   onRefresh?: (force?: boolean) => Promise<void>;
   onPlayOnlineTrack: (rec: DiscoveryRecommendation) => void;
+  onStopTrack?: (rec: DiscoveryRecommendation) => void;
   activeOnlineTrackId?: string | null;
   isOnlinePlaying?: boolean;
   isOnlineLoading?: boolean;
+  currentLocalTrack?: Track | null;
+  isLocalPlaying?: boolean;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -305,9 +367,12 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onSearchDirect,
   onRefresh,
   onPlayOnlineTrack,
+  onStopTrack,
   activeOnlineTrackId,
   isOnlinePlaying = false,
   isOnlineLoading = false,
+  currentLocalTrack,
+  isLocalPlaying = false,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [refreshing, setRefreshing] = useState(false);
@@ -756,9 +821,20 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           }}
         >
           {filteredRecs.map((rec) => {
-            const isPlayingThis =
+            const isPlayingLocal =
+              isLocalPlaying &&
+              !!currentLocalTrack &&
+              ((rec.matched_local_track_id && rec.matched_local_track_id === currentLocalTrack.id) ||
+                rec.external_track_id === currentLocalTrack.id ||
+                (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
+                  currentLocalTrack.artist_name &&
+                  rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
+
+            const isPlayingOnline =
               activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
-            const isSelected = activeOnlineTrackId === rec.external_track_id;
+
+            const isPlayingThis = isPlayingLocal || isPlayingOnline;
+            const isSelected = isPlayingThis || activeOnlineTrackId === rec.external_track_id;
             const isResolvingThis =
               activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
 
@@ -770,6 +846,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                 isLoading={isResolvingThis}
                 isSelected={isSelected}
                 onPlay={onPlayOnlineTrack}
+                onStop={onStopTrack || onPlayOnlineTrack}
                 onArtistClick={(artist) => {
                   setSearchQuery(artist);
                   handleSearchOnline(artist);

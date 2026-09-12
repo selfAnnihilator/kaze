@@ -469,16 +469,56 @@ export const App: React.FC = () => {
     setOnlineTrack(null);
   }, []);
 
+  const handleStopTrack = useCallback(
+    async (rec?: DiscoveryRecommendation) => {
+      if (onlineTrack && (!rec || onlineTrack.id === rec.external_track_id)) {
+        if (onlineAudioRef.current) {
+          onlineAudioRef.current.pause();
+        }
+        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+        return;
+      }
+
+      if (playbackState.is_playing) {
+        await dispatchCommand({ command: "Pause" });
+        setPlaybackState((prev) => ({ ...prev, is_playing: false }));
+        return;
+      }
+
+      if (onlineAudioRef.current) {
+        onlineAudioRef.current.pause();
+        setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false } : null));
+      }
+    },
+    [onlineTrack, playbackState.is_playing]
+  );
+
   const handlePlayOnlineTrack = useCallback(
     async (rec: DiscoveryRecommendation) => {
-      // 1. If this track is in local library, play it locally through Rodio!
+      // 1. Check if this track is currently playing locally through Rodio
+      const isCurrentlyPlayingLocal =
+        playbackState.is_playing &&
+        playbackState.current_track &&
+        ((rec.matched_local_track_id && playbackState.current_track.id === rec.matched_local_track_id) ||
+          rec.external_track_id === playbackState.current_track.id ||
+          (rec.title.toLowerCase().trim() === playbackState.current_track.title.toLowerCase().trim() &&
+            playbackState.current_track.artist_name &&
+            rec.artist.toLowerCase().trim() === playbackState.current_track.artist_name.toLowerCase().trim()));
+
+      if (isCurrentlyPlayingLocal) {
+        await dispatchCommand({ command: "Pause" });
+        setPlaybackState((prev) => ({ ...prev, is_playing: false }));
+        return;
+      }
+
+      // 2. If this track is in local library, play it locally through Rodio!
       if (rec.matched_local_track_id) {
         handleStopOnlineAudio();
         await handlePlayTrack(rec.matched_local_track_id);
         return;
       }
 
-      // 2. If it's already the active online track, toggle play/pause
+      // 3. If it's already the active online track, toggle play/pause
       if (onlineAudioRef.current && onlineTrack?.id === rec.external_track_id) {
         if (onlineTrack.isPlaying) {
           onlineAudioRef.current.pause();
@@ -490,13 +530,13 @@ export const App: React.FC = () => {
         return;
       }
 
-      // 3. Stop local playback if active
+      // 4. Stop local playback if active
       if (playbackState.is_playing) {
         await dispatchCommand({ command: "Pause" });
         setPlaybackState((prev) => ({ ...prev, is_playing: false }));
       }
 
-      // 4. Stop existing online audio
+      // 5. Stop existing online audio
       handleStopOnlineAudio();
 
       // Initial state on player bar
@@ -609,7 +649,7 @@ export const App: React.FC = () => {
         setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false, isLoading: false } : null));
       });
     },
-    [playbackState.is_playing, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio]
+    [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio]
   );
 
   const handlePlayTrack = async (trackId: string) => {
@@ -1128,9 +1168,12 @@ export const App: React.FC = () => {
             }
             onRefresh={fetchDiscovery}
             onPlayOnlineTrack={handlePlayOnlineTrack}
+            onStopTrack={handleStopTrack}
             activeOnlineTrackId={onlineTrack?.id || null}
             isOnlinePlaying={!!onlineTrack?.isPlaying}
             isOnlineLoading={!!onlineTrack?.isLoading}
+            currentLocalTrack={playbackState.current_track}
+            isLocalPlaying={playbackState.is_playing}
           />
         )}
 
