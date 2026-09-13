@@ -10,14 +10,13 @@ import {
   Play,
   Pause,
   X,
-  Search,
   Globe,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
 } from "lucide-react";
-import { DiscoveryRecommendation, Track, Playlist } from "../../types";
+import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
 import { executeQuery } from "../../services/api";
 import { CollectionData } from "./CollectionDetailView";
 
@@ -31,6 +30,7 @@ interface DiscoveryTrackCardProps {
   onArtistClick: (artist: string) => void;
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onDownload: (artist: string, title: string) => void;
+  downloads?: DownloadTask[];
 }
 
 const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
@@ -43,12 +43,39 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   onArtistClick,
   onAddToWishlist,
   onDownload,
+  downloads,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  const activeDownload = downloads?.find((d) => {
+    if (d.status === "FAILED" || d.status === "CANCELLED") return false;
+    const titleMatch =
+      d.title.toLowerCase().trim() === rec.title.toLowerCase().trim() ||
+      d.filename.toLowerCase().includes(rec.title.toLowerCase().trim());
+    const artistMatch =
+      !d.artist ||
+      d.artist.toLowerCase().trim() === rec.artist.toLowerCase().trim() ||
+      rec.artist.toLowerCase().includes(d.artist.toLowerCase().trim()) ||
+      d.filename.toLowerCase().includes(rec.artist.toLowerCase().trim());
+    return titleMatch && artistMatch;
+  });
+
   const isDownloaded =
     rec.provider === "library" ||
     rec.match_status === "EXACT_MATCH" ||
-    !!rec.matched_local_track_id;
+    !!rec.matched_local_track_id ||
+    activeDownload?.status === "COMPLETED";
+
+  const isDownloading =
+    activeDownload &&
+    (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
+
+  const downloadPercent =
+    activeDownload?.file_size && activeDownload.file_size > 0
+      ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100))
+      : activeDownload?.status === "DOWNLOADING"
+      ? 50
+      : 0;
 
   const handleCardClick = () => {
     if (isPlaying) {
@@ -300,6 +327,25 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             <CheckCircle2 size={13} />
             <span>Downloaded</span>
           </span>
+        ) : isDownloading ? (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "2px 7px",
+              borderRadius: "12px",
+              background: "rgba(99, 102, 241, 0.15)",
+              border: "1px solid rgba(99, 102, 241, 0.35)",
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              color: "#818cf8",
+            }}
+            title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
+          >
+            <RefreshCw size={11} className="spin-animation" />
+            <span>{activeDownload.status === "QUEUED" ? "Queued" : `${downloadPercent}%`}</span>
+          </div>
         ) : (
           <button
             type="button"
@@ -647,6 +693,14 @@ interface DiscoveryViewProps {
   currentLocalTrack?: Track | null;
   isLocalPlaying?: boolean;
   onOpenCollection?: (collection: CollectionData) => void;
+  downloads?: DownloadTask[];
+  searchQuery?: string;
+  setSearchQuery?: (q: string) => void;
+  searchResults?: DiscoveryRecommendation[] | null;
+  setSearchResults?: (res: DiscoveryRecommendation[] | null) => void;
+  isSearchingOnline?: boolean;
+  onSearchOnline?: (queryOverride?: string) => Promise<void>;
+  onClearSearch?: () => void;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -655,7 +709,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onPlayPlaylist,
   onAddToWishlist,
   onSearchDirect,
-  onRefresh,
+  onRefresh: _onRefresh,
   onPlayOnlineTrack,
   onStopTrack,
   activeOnlineTrackId,
@@ -664,22 +718,38 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   currentLocalTrack,
   isLocalPlaying = false,
   onOpenCollection,
+  downloads = [],
+  searchQuery: propSearchQuery,
+  setSearchQuery: propSetSearchQuery,
+  searchResults: propSearchResults,
+  setSearchResults: propSetSearchResults,
+  isSearchingOnline: propIsSearchingOnline,
+  onSearchOnline: propOnSearchOnline,
+  onClearSearch: propOnClearSearch,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Online Search State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
-  const [searchResults, setSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+  // Online Search State (fallback if not controlled by parent)
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [, setInternalIsSearching] = useState(false);
+  const [internalSearchResults, setInternalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+
+  const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const setSearchQuery = propSetSearchQuery || setInternalSearchQuery;
+  const searchResults = propSearchResults !== undefined ? propSearchResults : internalSearchResults;
+  const setSearchResults = propSetSearchResults || setInternalSearchResults;
 
   const handleSearchOnline = async (queryOverride?: string) => {
+    if (propOnSearchOnline) {
+      await propOnSearchOnline(queryOverride);
+      return;
+    }
     const q = (typeof queryOverride === "string" ? queryOverride : searchQuery).trim();
     if (!q) {
       setSearchResults(null);
       return;
     }
-    setIsSearchingOnline(true);
+    if (propIsSearchingOnline === undefined) setInternalIsSearching(true);
     try {
       const res = await executeQuery({
         query: "SearchOnlineMusic",
@@ -727,29 +797,17 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       );
       setSearchResults(fallbackMatches);
     } finally {
-      setIsSearchingOnline(false);
+      if (propIsSearchingOnline === undefined) setInternalIsSearching(false);
     }
   };
 
   const handleClearSearch = () => {
+    if (propOnClearSearch) {
+      propOnClearSearch();
+      return;
+    }
     setSearchQuery("");
     setSearchResults(null);
-  };
-
-  const handleRefreshSection = async () => {
-    setRefreshing(true);
-    try {
-      if (isSearchActive && searchQuery.trim()) {
-        await handleSearchOnline(searchQuery.trim());
-        if (onRefresh) {
-          onRefresh(true).catch((e) => console.warn("Background discovery refresh error:", e));
-        }
-      } else if (onRefresh) {
-        await onRefresh(true);
-      }
-    } finally {
-      setRefreshing(false);
-    }
   };
 
   const isSearchActive = searchResults !== null;
@@ -1008,173 +1066,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         paddingBottom: "40px",
       }}
     >
-      {/* 1. Online Music Search Bar with integrated Refresh button (ABOVE Music Discovery title) */}
-      <div
-        className="content-card"
-        style={{
-          marginBottom: 0,
-          padding: "16px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          borderRadius: "12px",
-        }}
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSearchOnline();
-          }}
-          style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              backgroundColor: "var(--bg-main)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              padding: "9px 14px",
-              flex: 1,
-            }}
-          >
-            <Search size={18} color="var(--accent-light)" />
-            <input
-              type="text"
-              placeholder="Search any music online (artist, song title, album, or genre)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                background: "none",
-                border: "none",
-                outline: "none",
-                color: "#fff",
-                fontSize: "0.92rem",
-                width: "100%",
-              }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--text-dim)",
-                  padding: 0,
-                  display: "flex",
-                }}
-                title="Clear search"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSearchingOnline || !searchQuery.trim()}
-            className="btn btn-primary"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              fontSize: "0.88rem",
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {isSearchingOnline ? (
-              <>
-                <RefreshCw size={15} className="animate-spin" />
-                <span>Searching...</span>
-              </>
-            ) : (
-              <>
-                <Globe size={15} />
-                <span>Search Online</span>
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleRefreshSection}
-            disabled={refreshing || isSearchingOnline}
-            className="btn btn-secondary"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 18px",
-              fontSize: "0.88rem",
-              fontWeight: 500,
-              whiteSpace: "nowrap",
-            }}
-            title={isSearchActive ? "Refresh current search results" : "Refresh discovery recommendations"}
-          >
-            <RefreshCw size={15} className={refreshing || isSearchingOnline ? "animate-spin" : ""} />
-            <span>{refreshing ? "Refreshing..." : isSearchActive ? "Refresh Results" : "Refresh"}</span>
-          </button>
-        </form>
-
-        {/* Quick query chips */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "0.76rem", color: "var(--text-dim)", fontWeight: 500 }}>
-            Try:
-          </span>
-          {[
-            "Top 50 Global",
-            "Top 50 India",
-            "Malayalam Hits",
-            "Pavizha Mazha",
-            "Eminem",
-            "Arijit Singh",
-            "Coldplay",
-            "Hip-Hop",
-            "EDM",
-            "Taylor Swift",
-          ].map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => {
-                setSearchQuery(suggestion);
-                handleSearchOnline(suggestion);
-              }}
-              style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid var(--border)",
-                borderRadius: "14px",
-                padding: "3px 10px",
-                fontSize: "0.75rem",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
-                e.currentTarget.style.borderColor = "var(--accent-light)";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 2. Music Discovery Title (BELOW search bar) */}
+      {/* Music Discovery Title Header */}
       <div className="view-header" style={{ marginBottom: 0 }}>
         <div>
           <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1378,6 +1270,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     }}
                     onAddToWishlist={onAddToWishlist}
                     onDownload={onSearchDirect}
+                    downloads={downloads}
                   />
                 </div>
               );

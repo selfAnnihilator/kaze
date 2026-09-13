@@ -255,3 +255,12 @@ export interface QueryResponse {
   default_music_dir?: string;
   configured_folders?: any[];
 }
+
+export interface AppNotification {
+  id: string;
+  type: "success" | "error" | "info" | "warning";
+  title: string;
+  message: string;
+  timestamp: number;
+  read: boolean;
+}

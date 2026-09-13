@@ -655,19 +655,31 @@ impl CoreProcessor {
             }
             Query::GetSmartMixes => {
                 let mixes = self.smart_mix_generator.ensure_default_mixes().await?;
-                let val: Vec<serde_json::Value> = mixes
-                    .into_iter()
-                    .filter_map(|m| serde_json::to_value(m).ok())
-                    .collect();
+                let mut val: Vec<serde_json::Value> = Vec::new();
+                for m in mixes {
+                    let count = self.playlist_repo.get_track_count(&m.id).await.unwrap_or(0);
+                    if let Ok(mut v) = serde_json::to_value(&m) {
+                        if let Some(obj) = v.as_object_mut() {
+                            obj.insert("track_count".to_string(), serde_json::json!(count));
+                        }
+                        val.push(v);
+                    }
+                }
                 Ok(QueryResponse::SmartMixes(val))
             }
             Query::GetPlaylists => {
                 let _ = self.smart_mix_generator.ensure_default_mixes().await;
                 let playlists = self.playlist_repo.get_all_playlists().await?;
-                let val: Vec<serde_json::Value> = playlists
-                    .into_iter()
-                    .filter_map(|p| serde_json::to_value(p).ok())
-                    .collect();
+                let mut val: Vec<serde_json::Value> = Vec::new();
+                for p in playlists {
+                    let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
+                    if let Ok(mut v) = serde_json::to_value(&p) {
+                        if let Some(obj) = v.as_object_mut() {
+                            obj.insert("track_count".to_string(), serde_json::json!(count));
+                        }
+                        val.push(v);
+                    }
+                }
                 Ok(QueryResponse::Playlists(val))
             }
             Query::GetPlaylistTracks { playlist_id } => {

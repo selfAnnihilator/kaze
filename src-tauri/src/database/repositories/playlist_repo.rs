@@ -15,6 +15,7 @@ pub trait PlaylistRepository: Send + Sync {
     async fn remove_track(&self, playlist_id: &str, track_id: &str) -> AppResult<()>;
     async fn set_tracks(&self, playlist_id: &str, track_ids: &[String]) -> AppResult<()>;
     async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<TrackRecord>>;
+    async fn get_track_count(&self, playlist_id: &str) -> AppResult<i64>;
 }
 
 #[derive(Clone)]
@@ -217,5 +218,17 @@ impl PlaylistRepository for SqlitePlaylistRepository {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(tracks)
+    }
+
+    async fn get_track_count(&self, playlist_id: &str) -> AppResult<i64> {
+        let count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ?"
+        )
+        .bind(playlist_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
+
+        Ok(count)
     }
 }

@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
-import { Track, DiscoveryRecommendation } from "../../types";
+import { Track, DiscoveryRecommendation, DownloadTask } from "../../types";
 
 export interface CollectionTrackItem {
   id: string;
@@ -56,6 +56,7 @@ interface CollectionDetailViewProps {
   isSaved?: boolean;
   currentPlayingTrackId?: string | null;
   isPlaying?: boolean;
+  downloads?: DownloadTask[];
 }
 
 export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
@@ -71,6 +72,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   isSaved = false,
   currentPlayingTrackId,
   isPlaying = false,
+  downloads = [],
 }) => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
@@ -458,6 +460,30 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               (currentPlayingTrackId === track.id ||
                 currentPlayingTrackId === track.matched_local_track_id);
 
+            const activeDownload = downloads?.find((d) => {
+              if (d.status === "FAILED" || d.status === "CANCELLED") return false;
+              const titleMatch =
+                d.title.toLowerCase().trim() === track.title.toLowerCase().trim() ||
+                d.filename.toLowerCase().includes(track.title.toLowerCase().trim());
+              const artistMatch =
+                !d.artist ||
+                d.artist.toLowerCase().trim() === track.artist.toLowerCase().trim() ||
+                track.artist.toLowerCase().includes(d.artist.toLowerCase().trim()) ||
+                d.filename.toLowerCase().includes(track.artist.toLowerCase().trim());
+              return titleMatch && artistMatch;
+            });
+
+            const isDownloaded = track.is_downloaded || activeDownload?.status === "COMPLETED";
+            const isDownloading =
+              activeDownload &&
+              (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
+            const downloadPercent =
+              activeDownload?.file_size && activeDownload.file_size > 0
+                ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100))
+                : activeDownload?.status === "DOWNLOADING"
+                ? 50
+                : 0;
+
             return (
               <div
                 key={track.id || idx}
@@ -582,10 +608,29 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {track.is_downloaded ? (
+                  {isDownloaded ? (
                     <span title="Downloaded in local library" style={{ color: "#10b981", display: "inline-flex" }}>
                       <CheckCircle2 size={16} />
                     </span>
+                  ) : isDownloading ? (
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "2px 7px",
+                        borderRadius: "12px",
+                        background: "rgba(99, 102, 241, 0.15)",
+                        border: "1px solid rgba(99, 102, 241, 0.35)",
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        color: "#818cf8",
+                      }}
+                      title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
+                    >
+                      <RefreshCw size={11} className="spin-animation" />
+                      <span>{activeDownload.status === "QUEUED" ? "Queued" : `${downloadPercent}%`}</span>
+                    </div>
                   ) : onDownload ? (
                     <button
                       type="button"

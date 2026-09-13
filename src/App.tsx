@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Track,
   Artist,
@@ -13,6 +13,7 @@ import {
   AppSettings,
   OnboardingStatus,
   SpotifyPlaylistImport,
+  AppNotification,
 } from "./types";
 import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
 import { Sidebar, ViewType } from "./components/Sidebar";
@@ -24,8 +25,14 @@ import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
 import { DiscoveryView } from "./components/views/DiscoveryView";
 import { WishlistView } from "./components/views/WishlistView";
-import { DownloadsView } from "./components/views/DownloadsView";
+import { NotificationsView } from "./components/views/NotificationsView";
 import { SettingsView } from "./components/views/SettingsView";
+import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
+import { ToastContainer } from "./components/notifications/ToastContainer";
+import {
+  DownloadOptionsModal,
+  DownloadModalTrack,
+} from "./components/modals/DownloadOptionsModal";
 import {
   CollectionDetailView,
   CollectionData,
@@ -72,12 +79,58 @@ export const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
-  // Cross-view state (e.g. initiating download search from discovery/wishlist)
-  const [soulseekSearch, setSoulseekSearch] = useState<{
-    artist: string;
-    title: string;
-    album?: string;
-  } | null>(null);
+  // Notifications & Toasts System
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [toasts, setToasts] = useState<AppNotification[]>([]);
+
+  // Middle Modal Popup for Track Download
+  const [downloadModalTrack, setDownloadModalTrack] = useState<DownloadModalTrack | null>(null);
+
+  // Global Top Search Bar State
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+  const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
+  const [globalSearchResults, setGlobalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+
+
+  // --- Notification Handlers ---
+  const addAppNotification = useCallback(
+    (type: "success" | "error" | "info" | "warning", title: string, message: string) => {
+      const newNotification: AppNotification = {
+        id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+        type,
+        title,
+        message,
+        timestamp: Date.now(),
+        read: false,
+      };
+      setNotifications((prev) => [newNotification, ...prev]);
+      setToasts((prev) => [...prev, newNotification]);
+    },
+    []
+  );
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
 
   // --- Fetch Data Handlers ---
 
@@ -378,6 +431,7 @@ export const App: React.FC = () => {
         case "LibraryScanCompleted":
         case "ScanCompleted":
           setIsScanning(false);
+          addAppNotification("info", "Library Scan Complete", "Your local music library has been updated with the latest tracks.");
           fetchTracks();
           fetchArtists();
           fetchAlbums();
@@ -387,6 +441,7 @@ export const App: React.FC = () => {
 
         case "LibraryScanFailed":
           setIsScanning(false);
+          addAppNotification("error", "Library Scan Failed", "An error occurred while scanning your music folders.");
           break;
 
         case "DownloadQueued":
@@ -408,8 +463,10 @@ export const App: React.FC = () => {
           );
           break;
 
-        case "DownloadCompleted":
-        case "DownloadFailed":
+        case "DownloadCompleted": {
+          const trackTitle = event.payload?.title || "Track";
+          const artist = event.payload?.artist ? ` by ${event.payload.artist}` : "";
+          addAppNotification("success", "Download Complete", `"${trackTitle}"${artist} has been downloaded and added to your library.`);
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
@@ -417,6 +474,20 @@ export const App: React.FC = () => {
           fetchAlbums();
           fetchDiscovery();
           break;
+        }
+
+        case "DownloadFailed": {
+          const trackTitle = event.payload?.title || "Track";
+          const errReason = event.payload?.error || event.payload?.message || "Connection timed out or peer unavailable.";
+          addAppNotification("error", "Download Failed", `Failed downloading "${trackTitle}": ${errReason}`);
+          fetchDownloads();
+          fetchWishlist();
+          fetchTracks();
+          fetchArtists();
+          fetchAlbums();
+          fetchDiscovery();
+          break;
+        }
 
         case "WishlistUpdated":
           fetchWishlist();
@@ -432,7 +503,7 @@ export const App: React.FC = () => {
     return () => {
       if (unlistenFn) unlistenFn();
     };
-  }, [fetchTracks, fetchArtists, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist]);
+  }, [fetchTracks, fetchArtists, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification]);
 
   // Smooth local playback progression ticker while playing
   useEffect(() => {
@@ -1087,14 +1158,28 @@ export const App: React.FC = () => {
     [playbackState.is_playing, playbackState.current_track, onlineTrack, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayTrack, handlePlayOnlineTrack]
   );
 
+  const isPlayingThisCollection = useMemo(() => {
+    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+      return false;
+    }
+    const currentId = playbackState.is_playing
+      ? playbackState.current_track?.id
+      : onlineTrack?.isPlaying
+      ? onlineTrack?.id
+      : null;
+    if (!currentId) return false;
+
+    return activeCollection.tracks.some(
+      (t) => t.id === currentId || t.matched_local_track_id === currentId
+    );
+  }, [activeCollection, playbackState.is_playing, playbackState.current_track?.id, onlineTrack]);
+
   const handlePlayAllCollection = useCallback(async () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
       return;
     }
 
-    const isCurrentlyPlaying =
-      playbackState.is_playing || (!!onlineTrack && onlineTrack.isPlaying);
-    if (isCurrentlyPlaying) {
+    if (isPlayingThisCollection) {
       handleUnifiedPlayPause();
       return;
     }
@@ -1121,7 +1206,7 @@ export const App: React.FC = () => {
     } else {
       handlePlayCollectionTrack(first);
     }
-  }, [activeCollection, playbackState.is_playing, onlineTrack, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
+  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
 
   const handleShuffleCollection = useCallback(async () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -1272,31 +1357,122 @@ export const App: React.FC = () => {
     return [];
   };
 
-  const handleStartDownload = async (searchResultId: string, wishlistId?: string) => {
+  // Navigation shortcut to search & download directly via centered modal popup
+  const handleInitiateDirectDownloadSearch = (artist: string, title: string, album?: string) => {
+    setDownloadModalTrack({ artist, title, album });
+  };
+
+  const handleModalStartDownload = async (searchResultId: string, track: DownloadModalTrack) => {
     await dispatchCommand({
       command: "StartDownload",
-      payload: { search_result_id: searchResultId, wishlist_id: wishlistId },
+      payload: {
+        search_result_id: searchResultId,
+      },
     });
+    addAppNotification(
+      "info",
+      "Download Queued",
+      `"${track.title}" by ${track.artist} has been queued for download.`
+    );
     fetchDownloads();
   };
 
-  const handleCancelDownload = async (taskId: string) => {
-    await dispatchCommand({
-      command: "CancelDownload",
-      payload: { task_id: taskId },
-    });
-    fetchDownloads();
+  const handleDirectAudioDownload = async (track: DownloadModalTrack) => {
+    try {
+      await handleAddToWishlist(track.title, track.artist, track.album);
+      addAppNotification(
+        "info",
+        "Saved to Wishlist",
+        `"${track.title}" by ${track.artist} added to wishlist for automated background download.`
+      );
+      fetchWishlist();
+    } catch (err: any) {
+      console.warn("Direct download fallback to wishlist:", err);
+      addAppNotification(
+        "error",
+        "Wishlist Error",
+        `Could not queue "${track.title}" to wishlist.`
+      );
+    }
   };
 
-  // Navigation shortcut to search & download directly in-app from other views
-  const handleInitiateDirectDownloadSearch = (artist: string, title: string, album?: string) => {
-    setSoulseekSearch({ artist, title, album });
-    setCurrentView("downloads");
+  const handleGlobalOnlineSearch = async (queryOverride?: string) => {
+    const q = (typeof queryOverride === "string" ? queryOverride : globalSearchQuery).trim();
+    if (!q) {
+      setGlobalSearchResults(null);
+      return;
+    }
+    setGlobalSearchQuery(q);
+    setIsGlobalSearching(true);
+    setActiveCollection(null);
+    setCurrentView("discovery");
+
+    try {
+      const res = await executeQuery({
+        query: "SearchOnlineMusic",
+        payload: { query: q, limit: 35 },
+      });
+      let incoming: DiscoveryRecommendation[] = [];
+      if (res && Array.isArray(res.data)) {
+        incoming = res.data;
+      }
+      const qLower = q.toLowerCase();
+      const seenKeys = new Set(
+        incoming.map((r) => `${r.artist.toLowerCase().trim()}:${r.title.toLowerCase().trim()}`)
+      );
+      for (const rec of discoveryRecs) {
+        const key = `${rec.artist.toLowerCase().trim()}:${rec.title.toLowerCase().trim()}`;
+        if (!seenKeys.has(key)) {
+          if (
+            rec.title.toLowerCase().includes(qLower) ||
+            rec.artist.toLowerCase().includes(qLower) ||
+            (rec.album && rec.album.toLowerCase().includes(qLower)) ||
+            (rec.genre && rec.genre.toLowerCase().includes(qLower))
+          ) {
+            incoming.push(rec);
+            seenKeys.add(key);
+          }
+        }
+      }
+      setGlobalSearchResults(incoming);
+    } catch (err) {
+      console.error("Global online music search failed:", err);
+      const qLower = q.toLowerCase();
+      const fallbackMatches = discoveryRecs.filter(
+        (rec) =>
+          rec.title.toLowerCase().includes(qLower) ||
+          rec.artist.toLowerCase().includes(qLower) ||
+          (rec.album && rec.album.toLowerCase().includes(qLower))
+      );
+      setGlobalSearchResults(fallbackMatches);
+    } finally {
+      setIsGlobalSearching(false);
+    }
   };
 
-  const activeDownloadsCount = downloads.filter(
-    (d) => d.status === "DOWNLOADING" || d.status === "QUEUED"
-  ).length;
+  const handleGlobalClearSearch = () => {
+    setGlobalSearchQuery("");
+    setGlobalSearchResults(null);
+  };
+
+  const handleGlobalRefresh = async () => {
+    setIsGlobalRefreshing(true);
+    try {
+      if (globalSearchQuery.trim()) {
+        await handleGlobalOnlineSearch(globalSearchQuery.trim());
+      }
+      await Promise.allSettled([
+        fetchDiscovery(true),
+        fetchTracks(),
+        fetchArtists(),
+        fetchAlbums(),
+      ]);
+    } finally {
+      setIsGlobalRefreshing(false);
+    }
+  };
+
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="app-container">
@@ -1308,182 +1484,196 @@ export const App: React.FC = () => {
             setActiveCollection(null);
             setCurrentView(view);
           }}
-          activeDownloadsCount={activeDownloadsCount}
+          unreadNotificationsCount={unreadNotificationsCount}
         />
 
         {/* Main Content Area */}
         <main className="main-content">
-        {activeCollection ? (
-          <CollectionDetailView
-            collection={activeCollection}
-            isLoadingTracks={isLoadingCollectionTracks}
-            onBack={() => setActiveCollection(null)}
-            onPlayTrack={handlePlayCollectionTrack}
-            onPlayAll={handlePlayAllCollection}
-            onShuffleAll={handleShuffleCollection}
-            onAddToWishlist={(track) =>
-              handleAddToWishlist(track.title, track.artist, track.album)
-            }
-            onDownload={(artist, title) =>
-              handleInitiateDirectDownloadSearch(artist, title)
-            }
-            onSaveToPlaylists={handleSaveCollectionToPlaylists}
-            currentPlayingTrackId={
-              playbackState.is_playing
-                ? playbackState.current_track?.id
-                : onlineTrack?.id
-            }
-            isPlaying={
-              playbackState.is_playing || (!!onlineTrack && onlineTrack.isPlaying)
-            }
+          {/* Persistent Global Top Search Bar */}
+          <GlobalTopSearchBar
+            searchQuery={globalSearchQuery}
+            setSearchQuery={setGlobalSearchQuery}
+            onSearch={handleGlobalOnlineSearch}
+            onRefresh={handleGlobalRefresh}
+            isSearching={isGlobalSearching}
+            isRefreshing={isGlobalRefreshing}
           />
-        ) : (
-          <>
-            {currentView === "library" && (
-              <LibraryView
-                tracks={tracks}
-                queuedTrackIds={queuedTrackIds}
-                onPlayTrack={handlePlayTrack}
-                onEnqueueTrack={handleEnqueueTrack}
-                onDequeueTrack={handleDequeueTrack}
-                onLikeTrack={handleLike}
-                onDislikeTrack={handleDislike}
-                onRemoveFeedback={handleRemoveFeedback}
-                onRescan={handleRescanLibrary}
-                onSearch={handleSearchLibrary}
-              />
-            )}
 
-            {currentView === "artists" && (
-              <ArtistsView
-                artists={artists}
-                onSelectArtist={(artistId) => {
-                  const artist = artists.find((a) => a.id === artistId);
-                  if (artist) {
-                    handleSearchLibrary(artist.name);
-                    setCurrentView("library");
+          {activeCollection ? (
+            <CollectionDetailView
+              collection={activeCollection}
+              isLoadingTracks={isLoadingCollectionTracks}
+              onBack={() => setActiveCollection(null)}
+              onPlayTrack={handlePlayCollectionTrack}
+              onPlayAll={handlePlayAllCollection}
+              onShuffleAll={handleShuffleCollection}
+              onAddToWishlist={(track) =>
+                handleAddToWishlist(track.title, track.artist, track.album)
+              }
+              onDownload={(artist, title) =>
+                handleInitiateDirectDownloadSearch(artist, title)
+              }
+              onSaveToPlaylists={handleSaveCollectionToPlaylists}
+              currentPlayingTrackId={
+                playbackState.is_playing
+                  ? playbackState.current_track?.id
+                  : onlineTrack?.id
+              }
+              isPlaying={isPlayingThisCollection}
+              downloads={downloads}
+            />
+          ) : (
+            <>
+              {currentView === "library" && (
+                <LibraryView
+                  tracks={tracks}
+                  queuedTrackIds={queuedTrackIds}
+                  onPlayTrack={handlePlayTrack}
+                  onEnqueueTrack={handleEnqueueTrack}
+                  onDequeueTrack={handleDequeueTrack}
+                  onLikeTrack={handleLike}
+                  onDislikeTrack={handleDislike}
+                  onRemoveFeedback={handleRemoveFeedback}
+                  onRescan={handleRescanLibrary}
+                  onSearch={handleSearchLibrary}
+                />
+              )}
+
+              {currentView === "artists" && (
+                <ArtistsView
+                  artists={artists}
+                  onSelectArtist={(artistId) => {
+                    const artist = artists.find((a) => a.id === artistId);
+                    if (artist) {
+                      handleSearchLibrary(artist.name);
+                      setCurrentView("library");
+                    }
+                  }}
+                />
+              )}
+
+              {currentView === "albums" && (
+                <AlbumsView
+                  albums={albums}
+                  onSelectAlbum={(albumId) => {
+                    const album = albums.find((al) => al.id === albumId);
+                    if (album) {
+                      handleSearchLibrary(album.title);
+                      setCurrentView("library");
+                    }
+                  }}
+                />
+              )}
+
+              {currentView === "playlists" && (
+                <PlaylistsView
+                  viewMode="playlists"
+                  playlists={playlists}
+                  onSelectPlaylist={() => {}}
+                  onPlayPlaylist={handlePlayPlaylist}
+                  onCreatePlaylist={handleCreatePlaylist}
+                  onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                  onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                  onAddMissingToWishlist={handleAddMissingToWishlist}
+                  onLaunchSoulseek={handleLaunchSoulseek}
+                  onSearchDirect={handleInitiateDirectDownloadSearch}
+                  onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                  onPlayTrack={handlePlayTrack}
+                  queuedTrackIds={queuedTrackIds}
+                  onEnqueueTrack={handleEnqueueTrack}
+                  onDequeueTrack={handleDequeueTrack}
+                  onOpenCollection={handleOpenCollection}
+                />
+              )}
+
+              {currentView === "smart_mixes" && (
+                <PlaylistsView
+                  viewMode="smart_mixes"
+                  playlists={playlists}
+                  onSelectPlaylist={() => {}}
+                  onPlayPlaylist={handlePlayPlaylist}
+                  onCreatePlaylist={handleCreatePlaylist}
+                  onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                  onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                  onAddMissingToWishlist={handleAddMissingToWishlist}
+                  onLaunchSoulseek={handleLaunchSoulseek}
+                  onSearchDirect={handleInitiateDirectDownloadSearch}
+                  onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                  onPlayTrack={handlePlayTrack}
+                  queuedTrackIds={queuedTrackIds}
+                  onEnqueueTrack={handleEnqueueTrack}
+                  onDequeueTrack={handleDequeueTrack}
+                  onOpenCollection={handleOpenCollection}
+                />
+              )}
+
+              {currentView === "discovery" && (
+                <DiscoveryView
+                  recommendations={discoveryRecs}
+                  playlists={playlists}
+                  onPlayPlaylist={handlePlayPlaylist}
+                  onAddToWishlist={(rec) =>
+                    handleAddToWishlist(rec.title, rec.artist, rec.album)
                   }
-                }}
-              />
-            )}
-
-            {currentView === "albums" && (
-              <AlbumsView
-                albums={albums}
-                onSelectAlbum={(albumId) => {
-                  const album = albums.find((al) => al.id === albumId);
-                  if (album) {
-                    handleSearchLibrary(album.title);
-                    setCurrentView("library");
+                  onSearchDirect={(artist, title) =>
+                    handleInitiateDirectDownloadSearch(artist, title)
                   }
-                }}
-              />
-            )}
+                  onRefresh={fetchDiscovery}
+                  onPlayOnlineTrack={handlePlayOnlineTrack}
+                  onStopTrack={handleStopTrack}
+                  activeOnlineTrackId={onlineTrack?.id || null}
+                  isOnlinePlaying={!!onlineTrack?.isPlaying}
+                  isOnlineLoading={!!onlineTrack?.isLoading}
+                  currentLocalTrack={playbackState.current_track}
+                  isLocalPlaying={playbackState.is_playing}
+                  onOpenCollection={handleOpenCollection}
+                  downloads={downloads}
+                  searchQuery={globalSearchQuery}
+                  setSearchQuery={setGlobalSearchQuery}
+                  searchResults={globalSearchResults}
+                  setSearchResults={setGlobalSearchResults}
+                  isSearchingOnline={isGlobalSearching}
+                  onSearchOnline={handleGlobalOnlineSearch}
+                  onClearSearch={handleGlobalClearSearch}
+                />
+              )}
 
-            {currentView === "playlists" && (
-              <PlaylistsView
-                viewMode="playlists"
-                playlists={playlists}
-                onSelectPlaylist={() => {}}
-                onPlayPlaylist={handlePlayPlaylist}
-                onCreatePlaylist={handleCreatePlaylist}
-                onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-                onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                onAddMissingToWishlist={handleAddMissingToWishlist}
-                onLaunchSoulseek={handleLaunchSoulseek}
-                onSearchDirect={handleInitiateDirectDownloadSearch}
-                onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                onPlayTrack={handlePlayTrack}
-                queuedTrackIds={queuedTrackIds}
-                onEnqueueTrack={handleEnqueueTrack}
-                onDequeueTrack={handleDequeueTrack}
-                onOpenCollection={handleOpenCollection}
-              />
-            )}
+              {currentView === "wishlist" && (
+                <WishlistView
+                  wishlist={wishlist}
+                  onAddToWishlist={handleAddToWishlist}
+                  onUpdateStatus={handleUpdateWishlistStatus}
+                  onSearchDirect={handleInitiateDirectDownloadSearch}
+                  onLaunchSoulseek={handleLaunchSoulseek}
+                />
+              )}
 
-            {currentView === "smart_mixes" && (
-              <PlaylistsView
-                viewMode="smart_mixes"
-                playlists={playlists}
-                onSelectPlaylist={() => {}}
-                onPlayPlaylist={handlePlayPlaylist}
-                onCreatePlaylist={handleCreatePlaylist}
-                onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-                onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                onAddMissingToWishlist={handleAddMissingToWishlist}
-                onLaunchSoulseek={handleLaunchSoulseek}
-                onSearchDirect={handleInitiateDirectDownloadSearch}
-                onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                onPlayTrack={handlePlayTrack}
-                queuedTrackIds={queuedTrackIds}
-                onEnqueueTrack={handleEnqueueTrack}
-                onDequeueTrack={handleDequeueTrack}
-                onOpenCollection={handleOpenCollection}
-              />
-            )}
+              {currentView === "notifications" && (
+                <NotificationsView
+                  notifications={notifications}
+                  onClearAll={clearAllNotifications}
+                  onRemoveNotification={deleteNotification}
+                  onMarkAllRead={markAllNotificationsAsRead}
+                  onMarkAsRead={markNotificationAsRead}
+                />
+              )}
 
-            {currentView === "discovery" && (
-              <DiscoveryView
-                recommendations={discoveryRecs}
-                playlists={playlists}
-                onPlayPlaylist={handlePlayPlaylist}
-                onAddToWishlist={(rec) =>
-                  handleAddToWishlist(rec.title, rec.artist, rec.album)
-                }
-                onSearchDirect={(artist, title) =>
-                  handleInitiateDirectDownloadSearch(artist, title)
-                }
-                onRefresh={fetchDiscovery}
-                onPlayOnlineTrack={handlePlayOnlineTrack}
-                onStopTrack={handleStopTrack}
-                activeOnlineTrackId={onlineTrack?.id || null}
-                isOnlinePlaying={!!onlineTrack?.isPlaying}
-                isOnlineLoading={!!onlineTrack?.isLoading}
-                currentLocalTrack={playbackState.current_track}
-                isLocalPlaying={playbackState.is_playing}
-                onOpenCollection={handleOpenCollection}
-              />
-            )}
-
-            {currentView === "wishlist" && (
-              <WishlistView
-                wishlist={wishlist}
-                onAddToWishlist={handleAddToWishlist}
-                onUpdateStatus={handleUpdateWishlistStatus}
-                onSearchDirect={handleInitiateDirectDownloadSearch}
-                onLaunchSoulseek={handleLaunchSoulseek}
-              />
-            )}
-
-            {currentView === "downloads" && (
-              <DownloadsView
-                downloads={downloads}
-                onSearchSoulseek={handleSearchSoulseek}
-                onStartDownload={handleStartDownload}
-                onCancelDownload={handleCancelDownload}
-                onRefreshDownloads={fetchDownloads}
-                onLaunchSoulseek={handleLaunchSoulseek}
-                onImportSoulseek={handleImportSoulseekDownloads}
-                initialSearch={soulseekSearch}
-              />
-            )}
-
-            {currentView === "settings" && (
-              <SettingsView
-                settings={settings}
-                configuredFolders={onboardingStatus?.configured_folders || []}
-                onAddFolder={handleAddFolder}
-                onRemoveFolder={handleRemoveFolder}
-                onRescanLibrary={handleRescanLibrary}
-                onRerunOnboarding={handleRerunOnboarding}
-                onLaunchSoulseek={handleLaunchSoulseek}
-                onImportSoulseek={handleImportSoulseekDownloads}
-                isScanning={isScanning}
-              />
-            )}
-          </>
-        )}
-      </main>
+              {currentView === "settings" && (
+                <SettingsView
+                  settings={settings}
+                  configuredFolders={onboardingStatus?.configured_folders || []}
+                  onAddFolder={handleAddFolder}
+                  onRemoveFolder={handleRemoveFolder}
+                  onRescanLibrary={handleRescanLibrary}
+                  onRerunOnboarding={handleRerunOnboarding}
+                  onLaunchSoulseek={handleLaunchSoulseek}
+                  onImportSoulseek={handleImportSoulseekDownloads}
+                  isScanning={isScanning}
+                />
+              )}
+            </>
+          )}
+        </main>
       </div>
 
       {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
@@ -1503,6 +1693,20 @@ export const App: React.FC = () => {
         onDislike={handleDislike}
         onRemoveFeedback={handleRemoveFeedback}
         onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
+      />
+
+      {/* Top-Right Floating Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Center Modal Popup for Track Download */}
+      <DownloadOptionsModal
+        isOpen={!!downloadModalTrack}
+        track={downloadModalTrack}
+        onClose={() => setDownloadModalTrack(null)}
+        onSearchSoulseek={handleSearchSoulseek}
+        onStartDownload={handleModalStartDownload}
+        onDirectAudioDownload={handleDirectAudioDownload}
+        onAddToWishlist={(title, artist, album) => handleAddToWishlist(title, artist, album)}
       />
 
       {/* Onboarding Modal */}

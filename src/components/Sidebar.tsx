@@ -6,7 +6,7 @@ import {
   ListMusic,
   Compass,
   Bookmark,
-  Download,
+  Bell,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -19,19 +19,19 @@ export type ViewType =
   | "smart_mixes"
   | "discovery"
   | "wishlist"
-  | "downloads"
+  | "notifications"
   | "settings";
 
 interface SidebarProps {
   currentView: ViewType;
   onSelectView: (view: ViewType) => void;
-  activeDownloadsCount?: number;
+  unreadNotificationsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   onSelectView,
-  activeDownloadsCount = 0,
+  unreadNotificationsCount = 0,
 }) => {
   return (
     <aside className="sidebar">
@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="nav-section">
-        <span className="nav-section-title">Acquisition</span>
+        <span className="nav-section-title">Activity</span>
         <button
           className={`nav-button ${currentView === "wishlist" ? "active" : ""}`}
           onClick={() => onSelectView("wishlist")}
@@ -96,26 +96,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Wishlist</span>
         </button>
         <button
-          className={`nav-button ${currentView === "downloads" ? "active" : ""}`}
-          onClick={() => onSelectView("downloads")}
+          className={`nav-button ${currentView === "notifications" ? "active" : ""}`}
+          onClick={() => onSelectView("notifications")}
         >
-          <Download size={18} />
-          <span>Downloads</span>
-          {activeDownloadsCount > 0 && (
+          <Bell size={18} />
+          <span>Notifications</span>
+          {unreadNotificationsCount > 0 && (
             <span
               style={{
                 marginLeft: "auto",
-                backgroundColor: "#06b6d4",
-                color: "#000",
+                backgroundColor: "#ef4444",
+                color: "#fff",
                 fontSize: "10px",
                 fontWeight: 700,
                 borderRadius: "9999px",
                 padding: "1px 7px",
                 lineHeight: "15px",
-                animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
               }}
             >
-              {activeDownloadsCount}
+              {unreadNotificationsCount}
             </span>
           )}
         </button>
@@ -133,3 +132,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+
