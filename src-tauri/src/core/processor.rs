@@ -23,6 +23,8 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
+use base64::Engine;
+use lofty::file::TaggedFileExt;
 
 /// Central processing coordinator for commands, queries, and event dispatching.
 pub struct CoreProcessor {
@@ -423,6 +425,24 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::AddTrackToPlaylist { playlist_id, track_id } => {
+                let track_opt = self.library_service.track_repo().find_by_id(&track_id).await?;
+                if track_opt.is_none() {
+                    let now = chrono::Utc::now().timestamp();
+                    let fake_path = format!("online://{}", track_id);
+                    let _ = sqlx::query(
+                        "INSERT OR IGNORE INTO tracks (id, file_path, file_size, modified_timestamp, title, normalized_title, duration_secs, format, has_cover_art, created_at, updated_at)
+                         VALUES (?, ?, 0, ?, ?, ?, 0.0, 'online', 0, ?, ?)"
+                    )
+                    .bind(&track_id)
+                    .bind(&fake_path)
+                    .bind(now)
+                    .bind(&track_id)
+                    .bind(&track_id)
+                    .bind(now)
+                    .bind(now)
+                    .execute(&self.db_pool)
+                    .await;
+                }
                 self.playlist_repo.add_track(&playlist_id, &track_id, None).await?;
                 Ok(CommandResponse::Ok)
             }
@@ -846,6 +866,38 @@ impl CoreProcessor {
                     .map(|r| serde_json::to_value(r).unwrap_or_default())
                     .collect();
                 Ok(QueryResponse::DiscoveryRecommendations(json_arr))
+            }
+            Query::GetTrackCoverArt { track_id } => {
+                let track = self
+                    .library_service
+                    .track_repo()
+                    .find_by_id(&track_id)
+                    .await?;
+                if let Some(t) = track {
+                    let path = std::path::Path::new(&t.file_path);
+                    if path.exists() {
+                        if let Ok(probe) = lofty::probe::Probe::open(path) {
+                            if let Ok(probe) = probe.guess_file_type() {
+                                if let Ok(tagged_file) = probe.read() {
+                                    if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
+                                        if let Some(pic) = tag.pictures().first() {
+                                            let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
+                                            let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
+                                            return Ok(QueryResponse::CoverArt(Some(format!("data:{};base64,{}", mime, encoded))));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(QueryResponse::CoverArt(None))
+            }
+            Query::GetTrackPlaylistMemberships => {
+                let memberships = self.playlist_repo.get_track_playlist_memberships().await?;
+                let val = serde_json::to_value(&memberships)
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                Ok(QueryResponse::TrackPlaylistMemberships(val))
             }
             _ => {
                 warn!(?query, "Query handler routed to stub during Phase 8");

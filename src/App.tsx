@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Track,
-  Artist,
   Album,
   Playlist,
   WishlistItem,
@@ -20,7 +19,6 @@ import { Sidebar, ViewType } from "./components/Sidebar";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { LibraryView } from "./components/views/LibraryView";
-import { ArtistsView } from "./components/views/ArtistsView";
 import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
 import { DiscoveryView } from "./components/views/DiscoveryView";
@@ -34,6 +32,10 @@ import {
   DownloadModalTrack,
 } from "./components/modals/DownloadOptionsModal";
 import {
+  AddToPlaylistModal,
+  AddToPlaylistModalTrack,
+} from "./components/modals/AddToPlaylistModal";
+import {
   CollectionDetailView,
   CollectionData,
   CollectionTrackItem,
@@ -41,9 +43,14 @@ import {
 
 export const App: React.FC = () => {
   // Navigation
-  const [currentView, setCurrentView] = useState<ViewType>("library");
+  const [currentView, setCurrentView] = useState<ViewType>("discovery");
   const [activeCollection, setActiveCollection] = useState<CollectionData | null>(null);
   const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
+
+  // Playlist Management Modal
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [playlistModalTrack, setPlaylistModalTrack] = useState<AddToPlaylistModalTrack | null>(null);
+  const [trackPlaylistMap, setTrackPlaylistMap] = useState<Record<string, string[]>>({});
 
   // Onboarding
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
@@ -72,7 +79,6 @@ export const App: React.FC = () => {
   const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
   const tracksRef = useRef<Track[]>([]);
   tracksRef.current = tracks;
-  const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
@@ -191,20 +197,6 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const fetchArtists = useCallback(async () => {
-    try {
-      const res = await executeQuery({
-        query: "GetArtists",
-        payload: { offset: 0, limit: 200 },
-      });
-      if (Array.isArray(res.data)) {
-        setArtists(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch artists:", err);
-    }
-  }, []);
-
   const fetchAlbums = useCallback(async () => {
     try {
       const res = await executeQuery({
@@ -227,6 +219,17 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to fetch playlists:", err);
+    }
+  }, []);
+
+  const fetchTrackPlaylistMemberships = useCallback(async () => {
+    try {
+      const res = await executeQuery({ query: "GetTrackPlaylistMemberships" });
+      if (res.data && typeof res.data === "object") {
+        setTrackPlaylistMap(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch track playlist memberships:", err);
     }
   }, []);
 
@@ -285,9 +288,9 @@ export const App: React.FC = () => {
     fetchOnboardingStatus();
     fetchPlaybackState();
     fetchTracks();
-    fetchArtists();
     fetchAlbums();
     fetchPlaylists();
+    fetchTrackPlaylistMemberships();
     fetchWishlist();
     fetchDownloads();
     fetchDiscovery();
@@ -296,9 +299,9 @@ export const App: React.FC = () => {
     fetchOnboardingStatus,
     fetchPlaybackState,
     fetchTracks,
-    fetchArtists,
     fetchAlbums,
     fetchPlaylists,
+    fetchTrackPlaylistMemberships,
     fetchWishlist,
     fetchDownloads,
     fetchDiscovery,
@@ -436,7 +439,6 @@ export const App: React.FC = () => {
           setIsScanning(false);
           addAppNotification("info", "Library Scan Complete", "Your local music library has been updated with the latest tracks.");
           fetchTracks();
-          fetchArtists();
           fetchAlbums();
           fetchOnboardingStatus();
           fetchDiscovery();
@@ -473,7 +475,6 @@ export const App: React.FC = () => {
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
-          fetchArtists();
           fetchAlbums();
           fetchDiscovery();
           break;
@@ -486,7 +487,6 @@ export const App: React.FC = () => {
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
-          fetchArtists();
           fetchAlbums();
           fetchDiscovery();
           break;
@@ -506,7 +506,7 @@ export const App: React.FC = () => {
     return () => {
       if (unlistenFn) unlistenFn();
     };
-  }, [fetchTracks, fetchArtists, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification]);
+  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification]);
 
   // Smooth local playback progression ticker while playing
   useEffect(() => {
@@ -1050,7 +1050,7 @@ export const App: React.FC = () => {
   };
 
   // Playlists & Smart Mixes
-  const handleCreatePlaylist = async (name: string, description?: string) => {
+  const handleCreatePlaylist = async (name: string, description?: string): Promise<string | null> => {
     let targetName = name.trim();
     while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
       const prompted = window.prompt(
@@ -1058,7 +1058,7 @@ export const App: React.FC = () => {
         `${targetName} (1)`
       );
       if (prompted === null) {
-        return;
+        return null;
       }
       const trimmed = prompted.trim();
       if (!trimmed) {
@@ -1068,11 +1068,56 @@ export const App: React.FC = () => {
       targetName = trimmed;
     }
 
-    await dispatchCommand({
+    const res = await dispatchCommand({
       command: "CreatePlaylist",
       payload: { name: targetName, description },
     });
-    fetchPlaylists();
+    await fetchPlaylists();
+    if (res.data && typeof res.data === "string") {
+      return res.data;
+    }
+    return null;
+  };
+
+  const handleToggleTrackInPlaylist = async (playlistId: string, isCurrentlyMember: boolean) => {
+    if (!playlistModalTrack) return;
+    const trackId = playlistModalTrack.id;
+    try {
+      if (isCurrentlyMember) {
+        await dispatchCommand({
+          command: "RemoveTrackFromPlaylist",
+          payload: { playlist_id: playlistId, track_id: trackId },
+        });
+        setTrackPlaylistMap((prev) => {
+          const current = prev[trackId] || [];
+          return { ...prev, [trackId]: current.filter((id) => id !== playlistId) };
+        });
+      } else {
+        await dispatchCommand({
+          command: "AddTrackToPlaylist",
+          payload: { playlist_id: playlistId, track_id: trackId },
+        });
+        setTrackPlaylistMap((prev) => {
+          const current = prev[trackId] || [];
+          return { ...prev, [trackId]: [...current, playlistId] };
+        });
+      }
+      await fetchPlaylists();
+      await fetchTrackPlaylistMemberships();
+    } catch (err) {
+      console.error("Failed to toggle track in playlist:", err);
+    }
+  };
+
+  const handleOpenAddToPlaylistModal = (track: {
+    id: string;
+    title: string;
+    artist?: string;
+    album?: string;
+    cover_art_url?: string;
+  }) => {
+    setPlaylistModalTrack(track);
+    setIsPlaylistModalOpen(true);
   };
 
   const handlePlayPlaylist = async (playlistId: string) => {
@@ -1650,7 +1695,6 @@ export const App: React.FC = () => {
       await Promise.allSettled([
         fetchDiscovery(true),
         fetchTracks(),
-        fetchArtists(),
         fetchAlbums(),
       ]);
     } finally {
@@ -1709,6 +1753,16 @@ export const App: React.FC = () => {
               isSaved={isCollectionSaved}
               isShuffled={playbackState.is_shuffled}
               downloads={downloads}
+              trackPlaylistMap={trackPlaylistMap}
+              onAddToPlaylist={(track) =>
+                handleOpenAddToPlaylistModal({
+                  id: track.matched_local_track_id || track.id,
+                  title: track.title,
+                  artist: track.artist,
+                  album: track.album,
+                  cover_art_url: track.cover_art_url,
+                })
+              }
             />
           ) : (
             <>
@@ -1724,25 +1778,22 @@ export const App: React.FC = () => {
                   onRemoveFeedback={handleRemoveFeedback}
                   onRescan={handleRescanLibrary}
                   onSearch={handleSearchLibrary}
-                />
-              )}
-
-              {currentView === "artists" && (
-                <ArtistsView
-                  artists={artists}
-                  onSelectArtist={(artistId) => {
-                    const artist = artists.find((a) => a.id === artistId);
-                    if (artist) {
-                      handleSearchLibrary(artist.name);
-                      setCurrentView("library");
-                    }
-                  }}
+                  trackPlaylistMap={trackPlaylistMap}
+                  onOpenAddToPlaylistModal={(t) =>
+                    handleOpenAddToPlaylistModal({
+                      id: t.id,
+                      title: t.title,
+                      artist: t.artist_name,
+                      album: t.album_title,
+                    })
+                  }
                 />
               )}
 
               {currentView === "albums" && (
                 <AlbumsView
                   albums={albums}
+                  tracks={tracks}
                   onSelectAlbum={(albumId) => {
                     const album = albums.find((al) => al.id === albumId);
                     if (album) {
@@ -1825,6 +1876,17 @@ export const App: React.FC = () => {
                   isSearchingOnline={isGlobalSearching}
                   onSearchOnline={handleGlobalOnlineSearch}
                   onClearSearch={handleGlobalClearSearch}
+                  trackPlaylistMap={trackPlaylistMap}
+                  onAddToPlaylist={(rec) =>
+                    handleOpenAddToPlaylistModal({
+                      id: rec.matched_local_track_id || rec.external_track_id,
+                      title: rec.title,
+                      artist: rec.artist,
+                      album: rec.album,
+                      cover_art_url: rec.cover_art_url,
+                    })
+                  }
+                  onGoToLibrary={() => setCurrentView("library")}
                 />
               )}
 
@@ -1887,6 +1949,24 @@ export const App: React.FC = () => {
 
       {/* Top-Right Floating Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Center Modal Popup for Playlist Management */}
+      <AddToPlaylistModal
+        isOpen={isPlaylistModalOpen}
+        onClose={() => {
+          setIsPlaylistModalOpen(false);
+          setPlaylistModalTrack(null);
+        }}
+        track={playlistModalTrack}
+        playlists={playlists}
+        trackPlaylistIds={
+          playlistModalTrack && trackPlaylistMap[playlistModalTrack.id]
+            ? trackPlaylistMap[playlistModalTrack.id]
+            : []
+        }
+        onTogglePlaylist={handleToggleTrackInPlaylist}
+        onCreatePlaylist={handleCreatePlaylist}
+      />
 
       {/* Center Modal Popup for Track Download */}
       <DownloadOptionsModal

@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Music,
-  User,
   Disc,
   ListMusic,
   Compass,
@@ -13,7 +12,6 @@ import {
 
 export type ViewType =
   | "library"
-  | "artists"
   | "albums"
   | "playlists"
   | "smart_mixes"
@@ -58,13 +56,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <Music size={18} />
           <span>Downloaded Tracks</span>
-        </button>
-        <button
-          className={`nav-button ${currentView === "artists" ? "active" : ""}`}
-          onClick={() => onSelectView("artists")}
-        >
-          <User size={18} />
-          <span>Artists</span>
         </button>
         <button
           className={`nav-button ${currentView === "albums" ? "active" : ""}`}

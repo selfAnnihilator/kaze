@@ -93,6 +93,10 @@ pub enum Query {
         #[serde(default)]
         limit: Option<u32>,
     },
+    GetTrackCoverArt {
+        track_id: String,
+    },
+    GetTrackPlaylistMemberships,
 }
 
 /// Query response wrapper.
@@ -125,5 +129,7 @@ pub enum QueryResponse {
         stream_url: String,
         duration_secs: f64,
     },
+    CoverArt(Option<String>),
+    TrackPlaylistMemberships(serde_json::Value),
     Empty,
 }

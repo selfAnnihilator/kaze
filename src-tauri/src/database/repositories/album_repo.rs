@@ -12,6 +12,7 @@ pub struct AlbumSummary {
     pub release_year: Option<i64>,
     pub cover_art_path: Option<String>,
     pub track_count: i64,
+    pub first_track_id: Option<String>,
 }
 
 #[async_trait]
@@ -36,7 +37,13 @@ impl AlbumRepository for SqliteAlbumRepository {
     async fn list_albums(&self, offset: u32, limit: u32) -> AppResult<Vec<AlbumSummary>> {
         let sql = "
             SELECT al.id, al.title, a.name as artist_name, al.release_year,
-                   al.cover_art_path, COUNT(t.id) as track_count
+                   al.cover_art_path, COUNT(t.id) as track_count,
+                   (
+                       SELECT t2.id FROM tracks t2
+                       WHERE t2.album_id = al.id
+                       ORDER BY t2.track_number ASC, t2.title ASC
+                       LIMIT 1
+                   ) as first_track_id
             FROM albums al
             LEFT JOIN artists a ON al.artist_id = a.id
             LEFT JOIN tracks t ON t.album_id = al.id

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, Search, RotateCw, Heart, ThumbsDown, Plus, Check } from "lucide-react";
+import { Play, Search, RotateCw, Heart, ThumbsDown, Plus, Check, Bookmark, BookmarkCheck } from "lucide-react";
 import { Track } from "../../types";
 
 interface LibraryViewProps {
@@ -13,6 +13,8 @@ interface LibraryViewProps {
   onRemoveFeedback: (trackId: string) => void;
   onRescan: () => void;
   onSearch: (query: string) => void;
+  trackPlaylistMap?: Record<string, string[]>;
+  onOpenAddToPlaylistModal?: (track: Track) => void;
 }
 
 const formatSeconds = (secs: number) => {
@@ -32,6 +34,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onRemoveFeedback,
   onRescan,
   onSearch,
+  trackPlaylistMap,
+  onOpenAddToPlaylistModal,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -119,6 +123,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               const isLiked = track.manual_like === 1;
               const isDisliked = track.manual_like === -1;
               const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
+              const playlistIds = trackPlaylistMap?.[track.id] || [];
+              const isInPlaylist = playlistIds.length > 0;
 
               return (
                 <tr key={track.id} className="track-row" onDoubleClick={() => onPlayTrack(track.id)}>
@@ -145,6 +151,18 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <td style={{ textAlign: "right" }}>{formatSeconds(track.duration_secs)}</td>
                   <td>
                     <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                      <button
+                        className="player-icon-btn"
+                        title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+                        onClick={() => onOpenAddToPlaylistModal && onOpenAddToPlaylistModal(track)}
+                        style={{ color: isInPlaylist ? "#10b981" : "var(--text-muted)" }}
+                      >
+                        {isInPlaylist ? (
+                          <BookmarkCheck size={16} color="#10b981" />
+                        ) : (
+                          <Bookmark size={16} />
+                        )}
+                      </button>
                       <button
                         className="player-icon-btn"
                         title={isEnqueued ? "In queue (click to remove)" : "Add to queue"}

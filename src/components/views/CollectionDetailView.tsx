@@ -58,6 +58,8 @@ interface CollectionDetailViewProps {
   isPlaying?: boolean;
   isShuffled?: boolean;
   downloads?: DownloadTask[];
+  trackPlaylistMap?: Record<string, string[]>;
+  onAddToPlaylist?: (track: CollectionTrackItem) => void;
 }
 
 export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
@@ -75,6 +77,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   isPlaying = false,
   isShuffled = false,
   downloads = [],
+  trackPlaylistMap,
+  onAddToPlaylist,
 }) => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
@@ -692,23 +696,39 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     </button>
                   ) : null}
 
-                  {onAddToWishlist && (
-                    <button
-                      type="button"
-                      onClick={() => onAddToWishlist(track)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-dim)",
-                        cursor: "pointer",
-                        padding: "4px",
-                        display: "flex",
-                      }}
-                      title="Add to wishlist"
-                    >
-                      <Bookmark size={15} />
-                    </button>
-                  )}
+                  {(() => {
+                    const trackId = track.matched_local_track_id || track.id;
+                    const playlistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
+                    const isInPlaylist = playlistIds.length > 0;
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onAddToPlaylist) {
+                            onAddToPlaylist(track);
+                          } else if (onAddToWishlist) {
+                            onAddToWishlist(track);
+                          }
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: isInPlaylist ? "#10b981" : "var(--text-dim)",
+                          cursor: "pointer",
+                          padding: "4px",
+                          display: "flex",
+                        }}
+                        title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+                      >
+                        {isInPlaylist ? (
+                          <BookmarkCheck size={15} color="#10b981" />
+                        ) : (
+                          <Bookmark size={15} />
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );

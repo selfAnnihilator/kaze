@@ -1,8 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   DownloadCloud,
   Sparkles,
   Bookmark,
+  BookmarkCheck,
+  WifiOff,
+  Music,
   RefreshCw,
   Flame,
   Radio,
@@ -31,6 +34,8 @@ interface DiscoveryTrackCardProps {
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
   onDownload: (artist: string, title: string) => void;
   downloads?: DownloadTask[];
+  trackPlaylistMap?: Record<string, string[]>;
+  onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
 }
 
 const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
@@ -44,8 +49,14 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   onAddToWishlist,
   onDownload,
   downloads,
+  trackPlaylistMap,
+  onAddToPlaylist,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  const trackId = rec.matched_local_track_id || rec.external_track_id;
+  const playlistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
+  const isInPlaylist = playlistIds.length > 0;
 
   const activeDownload = downloads?.find((d) => {
     if (d.status === "FAILED" || d.status === "CANCELLED") return false;
@@ -374,7 +385,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: rec.in_wishlist ? "var(--accent-light)" : "var(--text-dim)",
+            color: isInPlaylist ? "#10b981" : rec.in_wishlist ? "var(--accent-light)" : "var(--text-dim)",
             padding: "4px",
             display: "flex",
             alignItems: "center",
@@ -382,11 +393,19 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           }}
           onClick={(e) => {
             e.stopPropagation();
-            onAddToWishlist(rec);
+            if (onAddToPlaylist) {
+              onAddToPlaylist(rec);
+            } else {
+              onAddToWishlist(rec);
+            }
           }}
-          title={rec.in_wishlist ? "In Wishlist" : "Add to Wishlist"}
+          title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
         >
-          <Bookmark size={14} fill={rec.in_wishlist ? "currentColor" : "none"} />
+          {isInPlaylist ? (
+            <BookmarkCheck size={16} color="#10b981" />
+          ) : (
+            <Bookmark size={14} fill={rec.in_wishlist ? "currentColor" : "none"} />
+          )}
         </button>
       </div>
     </div>
@@ -701,6 +720,9 @@ interface DiscoveryViewProps {
   isSearchingOnline?: boolean;
   onSearchOnline?: (queryOverride?: string) => Promise<void>;
   onClearSearch?: () => void;
+  trackPlaylistMap?: Record<string, string[]>;
+  onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
+  onGoToLibrary?: () => void;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -726,8 +748,30 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   isSearchingOnline: propIsSearchingOnline,
   onSearchOnline: propOnSearchOnline,
   onClearSearch: propOnClearSearch,
+  trackPlaylistMap,
+  onAddToPlaylist,
+  onGoToLibrary,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (_onRefresh) _onRefresh();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [_onRefresh]);
 
   // Online Search State (fallback if not controlled by parent)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
@@ -1157,6 +1201,66 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
       )}
 
+      {/* Offline State Banner */}
+      {!isOnline && (
+        <div
+          style={{
+            backgroundColor: "rgba(24, 24, 27, 0.95)",
+            border: "1px solid rgba(239, 68, 68, 0.35)",
+            borderRadius: "16px",
+            padding: "36px 24px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.4)",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(239, 68, 68, 0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "4px",
+            }}
+          >
+            <WifiOff size={28} color="#ef4444" />
+          </div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#fff", margin: 0 }}>
+            No internet connection
+          </h2>
+          <p style={{ fontSize: "0.92rem", color: "var(--text-muted)", margin: 0, maxWidth: "420px" }}>
+            No internet connection. Listen to local songs.
+          </p>
+          {onGoToLibrary && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={onGoToLibrary}
+              style={{
+                marginTop: "10px",
+                padding: "9px 20px",
+                fontSize: "0.88rem",
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                fontWeight: 600,
+              }}
+            >
+              <Music size={16} />
+              <span>Go to Downloaded Songs</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* SECTION 1: Trending & Recommended Songs (Horizontal Scroll) */}
       <div>
         <div
@@ -1271,6 +1375,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     onAddToWishlist={onAddToWishlist}
                     onDownload={onSearchDirect}
                     downloads={downloads}
+                    trackPlaylistMap={trackPlaylistMap}
+                    onAddToPlaylist={onAddToPlaylist}
                   />
                 </div>
               );

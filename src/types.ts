@@ -35,6 +35,7 @@ export interface Album {
   year?: number;
   track_count?: number;
   cover_art_path?: string;
+  first_track_id?: string;
 }
 
 export interface Playlist {
@@ -217,6 +218,7 @@ export type Command =
   | { command: "CreatePlaylist"; payload: { name: string; description?: string } }
   | { command: "DeletePlaylist"; payload: { playlist_id: string } }
   | { command: "AddTrackToPlaylist"; payload: { playlist_id: string; track_id: string } }
+  | { command: "RemoveTrackFromPlaylist"; payload: { playlist_id: string; track_id: string } }
   | { command: "LikeTrack"; payload: { track_id: string } }
   | { command: "DislikeTrack"; payload: { track_id: string } }
   | { command: "RemoveTrackFeedback"; payload: { track_id: string } }
@@ -247,7 +249,9 @@ export type Query =
   | { query: "GetSettings" }
   | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
   | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } }
-  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } };
+  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } }
+  | { query: "GetTrackCoverArt"; payload: { track_id: string } }
+  | { query: "GetTrackPlaylistMemberships" };
 
 export interface QueryResponse {
   type: string;

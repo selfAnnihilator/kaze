@@ -17,6 +17,7 @@ pub trait PlaylistRepository: Send + Sync {
     async fn set_tracks(&self, playlist_id: &str, track_ids: &[String]) -> AppResult<()>;
     async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<TrackRecord>>;
     async fn get_track_count(&self, playlist_id: &str) -> AppResult<i64>;
+    async fn get_track_playlist_memberships(&self) -> AppResult<std::collections::HashMap<String, Vec<String>>>;
 }
 
 #[derive(Clone)]
@@ -246,5 +247,21 @@ impl PlaylistRepository for SqlitePlaylistRepository {
         .unwrap_or(0);
 
         Ok(count)
+    }
+
+    async fn get_track_playlist_memberships(&self) -> AppResult<std::collections::HashMap<String, Vec<String>>> {
+        let rows = sqlx::query_as::<_, (String, String)>(
+            "SELECT track_id, playlist_id FROM playlist_tracks"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        for (track_id, playlist_id) in rows {
+            map.entry(track_id).or_default().push(playlist_id);
+        }
+
+        Ok(map)
     }
 }
