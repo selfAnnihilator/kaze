@@ -194,6 +194,7 @@ export interface SpotifyPlaylistImport {
 
 export type Command =
   | { command: "PlayTrack"; payload: { track_id: string; source?: string } }
+  | { command: "PlayQueueIndex"; payload: { index: number } }
   | { command: "Pause" }
   | { command: "Resume" }
   | { command: "Stop" }

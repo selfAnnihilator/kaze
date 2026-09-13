@@ -53,6 +53,8 @@ export const App: React.FC = () => {
   const [onlineTrack, setOnlineTrack] = useState<OnlinePlayingTrack | null>(null);
   const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeOnlinePlayIdRef = useRef<number>(0);
+  const handleNextTrackRef = useRef<() => void>(() => {});
+  const handlePlayCollectionTrackRef = useRef<(track: CollectionTrackItem) => void>(() => {});
 
   // Playback
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -73,6 +75,7 @@ export const App: React.FC = () => {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([]);
@@ -729,7 +732,11 @@ export const App: React.FC = () => {
 
       audio.onended = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
-        handleStopOnlineAudio();
+        if (handleNextTrackRef.current) {
+          handleNextTrackRef.current();
+        } else {
+          handleStopOnlineAudio();
+        }
       };
 
       audio.onerror = () => {
@@ -764,7 +771,11 @@ export const App: React.FC = () => {
           };
           fallback.onended = () => {
             if (activeOnlinePlayIdRef.current !== playId) return;
-            handleStopOnlineAudio();
+            if (handleNextTrackRef.current) {
+              handleNextTrackRef.current();
+            } else {
+              handleStopOnlineAudio();
+            }
           };
           fallback.play().catch(console.warn);
         } else {
@@ -811,12 +822,44 @@ export const App: React.FC = () => {
   };
 
   const handleNextTrack = async () => {
+    if (onlineTrack && activeCollection && activeCollection.tracks && activeCollection.tracks.length > 0) {
+      const currIdx = activeCollection.tracks.findIndex(
+        (t) => t.id === onlineTrack.id || (t.matched_local_track_id && t.matched_local_track_id === onlineTrack.id)
+      );
+      if (currIdx !== -1) {
+        let nextIdx = (currIdx + 1) % activeCollection.tracks.length;
+        if (playbackState.is_shuffled && activeCollection.tracks.length > 1) {
+          do {
+            nextIdx = Math.floor(Math.random() * activeCollection.tracks.length);
+          } while (nextIdx === currIdx && activeCollection.tracks.length > 1);
+        }
+        handlePlayCollectionTrackRef.current(activeCollection.tracks[nextIdx]);
+        return;
+      }
+    }
     await dispatchCommand({ command: "NextTrack" });
   };
 
   const handlePreviousTrack = async () => {
+    if (onlineTrack && activeCollection && activeCollection.tracks && activeCollection.tracks.length > 0) {
+      const currIdx = activeCollection.tracks.findIndex(
+        (t) => t.id === onlineTrack.id || (t.matched_local_track_id && t.matched_local_track_id === onlineTrack.id)
+      );
+      if (currIdx !== -1) {
+        let prevIdx = (currIdx - 1 + activeCollection.tracks.length) % activeCollection.tracks.length;
+        if (playbackState.is_shuffled && activeCollection.tracks.length > 1) {
+          do {
+            prevIdx = Math.floor(Math.random() * activeCollection.tracks.length);
+          } while (prevIdx === currIdx && activeCollection.tracks.length > 1);
+        }
+        handlePlayCollectionTrackRef.current(activeCollection.tracks[prevIdx]);
+        return;
+      }
+    }
     await dispatchCommand({ command: "PreviousTrack" });
   };
+
+  handleNextTrackRef.current = handleNextTrack;
 
   const handleSeek = async (position_secs: number) => {
     await dispatchCommand({
@@ -1017,6 +1060,7 @@ export const App: React.FC = () => {
 
   const handlePlayPlaylist = async (playlistId: string) => {
     handleStopOnlineAudio();
+    setPlayingPlaylistId(playlistId);
     try {
       const res = await executeQuery({
         query: "GetPlaylistTracks",
@@ -1058,6 +1102,9 @@ export const App: React.FC = () => {
   // --- Collection Detail Handlers (Mixes, Top Charts, Playlists) ---
   const handleOpenCollection = useCallback(async (collection: CollectionData) => {
     setActiveCollection(collection);
+    if (collection.playlistId || collection.type === "playlist") {
+      setPlayingPlaylistId(collection.playlistId || collection.id);
+    }
     if (collection.tracks && collection.tracks.length > 0) {
       return;
     }
@@ -1129,7 +1176,33 @@ export const App: React.FC = () => {
 
       if (item.matched_local_track_id) {
         handleStopOnlineAudio();
-        await handlePlayTrack(item.matched_local_track_id);
+        await dispatchCommand({ command: "ClearQueue" });
+        await dispatchCommand({
+          command: "PlayTrack",
+          payload: { track_id: item.matched_local_track_id, source: "collection" },
+        });
+        if (activeCollection && activeCollection.tracks) {
+          const itemIdx = activeCollection.tracks.findIndex((t) => t.id === item.id);
+          for (let i = itemIdx + 1; i < activeCollection.tracks.length; i++) {
+            const tid = activeCollection.tracks[i].matched_local_track_id;
+            if (tid) {
+              await dispatchCommand({
+                command: "EnqueueTrack",
+                payload: { track_id: tid, play_next: false },
+              });
+            }
+          }
+          for (let i = 0; i < itemIdx; i++) {
+            const tid = activeCollection.tracks[i].matched_local_track_id;
+            if (tid) {
+              await dispatchCommand({
+                command: "EnqueueTrack",
+                payload: { track_id: tid, play_next: false },
+              });
+            }
+          }
+        }
+        fetchPlaybackState();
         return;
       }
 
@@ -1155,8 +1228,10 @@ export const App: React.FC = () => {
       };
       await handlePlayOnlineTrack(rec);
     },
-    [playbackState.is_playing, playbackState.current_track, onlineTrack, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayTrack, handlePlayOnlineTrack]
+    [playbackState.is_playing, playbackState.current_track, onlineTrack, activeCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayOnlineTrack, fetchPlaybackState]
   );
+
+  handlePlayCollectionTrackRef.current = handlePlayCollectionTrack;
 
   const isPlayingThisCollection = useMemo(() => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -1173,6 +1248,17 @@ export const App: React.FC = () => {
       (t) => t.id === currentId || t.matched_local_track_id === currentId
     );
   }, [activeCollection, playbackState.is_playing, playbackState.current_track?.id, onlineTrack]);
+
+  const isCollectionSaved = useMemo(() => {
+    if (!activeCollection) return false;
+    if (activeCollection.type === "playlist" || activeCollection.playlistId) return true;
+    return playlists.some(
+      (p) =>
+        p.id === activeCollection.id ||
+        p.id === activeCollection.playlistId ||
+        p.name.toLowerCase().trim() === activeCollection.title.toLowerCase().trim()
+    );
+  }, [activeCollection, playlists]);
 
   const handlePlayAllCollection = useCallback(async () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -1212,17 +1298,33 @@ export const App: React.FC = () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
       return;
     }
-    const shuffled = [...activeCollection.tracks].sort(() => Math.random() - 0.5);
-    const first = shuffled[0];
-    if (first.matched_local_track_id) {
+
+    // If shuffle is currently active, clicking it deactivates shuffle and continues with normal queue
+    if (playbackState.is_shuffled) {
+      await handleToggleShuffle();
+      return;
+    }
+
+    // If this collection is already playing, simply activate shuffle
+    if (isPlayingThisCollection) {
+      await handleToggleShuffle();
+      return;
+    }
+
+    // Otherwise, start playing this collection in shuffle mode
+    const tracks = activeCollection.tracks;
+    const localTracks = tracks.filter((t) => !!t.matched_local_track_id);
+
+    if (localTracks.length > 0) {
       handleStopOnlineAudio();
+      // First enqueue tracks in their natural sequential order into the queue
       await dispatchCommand({ command: "ClearQueue" });
       await dispatchCommand({
         command: "PlayTrack",
-        payload: { track_id: first.matched_local_track_id, source: "collection_shuffle" },
+        payload: { track_id: localTracks[0].matched_local_track_id!, source: "collection" },
       });
-      for (let i = 1; i < shuffled.length; i++) {
-        const tid = shuffled[i].matched_local_track_id;
+      for (let i = 1; i < localTracks.length; i++) {
+        const tid = localTracks[i].matched_local_track_id;
         if (tid) {
           await dispatchCommand({
             command: "EnqueueTrack",
@@ -1230,11 +1332,43 @@ export const App: React.FC = () => {
           });
         }
       }
+
+      // Pick a random track index to start with
+      const randIdx = Math.floor(Math.random() * localTracks.length);
+      if (randIdx !== 0) {
+        await dispatchCommand({
+          command: "PlayQueueIndex",
+          payload: { index: randIdx },
+        });
+      }
+
+      // Activate shuffle mode
+      await dispatchCommand({
+        command: "SetShuffle",
+        payload: { enabled: true },
+      });
+      setPlaybackState((prev) => ({ ...prev, is_shuffled: true }));
       fetchPlaybackState();
     } else {
-      handlePlayCollectionTrack(first);
+      // Online collection: pick a random track to start and activate shuffle
+      const randIdx = Math.floor(Math.random() * tracks.length);
+      const chosenTrack = tracks[randIdx];
+      await handlePlayCollectionTrack(chosenTrack);
+      await dispatchCommand({
+        command: "SetShuffle",
+        payload: { enabled: true },
+      });
+      setPlaybackState((prev) => ({ ...prev, is_shuffled: true }));
     }
-  }, [activeCollection, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
+  }, [
+    activeCollection,
+    playbackState.is_shuffled,
+    isPlayingThisCollection,
+    handleToggleShuffle,
+    handleStopOnlineAudio,
+    handlePlayCollectionTrack,
+    fetchPlaybackState,
+  ]);
 
   const handleInspectSpotifyPlaylist = async (urlOrId: string): Promise<SpotifyPlaylistImport | null> => {
     try {
@@ -1520,6 +1654,8 @@ export const App: React.FC = () => {
                   : onlineTrack?.id
               }
               isPlaying={isPlayingThisCollection}
+              isSaved={isCollectionSaved}
+              isShuffled={playbackState.is_shuffled}
               downloads={downloads}
             />
           ) : (
@@ -1569,6 +1705,7 @@ export const App: React.FC = () => {
                 <PlaylistsView
                   viewMode="playlists"
                   playlists={playlists}
+                  activePlaylistId={playingPlaylistId}
                   onSelectPlaylist={() => {}}
                   onPlayPlaylist={handlePlayPlaylist}
                   onCreatePlaylist={handleCreatePlaylist}
@@ -1590,6 +1727,7 @@ export const App: React.FC = () => {
                 <PlaylistsView
                   viewMode="smart_mixes"
                   playlists={playlists}
+                  activePlaylistId={playingPlaylistId}
                   onSelectPlaylist={() => {}}
                   onPlayPlaylist={handlePlayPlaylist}
                   onCreatePlaylist={handleCreatePlaylist}

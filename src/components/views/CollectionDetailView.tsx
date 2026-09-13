@@ -4,12 +4,12 @@ import {
   Pause,
   Shuffle,
   Plus,
-  Check,
   Clock,
   ArrowLeft,
   Music2,
   DownloadCloud,
   Bookmark,
+  BookmarkCheck,
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
@@ -56,6 +56,7 @@ interface CollectionDetailViewProps {
   isSaved?: boolean;
   currentPlayingTrackId?: string | null;
   isPlaying?: boolean;
+  isShuffled?: boolean;
   downloads?: DownloadTask[];
 }
 
@@ -72,9 +73,12 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   isSaved = false,
   currentPlayingTrackId,
   isPlaying = false,
+  isShuffled = false,
   downloads = [],
 }) => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+
+  const isInCollection = isSaved || collection.type === "playlist" || !!collection.playlistId;
 
   const tracks = collection.tracks || [];
   const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
@@ -362,47 +366,86 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               type="button"
               onClick={onShuffleAll}
               style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-muted)",
+                background: isShuffled ? "rgba(16, 185, 129, 0.15)" : "none",
+                border: isShuffled ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid transparent",
+                borderRadius: "50%",
+                width: "40px",
+                height: "40px",
+                color: isShuffled ? "#10b981" : "var(--text-muted)",
                 cursor: "pointer",
                 padding: "8px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                transition: "color 0.15s ease",
+                transition: "all 0.15s ease",
+                position: "relative",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
-              title="Shuffle collection"
+              onMouseEnter={(e) => {
+                if (!isShuffled) e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                if (!isShuffled) e.currentTarget.style.color = "var(--text-muted)";
+              }}
+              title={isShuffled ? "Shuffle is active (Click to deactivate)" : "Shuffle collection"}
             >
-              <Shuffle size={22} />
+              <Shuffle size={20} color={isShuffled ? "#10b981" : undefined} />
+              {isShuffled && (
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: "3px",
+                    width: "4px",
+                    height: "4px",
+                    borderRadius: "50%",
+                    backgroundColor: "#10b981",
+                  }}
+                />
+              )}
             </button>
           )}
 
-          {/* Save / Add to Library Button */}
-          {onSaveToPlaylists && (
+          {/* Already in Collection Bookmarked Icon (non-clickable) OR Save Button */}
+          {isInCollection ? (
+            <div
+              style={{
+                border: "1px solid rgba(16, 185, 129, 0.45)",
+                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                borderRadius: "50%",
+                width: "40px",
+                height: "40px",
+                color: "#10b981",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "default",
+                userSelect: "none",
+              }}
+              title="Already in collection"
+            >
+              <BookmarkCheck size={20} />
+            </div>
+          ) : onSaveToPlaylists ? (
             <button
               type="button"
               onClick={() => onSaveToPlaylists(collection)}
               style={{
                 background: "none",
-                border: isSaved ? "1px solid #10b981" : "1px solid rgba(255, 255, 255, 0.2)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
                 borderRadius: "50%",
-                width: "36px",
-                height: "36px",
-                color: isSaved ? "#10b981" : "var(--text-muted)",
+                width: "40px",
+                height: "40px",
+                color: "var(--text-muted)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 transition: "all 0.15s ease",
               }}
-              title={isSaved ? "Saved to your playlists" : "Save collection to your library"}
+              title="Save collection to your library"
             >
-              {isSaved ? <Check size={18} color="#10b981" /> : <Plus size={18} />}
+              <Plus size={18} />
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 

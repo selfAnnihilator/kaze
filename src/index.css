@@ -280,6 +280,7 @@ body {
   padding: 6px;
   border-radius: 50%;
   transition: all 0.15s ease;
+  position: relative;
 }
 
 .player-icon-btn:hover {
@@ -287,7 +288,17 @@ body {
 }
 
 .player-icon-btn.active {
-  color: var(--accent-light);
+  color: #10b981;
+}
+
+.player-icon-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #10b981;
 }
 
 .play-pause-btn {

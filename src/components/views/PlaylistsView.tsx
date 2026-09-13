@@ -10,6 +10,7 @@ import {
   Check,
   AlertCircle,
   X,
+  BookmarkCheck,
 } from "lucide-react";
 import { Playlist, Track, SpotifyPlaylistImport } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
@@ -17,6 +18,7 @@ import { CollectionData } from "./CollectionDetailView";
 interface PlaylistsViewProps {
   viewMode?: "playlists" | "smart_mixes" | "all";
   playlists: Playlist[];
+  activePlaylistId?: string | null;
   onSelectPlaylist: (playlistId: string) => void;
   onPlayPlaylist: (playlistId: string) => void;
   onCreatePlaylist: (name: string, description?: string) => void;
@@ -36,6 +38,7 @@ interface PlaylistsViewProps {
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   viewMode = "all",
   playlists,
+  activePlaylistId,
   onPlayPlaylist,
   onCreatePlaylist,
   onInspectSpotifyPlaylist,
@@ -304,7 +307,30 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         >
                           <Sparkles size={24} color="#c084fc" />
                         </div>
-                        <span className="badge badge-exact">Smart Mix</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          {(isSaved || activePlaylistId === mix.id) && (
+                            <div
+                              style={{
+                                backgroundColor: "rgba(16, 185, 129, 0.15)",
+                                border: "1px solid rgba(16, 185, 129, 0.45)",
+                                color: "#10b981",
+                                borderRadius: "50%",
+                                width: "24px",
+                                height: "24px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "default",
+                                userSelect: "none",
+                              }}
+                              title="Already in collection"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <BookmarkCheck size={14} />
+                            </div>
+                          )}
+                          <span className="badge badge-exact">Smart Mix</span>
+                        </div>
                       </div>
 
                       <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#fff", marginBottom: "6px" }}>
@@ -445,6 +471,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <div>
                     <div
                       style={{
+                        position: "relative",
                         width: "100%",
                         aspectRatio: "1/1",
                         borderRadius: "8px",
@@ -456,6 +483,30 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       }}
                     >
                       <ListMusic size={42} color="#8b5cf6" />
+                      {/* Non-clickable bookmarked icon badge */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "8px",
+                          right: "8px",
+                          backgroundColor: "rgba(16, 185, 129, 0.15)",
+                          border: "1px solid rgba(16, 185, 129, 0.45)",
+                          color: "#10b981",
+                          borderRadius: "50%",
+                          width: "28px",
+                          height: "28px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "default",
+                          userSelect: "none",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                        }}
+                        title={activePlaylistId === pl.id ? "Active Playlist in Collection" : "In Collection"}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <BookmarkCheck size={16} />
+                      </div>
                     </div>
                     <div style={{ fontWeight: 600, fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pl.name}
