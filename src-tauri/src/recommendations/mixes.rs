@@ -31,8 +31,6 @@ impl SmartMixGenerator {
     /// Generates a smart mix according to the specified type and persists it as a smart playlist.
     pub async fn generate_mix(&self, mix_type: &SmartMixType) -> AppResult<PlaylistRecord> {
         let now = Utc::now().timestamp();
-        let mix_id = format!("mix_{}", uuid::Uuid::new_v4());
-
         let (name, description, mix_type_str, generation_reason, track_ids) = match mix_type {
             SmartMixType::Daily => {
                 let track_ids = self.generate_daily_mix().await?;
@@ -106,6 +104,20 @@ impl SmartMixGenerator {
             }
         };
 
+        // Reuse existing mix ID for this mix_type if it already exists, avoiding duplicate entries
+        let existing = self.playlist_repo.get_smart_mix_by_type(&mix_type_str).await?;
+        let mix_id = match existing {
+            Some(ref e) => e.id.clone(),
+            None => format!("mix_{}", uuid::Uuid::new_v4()),
+        };
+        let created_at = existing.as_ref().map(|e| e.created_at).unwrap_or(now);
+
+        // Daily mixes expire every 24 hours (86,400s); other mixes change weekly (7 days / 604,800s)
+        let expires_at = match mix_type {
+            SmartMixType::Daily => Some(now + 86400),
+            _ => Some(now + (7 * 86400)),
+        };
+
         let playlist = PlaylistRecord {
             id: mix_id.clone(),
             name,
@@ -113,8 +125,8 @@ impl SmartMixGenerator {
             is_smart_mix: 1,
             mix_type: Some(mix_type_str),
             generation_reason: Some(generation_reason),
-            expires_at: Some(now + (7 * 86400)), // Smart mixes default to 7-day freshness
-            created_at: now,
+            expires_at,
+            created_at,
             updated_at: now,
         };
 
@@ -406,6 +418,32 @@ impl SmartMixGenerator {
     /// Checks if smart mixes exist, and if none exist or only very few, automatically
     /// generates a rich set of starter smart mixes based on user's library genres and folders.
     pub async fn ensure_default_mixes(&self) -> AppResult<Vec<PlaylistRecord>> {
+        let now = Utc::now().timestamp();
+        let existing = self.playlist_repo.get_smart_mixes().await?;
+
+        // 1. Check for expired smart mixes and automatically regenerate them
+        for mix in &existing {
+            if let Some(expires_at) = mix.expires_at {
+                if now >= expires_at {
+                    if let Some(ref mt) = mix.mix_type {
+                        let smart_mix_type = match mt.as_str() {
+                            "daily" => Some(SmartMixType::Daily),
+                            "on_repeat" => Some(SmartMixType::OnRepeat),
+                            "forgotten_favorites" => Some(SmartMixType::ForgottenFavorites),
+                            "late_night" => Some(SmartMixType::LateNight),
+                            "discovery" => Some(SmartMixType::Discovery),
+                            s if s.starts_with("genre:") => Some(SmartMixType::Genre(s[6..].to_string())),
+                            s if s.starts_with("artist:") => Some(SmartMixType::Artist(s[7..].to_string())),
+                            _ => None,
+                        };
+                        if let Some(smt) = smart_mix_type {
+                            let _ = self.generate_mix(&smt).await;
+                        }
+                    }
+                }
+            }
+        }
+
         let existing = self.playlist_repo.get_smart_mixes().await?;
         if existing.len() >= 3 {
             return Ok(existing);

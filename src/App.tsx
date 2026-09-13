@@ -1958,7 +1958,7 @@ export const App: React.FC = () => {
           setPlaylistModalTrack(null);
         }}
         track={playlistModalTrack}
-        playlists={playlists}
+        playlists={playlists.filter((p) => p.is_smart_mix === 0)}
         trackPlaylistIds={
           playlistModalTrack && trackPlaylistMap[playlistModalTrack.id]
             ? trackPlaylistMap[playlistModalTrack.id]

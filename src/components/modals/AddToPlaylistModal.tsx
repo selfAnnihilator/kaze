@@ -35,6 +35,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
+  // Strictly show user-created / user-saved playlists, never automatic smart mixes
+  const userPlaylists = playlists.filter((p) => p.is_smart_mix !== 1);
+
   if (!isOpen || !track) return null;
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -43,7 +46,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
     if (!trimmed) return;
 
     // Case-sensitive exact match check
-    const nameExists = playlists.some((p) => p.name === trimmed);
+    const nameExists = userPlaylists.some((p) => p.name === trimmed);
     if (nameExists) {
       setCreateError(`A playlist named "${trimmed}" already exists.`);
       return;
@@ -275,7 +278,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             gap: "4px",
           }}
         >
-          {playlists.length === 0 ? (
+          {userPlaylists.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-dim)" }}>
               <ListMusic size={36} color="var(--text-dim)" style={{ marginBottom: "10px" }} />
               <p style={{ fontSize: "0.92rem", fontWeight: 600, color: "#fff", marginBottom: "4px" }}>
@@ -286,7 +289,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
               </p>
             </div>
           ) : (
-            playlists.map((pl) => {
+            userPlaylists.map((pl) => {
               const isMember = trackPlaylistIds.includes(pl.id);
               const isToggling = togglingIds.has(pl.id);
 

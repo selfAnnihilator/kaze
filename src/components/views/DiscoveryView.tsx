@@ -385,7 +385,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: isInPlaylist ? "#10b981" : rec.in_wishlist ? "var(--accent-light)" : "var(--text-dim)",
+            color: isInPlaylist ? "#10b981" : "var(--text-dim)",
             padding: "4px",
             display: "flex",
             alignItems: "center",
@@ -404,7 +404,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           {isInPlaylist ? (
             <BookmarkCheck size={16} color="#10b981" />
           ) : (
-            <Bookmark size={14} fill={rec.in_wishlist ? "currentColor" : "none"} />
+            <Bookmark size={16} />
           )}
         </button>
       </div>
@@ -908,8 +908,15 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     }
   };
 
+  const seenMixNames = new Set<string>();
   const userSmartMixes: MixItem[] = (playlists || [])
-    .filter((p) => p.is_smart_mix === 1 || (p.track_count && p.track_count > 0))
+    .filter((p) => {
+      if (p.is_smart_mix !== 1) return false;
+      const key = p.name.trim().toLowerCase();
+      if (seenMixNames.has(key)) return false;
+      seenMixNames.add(key);
+      return true;
+    })
     .map((p, idx) => {
       const gradients = [
         "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",

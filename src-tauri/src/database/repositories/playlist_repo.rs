@@ -251,7 +251,10 @@ impl PlaylistRepository for SqlitePlaylistRepository {
 
     async fn get_track_playlist_memberships(&self) -> AppResult<std::collections::HashMap<String, Vec<String>>> {
         let rows = sqlx::query_as::<_, (String, String)>(
-            "SELECT track_id, playlist_id FROM playlist_tracks"
+            "SELECT pt.track_id, pt.playlist_id
+             FROM playlist_tracks pt
+             JOIN playlists p ON p.id = pt.playlist_id
+             WHERE p.is_smart_mix = 0"
         )
         .fetch_all(&self.pool)
         .await
