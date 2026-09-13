@@ -390,11 +390,23 @@ impl CoreProcessor {
                 })
             }
             Command::CreatePlaylist { name, description } => {
+                let trimmed_name = name.trim().to_string();
+                if trimmed_name.is_empty() {
+                    return Err(AppError::Validation("Playlist name cannot be empty".into()));
+                }
+
+                if let Some(_) = self.playlist_repo.find_by_name(&trimmed_name).await? {
+                    return Err(AppError::Validation(format!(
+                        "A playlist named '{}' already exists",
+                        trimmed_name
+                    )));
+                }
+
                 let now = chrono::Utc::now().timestamp();
                 let id = format!("pl_{}", uuid::Uuid::new_v4());
                 let record = PlaylistRecord {
                     id: id.clone(),
-                    name,
+                    name: trimmed_name,
                     description,
                     is_smart_mix: 0,
                     mix_type: None,

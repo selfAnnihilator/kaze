@@ -1051,9 +1051,26 @@ export const App: React.FC = () => {
 
   // Playlists & Smart Mixes
   const handleCreatePlaylist = async (name: string, description?: string) => {
+    let targetName = name.trim();
+    while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
+      const prompted = window.prompt(
+        `A playlist named "${targetName}" already exists.\nPlease enter a new name for this playlist:`,
+        `${targetName} (1)`
+      );
+      if (prompted === null) {
+        return;
+      }
+      const trimmed = prompted.trim();
+      if (!trimmed) {
+        alert("Playlist name cannot be empty.");
+        continue;
+      }
+      targetName = trimmed;
+    }
+
     await dispatchCommand({
       command: "CreatePlaylist",
-      payload: { name, description },
+      payload: { name: targetName, description },
     });
     fetchPlaylists();
   };
@@ -1254,9 +1271,10 @@ export const App: React.FC = () => {
     if (activeCollection.type === "playlist" || activeCollection.playlistId) return true;
     return playlists.some(
       (p) =>
-        p.id === activeCollection.id ||
-        p.id === activeCollection.playlistId ||
-        p.name.toLowerCase().trim() === activeCollection.title.toLowerCase().trim()
+        p.is_smart_mix !== 1 &&
+        (p.id === activeCollection.id ||
+          p.id === activeCollection.playlistId ||
+          p.name === activeCollection.title.trim())
     );
   }, [activeCollection, playlists]);
 
@@ -1385,9 +1403,26 @@ export const App: React.FC = () => {
 
   const handleSaveImportedPlaylist = useCallback(
     async (name: string, trackIds: string[]) => {
+      let targetName = name.trim();
+      while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
+        const prompted = window.prompt(
+          `A playlist named "${targetName}" already exists.\nPlease enter a new name for this playlist:`,
+          `${targetName} (1)`
+        );
+        if (prompted === null) {
+          return;
+        }
+        const trimmed = prompted.trim();
+        if (!trimmed) {
+          alert("Playlist name cannot be empty.");
+          continue;
+        }
+        targetName = trimmed;
+      }
+
       const plRes = await dispatchCommand({
         command: "CreatePlaylist",
-        payload: { name, description: "Imported from Spotify" },
+        payload: { name: targetName, description: "Imported from Spotify" },
       });
       const playlistId = (plRes as any)?.data;
       if (playlistId) {
@@ -1400,27 +1435,44 @@ export const App: React.FC = () => {
         fetchPlaylists();
       }
     },
-    [fetchPlaylists]
+    [playlists, fetchPlaylists]
   );
 
   const handleSaveCollectionToPlaylists = useCallback(
     async (collection: CollectionData) => {
       try {
+        let targetName = collection.title.trim();
+        while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
+          const prompted = window.prompt(
+            `A playlist named "${targetName}" already exists.\nPlease enter a new name for this playlist:`,
+            `${targetName} (1)`
+          );
+          if (prompted === null) {
+            return;
+          }
+          const trimmed = prompted.trim();
+          if (!trimmed) {
+            alert("Playlist name cannot be empty.");
+            continue;
+          }
+          targetName = trimmed;
+        }
+
         const localTrackIds = (collection.tracks || [])
           .filter((t) => t.matched_local_track_id)
           .map((t) => t.matched_local_track_id as string);
 
         if (localTrackIds.length > 0) {
-          await handleSaveImportedPlaylist(collection.title, localTrackIds);
+          await handleSaveImportedPlaylist(targetName, localTrackIds);
         } else {
-          await handleCreatePlaylist(collection.title, collection.subtitle);
-          alert(`Playlist "${collection.title}" created. Tracks can be added as you download them.`);
+          await handleCreatePlaylist(targetName, collection.subtitle);
+          alert(`Playlist "${targetName}" created. Tracks can be added as you download them.`);
         }
       } catch (err) {
         console.error("Failed to save collection to playlists:", err);
       }
     },
-    [handleSaveImportedPlaylist, handleCreatePlaylist]
+    [playlists, handleSaveImportedPlaylist, handleCreatePlaylist]
   );
 
   const handleAddMissingToWishlist = async (missingTracks: any[]) => {

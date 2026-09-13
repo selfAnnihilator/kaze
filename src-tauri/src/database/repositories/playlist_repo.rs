@@ -7,6 +7,7 @@ use sqlx::SqlitePool;
 pub trait PlaylistRepository: Send + Sync {
     async fn create_playlist(&self, playlist: &PlaylistRecord) -> AppResult<()>;
     async fn get_playlist(&self, id: &str) -> AppResult<Option<PlaylistRecord>>;
+    async fn find_by_name(&self, name: &str) -> AppResult<Option<PlaylistRecord>>;
     async fn get_all_playlists(&self) -> AppResult<Vec<PlaylistRecord>>;
     async fn get_smart_mixes(&self) -> AppResult<Vec<PlaylistRecord>>;
     async fn get_smart_mix_by_type(&self, mix_type: &str) -> AppResult<Option<PlaylistRecord>>;
@@ -68,6 +69,21 @@ impl PlaylistRepository for SqlitePlaylistRepository {
              FROM playlists WHERE id = ?"
         )
         .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(playlist)
+    }
+
+    async fn find_by_name(&self, name: &str) -> AppResult<Option<PlaylistRecord>> {
+        let playlist = sqlx::query_as::<_, PlaylistRecord>(
+            "SELECT id, name, description, is_smart_mix, mix_type,
+                    generation_reason, expires_at, created_at, updated_at
+             FROM playlists WHERE name = ? COLLATE BINARY AND is_smart_mix = 0
+             LIMIT 1"
+        )
+        .bind(name)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
