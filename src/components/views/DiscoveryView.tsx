@@ -994,7 +994,20 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     },
   ];
 
-  const allMixes = [...userSmartMixes, ...curatedMixes];
+  const curatedMixesFiltered = curatedMixes.filter((c) => {
+    const cClean = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return !userSmartMixes.some((u) => {
+      const uClean = u.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return (
+        uClean.includes(cClean) ||
+        cClean.includes(uClean) ||
+        (cClean.includes("daily") && uClean.includes("daily")) ||
+        (cClean.includes("chill") && (uClean.includes("chill") || uClean.includes("lofi")))
+      );
+    });
+  });
+
+  const allMixes = [...userSmartMixes, ...curatedMixesFiltered];
 
   const topCharts: ChartItem[] = [
     {

@@ -104,13 +104,15 @@ impl SmartMixGenerator {
             }
         };
 
-        // Reuse existing mix ID for this mix_type if it already exists, avoiding duplicate entries
-        let existing = self.playlist_repo.get_smart_mix_by_type(&mix_type_str).await?;
+        // Reuse existing mix ID and record for this smart mix so we update its contents in-place,
+        // without creating a duplicate mix collection beside it
+        let existing = self.playlist_repo.find_smart_mix(&mix_type_str, &name).await?;
         let mix_id = match existing {
             Some(ref e) => e.id.clone(),
             None => format!("mix_{}", uuid::Uuid::new_v4()),
         };
         let created_at = existing.as_ref().map(|e| e.created_at).unwrap_or(now);
+        let final_name = existing.as_ref().map(|e| e.name.clone()).unwrap_or(name);
 
         // Daily mixes expire every 24 hours (86,400s); other mixes change weekly (7 days / 604,800s)
         let expires_at = match mix_type {
@@ -120,21 +122,24 @@ impl SmartMixGenerator {
 
         let playlist = PlaylistRecord {
             id: mix_id.clone(),
-            name,
+            name: final_name,
             description,
             is_smart_mix: 1,
-            mix_type: Some(mix_type_str),
+            mix_type: Some(mix_type_str.clone()),
             generation_reason: Some(generation_reason),
             expires_at,
             created_at,
             updated_at: now,
         };
 
-        // Persist playlist record
+        // Persist playlist record (updates existing in-place)
         self.playlist_repo.create_playlist(&playlist).await?;
 
-        // Persist playlist tracks
+        // Update the contents inside the mix (replaces tracks for this mix_id)
         self.playlist_repo.set_tracks(&mix_id, &track_ids).await?;
+
+        // Clean up any historical duplicate entries with the same mix_type or name
+        let _ = self.playlist_repo.delete_duplicate_smart_mixes(&mix_type_str, &playlist.name, &mix_id).await;
 
         Ok(playlist)
     }
@@ -462,10 +467,14 @@ impl SmartMixGenerator {
         tracing::info!("Auto-generating recommended smart mixes based on library...");
 
         // 1. Daily Mix
-        let _ = self.generate_mix(&SmartMixType::Daily).await;
+        if !existing.iter().any(|m| m.mix_type.as_deref() == Some("daily") || m.name.eq_ignore_ascii_case("Daily Mix")) {
+            let _ = self.generate_mix(&SmartMixType::Daily).await;
+        }
 
         // 2. Local Discoveries
-        let _ = self.generate_mix(&SmartMixType::Discovery).await;
+        if !existing.iter().any(|m| m.mix_type.as_deref() == Some("discovery") || m.name.eq_ignore_ascii_case("Local Discoveries")) {
+            let _ = self.generate_mix(&SmartMixType::Discovery).await;
+        }
 
         // 3. Check for specific prevalent subfolders/genres: Phonk & Lo-Fi
         let phonk_count: i64 = sqlx::query_scalar(
@@ -476,7 +485,7 @@ impl SmartMixGenerator {
         .await
         .unwrap_or(0);
 
-        if phonk_count > 0 {
+        if phonk_count > 0 && !existing.iter().any(|m| m.name.to_lowercase().contains("phonk")) {
             let _ = self.generate_mix(&SmartMixType::Genre("Phonk".to_string())).await;
         }
 
@@ -488,7 +497,7 @@ impl SmartMixGenerator {
         .await
         .unwrap_or(0);
 
-        if lofi_count > 0 {
+        if lofi_count > 0 && !existing.iter().any(|m| m.name.to_lowercase().contains("lofi") || m.name.to_lowercase().contains("lo-fi")) {
             let _ = self.generate_mix(&SmartMixType::Genre("Lo-Fi".to_string())).await;
         }
 
@@ -508,7 +517,9 @@ impl SmartMixGenerator {
         .unwrap_or_default();
 
         for genre in top_genres {
-            let _ = self.generate_mix(&SmartMixType::Genre(genre)).await;
+            if !existing.iter().any(|m| m.name.to_lowercase().contains(&genre.to_lowercase())) {
+                let _ = self.generate_mix(&SmartMixType::Genre(genre)).await;
+            }
         }
 
         self.playlist_repo.get_smart_mixes().await

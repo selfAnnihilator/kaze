@@ -73,8 +73,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [savingMixId, setSavingMixId] = useState<string | null>(null);
   const [savedMixIds, setSavedMixIds] = useState<Set<string>>(new Set());
 
-  // Split into smart mixes and custom playlists
-  const smartMixes = playlists.filter((p) => p.is_smart_mix === 1);
+  // Split into smart mixes and custom playlists (deduplicated by name)
+  const seenMixNames = new Set<string>();
+  const smartMixes = playlists.filter((p) => {
+    if (p.is_smart_mix !== 1) return false;
+    const key = p.name.trim().toLowerCase();
+    if (seenMixNames.has(key)) return false;
+    seenMixNames.add(key);
+    return true;
+  });
   const customPlaylists = playlists.filter((p) => p.is_smart_mix !== 1);
 
   const handleSaveMixToUserPlaylist = async (mix: Playlist) => {
