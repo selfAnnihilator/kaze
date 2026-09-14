@@ -16,8 +16,13 @@
  *   and password (8-128 chars).
  */
 
+import { createAvatarStorage } from "./storage/avatar";
+
 export interface Env {
   DB: D1Database;
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
   PROFILE_IMAGES?: R2Bucket;
 }
 
@@ -483,10 +488,10 @@ export default {
         }
 
         const user = await env.DB.prepare(
-          "SELECT id, username, password_hash, created_at FROM users WHERE LOWER(username) = LOWER(?)"
+          "SELECT id, username, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at, password_hash, created_at FROM users WHERE LOWER(username) = LOWER(?)"
         )
           .bind(username)
-          .first<UserRecord>();
+          .first<any>();
 
         // Constant-time mitigation against user enumeration
         if (!user) {
@@ -543,6 +548,12 @@ export default {
           user: {
             id: user.id,
             username: user.username,
+            display_name: user.display_name || user.username,
+            has_avatar: Boolean(user.avatar_public_id || user.avatar_key),
+            avatar_public_id: user.avatar_public_id || user.avatar_key || null,
+            avatar_url: user.avatar_url || null,
+            avatar_version: user.avatar_version || null,
+            avatar_updated_at: user.avatar_updated_at || null,
             created_at: user.created_at,
           },
           token: rawToken,
@@ -663,7 +674,7 @@ export default {
           return errorResponse("Unauthorized", 401);
         }
         const user = await env.DB.prepare(
-          "SELECT id, username, display_name, avatar_key, avatar_updated_at, created_at FROM users WHERE id = ?"
+          "SELECT id, username, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at, created_at FROM users WHERE id = ?"
         )
           .bind(session.user_id)
           .first<any>();
@@ -678,7 +689,10 @@ export default {
             id: user.id,
             username: user.username,
             display_name: user.display_name || user.username,
-            has_avatar: Boolean(user.avatar_key),
+            has_avatar: Boolean(user.avatar_public_id || user.avatar_key),
+            avatar_public_id: user.avatar_public_id || user.avatar_key || null,
+            avatar_url: user.avatar_url || null,
+            avatar_version: user.avatar_version || null,
             avatar_updated_at: user.avatar_updated_at || null,
             created_at: user.created_at,
           },
@@ -703,7 +717,7 @@ export default {
           return errorResponse("Unauthorized", 401);
         }
         const user = await env.DB.prepare(
-          "SELECT id, username, display_name, avatar_key, avatar_updated_at, created_at FROM users WHERE id = ?"
+          "SELECT id, username, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at, created_at FROM users WHERE id = ?"
         )
           .bind(session.user_id)
           .first<any>();
@@ -718,7 +732,10 @@ export default {
             id: user.id,
             username: user.username,
             display_name: user.display_name || user.username,
-            has_avatar: Boolean(user.avatar_key),
+            has_avatar: Boolean(user.avatar_public_id || user.avatar_key),
+            avatar_public_id: user.avatar_public_id || user.avatar_key || null,
+            avatar_url: user.avatar_url || null,
+            avatar_version: user.avatar_version || null,
             avatar_updated_at: user.avatar_updated_at || null,
             created_at: user.created_at,
           },
@@ -732,9 +749,10 @@ export default {
           return errorResponse("Unauthorized", 401);
         }
 
-        if (!env.PROFILE_IMAGES) {
+        const storage = createAvatarStorage(env);
+        if (!storage) {
           return errorResponse(
-            "R2 storage (PROFILE_IMAGES) is not configured or enabled on Cloudflare. Please enable R2 in your Cloudflare dashboard.",
+            "Avatar storage is not configured. Please configure Cloudinary secrets (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) on your Worker.",
             503
           );
         }
@@ -757,24 +775,35 @@ export default {
           return errorResponse("Avatar image exceeds 5 MB limit", 413);
         }
 
-        const objectKey = `avatars/${session.user_id}/avatar.webp`;
-        await env.PROFILE_IMAGES.put(objectKey, imageBytes, {
-          httpMetadata: {
-            contentType: "image/webp",
-          },
-        });
+        let uploadResult;
+        try {
+          uploadResult = await storage.upload_avatar(session.user_id, imageBytes);
+        } catch (err: any) {
+          console.error("Failed to upload avatar to storage:", err);
+          return errorResponse(err?.message || "Failed to upload avatar to storage", 502);
+        }
 
         const now = Math.floor(Date.now() / 1000);
         await env.DB.prepare(
-          "UPDATE users SET avatar_key = ?, avatar_updated_at = ? WHERE id = ?"
+          "UPDATE users SET avatar_public_id = ?, avatar_url = ?, avatar_version = ?, avatar_key = ?, avatar_updated_at = ? WHERE id = ?"
         )
-          .bind(objectKey, now, session.user_id)
+          .bind(
+            uploadResult.public_id,
+            uploadResult.secure_url,
+            uploadResult.version,
+            uploadResult.public_id,
+            now,
+            session.user_id
+          )
           .run();
 
         return jsonResponse({
           success: true,
           has_avatar: true,
-          avatar_key: objectKey,
+          avatar_public_id: uploadResult.public_id,
+          avatar_key: uploadResult.public_id,
+          avatar_url: uploadResult.secure_url,
+          avatar_version: uploadResult.version,
           avatar_updated_at: now,
         });
       }
@@ -786,18 +815,25 @@ export default {
           return errorResponse("Unauthorized", 401);
         }
 
-        const objectKey = `avatars/${session.user_id}/avatar.webp`;
-        if (env.PROFILE_IMAGES) {
+        const user = await env.DB.prepare(
+          "SELECT avatar_public_id, avatar_key FROM users WHERE id = ?"
+        )
+          .bind(session.user_id)
+          .first<any>();
+
+        const storage = createAvatarStorage(env);
+        if (storage && user) {
+          const publicId = user.avatar_public_id || user.avatar_key;
           try {
-            await env.PROFILE_IMAGES.delete(objectKey);
+            await storage.delete_avatar(session.user_id, publicId);
           } catch (e) {
-            console.warn("Failed to delete avatar from R2:", e);
+            console.warn("Failed to delete avatar from storage:", e);
           }
         }
 
         const now = Math.floor(Date.now() / 1000);
         await env.DB.prepare(
-          "UPDATE users SET avatar_key = NULL, avatar_updated_at = ? WHERE id = ?"
+          "UPDATE users SET avatar_public_id = NULL, avatar_url = NULL, avatar_version = NULL, avatar_key = NULL, avatar_updated_at = ? WHERE id = ?"
         )
           .bind(now, session.user_id)
           .run();
@@ -830,27 +866,44 @@ export default {
           return errorResponse("Unauthorized or user_id required", 401);
         }
 
-        if (!env.PROFILE_IMAGES) {
-          return errorResponse("Avatar storage not configured", 404);
-        }
+        const user = await env.DB.prepare(
+          "SELECT avatar_public_id, avatar_url, avatar_key FROM users WHERE id = ?"
+        )
+          .bind(targetUserId)
+          .first<any>();
 
-        const objectKey = `avatars/${targetUserId}/avatar.webp`;
-        const object = await env.PROFILE_IMAGES.get(objectKey);
-        if (!object) {
+        if (!user || (!user.avatar_public_id && !user.avatar_url && !user.avatar_key)) {
           return errorResponse("Avatar not found", 404);
         }
 
-        const headers = new Headers();
-        headers.set("Content-Type", "image/webp");
-        headers.set("Cache-Control", "public, max-age=3600");
-        if (object.httpEtag) {
-          headers.set("ETag", object.httpEtag);
+        const storage = createAvatarStorage(env);
+        if (storage) {
+          const avatarResp = await storage.get_avatar(
+            targetUserId,
+            user.avatar_public_id || user.avatar_key,
+            user.avatar_url
+          );
+          if (avatarResp) {
+            return avatarResp;
+          }
         }
-        headers.set("Access-Control-Allow-Origin", "*");
-        headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-        return new Response(object.body, { headers });
+        if (user.avatar_url) {
+          try {
+            const resp = await fetch(user.avatar_url);
+            if (resp.ok) {
+              const headers = new Headers();
+              headers.set("Content-Type", "image/webp");
+              headers.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+              headers.set("Access-Control-Allow-Origin", "*");
+              return new Response(resp.body, { headers });
+            }
+          } catch (err) {
+            console.warn("Failed to fetch avatar from avatar_url:", err);
+          }
+        }
+
+        return errorResponse("Avatar not found", 404);
       }
 
       // --- Data Synchronization Endpoints ---

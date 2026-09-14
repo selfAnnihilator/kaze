@@ -138,10 +138,12 @@ The `CoreProcessor` is the central orchestrator of the entire system.
   - **Sync Tombstones**: Explicit deletions (`DeletePlaylist`, `RemoveTrackFromPlaylist`) record entries in the `sync_tombstones` SQLite table. Local absence without a tombstone never deletes remote data during pull reconciliation. Remote deletions are executed when tombstones are pushed, and tombstones are safely cleared upon confirmed sync acknowledgment.
   - **Selective Synchronization Scope**: Synchronizes essential user entities only: `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
 
-### 3.8 User Profile & Cloudflare R2 Avatar Storage
-* **Decoupled Metadata & Binary Storage**:
-  - D1 user metadata: Stores only non-binary profile metadata (`display_name`, `avatar_key`, `avatar_updated_at`). Zero image binaries or base64 strings are stored in D1 to prevent database bloating and respect edge D1 quotas.
-  - R2 object storage: Stores raw normalized avatar images under key `avatars/{user_id}.webp`. Pure binary storage with custom cache-control headers.
+### 3.8 User Profile & Cloudinary Avatar Storage
+* **Decoupled Metadata & Cloud Binary Storage**:
+  - D1 user metadata: Stores only non-binary profile metadata (`display_name`, `avatar_public_id`, `avatar_url`, `avatar_version`, `avatar_key`, `avatar_updated_at`). Zero image binaries or base64 strings are stored in D1 to prevent database bloating and respect edge D1 quotas.
+  - Storage Abstraction (`AvatarStorage`): The Cloudflare Worker defines a pluggable `AvatarStorage` interface with `CloudinaryAvatarStorage` (default, credit-card free) and `R2AvatarStorage` (optional fallback).
+  - Cloudinary Storage: Stores normalized WebP avatars under public ID prefix `music-player/avatars/{user_id}` with `overwrite = true` and `invalidate = true`. Uploads and deletions are cryptographically signed using SHA-1 on the Worker.
+  - Credentials Security Boundary: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are stored strictly as Cloudflare Worker secrets. The desktop client and frontend never see or store the API secret.
 * **Client-Side Image Normalization**:
   - Input images (JPEG, PNG, WebP) are processed client-side before upload using the Rust `image` crate.
   - Transformation: Decodes image bytes, performs a centered square crop (`crop_imm`), resizes to 256×256 pixels using Lanczos3 filtering (`FilterType::Lanczos3`), and encodes to WebP format.
@@ -149,10 +151,12 @@ The `CoreProcessor` is the central orchestrator of the entire system.
 * **Local Disk Cache & Offline Resilience**:
   - Normalized avatars are saved locally to `<cache_dir>/avatars/{user_id}.webp`.
   - On application startup or offline mode, the cached avatar is immediately served via base64 data URL with zero network latency.
+  - Startup checks compare `avatar_updated_at` / `avatar_version` against local cache to prevent redundant re-downloads when images are unchanged.
   - Modifying or deleting avatars requires an active internet connection and valid authenticated session; unauthorized or offline changes are rejected gracefully.
   - Fallback avatar: First letter of username rendered over a dynamic gradient circle when no avatar is configured.
 * **Profile Navigation & Search Bar Visibility**:
   - Stats section renamed to "Profile" across navigation sidebar and view hierarchy.
+  - Profile photo edit is accessible directly via a pencil icon positioned on the profile circle.
   - Global top search bar is hidden when viewing the Profile section to prioritize user identity and account settings.
 
 ---

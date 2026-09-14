@@ -14,6 +14,9 @@ pub struct UserRecord {
     pub created_at: i64,
     pub display_name: Option<String>,
     pub avatar_key: Option<String>,
+    pub avatar_public_id: Option<String>,
+    pub avatar_url: Option<String>,
+    pub avatar_version: Option<i64>,
     pub avatar_updated_at: Option<i64>,
 }
 
@@ -26,6 +29,12 @@ pub struct UserProfile {
     pub display_name: Option<String>,
     #[serde(default)]
     pub avatar_key: Option<String>,
+    #[serde(default)]
+    pub avatar_public_id: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub avatar_version: Option<i64>,
     #[serde(default)]
     pub avatar_updated_at: Option<i64>,
     #[serde(default)]
@@ -40,6 +49,9 @@ impl UserProfile {
             created_at,
             display_name: None,
             avatar_key: None,
+            avatar_public_id: None,
+            avatar_url: None,
+            avatar_version: None,
             avatar_updated_at: None,
             avatar_data_url: None,
         }
@@ -49,11 +61,17 @@ impl UserProfile {
         mut self,
         display_name: Option<String>,
         avatar_key: Option<String>,
+        avatar_public_id: Option<String>,
+        avatar_url: Option<String>,
+        avatar_version: Option<i64>,
         avatar_updated_at: Option<i64>,
         avatar_data_url: Option<String>,
     ) -> Self {
         self.display_name = display_name;
         self.avatar_key = avatar_key;
+        self.avatar_public_id = avatar_public_id;
+        self.avatar_url = avatar_url;
+        self.avatar_version = avatar_version;
         self.avatar_updated_at = avatar_updated_at;
         self.avatar_data_url = avatar_data_url;
         self
@@ -83,7 +101,15 @@ pub trait UserRepository: Send + Sync {
     async fn create_user(&self, username: &str, password: &str) -> AppResult<UserProfile>;
     async fn authenticate_user(&self, username: &str, password: &str) -> AppResult<UserProfile>;
     async fn get_user_by_id(&self, id: &str) -> AppResult<Option<UserProfile>>;
-    async fn update_avatar_metadata(&self, user_id: &str, avatar_key: Option<&str>, avatar_updated_at: Option<i64>) -> AppResult<()>;
+    async fn update_avatar_metadata(
+        &self,
+        user_id: &str,
+        avatar_key: Option<&str>,
+        avatar_public_id: Option<&str>,
+        avatar_url: Option<&str>,
+        avatar_version: Option<i64>,
+        avatar_updated_at: Option<i64>,
+    ) -> AppResult<()>;
     async fn claim_guest_data_for_user(&self, user_id: &str) -> AppResult<()>;
 }
 
@@ -143,6 +169,9 @@ impl UserRepository for SqliteUserRepository {
             created_at: now,
             display_name: None,
             avatar_key: None,
+            avatar_public_id: None,
+            avatar_url: None,
+            avatar_version: None,
             avatar_updated_at: None,
             avatar_data_url: None,
         })
@@ -151,7 +180,7 @@ impl UserRepository for SqliteUserRepository {
     async fn authenticate_user(&self, username: &str, password: &str) -> AppResult<UserProfile> {
         let trimmed_name = username.trim();
         let user: Option<UserRecord> = sqlx::query_as(
-            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at FROM users WHERE username = ? COLLATE NOCASE"
+            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at FROM users WHERE username = ? COLLATE NOCASE"
         )
         .bind(trimmed_name)
         .fetch_optional(&self.pool)
@@ -167,6 +196,9 @@ impl UserRepository for SqliteUserRepository {
                         created_at: record.created_at,
                         display_name: record.display_name,
                         avatar_key: record.avatar_key,
+                        avatar_public_id: record.avatar_public_id,
+                        avatar_url: record.avatar_url,
+                        avatar_version: record.avatar_version,
                         avatar_updated_at: record.avatar_updated_at,
                         avatar_data_url: None,
                     })
@@ -180,7 +212,7 @@ impl UserRepository for SqliteUserRepository {
 
     async fn get_user_by_id(&self, id: &str) -> AppResult<Option<UserProfile>> {
         let user: Option<UserRecord> = sqlx::query_as(
-            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at FROM users WHERE id = ?"
+            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at FROM users WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -193,6 +225,9 @@ impl UserRepository for SqliteUserRepository {
             created_at: r.created_at,
             display_name: r.display_name,
             avatar_key: r.avatar_key,
+            avatar_public_id: r.avatar_public_id,
+            avatar_url: r.avatar_url,
+            avatar_version: r.avatar_version,
             avatar_updated_at: r.avatar_updated_at,
             avatar_data_url: None,
         }))
@@ -202,12 +237,18 @@ impl UserRepository for SqliteUserRepository {
         &self,
         user_id: &str,
         avatar_key: Option<&str>,
+        avatar_public_id: Option<&str>,
+        avatar_url: Option<&str>,
+        avatar_version: Option<i64>,
         avatar_updated_at: Option<i64>,
     ) -> AppResult<()> {
         sqlx::query(
-            "UPDATE users SET avatar_key = ?, avatar_updated_at = ? WHERE id = ?"
+            "UPDATE users SET avatar_key = ?, avatar_public_id = ?, avatar_url = ?, avatar_version = ?, avatar_updated_at = ? WHERE id = ?"
         )
         .bind(avatar_key)
+        .bind(avatar_public_id)
+        .bind(avatar_url)
+        .bind(avatar_version)
         .bind(avatar_updated_at)
         .bind(user_id)
         .execute(&self.pool)

@@ -229,7 +229,32 @@ impl CoreProcessor {
                     Ok(cloud_user) => {
                         let has_avatar = cloud_user.has_avatar.unwrap_or(false);
                         let mut avatar_data_url = profile_service_init.get_cached_avatar_data_url(&cloud_user.id);
-                        if has_avatar && avatar_data_url.is_none() {
+                        if !has_avatar && profile_service_init.has_cached_avatar(&cloud_user.id) {
+                            profile_service_init.remove_cached_avatar(&cloud_user.id);
+                            avatar_data_url = None;
+                        }
+
+                        let local_user_meta: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(
+                            "SELECT avatar_version, avatar_updated_at FROM users WHERE id = ?"
+                        )
+                        .bind(&cloud_user.id)
+                        .fetch_optional(&pool_init)
+                        .await
+                        .ok()
+                        .flatten();
+
+                        let needs_avatar_download = if !has_avatar {
+                            false
+                        } else if avatar_data_url.is_none() {
+                            true
+                        } else if let Some((local_ver, local_updated)) = local_user_meta {
+                            (cloud_user.avatar_version.is_some() && cloud_user.avatar_version != local_ver)
+                                || (cloud_user.avatar_updated_at.is_some() && cloud_user.avatar_updated_at > local_updated)
+                        } else {
+                            false
+                        };
+
+                        if needs_avatar_download {
                             if let Ok(Some(bytes)) = cloud_client_init.download_avatar(&worker_url, Some(&tok), &cloud_user.id).await {
                                 let _ = profile_service_init.save_cached_avatar(&cloud_user.id, &bytes);
                                 avatar_data_url = profile_service_init.get_cached_avatar_data_url(&cloud_user.id);
@@ -248,12 +273,15 @@ impl CoreProcessor {
                             .execute(&pool_init)
                             .await;
                         let _ = sqlx::query(
-                            "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at)
-                             VALUES (?, ?, '', ?, ?, ?, ?)
+                            "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at)
+                             VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?)
                              ON CONFLICT(id) DO UPDATE SET
                                  username = excluded.username,
                                  display_name = excluded.display_name,
                                  avatar_key = excluded.avatar_key,
+                                 avatar_public_id = excluded.avatar_public_id,
+                                 avatar_url = excluded.avatar_url,
+                                 avatar_version = excluded.avatar_version,
                                  avatar_updated_at = excluded.avatar_updated_at"
                         )
                         .bind(&cloud_user.id)
@@ -261,6 +289,9 @@ impl CoreProcessor {
                         .bind(cloud_user.created_at)
                         .bind(&cloud_user.display_name)
                         .bind(avatar_key.as_deref())
+                        .bind(cloud_user.avatar_public_id.as_deref())
+                        .bind(cloud_user.avatar_url.as_deref())
+                        .bind(cloud_user.avatar_version)
                         .bind(cloud_user.avatar_updated_at)
                         .execute(&pool_init)
                         .await;
@@ -272,6 +303,9 @@ impl CoreProcessor {
                         ).with_avatar(
                             cloud_user.display_name.clone(),
                             avatar_key,
+                            cloud_user.avatar_public_id.clone(),
+                            cloud_user.avatar_url.clone(),
+                            cloud_user.avatar_version,
                             cloud_user.avatar_updated_at,
                             avatar_data_url,
                         );
@@ -299,8 +333,8 @@ impl CoreProcessor {
                             &pool_init,
                             &cloud_client_init,
                             &worker_url,
-                            &cloud_user.id,
                             &tok,
+                            &cloud_user.id,
                         ).await {
                             let _ = event_bus_init.publish(Event::PlaylistsUpdated);
                         }
@@ -327,6 +361,10 @@ impl CoreProcessor {
                                 created_at: session.created_at,
                                 display_name: None,
                                 has_avatar: Some(cached_avatar.is_some()),
+                                avatar_public_id: None,
+                                avatar_url: None,
+                                avatar_version: None,
+                                avatar_key: if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
                                 avatar_updated_at: None,
                             };
                             let profile = UserProfile::new(
@@ -336,6 +374,9 @@ impl CoreProcessor {
                             ).with_avatar(
                                 None,
                                 if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
+                                None,
+                                None,
+                                None,
                                 None,
                                 cached_avatar,
                             );
@@ -941,6 +982,9 @@ impl CoreProcessor {
                     ).with_avatar(
                         cloud_user.display_name.clone(),
                         avatar_key,
+                        cloud_user.avatar_public_id.clone(),
+                        cloud_user.avatar_url.clone(),
+                        cloud_user.avatar_version,
                         cloud_user.avatar_updated_at,
                         avatar_data_url,
                     );
@@ -958,12 +1002,15 @@ impl CoreProcessor {
                         .execute(&self.db_pool)
                         .await;
                     let _ = sqlx::query(
-                        "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at)
-                         VALUES (?, ?, '', ?, ?, ?, ?)
+                        "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at)
+                         VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?)
                          ON CONFLICT(id) DO UPDATE SET
                              username = excluded.username,
                              display_name = excluded.display_name,
                              avatar_key = excluded.avatar_key,
+                             avatar_public_id = excluded.avatar_public_id,
+                             avatar_url = excluded.avatar_url,
+                             avatar_version = excluded.avatar_version,
                              avatar_updated_at = excluded.avatar_updated_at"
                     )
                     .bind(&profile.id)
@@ -971,6 +1018,9 @@ impl CoreProcessor {
                     .bind(profile.created_at)
                     .bind(&profile.display_name)
                     .bind(profile.avatar_key.as_deref())
+                    .bind(profile.avatar_public_id.as_deref())
+                    .bind(profile.avatar_url.as_deref())
+                    .bind(profile.avatar_version)
                     .bind(profile.avatar_updated_at)
                     .execute(&self.db_pool)
                     .await;
@@ -1057,7 +1107,32 @@ impl CoreProcessor {
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let has_avatar = cloud_user.has_avatar.unwrap_or(false);
                     let mut avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
-                    if has_avatar && avatar_data_url.is_none() {
+                    if !has_avatar && self.profile_service.has_cached_avatar(&cloud_user.id) {
+                        self.profile_service.remove_cached_avatar(&cloud_user.id);
+                        avatar_data_url = None;
+                    }
+
+                    let local_user_meta: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(
+                        "SELECT avatar_version, avatar_updated_at FROM users WHERE id = ?"
+                    )
+                    .bind(&cloud_user.id)
+                    .fetch_optional(&self.db_pool)
+                    .await
+                    .ok()
+                    .flatten();
+
+                    let needs_avatar_download = if !has_avatar {
+                        false
+                    } else if avatar_data_url.is_none() {
+                        true
+                    } else if let Some((local_ver, local_updated)) = local_user_meta {
+                        (cloud_user.avatar_version.is_some() && cloud_user.avatar_version != local_ver)
+                            || (cloud_user.avatar_updated_at.is_some() && cloud_user.avatar_updated_at > local_updated)
+                    } else {
+                        false
+                    };
+
+                    if needs_avatar_download {
                         if let Ok(Some(bytes)) = self.cloud_client.download_avatar(&worker_url, Some(&token), &cloud_user.id).await {
                             let _ = self.profile_service.save_cached_avatar(&cloud_user.id, &bytes);
                             avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
@@ -1077,6 +1152,9 @@ impl CoreProcessor {
                     ).with_avatar(
                         cloud_user.display_name.clone(),
                         avatar_key,
+                        cloud_user.avatar_public_id.clone(),
+                        cloud_user.avatar_url.clone(),
+                        cloud_user.avatar_version,
                         cloud_user.avatar_updated_at,
                         avatar_data_url,
                     );
@@ -1094,12 +1172,15 @@ impl CoreProcessor {
                         .execute(&self.db_pool)
                         .await;
                     let _ = sqlx::query(
-                        "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at)
-                         VALUES (?, ?, '', ?, ?, ?, ?)
+                        "INSERT INTO users (id, username, password_hash, created_at, display_name, avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at)
+                         VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?)
                          ON CONFLICT(id) DO UPDATE SET
                              username = excluded.username,
                              display_name = excluded.display_name,
                              avatar_key = excluded.avatar_key,
+                             avatar_public_id = excluded.avatar_public_id,
+                             avatar_url = excluded.avatar_url,
+                             avatar_version = excluded.avatar_version,
                              avatar_updated_at = excluded.avatar_updated_at"
                     )
                     .bind(&profile.id)
@@ -1107,6 +1188,9 @@ impl CoreProcessor {
                     .bind(profile.created_at)
                     .bind(&profile.display_name)
                     .bind(profile.avatar_key.as_deref())
+                    .bind(profile.avatar_public_id.as_deref())
+                    .bind(profile.avatar_url.as_deref())
+                    .bind(profile.avatar_version)
                     .bind(profile.avatar_updated_at)
                     .execute(&self.db_pool)
                     .await;
@@ -1262,18 +1346,21 @@ impl CoreProcessor {
                 let now = chrono::Utc::now().timestamp();
                 let local_avatar_key = format!("avatars/{}.webp", session.user_id);
 
-                // Attempt cloud upload to R2, gracefully fall back to local if R2 is not yet configured or offline
-                let (avatar_key, avatar_updated_at) = match self.cloud_client.upload_avatar(&worker_url, &token, normalized_webp.clone()).await {
-                    Ok(resp) => (resp.avatar_key, resp.avatar_updated_at),
+                // Attempt cloud upload to Cloudinary (via Worker), gracefully fall back to local if offline
+                let (avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at) = match self.cloud_client.upload_avatar(&worker_url, &token, normalized_webp.clone()).await {
+                    Ok(resp) => (resp.avatar_key, resp.avatar_public_id, resp.avatar_url, resp.avatar_version, resp.avatar_updated_at),
                     Err(e) => {
                         tracing::warn!("Cloud avatar upload deferred / unavailable: {}", e);
-                        (Some(local_avatar_key), Some(now))
+                        (Some(local_avatar_key), None, None, None, Some(now))
                     }
                 };
 
                 let _ = self.user_repo.update_avatar_metadata(
                     &session.user_id,
                     avatar_key.as_deref(),
+                    avatar_public_id.as_deref(),
+                    avatar_url.as_deref(),
+                    avatar_version,
                     avatar_updated_at,
                 ).await;
 
@@ -1281,6 +1368,9 @@ impl CoreProcessor {
                     let mut guard = self.current_user.write().await;
                     if let Some(ref mut u) = *guard {
                         u.avatar_key = avatar_key.clone();
+                        u.avatar_public_id = avatar_public_id.clone();
+                        u.avatar_url = avatar_url.clone();
+                        u.avatar_version = avatar_version;
                         u.avatar_updated_at = avatar_updated_at;
                         u.avatar_data_url = data_url.clone();
                     }
@@ -1307,12 +1397,15 @@ impl CoreProcessor {
                 }
 
                 self.profile_service.remove_cached_avatar(&session.user_id);
-                let _ = self.user_repo.update_avatar_metadata(&session.user_id, None, None).await;
+                let _ = self.user_repo.update_avatar_metadata(&session.user_id, None, None, None, None, None).await;
 
                 let updated_profile = {
                     let mut guard = self.current_user.write().await;
                     if let Some(ref mut u) = *guard {
                         u.avatar_key = None;
+                        u.avatar_public_id = None;
+                        u.avatar_url = None;
+                        u.avatar_version = None;
                         u.avatar_updated_at = None;
                         u.avatar_data_url = None;
                     }
@@ -1973,14 +2066,18 @@ impl CoreProcessor {
                     if !is_idle_expired && !is_abs_expired && session.worker_url == worker_url {
                         if let Some(_tok) = credentials::get_session_token(&session.user_id) {
                             let cached_avatar = self.profile_service.get_cached_avatar_data_url(&session.user_id);
+                            let local_user = self.user_repo.get_user_by_id(&session.user_id).await.ok().flatten();
                             let profile = UserProfile::new(
                                 session.user_id.clone(),
                                 session.username.clone(),
                                 session.created_at,
                             ).with_avatar(
-                                None,
+                                local_user.as_ref().and_then(|u| u.display_name.clone()),
                                 if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
-                                None,
+                                local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
+                                local_user.as_ref().and_then(|u| u.avatar_url.clone()),
+                                local_user.as_ref().and_then(|u| u.avatar_version),
+                                local_user.as_ref().and_then(|u| u.avatar_updated_at),
                                 cached_avatar,
                             );
                             *self.current_user.write().await = Some(profile.clone());
@@ -1989,9 +2086,13 @@ impl CoreProcessor {
                                     id: session.user_id.clone(),
                                     username: session.username.clone(),
                                     created_at: session.created_at,
-                                    display_name: None,
+                                    display_name: profile.display_name.clone(),
                                     has_avatar: Some(profile.avatar_key.is_some()),
-                                    avatar_updated_at: None,
+                                    avatar_public_id: profile.avatar_public_id.clone(),
+                                    avatar_url: profile.avatar_url.clone(),
+                                    avatar_version: profile.avatar_version,
+                                    avatar_key: profile.avatar_key.clone(),
+                                    avatar_updated_at: profile.avatar_updated_at,
                                 },
                                 session_id: session.session_id.clone(),
                             };
@@ -2016,14 +2117,18 @@ impl CoreProcessor {
 
                 if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
                     let cached_avatar = self.profile_service.get_cached_avatar_data_url(&session.user_id);
+                    let local_user = self.user_repo.get_user_by_id(&session.user_id).await.ok().flatten();
                     let profile = UserProfile::new(
                         session.user_id.clone(),
                         session.username.clone(),
                         session.created_at,
                     ).with_avatar(
-                        None,
+                        local_user.as_ref().and_then(|u| u.display_name.clone()),
                         if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
-                        None,
+                        local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
+                        local_user.as_ref().and_then(|u| u.avatar_url.clone()),
+                        local_user.as_ref().and_then(|u| u.avatar_version),
+                        local_user.as_ref().and_then(|u| u.avatar_updated_at),
                         cached_avatar,
                     );
                     let val = serde_json::to_value(&profile).ok();

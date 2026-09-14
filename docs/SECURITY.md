@@ -74,7 +74,7 @@ SoundFlow balances continuous desktop usability with strict bounding and revocat
 
 ---
 
-## 6. Profile Avatar Security & R2 Isolation
+## 6. Profile Avatar Security & Cloudinary Isolation
 
 * **Strict Session Authority**:
   - Avatar uploads (`POST /api/profile/avatar`) and deletions (`DELETE /api/profile/avatar`) derive identity strictly from the authenticated bearer session token (`auth.user.id`).
@@ -82,6 +82,11 @@ SoundFlow balances continuous desktop usability with strict bounding and revocat
 * **Payload Sanitization & Size Constraints**:
   - Maximum upload size is strictly capped at 5 MB client-side and server-side.
   - Raw image binaries are parsed and normalized client-side to 256×256 WebP before transmission, eliminating image-based exploits, malicious script embedding, or arbitrary binary storage.
-  - R2 object keys are strictly namespaced: `avatars/{user_id}.webp`. Path traversal via filenames is impossible.
+  - Cloudinary public IDs are strictly namespaced server-side: `music-player/avatars/{user_id}` with `overwrite = true` and `invalidate = true`. Path traversal via filenames is impossible.
+* **Credentials Security Boundary**:
+  - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` reside strictly on the Cloudflare Worker server (in encrypted Worker secrets / `.dev.vars`).
+  - Neither the desktop application, the local SQLite database, nor the React frontend ever receive or store the Cloudinary API secret.
+  - All upload and destroy operations use SHA-1 signature hashes generated on the Worker.
 * **Database Isolation**:
-  - D1 stores only profile metadata (`avatar_key`, `avatar_updated_at`). Zero image binaries or base64 strings are stored in D1.
+  - D1 stores only profile metadata (`avatar_public_id`, `avatar_url`, `avatar_version`, `avatar_key`, `avatar_updated_at`). Zero image binaries or base64 strings are stored in D1.
+

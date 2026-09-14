@@ -233,7 +233,12 @@ src-tauri/src/profile/
 * **Cache Location**: `<cache_dir>/avatars/{user_id}.webp`.
 * **Instant Retrieval**: Returns base64 data URL (`data:image/webp;base64,...`) directly from local disk for sub-millisecond offline UI rendering.
 * **Synchronization & Update**:
-  - `Command::UploadAvatar`: Prompts native file dialog or takes optional path, normalizes, uploads to Cloudflare R2 (`POST /api/profile/avatar`), caches to disk, updates SQLite metadata, and emits `Event::UserProfileUpdated`.
-  - `Command::RemoveAvatar`: Calls `DELETE /api/profile/avatar` on Cloudflare Worker, purges local cached file, clears SQLite metadata, and emits `Event::UserProfileUpdated`.
+  - `Command::UploadAvatar`: Prompts native file dialog or takes optional path, normalizes to 256×256 WebP, uploads via Worker to Cloudinary (`POST /api/profile/avatar`), caches to local disk, updates SQLite metadata (`avatar_public_id`, `avatar_url`, `avatar_version`, `avatar_updated_at`), and emits `Event::UserProfileUpdated`.
+  - `Command::RemoveAvatar`: Calls `DELETE /api/profile/avatar` on Cloudflare Worker (destroying asset in Cloudinary), purges local cached file, clears SQLite metadata, and emits `Event::UserProfileUpdated`.
   - `Query::GetProfile` & `Query::GetAvatar`: Resolves user profile and cached avatar data URL with offline fallback.
+* **Cloudflare Worker Storage Abstraction (`worker/src/storage/avatar.ts`)**:
+  - `AvatarStorage` interface decoupling storage from endpoint logic.
+  - `CloudinaryAvatarStorage`: Handles signed SHA-1 uploads and deletions targeting `music-player/avatars/{user_id}`, returning `public_id`, `secure_url`, `version`.
+  - Secure credential isolation: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are stored as Worker environment secrets.
+
 

@@ -22,6 +22,14 @@ pub struct CloudUser {
     #[serde(default)]
     pub has_avatar: Option<bool>,
     #[serde(default)]
+    pub avatar_public_id: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub avatar_version: Option<i64>,
+    #[serde(default)]
+    pub avatar_key: Option<String>,
+    #[serde(default)]
     pub avatar_updated_at: Option<i64>,
 }
 
@@ -29,6 +37,12 @@ pub struct CloudUser {
 pub struct CloudAvatarResponse {
     pub success: bool,
     pub has_avatar: bool,
+    #[serde(default)]
+    pub avatar_public_id: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub avatar_version: Option<i64>,
     #[serde(default)]
     pub avatar_key: Option<String>,
     #[serde(default)]

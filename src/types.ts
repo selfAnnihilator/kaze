@@ -391,6 +391,9 @@ export interface UserProfile {
   created_at: number;
   display_name?: string;
   avatar_key?: string;
+  avatar_public_id?: string;
+  avatar_url?: string;
+  avatar_version?: number;
   avatar_updated_at?: number;
   avatar_data_url?: string;
 }

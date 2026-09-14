@@ -545,4 +545,56 @@ async fn test_session_management_lifecycle_and_hybrid_expiry() {
     }
 }
 
+#[tokio::test]
+async fn test_cloudinary_avatar_metadata_persistence_and_profile() {
+    use music_player_backend::database::repositories::user_repo::{SqliteUserRepository, UserRepository};
+
+    let pool = create_in_memory_pool().await.expect("in memory pool");
+    let user_repo = SqliteUserRepository::new(pool.clone());
+
+    // 1. Create user
+    let user = user_repo.create_user("cloudinary_user", "password123").await.expect("create user");
+    assert_eq!(user.username, "cloudinary_user");
+    assert!(user.avatar_public_id.is_none());
+    assert!(user.avatar_url.is_none());
+    assert!(user.avatar_version.is_none());
+
+    // 2. Update avatar metadata with Cloudinary fields
+    let now = chrono::Utc::now().timestamp();
+    user_repo.update_avatar_metadata(
+        &user.id,
+        Some("avatars/test.webp"),
+        Some("music-player/avatars/user_test_123"),
+        Some("https://res.cloudinary.com/test-cloud/image/upload/v1710000000/music-player/avatars/user_test_123.webp"),
+        Some(1710000000),
+        Some(now),
+    ).await.expect("update avatar metadata");
+
+    // 3. Verify get_user_by_id returns all Cloudinary metadata
+    let fetched = user_repo.get_user_by_id(&user.id).await.expect("get user").expect("user exists");
+    assert_eq!(fetched.avatar_key.as_deref(), Some("avatars/test.webp"));
+    assert_eq!(fetched.avatar_public_id.as_deref(), Some("music-player/avatars/user_test_123"));
+    assert_eq!(fetched.avatar_url.as_deref(), Some("https://res.cloudinary.com/test-cloud/image/upload/v1710000000/music-player/avatars/user_test_123.webp"));
+    assert_eq!(fetched.avatar_version, Some(1710000000));
+    assert_eq!(fetched.avatar_updated_at, Some(now));
+
+    // 4. Remove avatar metadata
+    user_repo.update_avatar_metadata(
+        &user.id,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ).await.expect("clear avatar metadata");
+
+    let cleared = user_repo.get_user_by_id(&user.id).await.expect("get user").expect("user exists");
+    assert!(cleared.avatar_key.is_none());
+    assert!(cleared.avatar_public_id.is_none());
+    assert!(cleared.avatar_url.is_none());
+    assert!(cleared.avatar_version.is_none());
+    assert!(cleared.avatar_updated_at.is_none());
+}
+
+
 

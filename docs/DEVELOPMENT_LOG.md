@@ -606,4 +606,41 @@ After the initial authentication persistence hardening, user playlists and track
 - `cargo test`: All 36 tests pass with 0 failures across all 14 test suites.
 - `npm run build`: Production frontend build succeeds in 1.45s with zero errors.
 
+---
+
+## 2026-09-14 - Phase 17: Optional User Profile-Photo Support via Cloudinary
+
+### Overview
+Replaced the Cloudflare R2 requirement with Cloudinary image storage to avoid credit-card and paid tier prerequisites while retaining the modular monolith architecture, Cloudflare Worker backend, and Cloudflare D1 metadata storage.
+
+### Key Changes
+1. **Remote Cloudflare D1 & Local SQLite Schemas**:
+   - Remote D1: Created `worker/migrations/0003_cloudinary_avatar.sql` adding `avatar_public_id`, `avatar_url`, and `avatar_version` columns to `users`. Applied migration remotely to `soundflow-db`.
+   - Local SQLite: Created `src-tauri/migrations/20260914000005_cloudinary_avatar.sql` adding corresponding fields to local `users` table.
+   - Preserved metadata-only isolation: zero image binaries or base64 blobs are stored in D1 or SQLite.
+2. **Pluggable Storage Abstraction (`worker/src/storage/avatar.ts`)**:
+   - Defined `AvatarStorage` interface decoupling storage providers from routing logic.
+   - Implemented `CloudinaryAvatarStorage` with SHA-1 cryptographic request signatures for upload (`music-player/avatars/{user_id}`) and destroy operations (`overwrite = true`, `invalidate = true`).
+   - Implemented `R2AvatarStorage` as an optional fallback and factory function `createAvatarStorage(env)`.
+3. **Cloudflare Worker Deployment**:
+   - Updated `worker/src/index.ts` to use `AvatarStorage` for `/api/auth/me`, `/api/profile`, `/api/profile/avatar` (POST, DELETE, GET proxy).
+   - Server-side credentials boundary: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are stored strictly as Cloudflare Worker secrets and never exposed to the client or codebase.
+   - Deployed updated worker to production (`https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev`).
+4. **Rust Desktop Backend**:
+   - Extended `CloudUser`, `CloudAvatarResponse`, `UserProfile`, and `UserRecord` with `avatar_public_id`, `avatar_url`, and `avatar_version`.
+   - Updated `user_repo` methods (`update_avatar_metadata`, `authenticate_user`, `get_user_by_id`).
+   - Updated `CoreProcessor`:
+     - `UploadAvatar`: saves Cloudinary metadata returned from Worker.
+     - `RemoveAvatar`: removes local cache and clears Cloudinary metadata locally and remotely.
+     - Startup validation & login: checks cache freshness against `avatar_updated_at` and `avatar_version` to prevent redundant network downloads.
+5. **UI & Polish**:
+   - Added pencil icon trigger directly on the bottom-left of the profile avatar circle.
+   - Relocated Log Out button to the rightmost section of the profile card header.
+   - Updated frontend TypeScript definitions in `src/types.ts`.
+
+### Verification
+- `cargo test`: All 37 tests pass across 14 test suites, including `test_cloudinary_avatar_metadata_persistence_and_profile`.
+- `npm run build`: Production frontend build succeeds in 1.25s with zero errors.
+
+
 

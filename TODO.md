@@ -1,23 +1,30 @@
 # Project Task Tracking
 
-## Current (Phase 16: User Profile & Cloudflare R2 Avatar Normalization - COMPLETE)
-- [x] Renamed "Stats" section to "Profile" across navigation sidebar, view headers, and component hierarchy.
-- [x] Hidden persistent global search bar when navigating to the Profile/Stats view (`currentView === "stats"`).
-- [x] User Profile Header Card: Displayed username, joined date ("Member since..."), cloud badge, and 72px round avatar above listening statistics.
-- [x] Client-Side Image Normalization: Uses Rust `image` crate with `imageops::FilterType::Lanczos3` to center-square-crop and resize uploads to 256×256 WebP (~20-100 KB), enforcing 5MB max payload and zero-byte protection.
-- [x] Cloudflare R2 + D1 Storage Architecture:
-  - D1 user metadata: Added `display_name`, `avatar_key`, and `avatar_updated_at` (remote migration applied via `migrations/0002_user_avatar.sql`).
-  - R2 object storage: Storage under `avatars/{user_id}.webp`. Pure binary storage in R2; zero base64 or binaries stored in D1. Graceful 503 fallback if R2 dashboard binding is not yet clicked.
-  - Endpoints: Implemented `GET /api/profile`, `POST /api/profile/avatar`, `DELETE /api/profile/avatar`, and `GET /api/profile/avatar`.
-  - Deployed worker to production Cloudflare Worker (`soundflow-cloud-worker.abhi-atlas-2026.workers.dev`).
-- [x] Local SQLite & Disk Cache:
-  - Migration `20260914000004_user_avatar.sql` added avatar metadata columns to local `users` table.
-  - Caches WebP files locally at `<cache_dir>/avatars/{user_id}.webp` for instant offline rendering.
-- [x] Offline Resilience & Fallbacks:
-  - Immediate offline startup display of cached avatar; fallback to first letter of username on dynamic gradient.
-  - Offline guard requiring internet connectivity for upload and removal actions.
-- [x] Unit & Integration Tests:
-  - All 36 tests passing, including tests for avatar normalization, empty/oversized validation, and cache roundtrips.
+## Current (Phase 17: User Profile & Cloudinary Avatar Storage - COMPLETE)
+- [x] Pluggable Avatar Storage Abstraction:
+  - Created `AvatarStorage` interface and `CloudinaryAvatarStorage` on Cloudflare Worker (`worker/src/storage/avatar.ts`).
+  - Signed Cloudinary upload and destroy operations using SHA-1 on the edge.
+  - Zero credit-card / payment requirement; free tier Cloudinary image storage under `music-player/avatars/{user_id}`.
+- [x] Server-Side Credential Boundary:
+  - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` isolated in Worker secrets; never exposed to desktop or repository.
+- [x] Remote D1 & Local SQLite Schemas:
+  - Remote D1: `worker/migrations/0003_cloudinary_avatar.sql` (`avatar_public_id`, `avatar_url`, `avatar_version`).
+  - Local SQLite: `src-tauri/migrations/20260914000005_cloudinary_avatar.sql`.
+  - Stored metadata only in D1; zero image binaries or base64 blobs in database.
+- [x] Worker Endpoints & Deployment:
+  - Updated `/api/auth/me`, `/api/profile`, `/api/profile/avatar` (POST, DELETE, GET proxy).
+  - Deployed worker to production Cloudflare Worker (`https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev`).
+- [x] Rust Desktop Integration & Local Caching:
+  - Updated `CloudUser`, `CloudAvatarResponse`, `UserProfile`, and `UserRecord`.
+  - Updated `UserRepository` and `SqliteUserRepository` for all Cloudinary fields.
+  - Startup check in `CoreProcessor` validates cache freshness (`avatar_updated_at` / `avatar_version`) to avoid redundant downloads.
+  - Updated frontend `UserProfile` in `src/types.ts`.
+- [x] UI & Interaction Polish:
+  - Profile photo edit accessible via pencil icon on bottom-left of profile circle.
+  - Cleaned up account management buttons and placed Log Out button on rightmost header.
+- [x] Test Suite Verification:
+  - All 37 backend tests passing (`cargo test`).
+  - Frontend builds cleanly (`npm run build`).
 
 ## Completed
 - [x] Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones
