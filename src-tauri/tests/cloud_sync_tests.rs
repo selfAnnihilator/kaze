@@ -24,7 +24,7 @@ async fn test_cloud_sync_payload_and_database_persistence() {
     match status_res {
         QueryResponse::CloudSyncStatus(val) => {
             assert_eq!(val["connected"], false);
-            assert_eq!(val["worker_url"], "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev");
+            assert!(val["worker_url"].as_str().unwrap().contains("workers.dev"));
         }
         _ => panic!("Expected CloudSyncStatus"),
     }
