@@ -1092,6 +1092,10 @@ impl CoreProcessor {
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
 
+                // Stop any playing audio and clear playback queue to match fresh startup state
+                let _ = self.playback_service.stop().await;
+                self.playback_service.clear_queue().await;
+
                 // Note: Authentication controls ACCESS to user data.
                 // Logout clears session credentials from active memory/keyring,
                 // but does NOT destroy user playlists, songs, statistics, or history.
@@ -1114,6 +1118,10 @@ impl CoreProcessor {
                 }
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
+
+                // Stop any playing audio and clear playback queue to match fresh startup state
+                let _ = self.playback_service.stop().await;
+                self.playback_service.clear_queue().await;
 
                 // Invalidate all cloud sessions, but preserve local stored data
                 let _ = self.event_bus.publish(Event::UserLoggedOut);

@@ -491,30 +491,20 @@ export const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await dispatchCommand({ command: "Logout" });
-      setCurrentUser(null);
-      setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
-      setTrackPlaylistMap({});
-      setCurrentView("discovery");
-      addAppNotification("info", "User Logged Out", "You have been logged out successfully.");
-      await fetchPlaylists();
-      await fetchCloudSyncStatus();
     } catch (err) {
       console.error("Logout failed:", err);
+    } finally {
+      window.location.reload();
     }
   };
 
   const handleLogoutAll = async () => {
     try {
       await dispatchCommand({ command: "LogoutAll" });
-      setCurrentUser(null);
-      setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
-      setTrackPlaylistMap({});
-      setCurrentView("discovery");
-      addAppNotification("info", "All Sessions Revoked", "You have been logged out from all devices successfully.");
-      await fetchPlaylists();
-      await fetchCloudSyncStatus();
     } catch (err) {
       console.error("Logout all failed:", err);
+    } finally {
+      window.location.reload();
     }
   };
 
@@ -773,13 +763,7 @@ export const App: React.FC = () => {
         }
 
         case "UserLoggedOut": {
-          setCurrentUser(null);
-          setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
-          setTrackPlaylistMap({});
-          setCurrentView("discovery");
-          addAppNotification("info", "User Logged Out", "You have been logged out successfully.");
-          fetchPlaylists();
-          fetchCloudSyncStatus();
+          window.location.reload();
           break;
         }
 
