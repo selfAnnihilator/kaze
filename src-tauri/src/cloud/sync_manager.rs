@@ -3,6 +3,18 @@ use crate::core::error::{AppError, AppResult};
 use chrono::Utc;
 use sqlx::SqlitePool;
 
+#[derive(Debug, Clone, Default)]
+pub struct SyncReport {
+    pub cloud_playlists_returned: usize,
+    pub cloud_playlist_songs_returned: usize,
+    pub local_playlists_before: usize,
+    pub playlists_inserted_updated: usize,
+    pub playlist_memberships_inserted_updated: usize,
+    pub pending_local_changes_uploaded: usize,
+    pub local_playlists_after: usize,
+    pub synced_at: i64,
+}
+
 pub struct SyncManager;
 
 impl SyncManager {
@@ -123,22 +135,130 @@ impl SyncManager {
         Ok(())
     }
 
-    /// Performs full two-way synchronization with Cloudflare D1
+    pub async fn record_tombstone(
+        pool: &SqlitePool,
+        user_id: &str,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> AppResult<()> {
+        let id = format!("{}:{}:{}", user_id, entity_type, entity_id);
+        let now = Utc::now().timestamp();
+        sqlx::query(
+            "INSERT INTO sync_tombstones (id, user_id, entity_type, entity_id, deleted_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET deleted_at = excluded.deleted_at",
+        )
+        .bind(&id)
+        .bind(user_id)
+        .bind(entity_type)
+        .bind(entity_id)
+        .bind(now)
+        .execute(pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to record sync tombstone: {}", e)))?;
+
+        Ok(())
+    }
+
+    pub async fn get_tombstones(
+        pool: &SqlitePool,
+        user_id: &str,
+    ) -> AppResult<Vec<(String, String, String)>> {
+        let rows = sqlx::query_as::<_, (String, String, String)>(
+            "SELECT id, entity_type, entity_id FROM sync_tombstones WHERE user_id = ?",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        Ok(rows)
+    }
+
+    pub async fn clear_tombstones(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
+        sqlx::query("DELETE FROM sync_tombstones WHERE user_id = ?")
+            .bind(user_id)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to clear sync tombstones: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Performs deterministic two-way synchronization with Cloudflare D1
+    /// Flow: PULL cloud state first -> RECONCILE locally -> PUSH legitimate changes
     pub async fn sync_with_cloud(
         pool: &SqlitePool,
         client: &super::client::CloudClient,
         worker_url: &str,
         user_id: &str,
         token: &str,
-    ) -> AppResult<i64> {
-        let remote_data = client.pull_sync(worker_url, token).await?;
-        Self::apply_remote_sync_payload(pool, user_id, &remote_data).await?;
+    ) -> AppResult<SyncReport> {
+        tracing::info!("SYNC START: user_id = {}", user_id);
 
+        let local_before: (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
+        )
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
+        let local_playlists_before = local_before.0 as usize;
+
+        // Step 1: PULL cloud state FIRST.
+        // Safeguard: If the pull fails, abort immediately to preserve local data and prevent empty-state overwrite.
+        let remote_data = client.pull_sync(worker_url, token).await?;
+        let cloud_playlists_returned = remote_data.playlists.len();
+        let cloud_playlist_songs_returned = remote_data.playlist_songs.len();
+
+        tracing::info!("cloud playlists returned: {}", cloud_playlists_returned);
+        tracing::info!("cloud playlist_songs returned: {}", cloud_playlist_songs_returned);
+        tracing::info!("local playlists before sync: {}", local_playlists_before);
+
+        // Step 2: Reconcile local SQLite with remote cloud data
+        let (playlists_inserted_updated, playlist_memberships_inserted_updated) =
+            Self::apply_remote_sync_payload(pool, user_id, &remote_data).await?;
+
+        tracing::info!("playlists inserted/updated locally: {}", playlists_inserted_updated);
+        tracing::info!("playlist memberships inserted/updated: {}", playlist_memberships_inserted_updated);
+
+        // Step 3: Prepare local changes (including any local playlists and pending tombstones)
         let local_payload = Self::prepare_local_sync_payload(pool, user_id).await?;
+        let pending_local_changes_uploaded =
+            local_payload.playlists.len() + local_payload.deleted_playlists.len() + local_payload.deleted_playlist_songs.len();
+
+        // Step 4: PUSH legitimate local changes to cloud
         let synced_at = client.push_sync(worker_url, token, &local_payload).await?;
+        tracing::info!("pending local changes uploaded: {}", pending_local_changes_uploaded);
+
+        // Step 5: Clear tombstones that have now been pushed
+        let _ = Self::clear_tombstones(pool, user_id).await;
+
+        // Step 6: Update session synced_at timestamp
         Self::update_session_synced_at(pool, user_id, synced_at).await?;
 
-        Ok(synced_at)
+        let local_after: (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
+        )
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or((0,));
+        let local_playlists_after = local_after.0 as usize;
+
+        tracing::info!("local playlists after sync: {}", local_playlists_after);
+        tracing::info!("frontend playlist refresh triggered");
+
+        Ok(SyncReport {
+            cloud_playlists_returned,
+            cloud_playlist_songs_returned,
+            local_playlists_before,
+            playlists_inserted_updated,
+            playlist_memberships_inserted_updated,
+            pending_local_changes_uploaded,
+            local_playlists_after,
+            synced_at,
+        })
     }
 
     pub async fn update_session_synced_at(
@@ -162,11 +282,11 @@ impl SyncManager {
     ) -> AppResult<SyncPayload> {
         let now = Utc::now().timestamp();
 
-        // 1. Playlists
+        // 1. Playlists: user-owned custom playlists (non-smart mixes)
         let playlist_rows: Vec<(String, String, Option<String>, i64, Option<String>, i64, i64)> =
             sqlx::query_as(
                 "SELECT id, name, description, is_smart_mix, mix_type, created_at, updated_at
-                 FROM playlists WHERE user_id = ? OR user_id = 'default'",
+                 FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
             )
             .bind(user_id)
             .fetch_all(pool)
@@ -192,7 +312,7 @@ impl SyncManager {
             "SELECT pt.playlist_id, pt.track_id, pt.position, pt.added_at
              FROM playlist_tracks pt
              JOIN playlists p ON pt.playlist_id = p.id
-             WHERE p.user_id = ? OR p.user_id = 'default'",
+             WHERE p.user_id = ? AND p.is_smart_mix = 0",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -214,12 +334,24 @@ impl SyncManager {
             });
         }
 
-        // 3. Collect songs info for songs referenced in playlists
+        // Also collect song IDs that have user feedback (liked or disliked) or play statistics
+        let rated_rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT track_id FROM track_statistics WHERE manual_like != 0 OR play_count > 0",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        for r in rated_rows {
+            song_ids.insert(r.0);
+        }
+
+        // 3. Collect songs info for songs referenced in playlists or user ratings
         let mut songs: Vec<CloudSong> = Vec::new();
         for s_id in &song_ids {
             // Check external_tracks first
-            let ext_row: Option<(String, String, String, String, Option<String>, f64, Option<String>, i64)> = sqlx::query_as(
-                "SELECT id, provider, provider_id, title, artist, duration_secs, cover_art_url, created_at
+            let ext_row: Option<(String, String, String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>, i64)> = sqlx::query_as(
+                "SELECT id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at
                  FROM external_tracks WHERE id = ?"
             )
             .bind(s_id)
@@ -233,13 +365,13 @@ impl SyncManager {
                     user_id: user_id.to_string(),
                     title: ext.3,
                     artist: ext.4,
-                    album: None,
-                    duration_secs: ext.5,
+                    album: ext.5,
+                    duration_secs: ext.6.unwrap_or(0.0),
                     provider: Some(ext.1),
                     provider_id: Some(ext.2),
-                    cover_art_url: ext.6,
-                    preview_url: None,
-                    created_at: ext.7,
+                    cover_art_url: ext.7,
+                    preview_url: ext.8,
+                    created_at: ext.9,
                     updated_at: now,
                 });
             } else {
@@ -275,7 +407,7 @@ impl SyncManager {
             }
         }
 
-        // 4. Song stats
+        // 4. Song stats (including liked/disliked songs: manual_like = 1 or -1)
         let mut song_stats: Vec<CloudSongStat> = Vec::new();
         if !song_ids.is_empty() {
             let stat_rows: Vec<(String, i64, f64, i64, i64, Option<i64>, i64)> = sqlx::query_as(
@@ -314,19 +446,26 @@ impl SyncManager {
         .await
         .unwrap_or_default();
 
-        let user_stats: Vec<CloudUserStat> = yearly_rows
+        let user_stats_vec: Vec<serde_json::Value> = yearly_rows
             .into_iter()
-            .map(|r| CloudUserStat {
-                id: r.0,
-                user_id: user_id.to_string(),
-                year: r.1,
-                month: 0,
-                total_seconds: r.2,
-                top_songs_json: r.3,
-                top_artists_json: r.4,
-                updated_at: r.5,
+            .map(|r| {
+                serde_json::json!({
+                    "id": r.0,
+                    "user_id": user_id,
+                    "year": r.1,
+                    "total_seconds": r.2,
+                    "top_songs_json": r.3,
+                    "top_artists_json": r.4,
+                    "updated_at": r.5,
+                })
             })
             .collect();
+
+        let user_stats = if !user_stats_vec.is_empty() {
+            Some(serde_json::Value::Array(user_stats_vec))
+        } else {
+            None
+        };
 
         // 6. User settings
         let setting_rows: Vec<(String, String, i64)> = sqlx::query_as(
@@ -336,16 +475,42 @@ impl SyncManager {
         .await
         .unwrap_or_default();
 
-        let user_settings: Vec<CloudUserSetting> = setting_rows
+        let user_settings_vec: Vec<serde_json::Value> = setting_rows
             .into_iter()
-            .map(|r| CloudUserSetting {
-                id: format!("{}:{}", user_id, r.0),
-                user_id: user_id.to_string(),
-                key: r.0,
-                value: r.1,
-                updated_at: r.2,
+            .map(|r| {
+                serde_json::json!({
+                    "id": format!("{}:{}", user_id, r.0),
+                    "user_id": user_id,
+                    "key": r.0,
+                    "value": r.1,
+                    "updated_at": r.2,
+                })
             })
             .collect();
+
+        let user_settings = if !user_settings_vec.is_empty() {
+            Some(serde_json::Value::Array(user_settings_vec))
+        } else {
+            None
+        };
+
+        // 7. Sync Tombstones (explicit deletions)
+        let mut deleted_playlists = Vec::new();
+        let mut deleted_playlist_songs = Vec::new();
+        if let Ok(tombstones) = Self::get_tombstones(pool, user_id).await {
+            for (_, entity_type, entity_id) in tombstones {
+                if entity_type == "playlist" {
+                    deleted_playlists.push(entity_id);
+                } else if entity_type == "playlist_song" {
+                    if let Some((p, s)) = entity_id.split_once(':') {
+                        deleted_playlist_songs.push(CloudPlaylistSongRef {
+                            playlist_id: p.to_string(),
+                            song_id: s.to_string(),
+                        });
+                    }
+                }
+            }
+        }
 
         Ok(SyncPayload {
             songs,
@@ -354,6 +519,8 @@ impl SyncManager {
             song_stats,
             user_stats,
             user_settings,
+            deleted_playlists,
+            deleted_playlist_songs,
         })
     }
 
@@ -361,8 +528,21 @@ impl SyncManager {
         pool: &SqlitePool,
         user_id: &str,
         payload: &SyncPayload,
-    ) -> AppResult<()> {
+    ) -> AppResult<(usize, usize)> {
         let now = Utc::now().timestamp();
+
+        // Retrieve local tombstones so explicitly deleted items are never re-inserted
+        let tombstones = Self::get_tombstones(pool, user_id).await.unwrap_or_default();
+        let deleted_playlists_set: std::collections::HashSet<String> = tombstones
+            .iter()
+            .filter(|(_, t, _)| t == "playlist")
+            .map(|(_, _, id)| id.clone())
+            .collect();
+        let deleted_songs_set: std::collections::HashSet<String> = tombstones
+            .iter()
+            .filter(|(_, t, _)| t == "playlist_song")
+            .map(|(_, _, id)| id.clone())
+            .collect();
 
         // 1. Ingest remote songs into external_tracks if needed
         for song in &payload.songs {
@@ -370,12 +550,15 @@ impl SyncManager {
             let provider_id = song.provider_id.as_deref().unwrap_or(&song.id);
 
             let _ = sqlx::query(
-                "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
                      title = excluded.title,
                      artist = excluded.artist,
-                     cover_art_url = coalesce(excluded.cover_art_url, external_tracks.cover_art_url)"
+                     album = excluded.album,
+                     duration_secs = excluded.duration_secs,
+                     cover_art_url = coalesce(excluded.cover_art_url, external_tracks.cover_art_url),
+                     preview_url = coalesce(excluded.preview_url, external_tracks.preview_url)"
             )
             .bind(&song.id)
             .bind(provider)
@@ -385,6 +568,7 @@ impl SyncManager {
             .bind(song.album.as_deref().unwrap_or(""))
             .bind(song.duration_secs)
             .bind(&song.cover_art_url)
+            .bind(&song.preview_url)
             .bind(song.created_at)
             .execute(pool)
             .await;
@@ -403,8 +587,13 @@ impl SyncManager {
         }
 
         // 2. Playlists
+        let mut inserted_playlists = 0;
         for p in &payload.playlists {
-            let _ = sqlx::query(
+            if deleted_playlists_set.contains(&p.id) {
+                continue; // User explicitly deleted this playlist locally
+            }
+
+            let res = sqlx::query(
                 "INSERT INTO playlists (id, user_id, name, description, is_smart_mix, mix_type, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
@@ -423,11 +612,24 @@ impl SyncManager {
             .bind(p.updated_at)
             .execute(pool)
             .await;
+
+            if res.is_ok() {
+                inserted_playlists += 1;
+            }
         }
 
         // 3. Playlist songs
+        let mut inserted_memberships = 0;
         for ps in &payload.playlist_songs {
-            let _ = sqlx::query(
+            if deleted_playlists_set.contains(&ps.playlist_id) {
+                continue;
+            }
+            let key = format!("{}:{}", ps.playlist_id, ps.song_id);
+            if deleted_songs_set.contains(&key) {
+                continue; // User explicitly removed this track from playlist locally
+            }
+
+            let res = sqlx::query(
                 "INSERT INTO playlist_tracks (playlist_id, track_id, position, added_at)
                  VALUES (?, ?, ?, ?)
                  ON CONFLICT(playlist_id, position) DO UPDATE SET
@@ -440,9 +642,13 @@ impl SyncManager {
             .bind(ps.added_at)
             .execute(pool)
             .await;
+
+            if res.is_ok() {
+                inserted_memberships += 1;
+            }
         }
 
-        // 4. Song stats
+        // 4. Song stats (stores and syncs liked: 1, disliked: -1, and neutral: 0 across users)
         for ss in &payload.song_stats {
             let _ = sqlx::query(
                 "INSERT INTO track_statistics (track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like)
@@ -452,7 +658,8 @@ impl SyncManager {
                      total_time_listened = MAX(track_statistics.total_time_listened, excluded.total_time_listened),
                      completion_count = MAX(track_statistics.completion_count, excluded.completion_count),
                      skip_count = MAX(track_statistics.skip_count, excluded.skip_count),
-                     manual_like = MAX(track_statistics.manual_like, excluded.manual_like)"
+                     last_played_at = MAX(coalesce(track_statistics.last_played_at, 0), coalesce(excluded.last_played_at, 0)),
+                     manual_like = excluded.manual_like"
             )
             .bind(&ss.song_id)
             .bind(ss.play_count)
@@ -466,41 +673,73 @@ impl SyncManager {
         }
 
         // 5. User stats (yearly archive)
-        for us in &payload.user_stats {
-            let _ = sqlx::query(
-                "INSERT INTO yearly_stats_archive (id, user_id, year, total_seconds, top_songs_json, top_artists_json, archived_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(user_id, year) DO UPDATE SET
-                     total_seconds = MAX(yearly_stats_archive.total_seconds, excluded.total_seconds),
-                     archived_at = excluded.archived_at"
-            )
-            .bind(&us.id)
-            .bind(user_id)
-            .bind(us.year)
-            .bind(us.total_seconds)
-            .bind(&us.top_songs_json)
-            .bind(&us.top_artists_json)
-            .bind(us.updated_at)
-            .execute(pool)
-            .await;
+        if let Some(ref us_val) = payload.user_stats {
+            let items: Vec<&serde_json::Value> = if let Some(arr) = us_val.as_array() {
+                arr.iter().collect()
+            } else if us_val.is_object() {
+                vec![us_val]
+            } else {
+                Vec::new()
+            };
+
+            for item in items {
+                let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("stat_1");
+                let year = item.get("year").and_then(|v| v.as_i64()).unwrap_or(2026);
+                let total_seconds = item.get("total_seconds").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let top_songs = item.get("top_songs_json").and_then(|v| v.as_str()).unwrap_or("[]");
+                let top_artists = item.get("top_artists_json").and_then(|v| v.as_str()).unwrap_or("[]");
+                let archived_at = item.get("updated_at").and_then(|v| v.as_i64()).unwrap_or(now);
+
+                let _ = sqlx::query(
+                    "INSERT INTO yearly_stats_archive (id, user_id, year, total_seconds, top_songs_json, top_artists_json, archived_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(user_id, year) DO UPDATE SET
+                         total_seconds = MAX(yearly_stats_archive.total_seconds, excluded.total_seconds),
+                         archived_at = excluded.archived_at"
+                )
+                .bind(id)
+                .bind(user_id)
+                .bind(year)
+                .bind(total_seconds)
+                .bind(top_songs)
+                .bind(top_artists)
+                .bind(archived_at)
+                .execute(pool)
+                .await;
+            }
         }
 
         // 6. User settings
-        for uset in &payload.user_settings {
-            let _ = sqlx::query(
-                "INSERT INTO application_settings (key, value, updated_at)
-                 VALUES (?, ?, ?)
-                 ON CONFLICT(key) DO UPDATE SET
-                     value = excluded.value,
-                     updated_at = excluded.updated_at"
-            )
-            .bind(&uset.key)
-            .bind(&uset.value)
-            .bind(now)
-            .execute(pool)
-            .await;
+        if let Some(ref uset_val) = payload.user_settings {
+            let items: Vec<&serde_json::Value> = if let Some(arr) = uset_val.as_array() {
+                arr.iter().collect()
+            } else if uset_val.is_object() {
+                vec![uset_val]
+            } else {
+                Vec::new()
+            };
+
+            for item in items {
+                if let (Some(k), Some(v)) = (
+                    item.get("key").and_then(|v| v.as_str()),
+                    item.get("value").and_then(|v| v.as_str()),
+                ) {
+                    let _ = sqlx::query(
+                        "INSERT INTO application_settings (key, value, updated_at)
+                         VALUES (?, ?, ?)
+                         ON CONFLICT(key) DO UPDATE SET
+                             value = excluded.value,
+                             updated_at = excluded.updated_at"
+                    )
+                    .bind(k)
+                    .bind(v)
+                    .bind(now)
+                    .execute(pool)
+                    .await;
+                }
+            }
         }
 
-        Ok(())
+        Ok((inserted_playlists, inserted_memberships))
     }
 }

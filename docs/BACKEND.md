@@ -194,5 +194,24 @@ src-tauri/src/cloud/
   - `Command::LogoutAll`: Revokes all sessions for the authenticated user.
   - `Command::RevokeSession { session_id }`: Revokes an arbitrary remote session owned by the user.
   - `Query::ListSessions`: Fetches active user sessions with device names and activity timestamps.
-* **Non-Destructive Operations**: User logout or session revocation never deletes local audio files, playlists, play history, or download tasks. Only authentication tokens and session rows are purged.
+* **Non-Destructive Operations & Access Gating**: User logout or session revocation never deletes local audio files, playlists, playlist tracks, track statistics, play history, or download tasks. Only authentication tokens and session rows are purged. Queries (`Query::GetPlaylists`) are access-gated: unauthenticated callers receive Smart Mixes only, while authenticated callers receive their custom playlists and synchronized library items.
+
+### 5.2 Deterministic Synchronization Engine (`SyncManager`)
+* **Deterministic Flow (Pull -> Reconcile -> Push)**:
+  1. **Pull First**: Fetches the remote `SyncPayload` from `GET /api/sync` on Cloudflare D1.
+  2. **Reconcile Locally**: Inserts/updates remote playlists, playlist track associations, and track rating stats into local SQLite without deleting items absent locally unless flagged by a tombstone.
+  3. **Push Changes**: Gathers local changes (including newly created playlists, track memberships, play stats, and pending tombstones) and pushes to `POST /api/sync`.
+  4. **Clean Tombstones**: Upon successful push confirmation, clears local tombstones.
+  5. **Reactive Event Emission**: Emits `Event::PlaylistsUpdated` onto the `EventBus` to notify the frontend to refresh playlist collections and memberships.
+
+### 5.3 Sync Tombstones (`sync_tombstones`)
+* Distinguishes between "item not found locally" vs "item intentionally deleted by user".
+* Local deletion commands (`DeletePlaylist`, `RemoveTrackFromPlaylist`) record a tombstone in `sync_tombstones`.
+* During Pull reconciliation, remote items matching active local tombstones are skipped.
+* During Push, tombstones are transmitted in `deleted_playlists` and `deleted_playlist_songs` arrays to purge records from Cloudflare D1.
+
+### 5.4 Song Feedback & Rating Sync
+* Synchronizes `manual_like` (+1 liked, -1 disliked, 0 neutral) across devices.
+* All songs with `manual_like != 0` or `play_count > 0` are extracted into sync payloads even if not part of a playlist.
+* D1 updates use `manual_like = excluded.manual_like`, enabling accurate transitions to disliked (-1) and unrated (0).
 

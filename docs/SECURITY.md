@@ -60,7 +60,14 @@ SoundFlow balances continuous desktop usability with strict bounding and revocat
 
 ---
 
-## 5. Non-Destructive Operations & Data Preservation
+## 5. Non-Destructive Operations, Access Gating & Sync Security
 
-* Logging out, session expiration, or remote session revocation purges authentication tokens and session rows only.
-* Local audio files, local custom playlists, track playback counts, listening time history, and download queue items are **strictly preserved** locally.
+* **Access Gating vs Data Destruction**:
+  - Authentication strictly governs **access permissions**, not data existence.
+  - Logging out, session expiration, or remote session revocation purges authentication tokens from secure OS keyrings/fallback files and revokes session records in D1.
+  - User-owned SQLite records (custom playlists, playlist tracks, track play stats, likes/dislikes, listening history, downloads) are **strictly preserved** locally.
+  - UI queries are gated at the controller level: unauthenticated requests only receive algorithmic Smart Mixes; user-owned data is accessible only when an active authenticated session is verified.
+* **Synchronization Security & Tombstones**:
+  - Every sync request (`GET /api/sync`, `POST /api/sync`) requires an active, unrevoked bearer token.
+  - All cloud operations are strictly isolated by `user_id`; users cannot read or modify another user's playlists, songs, or stats.
+  - Sync tombstones ensure intentional deletions are distinguished from local absence, preventing inadvertent remote data wipeouts during multi-device synchronization. Local tombstones are cleared only upon confirmed server synchronization receipt.

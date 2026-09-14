@@ -1,12 +1,12 @@
 use music_player_backend::cloud::{
-    CloudPlaylist, CloudPlaylistSong, CloudSong, CloudSongStat, CloudUserStat, SyncManager,
-    SyncPayload,
+    CloudPlaylist, CloudPlaylistSong, CloudSong, CloudSongStat, SyncManager, SyncPayload,
 };
 use music_player_backend::config::AppConfig;
 use music_player_backend::core::command::Command;
 use music_player_backend::core::processor::CoreProcessor;
 use music_player_backend::core::query::{Query, QueryResponse};
 use music_player_backend::database::create_in_memory_pool;
+use music_player_backend::database::repositories::user_repo::UserProfile;
 use music_player_backend::playback::backend::MockAudioBackend;
 
 #[tokio::test]
@@ -46,23 +46,39 @@ async fn test_cloud_sync_payload_and_database_persistence() {
         _ => panic!("Expected CloudSyncStatus"),
     }
 
-    // 3. Test apply remote sync payload
+    // 3. Test apply remote sync payload (including liked and disliked songs)
     let test_user_id = "user_cloud_123";
     let remote_payload = SyncPayload {
-        songs: vec![CloudSong {
-            id: "cloud_track_1".to_string(),
-            user_id: test_user_id.to_string(),
-            title: "Midnight City".to_string(),
-            artist: Some("M83".to_string()),
-            album: Some("Hurry Up, We're Dreaming".to_string()),
-            duration_secs: 244.0,
-            provider: Some("online".to_string()),
-            provider_id: Some("cloud_track_1".to_string()),
-            cover_art_url: Some("https://example.com/art.jpg".to_string()),
-            preview_url: None,
-            created_at: 1700000000,
-            updated_at: 1700000000,
-        }],
+        songs: vec![
+            CloudSong {
+                id: "cloud_track_1".to_string(),
+                user_id: test_user_id.to_string(),
+                title: "Midnight City".to_string(),
+                artist: Some("M83".to_string()),
+                album: Some("Hurry Up, We're Dreaming".to_string()),
+                duration_secs: 244.0,
+                provider: Some("online".to_string()),
+                provider_id: Some("cloud_track_1".to_string()),
+                cover_art_url: Some("https://example.com/art.jpg".to_string()),
+                preview_url: None,
+                created_at: 1700000000,
+                updated_at: 1700000000,
+            },
+            CloudSong {
+                id: "cloud_track_disliked".to_string(),
+                user_id: test_user_id.to_string(),
+                title: "Bad Song".to_string(),
+                artist: Some("Annoying Artist".to_string()),
+                album: None,
+                duration_secs: 180.0,
+                provider: Some("online".to_string()),
+                provider_id: Some("cloud_track_disliked".to_string()),
+                cover_art_url: None,
+                preview_url: None,
+                created_at: 1700000000,
+                updated_at: 1700000000,
+            },
+        ],
         playlists: vec![CloudPlaylist {
             id: "pl_cloud_1".to_string(),
             user_id: test_user_id.to_string(),
@@ -81,29 +97,44 @@ async fn test_cloud_sync_payload_and_database_persistence() {
             position: 0,
             added_at: 1700000000,
         }],
-        song_stats: vec![CloudSongStat {
-            id: format!("{}:cloud_track_1", test_user_id),
-            user_id: test_user_id.to_string(),
-            song_id: "cloud_track_1".to_string(),
-            play_count: 42,
-            total_time_listened: 10248.0,
-            completion_count: 40,
-            skip_count: 2,
-            last_played_at: Some(1700000000),
-            manual_like: 1,
-            updated_at: 1700000000,
-        }],
-        user_stats: vec![CloudUserStat {
-            id: format!("{}:2026", test_user_id),
-            user_id: test_user_id.to_string(),
-            year: 2026,
-            month: 0,
-            total_seconds: 55000.0,
-            top_songs_json: "[]".to_string(),
-            top_artists_json: "[]".to_string(),
-            updated_at: 1700000000,
-        }],
-        user_settings: vec![],
+        song_stats: vec![
+            CloudSongStat {
+                id: format!("{}:cloud_track_1", test_user_id),
+                user_id: test_user_id.to_string(),
+                song_id: "cloud_track_1".to_string(),
+                play_count: 42,
+                total_time_listened: 10248.0,
+                completion_count: 40,
+                skip_count: 2,
+                last_played_at: Some(1700000000),
+                manual_like: 1, // Liked
+                updated_at: 1700000000,
+            },
+            CloudSongStat {
+                id: format!("{}:cloud_track_disliked", test_user_id),
+                user_id: test_user_id.to_string(),
+                song_id: "cloud_track_disliked".to_string(),
+                play_count: 1,
+                total_time_listened: 10.0,
+                completion_count: 0,
+                skip_count: 1,
+                last_played_at: Some(1700000000),
+                manual_like: -1, // Disliked
+                updated_at: 1700000000,
+            },
+        ],
+        user_stats: Some(serde_json::json!([{
+            "id": format!("{}:2026", test_user_id),
+            "user_id": test_user_id,
+            "year": 2026,
+            "total_seconds": 55000.0,
+            "top_songs_json": "[]",
+            "top_artists_json": "[]",
+            "updated_at": 1700000000,
+        }])),
+        user_settings: None,
+        deleted_playlists: vec![],
+        deleted_playlist_songs: vec![],
     };
 
     SyncManager::apply_remote_sync_payload(&pool, test_user_id, &remote_payload)
@@ -111,7 +142,7 @@ async fn test_cloud_sync_payload_and_database_persistence() {
         .expect("apply remote payload ok");
 
     // Set active user profile on processor to verify user-scoped playlists
-    *processor.current_user.write().await = Some(music_player_backend::database::repositories::user_repo::UserProfile {
+    *processor.current_user.write().await = Some(UserProfile {
         id: test_user_id.to_string(),
         username: "cloud_user".to_string(),
         created_at: 1700000000,
@@ -134,6 +165,181 @@ async fn test_cloud_sync_payload_and_database_persistence() {
     assert!(prepared.playlists.iter().any(|p| p.name == "Synthwave Favorites"));
     assert!(prepared.playlist_songs.iter().any(|ps| ps.song_id == "cloud_track_1"));
     assert!(prepared.songs.iter().any(|s| s.title == "Midnight City"));
-    assert!(prepared.song_stats.iter().any(|ss| ss.song_id == "cloud_track_1" && ss.play_count >= 42));
-    assert!(prepared.user_stats.iter().any(|us| us.year == 2026 && us.total_seconds >= 55000.0));
+    assert!(prepared.songs.iter().any(|s| s.title == "Bad Song"));
+    assert!(prepared.song_stats.iter().any(|ss| ss.song_id == "cloud_track_1" && ss.play_count >= 42 && ss.manual_like == 1));
+    assert!(prepared.song_stats.iter().any(|ss| ss.song_id == "cloud_track_disliked" && ss.manual_like == -1));
+    assert!(prepared.user_stats.is_some());
+}
+
+#[tokio::test]
+async fn test_logout_preserves_local_user_data_while_gating_ui() {
+    let pool = create_in_memory_pool().await.expect("create db pool");
+    let config = AppConfig::default_with_dirs();
+    let backend = Box::new(MockAudioBackend::new());
+    let processor = CoreProcessor::new_with_backend(pool.clone(), config, backend);
+
+    let test_user_id = "user_persist_123";
+    let profile = UserProfile {
+        id: test_user_id.to_string(),
+        username: "persisting_user".to_string(),
+        created_at: 1700000000,
+    };
+
+    // 1. Authenticate user
+    *processor.current_user.write().await = Some(profile.clone());
+
+    // 2. Create playlist as authenticated user
+    let create_cmd = Command::CreatePlaylist {
+        name: "My Drive Mix".to_string(),
+        description: Some("Favorite driving songs".to_string()),
+    };
+    let pl_res = processor.dispatch_command(create_cmd).await.expect("create playlist ok");
+    let pl_id = match pl_res {
+        music_player_backend::core::command::CommandResponse::EntityId(id) => id,
+        _ => panic!("Expected EntityId"),
+    };
+
+    // 3. Add track to playlist and like the track
+    let track_id = "track_synth_99";
+    processor
+        .dispatch_command(Command::AddTrackToPlaylist {
+            playlist_id: pl_id.clone(),
+            track_id: track_id.to_string(),
+            title: Some("Nightcall".to_string()),
+            artist: Some("Kavinsky".to_string()),
+            album: Some("OutRun".to_string()),
+            duration_secs: Some(259.0),
+            cover_art_url: None,
+            preview_url: None,
+        })
+        .await
+        .expect("add track ok");
+
+    processor
+        .dispatch_command(Command::LikeTrack {
+            track_id: track_id.to_string(),
+        })
+        .await
+        .expect("like track ok");
+
+    // Verify playlist is visible when logged in
+    let logged_in_pls = processor.execute_query(Query::GetPlaylists).await.expect("query pls");
+    match logged_in_pls {
+        QueryResponse::Playlists(list) => {
+            let custom: Vec<_> = list.iter().filter(|p| p["is_smart_mix"] != 1).collect();
+            assert_eq!(custom.len(), 1);
+            assert_eq!(custom[0]["name"], "My Drive Mix");
+        }
+        _ => panic!("Expected Playlists"),
+    }
+
+    // 4. Logout
+    processor.dispatch_command(Command::Logout).await.expect("logout ok");
+
+    // Verify current user is None
+    assert!(processor.current_user.read().await.is_none());
+
+    // CRITICAL: Verify local persisted records in SQLite REMAIN
+    let count_in_db: (i64,) = sqlx::query_as("SELECT count(*) FROM playlists WHERE is_smart_mix = 0")
+        .fetch_one(&pool)
+        .await
+        .expect("db query");
+    assert_eq!(count_in_db.0, 1, "Logout must NOT delete user playlists from local SQLite!");
+
+    let track_count_in_db: (i64,) = sqlx::query_as("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ?")
+        .bind(&pl_id)
+        .fetch_one(&pool)
+        .await
+        .expect("db query");
+    assert_eq!(track_count_in_db.0, 1, "Logout must NOT delete playlist tracks from local SQLite!");
+
+    let stats_count: (i64,) = sqlx::query_as("SELECT manual_like FROM track_statistics WHERE track_id = ?")
+        .bind(track_id)
+        .fetch_one(&pool)
+        .await
+        .expect("db query");
+    assert_eq!(stats_count.0, 1, "Logout must NOT delete track likes from local SQLite!");
+
+    // CRITICAL: Verify UI query does NOT return custom playlists while signed out
+    let logged_out_pls = processor.execute_query(Query::GetPlaylists).await.expect("query pls");
+    match logged_out_pls {
+        QueryResponse::Playlists(list) => {
+            let custom: Vec<_> = list.iter().filter(|p| p["is_smart_mix"] != 1).collect();
+            assert_eq!(custom.len(), 0, "Signed-out queries must only return Smart Mixes!");
+        }
+        _ => panic!("Expected Playlists"),
+    }
+
+    // 5. Re-login as the same user
+    *processor.current_user.write().await = Some(profile.clone());
+
+    // Verify user's custom playlist and songs are immediately visible again
+    let re_login_pls = processor.execute_query(Query::GetPlaylists).await.expect("query pls");
+    match re_login_pls {
+        QueryResponse::Playlists(list) => {
+            let custom: Vec<_> = list.iter().filter(|p| p["is_smart_mix"] != 1).collect();
+            assert_eq!(custom.len(), 1);
+            assert_eq!(custom[0]["name"], "My Drive Mix");
+        }
+        _ => panic!("Expected Playlists"),
+    }
+}
+
+#[tokio::test]
+async fn test_explicit_deletion_creates_tombstones() {
+    let pool = create_in_memory_pool().await.expect("create db pool");
+    let config = AppConfig::default_with_dirs();
+    let backend = Box::new(MockAudioBackend::new());
+    let processor = CoreProcessor::new_with_backend(pool.clone(), config, backend);
+
+    let test_user_id = "user_tombstone_test";
+    let profile = UserProfile {
+        id: test_user_id.to_string(),
+        username: "tombstone_tester".to_string(),
+        created_at: 1700000000,
+    };
+
+    *processor.current_user.write().await = Some(profile);
+
+    // Create a playlist
+    let pl_res = processor
+        .dispatch_command(Command::CreatePlaylist {
+            name: "To Be Deleted".to_string(),
+            description: None,
+        })
+        .await
+        .expect("create pl ok");
+    let pl_id = match pl_res {
+        music_player_backend::core::command::CommandResponse::EntityId(id) => id,
+        _ => panic!("Expected EntityId"),
+    };
+
+    // Explicitly delete it
+    processor
+        .dispatch_command(Command::DeletePlaylist {
+            playlist_id: pl_id.clone(),
+        })
+        .await
+        .expect("delete pl ok");
+
+    // Verify tombstone was recorded
+    let tombstones = SyncManager::get_tombstones(&pool, test_user_id)
+        .await
+        .expect("get tombstones ok");
+    assert_eq!(tombstones.len(), 1);
+    assert_eq!(tombstones[0].1, "playlist");
+    assert_eq!(tombstones[0].2, pl_id);
+
+    // Verify local sync payload includes deleted_playlists
+    let payload = SyncManager::prepare_local_sync_payload(&pool, test_user_id)
+        .await
+        .expect("prepare payload ok");
+    assert!(payload.deleted_playlists.contains(&pl_id));
+
+    // Clear tombstones simulates push success
+    SyncManager::clear_tombstones(&pool, test_user_id).await.expect("clear ok");
+    let cleared = SyncManager::get_tombstones(&pool, test_user_id)
+        .await
+        .expect("get tombstones ok");
+    assert_eq!(cleared.len(), 0);
 }

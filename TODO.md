@@ -1,30 +1,17 @@
 # Project Task Tracking
 
-## Current (Phase 14: Hardened Hybrid Session Management & Multi-Device Control - COMPLETE)
-- [x] Implement hybrid session lifecycle: 30-day idle inactivity timeout (`now < idle_expires_at`), 90-day absolute hard ceiling (`now < absolute_expires_at`), and active revocation check (`revoked_at IS NULL`).
-- [x] Implement D1 write throttling: refresh `last_used_at` and `idle_expires_at` in D1 at most once every 30 minutes on authenticated requests, clamping idle timeout to `min(now + 30 days, absolute_expires_at)`.
-- [x] Opaque token generation: 256-bit cryptographically secure random bearer tokens generated via `crypto.getRandomValues`. Raw token returned once to client and never stored in D1 or SQLite.
-- [x] D1 session storage: store only SHA-256 hash (`token_hash`) with metadata columns (`id`, `user_id`, `device_id`, `device_name`, `client_version`, `created_at`, `last_used_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at`, `revoked_reason`).
-- [x] Device identity module (`src-tauri/src/cloud/device.rs`): generate persistent UUID v4 on first run (`application_settings`) and non-invasive friendly device name.
-- [x] Multi-device session management endpoints in Cloudflare Worker:
-  - [x] `POST /api/auth/register` (returns raw token once + session metadata)
-  - [x] `POST /api/auth/login` (returns raw token once + session metadata)
-  - [x] `POST /api/auth/logout` (revokes current session)
-  - [x] `POST /api/auth/logout-all` (revokes all active sessions for authenticated user)
-  - [x] `GET /api/auth/sessions` (lists active sessions, flags `is_current: true`, no secrets)
-  - [x] `DELETE /api/auth/sessions/:id` (revokes specific session with user ownership check)
-  - [x] `GET /api/auth/me` (returns user profile + session info)
-  - [x] Bounded scheduled cleanup for revoked/expired sessions older than 30 days.
-- [x] Client session state machine: strongly typed `SignedOut`, `Authenticating`, `OnlineAuthenticated`, `OfflineAuthenticated`, `SessionExpired { reason }`, `CloudUnavailable`, `SyncPaused`.
-- [x] Offline continuation: authenticated devices with `authenticated_before = 1` retain full playback and playlist access offline within local expiry window without advancing cloud validity offline.
-- [x] Data preservation: user logout, session expiration, and remote revocation strictly preserve local audio files, playlists, play history, and downloads.
-- [x] Local SQLite migration (`20260914000002_session_management.sql`) for updated `cloud_sessions` metadata table.
-- [x] Frontend IPC types (`src/types.ts`) and session status visualization with "Log Out of All Devices" in Settings.
-- [x] Comprehensive test suite (`cargo test` all 34 tests passing including session lifecycle and data preservation tests, `npx tsc --noEmit` exits 0, `npm run build` exits 0).
-- [x] Architecture Decision Record (`docs/adr/0014-hybrid-session-management.md`), `docs/SECURITY.md`, `docs/API.md`, `docs/BACKEND.md`, and `docs/DEVELOPMENT_LOG.md`.
+## Current (Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones - COMPLETE)
+- [x] Architectural correction: Logout (`Command::Logout`, `Command::LogoutAll`) strictly preserves local SQLite user data (custom playlists, playlist tracks, play history, track stats, and user records).
+- [x] Controller-level access gating: Unauthenticated queries (`Query::GetPlaylists`) return only algorithmic Smart Mixes; authenticated users receive custom playlists and cloud content.
+- [x] Deterministic bidirectional sync sequence: Login/Startup -> establish ActiveUser -> PULL first (`GET /api/sync`) -> RECONCILE locally -> PUSH legitimate changes (`POST /api/sync`) -> emit reactive event (`Event::PlaylistsUpdated`).
+- [x] Liked and disliked song synchronization: Store and sync `manual_like` (`1` = liked, `-1` = disliked, `0` = neutral). Worker D1 upsert fixed from `MAX()` to `manual_like = excluded.manual_like`. All rated songs synced even when not in playlists.
+- [x] Sync tombstones (`sync_tombstones` SQLite table): Track explicit deletions (`DeletePlaylist`, `RemoveTrackFromPlaylist`). Absence of item locally without tombstone never deletes remote data during pull. Pushed tombstones delete remote records in D1 and clear local tombstones.
+- [x] Serde resilience: Handle heterogeneous D1 response shapes for `user_stats` and `user_settings` (`Option<serde_json::Value>`), alias `total_seconds`, and add `#[serde(default)]` across cloud entities.
+- [x] Full integration testing in `tests/cloud_sync_tests.rs`: All 3 tests passing, verifying non-destructive logout, access gating, liked/disliked song sync, tombstone generation, and sync payload round-trips. All 35 tests pass in workspace.
+- [x] System documentation updated across `docs/ARCHITECTURE.md`, `docs/BACKEND.md`, `docs/SECURITY.md`, `PROJECT_STATUS.md`, `TODO.md`, and `docs/DEVELOPMENT_LOG.md`.
 
 ## Completed
-- [x] Phase 13: Security Review & Authentication Hardening
+- [x] Phase 14: Hardened Hybrid Session Management & Multi-Device Control
 - [x] Phase 11 User Experience & Integration Enhancements:
 - [x] Phase 11 User Experience & Integration Enhancements:
   - [x] Re-run Onboarding Setup: Added dedicated button in Settings to reset onboarding and trigger the directory selection modal from fresh without manual DB manipulation (`Command::ResetOnboarding`).

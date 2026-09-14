@@ -186,11 +186,6 @@ impl CoreProcessor {
                     }
                     *current_user_init.write().await = None;
                     *session_state_init.write().await = AuthSessionState::SignedOut;
-                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
                     let _ = event_bus_init.publish(Event::UserLoggedOut);
                     let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
@@ -204,11 +199,6 @@ impl CoreProcessor {
                     *session_state_init.write().await = AuthSessionState::SessionExpired {
                         reason: SessionExpiredReason::AbsoluteTimeout,
                     };
-                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
                     let _ = event_bus_init.publish(Event::UserLoggedOut);
                     let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
@@ -222,11 +212,6 @@ impl CoreProcessor {
                     *session_state_init.write().await = AuthSessionState::SessionExpired {
                         reason: SessionExpiredReason::IdleTimeout,
                     };
-                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
-                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
                     let _ = event_bus_init.publish(Event::UserLoggedOut);
                     let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
@@ -276,28 +261,26 @@ impl CoreProcessor {
                         let user_val = serde_json::to_value(&profile).ok();
                         let _ = event_bus_init.publish(Event::SessionChanged { user: user_val });
 
-                        // Automatically sync with server on launch
-                        let _ = SyncManager::sync_with_cloud(
+                        // Automatically sync with server on launch: Pull first, reconcile, push
+                        if let Ok(_report) = SyncManager::sync_with_cloud(
                             &pool_init,
                             &cloud_client_init,
                             &worker_url,
                             &cloud_user.id,
                             &tok,
-                        ).await;
+                        ).await {
+                            let _ = event_bus_init.publish(Event::PlaylistsUpdated);
+                        }
                     }
                     Err(AppError::Validation(_)) => {
-                        // User is revoked on server, expired, or doesn't exist on server -> clear locally!
+                        // User is revoked on server, expired, or doesn't exist on server.
+                        // Revoke session metadata only; local library/playlists remain intact but gated.
                         let _ = credentials::delete_session_token(&session.user_id);
                         let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
                         *current_user_init.write().await = None;
                         *session_state_init.write().await = AuthSessionState::SessionExpired {
                             reason: SessionExpiredReason::Revoked,
                         };
-                        let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
-                        let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
-                        let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
-                        let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
-                        let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
                         let _ = event_bus_init.publish(Event::UserLoggedOut);
                         let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     }
@@ -331,9 +314,6 @@ impl CoreProcessor {
                         *session_state_init.write().await = AuthSessionState::SignedOut;
                     }
                 }
-            } else {
-                *current_user_init.write().await = None;
-                *session_state_init.write().await = AuthSessionState::SignedOut;
             }
         });
 
@@ -404,6 +384,29 @@ impl CoreProcessor {
             .ok()
             .flatten()
             .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string())
+    }
+
+    /// Trigger background push sync for the active user if authenticated.
+    pub async fn trigger_background_sync(&self) {
+        let user_id = {
+            let current_user_guard = self.current_user.read().await;
+            current_user_guard.as_ref().map(|u| u.id.clone())
+        };
+        if let Some(uid) = user_id {
+            let pool_clone = self.db_pool.clone();
+            let client_clone = self.cloud_client.clone();
+            let worker_url = self.get_cloud_worker_url().await;
+            tokio::spawn(async move {
+                if let Some(token) = credentials::get_session_token(&uid) {
+                    if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &uid).await {
+                        if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &payload).await {
+                            let _ = SyncManager::clear_tombstones(&pool_clone, &uid).await;
+                            let _ = SyncManager::update_session_synced_at(&pool_clone, &uid, synced_at).await;
+                        }
+                    }
+                }
+            });
+        }
     }
 
     /// Access the internal EventBus handle.
@@ -610,14 +613,17 @@ impl CoreProcessor {
             // --- User Feedback & Taste ---
             Command::LikeTrack { track_id } => {
                 self.history_service.set_track_like(&track_id, 1).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::DislikeTrack { track_id } => {
                 self.history_service.set_track_like(&track_id, -1).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::RemoveTrackFeedback { track_id } => {
                 self.history_service.set_track_like(&track_id, 0).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
 
@@ -672,22 +678,20 @@ impl CoreProcessor {
                 self.playlist_repo.create_playlist_with_user(&record, &user_id).await?;
 
                 // Background sync if user is logged in
-                let pool_clone = self.db_pool.clone();
-                let client_clone = self.cloud_client.clone();
-                let worker_url = self.get_cloud_worker_url().await;
-                let uid = user_id.clone();
-                tokio::spawn(async move {
-                    if let Some(token) = credentials::get_session_token(&uid) {
-                        if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &uid).await {
-                            let _ = client_clone.push_sync(&worker_url, &token, &payload).await;
-                        }
-                    }
-                });
+                self.trigger_background_sync().await;
 
                 Ok(CommandResponse::EntityId(id))
             }
             Command::DeletePlaylist { playlist_id } => {
+                let user_id = {
+                    let current_user_guard = self.current_user.read().await;
+                    current_user_guard.as_ref().map(|u| u.id.clone())
+                };
+                if let Some(ref uid) = user_id {
+                    let _ = SyncManager::record_tombstone(&self.db_pool, uid, "playlist", &playlist_id).await;
+                }
                 self.playlist_repo.delete_playlist(&playlist_id).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::AddTrackToPlaylist {
@@ -751,10 +755,20 @@ impl CoreProcessor {
                     .await;
                 }
                 self.playlist_repo.add_track(&playlist_id, &track_id, None).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::RemoveTrackFromPlaylist { playlist_id, track_id } => {
+                let user_id = {
+                    let current_user_guard = self.current_user.read().await;
+                    current_user_guard.as_ref().map(|u| u.id.clone())
+                };
+                if let Some(ref uid) = user_id {
+                    let entity_id = format!("{}:{}", playlist_id, track_id);
+                    let _ = SyncManager::record_tombstone(&self.db_pool, uid, "playlist_song", &entity_id).await;
+                }
                 self.playlist_repo.remove_track(&playlist_id, &track_id).await?;
+                self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
 
@@ -930,15 +944,20 @@ impl CoreProcessor {
                         session_id,
                     };
 
-                    // Background push to sync existing local playlists/data up to D1
+                    // Background deterministic sync: pull remote D1 data first, reconcile, then push local
                     let pool_clone = self.db_pool.clone();
                     let client_clone = self.cloud_client.clone();
                     let user_id_clone = profile.id.clone();
+                    let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &user_id_clone).await {
-                            if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &payload).await {
-                                let _ = SyncManager::update_session_synced_at(&pool_clone, &user_id_clone, synced_at).await;
-                            }
+                        if let Ok(_report) = SyncManager::sync_with_cloud(
+                            &pool_clone,
+                            &client_clone,
+                            &worker_url,
+                            &user_id_clone,
+                            &token,
+                        ).await {
+                            let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
                         }
                     });
 
@@ -1031,18 +1050,22 @@ impl CoreProcessor {
                         session_id,
                     };
 
-                    // Background bidirectional sync: pull remote D1 data down to local, then push local
+                    tracing::info!("LOGIN SUCCESS: authenticated user_id = {}", profile.id);
+
+                    // Deterministic bidirectional sync: pull remote D1 data down first, reconcile, then push local
                     let pool_clone = self.db_pool.clone();
                     let client_clone = self.cloud_client.clone();
                     let user_id_clone = profile.id.clone();
+                    let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        if let Ok(remote_data) = client_clone.pull_sync(&worker_url, &token).await {
-                            let _ = SyncManager::apply_remote_sync_payload(&pool_clone, &user_id_clone, &remote_data).await;
-                        }
-                        if let Ok(local_payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &user_id_clone).await {
-                            if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &local_payload).await {
-                                let _ = SyncManager::update_session_synced_at(&pool_clone, &user_id_clone, synced_at).await;
-                            }
+                        if let Ok(_report) = SyncManager::sync_with_cloud(
+                            &pool_clone,
+                            &client_clone,
+                            &worker_url,
+                            &user_id_clone,
+                            &token,
+                        ).await {
+                            let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
                         }
                     });
 
@@ -1069,13 +1092,9 @@ impl CoreProcessor {
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
 
-                // Clear all user-related data locally on logout:
-                // Delete user playlists and tracks, user stats, history, and users table row
-                let _ = self.playlist_repo.delete_all_user_playlists(None).await;
-                let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&self.db_pool).await;
-                let _ = sqlx::query("DELETE FROM playback_history").execute(&self.db_pool).await;
-                let _ = sqlx::query("DELETE FROM users").execute(&self.db_pool).await;
-
+                // Note: Authentication controls ACCESS to user data.
+                // Logout clears session credentials from active memory/keyring,
+                // but does NOT destroy user playlists, songs, statistics, or history.
                 let _ = self.event_bus.publish(Event::UserLoggedOut);
                 let _ = self.event_bus.publish(Event::SessionChanged { user: None });
 
@@ -1096,12 +1115,7 @@ impl CoreProcessor {
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
 
-                // Clear all user-related data locally on logout all
-                let _ = self.playlist_repo.delete_all_user_playlists(None).await;
-                let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&self.db_pool).await;
-                let _ = sqlx::query("DELETE FROM playback_history").execute(&self.db_pool).await;
-                let _ = sqlx::query("DELETE FROM users").execute(&self.db_pool).await;
-
+                // Invalidate all cloud sessions, but preserve local stored data
                 let _ = self.event_bus.publish(Event::UserLoggedOut);
                 let _ = self.event_bus.publish(Event::SessionChanged { user: None });
 
@@ -1145,17 +1159,19 @@ impl CoreProcessor {
                 let token = credentials::get_session_token(&session.user_id)
                     .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
 
-                // 1. Pull remote data
-                let remote_data = self.cloud_client.pull_sync(&worker_url, &token).await?;
-                SyncManager::apply_remote_sync_payload(&self.db_pool, &session.user_id, &remote_data).await?;
+                // Deterministic sync: Pull first, reconcile, push
+                let report = SyncManager::sync_with_cloud(
+                    &self.db_pool,
+                    &self.cloud_client,
+                    &worker_url,
+                    &session.user_id,
+                    &token,
+                ).await?;
 
-                // 2. Push local data
-                let local_payload = SyncManager::prepare_local_sync_payload(&self.db_pool, &session.user_id).await?;
-                let synced_at = self.cloud_client.push_sync(&worker_url, &token, &local_payload).await?;
-                SyncManager::update_session_synced_at(&self.db_pool, &session.user_id, synced_at).await?;
                 SyncManager::update_validation_timestamp(&self.db_pool, &session.user_id, now).await?;
+                let _ = self.event_bus.publish(Event::PlaylistsUpdated);
 
-                Ok(CommandResponse::CloudSyncCompleted { synced_at })
+                Ok(CommandResponse::CloudSyncCompleted { synced_at: report.synced_at })
             }
             Command::SetCloudServerUrl { url } => {
                 let trimmed = url.trim().to_string();

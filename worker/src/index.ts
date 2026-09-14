@@ -823,7 +823,7 @@ export default {
                   "total_seconds = MAX(song_stats.total_seconds, excluded.total_seconds), " +
                   "completion_count = MAX(song_stats.completion_count, excluded.completion_count), " +
                   "skip_count = MAX(song_stats.skip_count, excluded.skip_count), " +
-                  "manual_like = MAX(song_stats.manual_like, excluded.manual_like), " +
+                  "manual_like = excluded.manual_like, " +
                   "updated_at = excluded.updated_at"
                 ).bind(
                   ss.song_id,
@@ -832,8 +832,8 @@ export default {
                   ss.total_seconds || ss.total_time_listened || 0.0,
                   ss.completion_count || 0,
                   ss.skip_count || 0,
-                  ss.manual_like || 0,
-                  now
+                  ss.manual_like !== undefined ? ss.manual_like : 0,
+                  ss.updated_at || now
                 )
               );
             }
@@ -842,43 +842,71 @@ export default {
 
         // 5. Sync User Stats
         if (payload.user_stats) {
-          const us = payload.user_stats;
-          batchStatements.push(
-            env.DB.prepare(
-              "INSERT INTO user_stats (user_id, total_seconds, top_songs_json, top_artists_json, top_days_json, yearly_archives_json, updated_at) " +
-              "VALUES (?, ?, ?, ?, ?, ?, ?) " +
-              "ON CONFLICT(user_id) DO UPDATE SET " +
-              "total_seconds = MAX(user_stats.total_seconds, excluded.total_seconds), " +
-              "top_songs_json = excluded.top_songs_json, " +
-              "top_artists_json = excluded.top_artists_json, " +
-              "yearly_archives_json = excluded.yearly_archives_json, " +
-              "updated_at = excluded.updated_at"
-            ).bind(
-              userId,
-              us.total_seconds || 0.0,
-              typeof us.top_songs_json === "string" ? us.top_songs_json : JSON.stringify(us.top_songs_json || []),
-              typeof us.top_artists_json === "string" ? us.top_artists_json : JSON.stringify(us.top_artists_json || []),
-              typeof us.top_days_json === "string" ? us.top_days_json : JSON.stringify(us.top_days_json || []),
-              typeof us.yearly_archives_json === "string" ? us.yearly_archives_json : JSON.stringify(us.yearly_archives_json || []),
-              now
-            )
-          );
+          const us = Array.isArray(payload.user_stats) ? payload.user_stats[0] : payload.user_stats;
+          if (us) {
+            batchStatements.push(
+              env.DB.prepare(
+                "INSERT INTO user_stats (user_id, total_seconds, top_songs_json, top_artists_json, top_days_json, yearly_archives_json, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                "ON CONFLICT(user_id) DO UPDATE SET " +
+                "total_seconds = MAX(user_stats.total_seconds, excluded.total_seconds), " +
+                "top_songs_json = excluded.top_songs_json, " +
+                "top_artists_json = excluded.top_artists_json, " +
+                "yearly_archives_json = excluded.yearly_archives_json, " +
+                "updated_at = excluded.updated_at"
+              ).bind(
+                userId,
+                us.total_seconds || 0.0,
+                typeof us.top_songs_json === "string" ? us.top_songs_json : JSON.stringify(us.top_songs_json || []),
+                typeof us.top_artists_json === "string" ? us.top_artists_json : JSON.stringify(us.top_artists_json || []),
+                typeof us.top_days_json === "string" ? us.top_days_json : JSON.stringify(us.top_days_json || []),
+                typeof us.yearly_archives_json === "string" ? us.yearly_archives_json : JSON.stringify(us.yearly_archives_json || []),
+                now
+              )
+            );
+          }
         }
 
         // 6. Sync User Settings
         if (payload.user_settings) {
-          const uset = payload.user_settings;
-          const settingsStr =
-            typeof uset.settings_json === "string"
-              ? uset.settings_json
-              : JSON.stringify(uset.settings_json || uset);
-          batchStatements.push(
-            env.DB.prepare(
-              "INSERT INTO user_settings (user_id, settings_json, updated_at) " +
-              "VALUES (?, ?, ?) " +
-              "ON CONFLICT(user_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
-            ).bind(userId, settingsStr, now)
-          );
+          const uset = Array.isArray(payload.user_settings) ? payload.user_settings[0] : payload.user_settings;
+          if (uset) {
+            const settingsStr =
+              typeof uset.settings_json === "string"
+                ? uset.settings_json
+                : JSON.stringify(uset.settings_json || uset);
+            batchStatements.push(
+              env.DB.prepare(
+                "INSERT INTO user_settings (user_id, settings_json, updated_at) " +
+                "VALUES (?, ?, ?) " +
+                "ON CONFLICT(user_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
+              ).bind(userId, settingsStr, now)
+            );
+          }
+        }
+
+        // 7. Sync Deletions - Playlists
+        if (Array.isArray(payload.deleted_playlists)) {
+          for (const pid of payload.deleted_playlists) {
+            if (pid) {
+              batchStatements.push(
+                env.DB.prepare("DELETE FROM playlists WHERE id = ? AND user_id = ?").bind(pid, userId),
+                env.DB.prepare("DELETE FROM playlist_songs WHERE playlist_id = ? AND user_id = ?").bind(pid, userId)
+              );
+            }
+          }
+        }
+
+        // 8. Sync Deletions - Playlist Songs
+        if (Array.isArray(payload.deleted_playlist_songs)) {
+          for (const dps of payload.deleted_playlist_songs) {
+            if (dps.playlist_id && dps.song_id) {
+              batchStatements.push(
+                env.DB.prepare("DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ? AND user_id = ?")
+                  .bind(dps.playlist_id, dps.song_id, userId)
+              );
+            }
+          }
         }
 
         if (batchStatements.length > 0) {

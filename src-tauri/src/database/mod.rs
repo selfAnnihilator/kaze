@@ -39,6 +39,18 @@ pub async fn init_db_pool<P: AsRef<Path>>(db_path: P) -> AppResult<SqlitePool> {
         .await
         .map_err(|e| AppError::Database(format!("Migration failed: {}", e)))?;
 
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS sync_tombstones (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            deleted_at INTEGER NOT NULL
+        );"
+    )
+    .execute(&pool)
+    .await;
+
     info!("Database initialized and migrations applied successfully");
     Ok(pool)
 }
@@ -59,6 +71,19 @@ pub async fn create_in_memory_pool() -> AppResult<SqlitePool> {
         .run(&pool)
         .await
         .map_err(|e| AppError::Database(format!("In-memory migration failed: {}", e)))?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS sync_tombstones (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT NOT NULL,
+            deleted_at INTEGER NOT NULL
+        );"
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| AppError::Database(format!("Failed to ensure sync_tombstones: {}", e)))?;
 
     Ok(pool)
 }

@@ -87,52 +87,81 @@ pub enum AuthSessionState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudSong {
     pub id: String,
+    #[serde(default)]
     pub user_id: String,
     pub title: String,
+    #[serde(default)]
     pub artist: Option<String>,
+    #[serde(default)]
     pub album: Option<String>,
+    #[serde(default)]
     pub duration_secs: f64,
+    #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default)]
     pub provider_id: Option<String>,
+    #[serde(default)]
     pub cover_art_url: Option<String>,
+    #[serde(default)]
     pub preview_url: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
+    #[serde(default)]
     pub updated_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudPlaylist {
     pub id: String,
+    #[serde(default)]
     pub user_id: String,
     pub name: String,
+    #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
     pub is_smart_mix: i64,
+    #[serde(default)]
     pub mix_type: Option<String>,
+    #[serde(default)]
     pub created_at: i64,
+    #[serde(default)]
     pub updated_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudPlaylistSong {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub user_id: String,
     pub playlist_id: String,
     pub song_id: String,
+    #[serde(default)]
     pub position: i64,
+    #[serde(default)]
     pub added_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudSongStat {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub user_id: String,
     pub song_id: String,
+    #[serde(default)]
     pub play_count: i64,
+    #[serde(default, alias = "total_seconds")]
     pub total_time_listened: f64,
+    #[serde(default)]
     pub completion_count: i64,
+    #[serde(default)]
     pub skip_count: i64,
+    #[serde(default)]
     pub last_played_at: Option<i64>,
+    #[serde(default)]
     pub manual_like: i64,
+    #[serde(default)]
     pub updated_at: i64,
 }
 
@@ -157,6 +186,12 @@ pub struct CloudUserSetting {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudPlaylistSongRef {
+    pub playlist_id: String,
+    pub song_id: String,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SyncPayload {
     #[serde(default)]
@@ -168,9 +203,13 @@ pub struct SyncPayload {
     #[serde(default)]
     pub song_stats: Vec<CloudSongStat>,
     #[serde(default)]
-    pub user_stats: Vec<CloudUserStat>,
+    pub user_stats: Option<serde_json::Value>,
     #[serde(default)]
-    pub user_settings: Vec<CloudUserSetting>,
+    pub user_settings: Option<serde_json::Value>,
+    #[serde(default)]
+    pub deleted_playlists: Vec<String>,
+    #[serde(default)]
+    pub deleted_playlist_songs: Vec<CloudPlaylistSongRef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

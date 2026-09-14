@@ -126,4 +126,5 @@ pub enum Event {
         user: Option<serde_json::Value>,
     },
     UserLoggedOut,
+    PlaylistsUpdated,
 }

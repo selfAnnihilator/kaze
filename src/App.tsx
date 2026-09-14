@@ -783,6 +783,13 @@ export const App: React.FC = () => {
           break;
         }
 
+        case "PlaylistsUpdated": {
+          fetchPlaylists();
+          fetchTrackPlaylistMemberships();
+          fetchTracks();
+          break;
+        }
+
         default:
           break;
       }

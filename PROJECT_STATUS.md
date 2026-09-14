@@ -1,13 +1,14 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 14: Hardened Hybrid Session Management & Multi-Device Revocation (Complete, Fully Audited & Production-Ready)**
+**Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones (Complete, Fully Audited & Production-Ready)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
 - **Cloud Infrastructure**: Cloudflare Worker + Cloudflare D1 (serverless SQLite) for authoritative cloud-backed authentication and user data synchronization.
 - **Security Posture**: PBKDF2-HMAC-SHA256 (600,000 iterations), server-side token hashing (`token_hash` in D1), client OS credential keyring storage with restricted file fallback, IP rate limiting, timing discrepancy defense, and sole authoritative cloud account authority.
 - **Session Management**: 30-day idle inactivity timeout, 90-day absolute hard ceiling, D1 write throttling (30 minutes), opaque 256-bit bearer tokens, multi-device listing and revocation (`logout-all`, `revoke_session`), and offline continuation.
+- **Cloud Synchronization & Access Gating**: Non-destructive logout preserving local SQLite data while gating UI queries to Smart Mixes; deterministic Pull -> Reconcile -> Push synchronization sequence; liked (`+1`) and disliked (`-1`) song feedback synchronization; sync tombstones (`sync_tombstones`) tracking explicit deletions.
 - **IPC & Desktop Shell**: Tauri v2 with React 19 + TypeScript + Vite.
 - **Database**: SQLite 3 with WAL mode, managed through `sqlx` and embedded migrations.
 - **Core Pattern**: Central Processor for validated command execution + Tokio broadcast Event Bus for decoupled notifications.
@@ -22,15 +23,15 @@
 - **Desktop Shell & Frontend**: React 19 + TypeScript + Vite desktop GUI hosted in Tauri v2, with typed IPC bridge (`execute_command`, `execute_query`), streaming `backend-event` integration, persistent player bar, onboarding wizard, and dedicated views for Library, Artists, Albums, Playlists, Discovery, Wishlist, Downloads, and Settings.
 
 ## Current Working Features
-- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0013`).
-- Complete SQLite relational schema (18 entities + FTS5 full-text search) with embedded migrations.
+- Complete documentation suite and Architecture Decision Records (`docs/adr/0001` through `0014`).
+- Complete SQLite relational schema (19 entities + FTS5 full-text search) with embedded migrations.
 - Full `Command`, `Event`, and `Query` catalogs with typed `serde` serialization (100% command execution coverage).
 - `AppError` taxonomy with `thiserror`.
 - `AppConfig` supporting OS-standard directories, audio settings, ranking weights, history thresholds, and download configuration.
 - `EventBus` backed by `tokio::sync::broadcast` with graceful zero-subscriber dispatching.
 - `CoreProcessor` command router and query execution coordinator.
 - SQLite connection manager with WAL mode, foreign keys, and 5-second busy timeout.
-- Fully operational headless test suite with 32 integration tests passing.
+- Fully operational headless test suite with 35 integration and unit tests passing.
 - Complete React 19 desktop GUI with sub-second production bundle generation (`dist/index.html`).
 - **All 8 Primary Views**:
   - `LibraryView`: Searchable table with instant playback, enqueueing, and like/dislike rating.

@@ -522,3 +522,42 @@ To ensure session management is robust, revocable, offline-friendly, and bounded
    - `npx tsc --noEmit`: Exits with code 0 in `worker/`.
    - `npm run build`: Production frontend build succeeds with zero errors.
 
+---
+
+## [Phase 15] - Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones
+
+### Problem Statement & Architectural Regression
+After the initial authentication persistence hardening, user playlists and tracks were failing to restore from Cloudflare D1 upon re-login. Investigation revealed:
+1. **Destructive Logout Bug**: Logout was wiping user data from local SQLite (`delete_all_user_playlists`, `DELETE FROM playback_history`, `DELETE FROM yearly_stats_archive`), conflicting with local-first desktop player principles where logout must only terminate session access without destroying stored application data.
+2. **Missing Deletion Distinctions**: Absence of a playlist or track locally was indistinguishable from an intentional deletion, risking remote data wipeout during reconciliation.
+3. **Song Rating Sync Issues**: Worker D1 queries used `MAX(song_stats.manual_like, excluded.manual_like)`, preventing dislikes (`-1`) and neutral unliking (`0`) from syncing. Additionally, rated songs not added to any playlist were not collected into sync payloads.
+4. **Serde Deserialization Mismatch**: Cloudflare Worker returned object or null representations for `user_stats` and `user_settings`, while client previously expected arrays, failing payload deserialization.
+
+### Changes & Architecture Improvements
+1. **Non-Destructive Logout & Access Gating**:
+   - Reverted destructive SQL deletions in `Logout`, `LogoutAll`, and startup token checks.
+   - Preserved all local user playlists, playlist tracks, track statistics, and play history across logouts.
+   - Access-gated `Query::GetPlaylists`: Unauthenticated users receive algorithmic Smart Mixes only; authenticated users receive their personal playlists and cloud-synced items.
+2. **Deterministic Synchronization Flow (Pull -> Reconcile -> Push)**:
+   - Established deterministic sequence: On startup/login -> establish `ActiveUser` -> `GET /api/sync` (Pull) -> Reconcile locally -> `POST /api/sync` (Push) -> Clear pushed tombstones -> Emit `Event::PlaylistsUpdated`.
+   - Added structured debug logging at each stage of the sync lifecycle.
+3. **Sync Tombstones (`sync_tombstones` table)**:
+   - Created SQLite migration `20260914000003_sync_tombstones.sql`.
+   - Explicit deletions (`DeletePlaylist`, `RemoveTrackFromPlaylist`) record a tombstone.
+   - Pull reconciliation skips tombstoned items.
+   - Push transmits `deleted_playlists` and `deleted_playlist_songs` to Cloudflare D1, pruning remote rows, and clears local tombstones on success.
+4. **Song Feedback & Rating Sync**:
+   - Updated Worker D1 query to `manual_like = excluded.manual_like`.
+   - `SyncManager::prepare_local_sync_payload` now includes all tracks where `manual_like != 0 OR play_count > 0`, ensuring rated standalone songs sync.
+5. **Serde Resilience**:
+   - Changed `user_stats` and `user_settings` in `SyncPayload` to `Option<serde_json::Value>` with `#[serde(default)]` across all cloud structs, aliased `total_seconds`.
+6. **Frontend Reactive Refresh**:
+   - Wired `Event::PlaylistsUpdated` in `App.tsx` to automatically re-fetch playlists and memberships upon sync completion.
+7. **Cloudflare Worker Deployment**:
+   - Built and deployed updated worker to production (`version 538a04a1-d9e9-40e4-9a77-81a7d54a095d`).
+
+### Verification
+- `cargo test`: All 35 tests pass with 0 failures across all 13 test suites.
+- `npm run build`: Production frontend build succeeds in 1.17s.
+
+

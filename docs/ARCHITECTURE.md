@@ -106,13 +106,6 @@ The `CoreProcessor` is the central orchestrator of the entire system.
   - Timing Discrepancy Defense: Login requests for non-existent users perform a dummy PBKDF2 verification (`DUMMY_HASH`) to prevent timing side-channel attacks and user enumeration. Generic `"Invalid username or password"` responses are strictly enforced.
   - Rate Limiting: D1-backed sliding-window rate limiting on `/api/auth/login` (5 req/min per IP) and `/api/auth/register` (3 req/min per IP) returning HTTP 429 Too Many Requests with `Retry-After`.
   - Input Validation: Server-side validation enforcing 3–50 character alphanumeric/punctuation usernames and 8–128 character passwords.
-### 3.7 Cloud-Backed Authentication & Cloudflare D1 Synchronization
-* **Authoritative Cloud Account System**: Cloudflare Worker (`worker/`) bound to Cloudflare D1 acts as the sole authoritative account system. Dual local password authorities are eliminated; local SQLite never stores or checks password hashes.
-* **Server-Side Security & PBKDF2 600,000 Iterations**:
-  - Hashing: Web Crypto API PBKDF2-HMAC-SHA256 with 600,000 iterations and a cryptographically secure 16-byte random salt per user (exceeding OWASP password hashing recommendations). Web Crypto executes natively in C++ inside Cloudflare Workers V8 isolates with zero WASM/cold-start overhead and predictable resource bounds.
-  - Timing Discrepancy Defense: Login requests for non-existent users perform a dummy PBKDF2 verification (`DUMMY_HASH`) to prevent timing side-channel attacks and user enumeration. Generic `"Invalid username or password"` responses are strictly enforced.
-  - Rate Limiting: D1-backed sliding-window rate limiting on `/api/auth/login` (5 req/min per IP) and `/api/auth/register` (3 req/min per IP) returning HTTP 429 Too Many Requests with `Retry-After`.
-  - Input Validation: Server-side validation enforcing 3–50 character alphanumeric/punctuation usernames and 8–128 character passwords.
 * **Hardened Hybrid Session Architecture**:
   - **Opaque Cryptographic Tokens**: 256-bit cryptographically secure random bearer tokens generated via `crypto.getRandomValues`. The raw token is returned to the client once upon registration/login and is never stored in D1 or SQLite.
   - **D1 Storage**: Stores only SHA-256 hash (`token_hash`) along with session metadata: `id`, `user_id`, `device_id`, `device_name`, `client_version`, `created_at`, `last_used_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at`, `revoked_reason`.
@@ -134,8 +127,16 @@ The `CoreProcessor` is the central orchestrator of the entire system.
 * **Client Session Lifecycle & Offline Continuation**:
   - Strongly typed state machine: `SignedOut`, `Authenticating`, `OnlineAuthenticated`, `OfflineAuthenticated`, `SessionExpired { reason }`, `CloudUnavailable`, `SyncPaused`.
   - An authenticated client device with `authenticated_before = 1` retains offline continuation as `OfflineAuthenticated` when within local `idle_expires_at` and `absolute_expires_at` windows without extending cloud validity offline.
-* **Non-Destructive Logout**: Logging out or session expiry clears credentials and session metadata only. Local playlists, local play stats, and downloaded audio files are strictly preserved.
-* **Selective Synchronization Scope**: Synchronizes essential user entities only: `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
+* **Access Gating & Non-Destructive Logout**:
+  - Authentication strictly governs **access**, not data existence.
+  - Logging out (`Logout`, `LogoutAll`) purges bearer tokens from keyring/fallback storage and resets memory session states (`current_user = None`).
+  - User-owned SQLite data (custom playlists, playlist tracks, track likes/dislikes, play history, listening statistics) is **never deleted** on logout.
+  - UI queries are strictly access-gated: signed-out users receive only algorithmic Smart Mixes; authenticated users receive their personal playlists and cloud-synchronized content.
+* **Deterministic Cloud Synchronization Flow (Pull -> Reconcile -> Push)**:
+  - **Sequence**: On login or startup, the client establishes `ActiveUser`, **Pulls** remote changes first, **Reconciles** them into local SQLite, **Pushes** local modifications and pending tombstones, and emits `Event::PlaylistsUpdated` to trigger reactive frontend refreshes.
+  - **Liked and Disliked Songs**: Synchronizes `manual_like` ratings (`1` = liked, `-1` = disliked, `0` = neutral) across devices. Rated songs (even if not in any playlist) are collected in sync payloads. Worker upserts use `manual_like = excluded.manual_like`, enabling transitions between liked, disliked, and neutral states.
+  - **Sync Tombstones**: Explicit deletions (`DeletePlaylist`, `RemoveTrackFromPlaylist`) record entries in the `sync_tombstones` SQLite table. Local absence without a tombstone never deletes remote data during pull reconciliation. Remote deletions are executed when tombstones are pushed, and tombstones are safely cleared upon confirmed sync acknowledgment.
+  - **Selective Synchronization Scope**: Synchronizes essential user entities only: `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
 
 ---
 
