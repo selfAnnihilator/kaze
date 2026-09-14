@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle,
   Pencil,
+  LogOut,
 } from "lucide-react";
 import { DailyListeningPoint, StatsOverview, UserProfile } from "../../types";
 import { dispatchCommand } from "../../services/api";
@@ -39,6 +40,7 @@ interface StatsViewProps {
   currentUser: UserProfile | null;
   onPlayTrack?: (trackId: string) => void;
   onOpenAuthModal?: () => void;
+  onLogout?: () => void;
   fetchStatsOverview: (year?: number, month?: number) => Promise<StatsOverview | null>;
   refreshTrigger?: number;
   onUpdateUser?: (user: UserProfile) => void;
@@ -48,6 +50,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   currentUser,
   onPlayTrack,
   onOpenAuthModal,
+  onLogout,
   fetchStatsOverview,
   refreshTrigger,
   onUpdateUser,
@@ -469,8 +472,40 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
         </div>
 
-        {/* Guest Auth Button (No external buttons when logged in) */}
-        {!currentUser && (
+        {/* Rightmost Action: Log Out button when logged in, or Sign In / Register when guest */}
+        {currentUser ? (
+          onLogout && (
+            <button
+              onClick={onLogout}
+              title="Log Out"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#f87171",
+                padding: "8px 16px",
+                borderRadius: "10px",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.22)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.12)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
+              }}
+            >
+              <LogOut size={16} />
+              <span>Log Out</span>
+            </button>
+          )
+        ) : (
           <button
             onClick={onOpenAuthModal}
             style={{

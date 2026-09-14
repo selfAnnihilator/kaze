@@ -2337,9 +2337,6 @@ export const App: React.FC = () => {
             setCurrentView(view);
           }}
           unreadNotificationsCount={unreadNotificationsCount}
-          currentUser={currentUser}
-          onOpenAuthModal={() => setIsAuthModalOpen(true)}
-          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
@@ -2551,6 +2548,7 @@ export const App: React.FC = () => {
                   currentUser={currentUser}
                   onPlayTrack={handlePlayTrack}
                   onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                  onLogout={handleLogout}
                   fetchStatsOverview={fetchStatsOverview}
                   refreshTrigger={statsRefreshTrigger}
                   onUpdateUser={(u) => setCurrentUser(u)}
