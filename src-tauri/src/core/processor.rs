@@ -237,14 +237,14 @@ impl CoreProcessor {
         now
     }
 
-    /// Retrieve the configured Cloudflare Worker URL (or fallback to test instance default)
+    /// Retrieve the configured Cloudflare Worker URL (or fallback to production instance default)
     pub async fn get_cloud_worker_url(&self) -> String {
         self.settings_repo
             .get_setting("cloud_sync_url")
             .await
             .ok()
             .flatten()
-            .unwrap_or_else(|| "https://soundflow-test-worker.abhi-atlas-2026.workers.dev".to_string())
+            .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string())
     }
 
     /// Access the internal EventBus handle.

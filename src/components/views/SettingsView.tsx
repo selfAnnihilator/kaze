@@ -51,7 +51,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newFolderPath, setNewFolderPath] = useState("");
   const [addingFolder, setAddingFolder] = useState(false);
   const [workerUrlInput, setWorkerUrlInput] = useState(
-    cloudSyncStatus?.worker_url || "https://soundflow-test-worker.abhi-atlas-2026.workers.dev"
+    cloudSyncStatus?.worker_url || "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
   );
   const [savingUrl, setSavingUrl] = useState(false);
   const [activeSection, setActiveSection] = useState<"folders" | "audio" | "metadata" | "soulseek" | "system" | "cloud">("folders");
@@ -498,7 +498,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={workerUrlInput}
                   onChange={(e) => setWorkerUrlInput(e.target.value)}
-                  placeholder="https://soundflow-test-worker.abhi-atlas-2026.workers.dev"
+                  placeholder="https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
                   style={{
                     flex: 1,
                     padding: "8px 12px",
