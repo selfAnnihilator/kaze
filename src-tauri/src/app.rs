@@ -45,6 +45,10 @@ pub fn run() {
                 let pool = init_db_pool(&db_path)
                     .await
                     .expect("Failed to initialize SQLite pool");
+                let pool_for_repair = pool.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = music_player_backend::recommendations::mixes::repair_legacy_online_tracks(&pool_for_repair).await;
+                });
                 let processor = Arc::new(CoreProcessor::new(pool, config));
 
                 let mut rx = processor.event_bus().subscribe();

@@ -14,6 +14,8 @@ export interface Track {
   sample_rate?: number;
   format: string;
   has_cover_art: number;
+  cover_art_url?: string;
+  preview_url?: string;
   musicbrainz_track_id?: string;
   spotify_id?: string;
   manual_like?: number; // 1 = liked, -1 = disliked, 0 = neutral
@@ -217,7 +219,19 @@ export type Command =
   | { command: "GenerateSmartMix"; payload: { mix_type: string } }
   | { command: "CreatePlaylist"; payload: { name: string; description?: string } }
   | { command: "DeletePlaylist"; payload: { playlist_id: string } }
-  | { command: "AddTrackToPlaylist"; payload: { playlist_id: string; track_id: string } }
+  | {
+      command: "AddTrackToPlaylist";
+      payload: {
+        playlist_id: string;
+        track_id: string;
+        title?: string;
+        artist?: string;
+        album?: string;
+        duration_secs?: number;
+        cover_art_url?: string;
+        preview_url?: string;
+      };
+    }
   | { command: "RemoveTrackFromPlaylist"; payload: { playlist_id: string; track_id: string } }
   | { command: "LikeTrack"; payload: { track_id: string } }
   | { command: "DislikeTrack"; payload: { track_id: string } }

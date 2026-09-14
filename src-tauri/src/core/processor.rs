@@ -424,23 +424,64 @@ impl CoreProcessor {
                 self.playlist_repo.delete_playlist(&playlist_id).await?;
                 Ok(CommandResponse::Ok)
             }
-            Command::AddTrackToPlaylist { playlist_id, track_id } => {
+            Command::AddTrackToPlaylist {
+                playlist_id,
+                track_id,
+                title,
+                artist,
+                album,
+                duration_secs,
+                cover_art_url,
+                preview_url,
+            } => {
                 let track_opt = self.library_service.track_repo().find_by_id(&track_id).await?;
-                if track_opt.is_none() {
-                    let now = chrono::Utc::now().timestamp();
-                    let fake_path = format!("online://{}", track_id);
-                    let _ = sqlx::query(
-                        "INSERT OR IGNORE INTO tracks (id, file_path, file_size, modified_timestamp, title, normalized_title, duration_secs, format, has_cover_art, created_at, updated_at)
-                         VALUES (?, ?, 0, ?, ?, ?, 0.0, 'online', 0, ?, ?)"
+                let needs_online_ensure = match &track_opt {
+                    None => true,
+                    Some(t) => t.title.starts_with("itunes:") || t.title.starts_with("online:") || t.format == "online",
+                };
+
+                if needs_online_ensure {
+                    let is_clean_title = match &title {
+                        Some(t) => !t.trim().is_empty() && !t.starts_with("itunes:") && !t.starts_with("online:"),
+                        None => false,
+                    };
+
+                    let (t_title, t_artist, t_album, t_dur, t_cover, t_prev) = if is_clean_title {
+                        (
+                            title.unwrap_or_default(),
+                            artist,
+                            album,
+                            duration_secs,
+                            cover_art_url,
+                            preview_url,
+                        )
+                    } else {
+                        let ext_opt: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                            "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
+                        )
+                        .bind(&track_id)
+                        .fetch_optional(&self.db_pool)
+                        .await
+                        .ok()
+                        .flatten();
+
+                        if let Some((e_title, e_artist, e_album, e_dur, e_cov, e_prev)) = ext_opt {
+                            (e_title, Some(e_artist), e_album, e_dur, e_cov, e_prev)
+                        } else {
+                            (title.unwrap_or_else(|| track_id.clone()), artist, album, duration_secs, cover_art_url, preview_url)
+                        }
+                    };
+
+                    let _ = crate::recommendations::mixes::ensure_online_track(
+                        &self.db_pool,
+                        &track_id,
+                        if t_title.is_empty() { &track_id } else { &t_title },
+                        t_artist.as_deref(),
+                        t_album.as_deref(),
+                        t_dur,
+                        t_cover.as_deref(),
+                        t_prev.as_deref(),
                     )
-                    .bind(&track_id)
-                    .bind(&fake_path)
-                    .bind(now)
-                    .bind(&track_id)
-                    .bind(&track_id)
-                    .bind(now)
-                    .bind(now)
-                    .execute(&self.db_pool)
                     .await;
                 }
                 self.playlist_repo.add_track(&playlist_id, &track_id, None).await?;
@@ -715,6 +756,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::Playlists(val))
             }
             Query::GetPlaylistTracks { playlist_id } => {
+                let _ = crate::recommendations::mixes::repair_legacy_online_tracks(&self.db_pool).await;
                 let tracks = self.playlist_repo.get_playlist_tracks(&playlist_id).await?;
                 let val: Vec<serde_json::Value> = tracks
                     .into_iter()

@@ -101,6 +101,22 @@ export const App: React.FC = () => {
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const [globalSearchResults, setGlobalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
 
+  // Online / Offline Connectivity State
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
 
   // --- Notification Handlers ---
   const addAppNotification = useCallback(
@@ -631,6 +647,16 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Offline check: Cannot stream online audio without an internet connection
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        addAppNotification(
+          "warning",
+          "No Internet Connection",
+          `Cannot play "${rec.title}". Connect to the internet to stream online songs.`
+        );
+        return;
+      }
+
       // 3. If it's already the active online track, toggle play/pause
       if (onlineAudioRef.current && onlineTrack?.id === rec.external_track_id) {
         if (onlineTrack.isPlaying) {
@@ -789,7 +815,7 @@ export const App: React.FC = () => {
         setOnlineTrack((prev) => (prev ? { ...prev, isPlaying: false, isLoading: false } : null));
       });
     },
-    [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio, handlePlayTrack]
+    [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio, handlePlayTrack, addAppNotification]
   );
 
   const handlePlayPause = async () => {
@@ -1095,7 +1121,14 @@ export const App: React.FC = () => {
       } else {
         await dispatchCommand({
           command: "AddTrackToPlaylist",
-          payload: { playlist_id: playlistId, track_id: trackId },
+          payload: {
+            playlist_id: playlistId,
+            track_id: trackId,
+            title: playlistModalTrack.title,
+            artist: playlistModalTrack.artist,
+            album: playlistModalTrack.album,
+            cover_art_url: playlistModalTrack.cover_art_url,
+          },
         });
         setTrackPlaylistMap((prev) => {
           const current = prev[trackId] || [];
@@ -1121,7 +1154,6 @@ export const App: React.FC = () => {
   };
 
   const handlePlayPlaylist = async (playlistId: string) => {
-    handleStopOnlineAudio();
     setPlayingPlaylistId(playlistId);
     try {
       const res = await executeQuery({
@@ -1130,18 +1162,61 @@ export const App: React.FC = () => {
       });
       const plTracks: Track[] = (res.data as any) || [];
       if (plTracks.length > 0) {
-        await dispatchCommand({ command: "ClearQueue" });
-        await dispatchCommand({
-          command: "PlayTrack",
-          payload: { track_id: plTracks[0].id, source: "playlist" },
-        });
-        for (let i = 1; i < plTracks.length; i++) {
+        const first = plTracks[0];
+        const isOnline =
+          first.format === "online" ||
+          first.file_path?.startsWith("online://") ||
+          first.id.startsWith("itunes:") ||
+          first.id.startsWith("online:");
+
+        if (isOnline) {
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            addAppNotification(
+              "warning",
+              "No Internet Connection",
+              `Cannot play "${first.title}". Connect to the internet to stream online songs.`
+            );
+            return;
+          }
+
+          const rec: DiscoveryRecommendation = {
+            external_track_id: first.id,
+            provider: "online",
+            provider_id: first.id,
+            title: first.title,
+            artist: first.artist_name || "Unknown Artist",
+            album: first.album_title,
+            duration_secs: first.duration_secs || 210,
+            cover_art_url: first.cover_art_url,
+            preview_url: first.preview_url,
+            match_status: "NOT_FOUND",
+            recommendation_reason: "",
+            in_wishlist: false,
+          };
+          await handlePlayOnlineTrack(rec);
+        } else {
+          handleStopOnlineAudio();
+          await dispatchCommand({ command: "ClearQueue" });
           await dispatchCommand({
-            command: "EnqueueTrack",
-            payload: { track_id: plTracks[i].id, play_next: false },
+            command: "PlayTrack",
+            payload: { track_id: first.id, source: "playlist" },
           });
+          for (let i = 1; i < plTracks.length; i++) {
+            const nextTrack = plTracks[i];
+            const nextIsOnline =
+              nextTrack.format === "online" ||
+              nextTrack.file_path?.startsWith("online://") ||
+              nextTrack.id.startsWith("itunes:") ||
+              nextTrack.id.startsWith("online:");
+            if (!nextIsOnline) {
+              await dispatchCommand({
+                command: "EnqueueTrack",
+                payload: { track_id: nextTrack.id, play_next: false },
+              });
+            }
+          }
+          fetchPlaybackState();
         }
-        fetchPlaybackState();
       }
     } catch (err) {
       console.error("Failed to play playlist:", err);
@@ -1179,16 +1254,41 @@ export const App: React.FC = () => {
           payload: { playlist_id: collection.playlistId },
         });
         const plTracks: Track[] = (res.data as any) || [];
-        const items: CollectionTrackItem[] = plTracks.map((t) => ({
-          id: t.id,
-          title: t.title,
-          artist: t.artist_name || "Unknown Artist",
-          album: t.album_title,
-          duration_secs: t.duration_secs,
-          is_downloaded: true,
-          matched_local_track_id: t.id,
-          rawLocalTrack: t,
-        }));
+        const items: CollectionTrackItem[] = plTracks.map((t) => {
+          const isOnline =
+            t.format === "online" ||
+            t.file_path?.startsWith("online://") ||
+            t.id.startsWith("itunes:") ||
+            t.id.startsWith("online:");
+          return {
+            id: t.id,
+            title: t.title,
+            artist: t.artist_name || "Unknown Artist",
+            album: t.album_title,
+            duration_secs: t.duration_secs || 210,
+            cover_art_url: t.cover_art_url,
+            preview_url: t.preview_url,
+            is_downloaded: !isOnline,
+            matched_local_track_id: isOnline ? undefined : t.id,
+            rawLocalTrack: isOnline ? undefined : t,
+            rawRecommendation: isOnline
+              ? {
+                  external_track_id: t.id,
+                  provider: "online",
+                  provider_id: t.id,
+                  title: t.title,
+                  artist: t.artist_name || "Unknown Artist",
+                  album: t.album_title,
+                  duration_secs: t.duration_secs || 210,
+                  cover_art_url: t.cover_art_url,
+                  preview_url: t.preview_url,
+                  match_status: "NOT_FOUND",
+                  recommendation_reason: "",
+                  in_wishlist: false,
+                }
+              : undefined,
+          };
+        });
         setActiveCollection((prev) =>
           prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
         );
@@ -1268,6 +1368,15 @@ export const App: React.FC = () => {
         return;
       }
 
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        addAppNotification(
+          "warning",
+          "No Internet Connection",
+          `Cannot play "${item.title}". Connect to the internet to stream online songs.`
+        );
+        return;
+      }
+
       if (item.rawRecommendation) {
         await handlePlayOnlineTrack(item.rawRecommendation);
         return;
@@ -1290,7 +1399,7 @@ export const App: React.FC = () => {
       };
       await handlePlayOnlineTrack(rec);
     },
-    [playbackState.is_playing, playbackState.current_track, onlineTrack, activeCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayOnlineTrack, fetchPlaybackState]
+    [playbackState.is_playing, playbackState.current_track, onlineTrack, activeCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification]
   );
 
   handlePlayCollectionTrackRef.current = handlePlayCollectionTrack;
@@ -1353,9 +1462,17 @@ export const App: React.FC = () => {
       }
       fetchPlaybackState();
     } else {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        addAppNotification(
+          "warning",
+          "No Internet Connection",
+          `Cannot play "${first.title}". Connect to the internet to stream online songs.`
+        );
+        return;
+      }
       handlePlayCollectionTrack(first);
     }
-  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState]);
+  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState, addAppNotification]);
 
   const handleShuffleCollection = useCallback(async () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -1447,7 +1564,19 @@ export const App: React.FC = () => {
   };
 
   const handleSaveImportedPlaylist = useCallback(
-    async (name: string, trackIds: string[]) => {
+    async (
+      name: string,
+      trackIds: string[],
+      tracksInfo?: Array<{
+        id: string;
+        title?: string;
+        artist?: string;
+        album?: string;
+        duration_secs?: number;
+        cover_art_url?: string;
+        preview_url?: string;
+      }>
+    ) => {
       let targetName = name.trim();
       while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
         const prompted = window.prompt(
@@ -1467,14 +1596,25 @@ export const App: React.FC = () => {
 
       const plRes = await dispatchCommand({
         command: "CreatePlaylist",
-        payload: { name: targetName, description: "Imported from Spotify" },
+        payload: { name: targetName, description: "Saved Collection" },
       });
       const playlistId = (plRes as any)?.data;
       if (playlistId) {
-        for (const tid of trackIds) {
+        for (let i = 0; i < trackIds.length; i++) {
+          const tid = trackIds[i];
+          const info = tracksInfo?.[i];
           await dispatchCommand({
             command: "AddTrackToPlaylist",
-            payload: { playlist_id: playlistId, track_id: tid },
+            payload: {
+              playlist_id: playlistId,
+              track_id: tid,
+              title: info?.title,
+              artist: info?.artist,
+              album: info?.album,
+              duration_secs: info?.duration_secs,
+              cover_art_url: info?.cover_art_url,
+              preview_url: info?.preview_url,
+            },
           });
         }
         fetchPlaylists();
@@ -1503,15 +1643,14 @@ export const App: React.FC = () => {
           targetName = trimmed;
         }
 
-        const localTrackIds = (collection.tracks || [])
-          .filter((t) => t.matched_local_track_id)
-          .map((t) => t.matched_local_track_id as string);
+        const allTracks = collection.tracks || [];
+        const trackIds = allTracks.map((t) => t.matched_local_track_id || t.id);
 
-        if (localTrackIds.length > 0) {
-          await handleSaveImportedPlaylist(targetName, localTrackIds);
+        if (trackIds.length > 0) {
+          await handleSaveImportedPlaylist(targetName, trackIds, allTracks);
         } else {
           await handleCreatePlaylist(targetName, collection.subtitle);
-          alert(`Playlist "${targetName}" created. Tracks can be added as you download them.`);
+          alert(`Playlist "${targetName}" created.`);
         }
       } catch (err) {
         console.error("Failed to save collection to playlists:", err);
@@ -1719,15 +1858,17 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="main-content">
-          {/* Persistent Global Top Search Bar */}
-          <GlobalTopSearchBar
-            searchQuery={globalSearchQuery}
-            setSearchQuery={setGlobalSearchQuery}
-            onSearch={handleGlobalOnlineSearch}
-            onRefresh={handleGlobalRefresh}
-            isSearching={isGlobalSearching}
-            isRefreshing={isGlobalRefreshing}
-          />
+          {/* Persistent Global Top Search Bar (hidden on discovery view when offline) */}
+          {(!activeCollection && currentView === "discovery" && !isOnline) ? null : (
+            <GlobalTopSearchBar
+              searchQuery={globalSearchQuery}
+              setSearchQuery={setGlobalSearchQuery}
+              onSearch={handleGlobalOnlineSearch}
+              onRefresh={handleGlobalRefresh}
+              isSearching={isGlobalSearching}
+              isRefreshing={isGlobalRefreshing}
+            />
+          )}
 
           {activeCollection ? (
             <CollectionDetailView

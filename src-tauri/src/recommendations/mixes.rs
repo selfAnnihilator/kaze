@@ -8,6 +8,179 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 
+pub async fn ensure_online_track(
+    pool: &SqlitePool,
+    id: &str,
+    title: &str,
+    artist: Option<&str>,
+    album: Option<&str>,
+    duration_secs: Option<f64>,
+    cover_art_url: Option<&str>,
+    preview_url: Option<&str>,
+) -> AppResult<()> {
+    let now = chrono::Utc::now().timestamp();
+
+    // 1. Ensure artist exists if given
+    let artist_id = if let Some(a_name) = artist {
+        let clean = a_name.trim();
+        if !clean.is_empty() {
+            let normalized = clean.to_lowercase();
+            if let Some((existing_id,)) = sqlx::query_as::<_, (String,)>(
+                "SELECT id FROM artists WHERE normalized_name = ?"
+            )
+            .bind(&normalized)
+            .fetch_optional(pool)
+            .await
+            .unwrap_or(None) {
+                Some(existing_id)
+            } else {
+                let a_id = uuid::Uuid::new_v4().to_string();
+                let _ = sqlx::query(
+                    "INSERT INTO artists (id, name, normalized_name, created_at)
+                     VALUES (?, ?, ?, ?)"
+                )
+                .bind(&a_id)
+                .bind(clean)
+                .bind(&normalized)
+                .bind(now)
+                .execute(pool)
+                .await;
+                Some(a_id)
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // 2. Ensure album exists if given
+    let album_id = if let Some(al_title) = album {
+        let clean = al_title.trim();
+        if !clean.is_empty() {
+            let normalized = clean.to_lowercase();
+            if let Some((existing_id,)) = sqlx::query_as::<_, (String,)>(
+                "SELECT id FROM albums WHERE normalized_title = ? AND (artist_id IS ? OR artist_id = ?)"
+            )
+            .bind(&normalized)
+            .bind(&artist_id)
+            .bind(&artist_id)
+            .fetch_optional(pool)
+            .await
+            .unwrap_or(None) {
+                Some(existing_id)
+            } else {
+                let al_id = uuid::Uuid::new_v4().to_string();
+                let _ = sqlx::query(
+                    "INSERT INTO albums (id, title, normalized_title, artist_id, created_at)
+                     VALUES (?, ?, ?, ?, ?)"
+                )
+                .bind(&al_id)
+                .bind(clean)
+                .bind(&normalized)
+                .bind(&artist_id)
+                .bind(now)
+                .execute(pool)
+                .await;
+                Some(al_id)
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // 3. Ensure track in external_tracks table
+    let _ = sqlx::query(
+        "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, match_status, created_at)
+         VALUES (?, 'online', ?, ?, ?, ?, ?, ?, ?, 'NOT_FOUND', ?)
+         ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title,
+             artist = excluded.artist,
+             album = excluded.album,
+             duration_secs = excluded.duration_secs,
+             cover_art_url = excluded.cover_art_url,
+             preview_url = excluded.preview_url"
+    )
+    .bind(id)
+    .bind(id)
+    .bind(title)
+    .bind(artist.unwrap_or("Unknown Artist"))
+    .bind(album)
+    .bind(duration_secs)
+    .bind(cover_art_url)
+    .bind(preview_url)
+    .bind(now)
+    .execute(pool)
+    .await;
+
+    // 4. Ensure or update track in tracks table
+    let fake_path = format!("online://{}", id);
+    let dur = match duration_secs {
+        Some(d) if d > 0.0 => d,
+        _ => 210.0,
+    };
+    let has_cov = if cover_art_url.is_some() { 1 } else { 0 };
+
+    let _ = sqlx::query(
+        "INSERT INTO tracks (id, file_path, file_size, modified_timestamp, title, normalized_title, artist_id, album_id, duration_secs, format, has_cover_art, created_at, updated_at)
+         VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, 'online', ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title,
+             normalized_title = excluded.normalized_title,
+             artist_id = COALESCE(excluded.artist_id, tracks.artist_id),
+             album_id = COALESCE(excluded.album_id, tracks.album_id),
+             duration_secs = CASE WHEN excluded.duration_secs > 0 THEN excluded.duration_secs ELSE tracks.duration_secs END,
+             format = 'online',
+             has_cover_art = excluded.has_cover_art,
+             updated_at = excluded.updated_at"
+    )
+    .bind(id)
+    .bind(&fake_path)
+    .bind(now)
+    .bind(title)
+    .bind(title.to_lowercase())
+    .bind(&artist_id)
+    .bind(&album_id)
+    .bind(dur)
+    .bind(has_cov)
+    .bind(now)
+    .bind(now)
+    .execute(pool)
+    .await;
+
+    Ok(())
+}
+
+pub async fn repair_legacy_online_tracks(pool: &SqlitePool) -> AppResult<()> {
+    let rows: Vec<(String, String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+        sqlx::query_as(
+            "SELECT ext.id, ext.title, ext.artist, ext.album, ext.duration_secs, ext.cover_art_url, ext.preview_url
+             FROM external_tracks ext
+             JOIN tracks t ON t.id = ext.id
+             WHERE t.title LIKE 'itunes:%' OR t.title LIKE 'online:%' OR t.artist_id IS NULL OR t.duration_secs = 0.0"
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+    for (id, title, artist, album, duration_secs, cover_art_url, preview_url) in rows {
+        let _ = ensure_online_track(
+            pool,
+            &id,
+            &title,
+            Some(&artist),
+            album.as_deref(),
+            duration_secs,
+            cover_art_url.as_deref(),
+            preview_url.as_deref(),
+        ).await;
+    }
+
+    Ok(())
+}
+
 pub struct SmartMixGenerator {
     pool: SqlitePool,
     playlist_repo: SqlitePlaylistRepository,
@@ -144,15 +317,44 @@ impl SmartMixGenerator {
         Ok(playlist)
     }
 
-    /// Daily mix: 60% high-affinity tracks, 20% forgotten favorites, 20% discovery picks.
+    /// Daily mix: 60% high-affinity tracks, 20% forgotten favorites, 20% discovery & online picks.
     async fn generate_daily_mix(&self) -> AppResult<Vec<String>> {
-        let recs = self.recommender.recommend(30).await?;
+        let recs = self.recommender.recommend(20).await?;
         let mut track_ids = Vec::new();
         let mut seen = HashSet::new();
 
         for r in recs {
             if seen.insert(r.track_id.clone()) {
                 track_ids.push(r.track_id);
+            }
+        }
+
+        // Blend in online discovery songs from external_tracks
+        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
+                 FROM external_tracks
+                 WHERE match_status != 'IGNORE'
+                 ORDER BY RANDOM()
+                 LIMIT 12"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+        for (oid, otitle, oartist, oalbum, odur, ocover, opreview) in online_candidates {
+            if seen.insert(oid.clone()) {
+                let _ = ensure_online_track(
+                    &self.pool,
+                    &oid,
+                    &otitle,
+                    oartist.as_deref(),
+                    oalbum.as_deref(),
+                    odur,
+                    ocover.as_deref(),
+                    opreview.as_deref(),
+                ).await;
+                track_ids.push(oid);
             }
         }
 
@@ -297,18 +499,54 @@ impl SmartMixGenerator {
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        if rows.is_empty() {
+        let mut track_ids = if rows.is_empty() {
             // Fallback: random tracks
-            let fallback: Vec<String> = sqlx::query_scalar(
+            sqlx::query_scalar(
                 "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
             )
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-            return Ok(fallback);
+            .unwrap_or_default()
+        } else {
+            rows
+        };
+
+        let mut seen: HashSet<String> = track_ids.iter().cloned().collect();
+
+        // Blend in online songs for this genre from external_tracks
+        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
+                 FROM external_tracks
+                 WHERE (LOWER(COALESCE(genre, '')) LIKE ? OR LOWER(title) LIKE ? OR LOWER(artist) LIKE ?)
+                   AND match_status != 'IGNORE'
+                 ORDER BY RANDOM()
+                 LIMIT 15"
+            )
+            .bind(&pattern)
+            .bind(&pattern)
+            .bind(&pattern)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+        for (oid, otitle, oartist, oalbum, odur, ocover, opreview) in online_candidates {
+            if seen.insert(oid.clone()) {
+                let _ = ensure_online_track(
+                    &self.pool,
+                    &oid,
+                    &otitle,
+                    oartist.as_deref(),
+                    oalbum.as_deref(),
+                    odur,
+                    ocover.as_deref(),
+                    opreview.as_deref(),
+                ).await;
+                track_ids.push(oid);
+            }
         }
 
-        Ok(rows)
+        Ok(track_ids)
     }
 
     /// Artist mix: tracks by artist, plus related artists sharing genres.
@@ -392,10 +630,10 @@ impl SmartMixGenerator {
         let profile = self.taste_engine.compute_taste_profile().await?;
         let recs = self.recommender.recommend_with_profile(&profile, 50).await?;
 
-        let discovery_tracks: Vec<String> = recs
+        let mut discovery_tracks: Vec<String> = recs
             .into_iter()
             .filter(|r| r.is_discovery)
-            .take(25)
+            .take(20)
             .map(|r| r.track_id)
             .collect();
 
@@ -412,9 +650,40 @@ impl SmartMixGenerator {
             )
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .unwrap_or_default();
 
-            return Ok(fallback);
+            discovery_tracks = fallback;
+        }
+
+        let mut seen: HashSet<String> = discovery_tracks.iter().cloned().collect();
+
+        // Blend in online discovery tracks from external_tracks
+        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
+                 FROM external_tracks
+                 WHERE match_status != 'IGNORE'
+                 ORDER BY RANDOM()
+                 LIMIT 15"
+            )
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+        for (oid, otitle, oartist, oalbum, odur, ocover, opreview) in online_candidates {
+            if seen.insert(oid.clone()) {
+                let _ = ensure_online_track(
+                    &self.pool,
+                    &oid,
+                    &otitle,
+                    oartist.as_deref(),
+                    oalbum.as_deref(),
+                    odur,
+                    ocover.as_deref(),
+                    opreview.as_deref(),
+                ).await;
+                discovery_tracks.push(oid);
+            }
         }
 
         Ok(discovery_tracks)

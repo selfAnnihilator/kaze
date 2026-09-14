@@ -101,6 +101,18 @@ pub enum Command {
     AddTrackToPlaylist {
         playlist_id: String,
         track_id: String,
+        #[serde(default)]
+        title: Option<String>,
+        #[serde(default)]
+        artist: Option<String>,
+        #[serde(default)]
+        album: Option<String>,
+        #[serde(default)]
+        duration_secs: Option<f64>,
+        #[serde(default)]
+        cover_art_url: Option<String>,
+        #[serde(default)]
+        preview_url: Option<String>,
     },
     RemoveTrackFromPlaylist {
         playlist_id: String,

@@ -1,7 +1,31 @@
 use crate::core::error::{AppError, AppResult};
-use crate::database::models::{PlaylistRecord, TrackRecord};
+use crate::database::models::PlaylistRecord;
 use async_trait::async_trait;
-use sqlx::SqlitePool;
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct PlaylistTrackDetail {
+    pub id: String,
+    pub file_path: String,
+    pub file_size: i64,
+    pub modified_timestamp: i64,
+    pub title: String,
+    pub artist_name: Option<String>,
+    pub album_title: Option<String>,
+    pub genre_name: Option<String>,
+    pub track_number: Option<i64>,
+    pub disc_number: Option<i64>,
+    pub year: Option<i64>,
+    pub duration_secs: f64,
+    pub bitrate: Option<i64>,
+    pub sample_rate: Option<i64>,
+    pub format: String,
+    pub has_cover_art: i64,
+    pub cover_art_url: Option<String>,
+    pub preview_url: Option<String>,
+    pub created_at: i64,
+}
 
 #[async_trait]
 pub trait PlaylistRepository: Send + Sync {
@@ -17,7 +41,7 @@ pub trait PlaylistRepository: Send + Sync {
     async fn add_track(&self, playlist_id: &str, track_id: &str, position: Option<i64>) -> AppResult<()>;
     async fn remove_track(&self, playlist_id: &str, track_id: &str) -> AppResult<()>;
     async fn set_tracks(&self, playlist_id: &str, track_ids: &[String]) -> AppResult<()>;
-    async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<TrackRecord>>;
+    async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<PlaylistTrackDetail>>;
     async fn get_track_count(&self, playlist_id: &str) -> AppResult<i64>;
     async fn get_track_playlist_memberships(&self) -> AppResult<std::collections::HashMap<String, Vec<String>>>;
 }
@@ -267,11 +291,25 @@ impl PlaylistRepository for SqlitePlaylistRepository {
         Ok(())
     }
 
-    async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<TrackRecord>> {
-        let tracks = sqlx::query_as::<_, TrackRecord>(
-            "SELECT t.*
+    async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<PlaylistTrackDetail>> {
+        let tracks = sqlx::query_as::<_, PlaylistTrackDetail>(
+            "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp,
+                    CASE WHEN t.title LIKE 'itunes:%' OR t.title LIKE 'online:%' THEN COALESCE(ext.title, t.title) ELSE t.title END as title,
+                    COALESCE(a.name, ext.artist, 'Unknown Artist') as artist_name,
+                    COALESCE(al.title, ext.album) as album_title,
+                    COALESCE(g.name, ext.genre) as genre_name,
+                    t.track_number, t.disc_number, t.year,
+                    CASE WHEN t.duration_secs > 0.0 THEN t.duration_secs ELSE COALESCE(ext.duration_secs, 210.0) END as duration_secs,
+                    t.bitrate, t.sample_rate, t.format, t.has_cover_art,
+                    ext.cover_art_url,
+                    ext.preview_url,
+                    t.created_at
              FROM tracks t
              JOIN playlist_tracks pt ON pt.track_id = t.id
+             LEFT JOIN artists a ON t.artist_id = a.id
+             LEFT JOIN albums al ON t.album_id = al.id
+             LEFT JOIN genres g ON t.genre_id = g.id
+             LEFT JOIN external_tracks ext ON ext.id = t.id
              WHERE pt.playlist_id = ?
              ORDER BY pt.position ASC"
         )
