@@ -22,6 +22,9 @@ impl CloudClient {
         worker_url: &str,
         username: &str,
         password: &str,
+        device_id: Option<&str>,
+        device_name: Option<&str>,
+        client_version: Option<&str>,
     ) -> AppResult<AuthResponse> {
         let url = format!("{}/api/auth/register", worker_url.trim_end_matches('/'));
         let res = self
@@ -30,22 +33,29 @@ impl CloudClient {
             .json(&AuthRequest {
                 username: username.to_string(),
                 password: password.to_string(),
+                device_id: device_id.map(|s| s.to_string()),
+                device_name: device_name.map(|s| s.to_string()),
+                client_version: client_version.map(|s| s.to_string()),
             })
             .send()
             .await
             .map_err(|e| AppError::Network(format!("Failed to connect to cloud auth: {}", e)))?;
 
+        let status = res.status();
         let auth_res: AuthResponse = res
             .json()
             .await
             .map_err(|e| AppError::Network(format!("Invalid response from cloud auth: {}", e)))?;
 
         if !auth_res.success {
-            return Err(AppError::Validation(
-                auth_res
-                    .error
-                    .unwrap_or_else(|| "Registration failed".to_string()),
-            ));
+            let msg = auth_res
+                .error
+                .unwrap_or_else(|| "Registration failed".to_string());
+            if status.is_client_error() {
+                return Err(AppError::Validation(msg));
+            } else {
+                return Err(AppError::Network(msg));
+            }
         }
 
         Ok(auth_res)
@@ -56,6 +66,9 @@ impl CloudClient {
         worker_url: &str,
         username: &str,
         password: &str,
+        device_id: Option<&str>,
+        device_name: Option<&str>,
+        client_version: Option<&str>,
     ) -> AppResult<AuthResponse> {
         let url = format!("{}/api/auth/login", worker_url.trim_end_matches('/'));
         let res = self
@@ -64,22 +77,29 @@ impl CloudClient {
             .json(&AuthRequest {
                 username: username.to_string(),
                 password: password.to_string(),
+                device_id: device_id.map(|s| s.to_string()),
+                device_name: device_name.map(|s| s.to_string()),
+                client_version: client_version.map(|s| s.to_string()),
             })
             .send()
             .await
             .map_err(|e| AppError::Network(format!("Failed to connect to cloud auth: {}", e)))?;
 
+        let status = res.status();
         let auth_res: AuthResponse = res
             .json()
             .await
             .map_err(|e| AppError::Network(format!("Invalid response from cloud auth: {}", e)))?;
 
         if !auth_res.success {
-            return Err(AppError::Validation(
-                auth_res
-                    .error
-                    .unwrap_or_else(|| "Login failed".to_string()),
-            ));
+            let msg = auth_res
+                .error
+                .unwrap_or_else(|| "Login failed".to_string());
+            if status.is_client_error() {
+                return Err(AppError::Validation(msg));
+            } else {
+                return Err(AppError::Network(msg));
+            }
         }
 
         Ok(auth_res)
@@ -96,6 +116,77 @@ impl CloudClient {
         Ok(())
     }
 
+    pub async fn logout_all(&self, worker_url: &str, token: &str) -> AppResult<()> {
+        let url = format!("{}/api/auth/logout-all", worker_url.trim_end_matches('/'));
+        let res = self
+            .client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to connect to logout-all: {}", e)))?;
+
+        let status = res.status();
+        if !status.is_success() {
+            let json: serde_json::Value = res.json().await.unwrap_or_default();
+            let err = json["error"].as_str().unwrap_or("Logout all failed").to_string();
+            return Err(AppError::Validation(err));
+        }
+
+        Ok(())
+    }
+
+    pub async fn list_sessions(&self, worker_url: &str, token: &str) -> AppResult<Vec<SessionInfo>> {
+        let url = format!("{}/api/auth/sessions", worker_url.trim_end_matches('/'));
+        let res = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to list sessions: {}", e)))?;
+
+        let status = res.status();
+        let list_res: SessionListResponse = res
+            .json()
+            .await
+            .map_err(|e| AppError::Network(format!("Invalid response from sessions list: {}", e)))?;
+
+        if !list_res.success {
+            let err = list_res.error.unwrap_or_else(|| "Failed to fetch sessions".to_string());
+            if status.is_client_error() {
+                return Err(AppError::Validation(err));
+            } else {
+                return Err(AppError::Network(err));
+            }
+        }
+
+        Ok(list_res.sessions)
+    }
+
+    pub async fn revoke_session(&self, worker_url: &str, token: &str, session_id: &str) -> AppResult<()> {
+        let url = format!("{}/api/auth/sessions/{}", worker_url.trim_end_matches('/'), session_id);
+        let res = self
+            .client
+            .delete(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to revoke session: {}", e)))?;
+
+        let status = res.status();
+        if !status.is_success() {
+            let json: serde_json::Value = res.json().await.unwrap_or_default();
+            let err = json["error"].as_str().unwrap_or("Failed to revoke session").to_string();
+            if status == reqwest::StatusCode::FORBIDDEN {
+                return Err(AppError::Validation(format!("Forbidden: {}", err)));
+            }
+            return Err(AppError::Validation(err));
+        }
+
+        Ok(())
+    }
+
     pub async fn get_me(&self, worker_url: &str, token: &str) -> AppResult<CloudUser> {
         let url = format!("{}/api/auth/me", worker_url.trim_end_matches('/'));
         let res = self
@@ -106,6 +197,7 @@ impl CloudClient {
             .await
             .map_err(|e| AppError::Network(format!("Failed to connect to cloud auth: {}", e)))?;
 
+        let status = res.status();
         let json: serde_json::Value = res
             .json()
             .await
@@ -116,12 +208,15 @@ impl CloudClient {
                 .map_err(|e| AppError::Network(format!("Failed to parse user profile: {}", e)))?;
             Ok(user)
         } else {
-            Err(AppError::Validation(
-                json["error"]
-                    .as_str()
-                    .unwrap_or("Session invalid")
-                    .to_string(),
-            ))
+            let err_msg = json["error"]
+                .as_str()
+                .unwrap_or("Session invalid")
+                .to_string();
+            if status.is_client_error() {
+                Err(AppError::Validation(err_msg))
+            } else {
+                Err(AppError::Network(err_msg))
+            }
         }
     }
 

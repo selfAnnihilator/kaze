@@ -8,7 +8,10 @@ pub struct SyncManager;
 impl SyncManager {
     pub async fn get_active_session(pool: &SqlitePool) -> AppResult<Option<CloudSessionMetadata>> {
         let record: Option<CloudSessionMetadata> = sqlx::query_as(
-            "SELECT user_id, username, expires_at, worker_url, synced_at, created_at FROM cloud_sessions ORDER BY created_at DESC LIMIT 1"
+            "SELECT user_id, username, session_id, device_id, device_name,
+                    idle_expires_at, absolute_expires_at, last_cloud_validation_at,
+                    worker_url, synced_at, authenticated_before, created_at
+             FROM cloud_sessions ORDER BY created_at DESC LIMIT 1"
         )
         .fetch_optional(pool)
         .await
@@ -19,23 +22,67 @@ impl SyncManager {
 
     pub async fn save_session(pool: &SqlitePool, metadata: &CloudSessionMetadata) -> AppResult<()> {
         sqlx::query(
-            "INSERT INTO cloud_sessions (user_id, username, expires_at, worker_url, synced_at, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)
+            "INSERT INTO cloud_sessions (
+                user_id, username, session_id, device_id, device_name,
+                idle_expires_at, absolute_expires_at, last_cloud_validation_at,
+                worker_url, synced_at, authenticated_before, created_at
+             )
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(user_id) DO UPDATE SET
                  username = excluded.username,
-                 expires_at = excluded.expires_at,
+                 session_id = excluded.session_id,
+                 device_id = excluded.device_id,
+                 device_name = excluded.device_name,
+                 idle_expires_at = excluded.idle_expires_at,
+                 absolute_expires_at = excluded.absolute_expires_at,
+                 last_cloud_validation_at = excluded.last_cloud_validation_at,
                  worker_url = excluded.worker_url,
-                 synced_at = excluded.synced_at"
+                 synced_at = excluded.synced_at,
+                 authenticated_before = excluded.authenticated_before"
         )
         .bind(&metadata.user_id)
         .bind(&metadata.username)
-        .bind(metadata.expires_at)
+        .bind(&metadata.session_id)
+        .bind(&metadata.device_id)
+        .bind(&metadata.device_name)
+        .bind(metadata.idle_expires_at)
+        .bind(metadata.absolute_expires_at)
+        .bind(metadata.last_cloud_validation_at)
         .bind(&metadata.worker_url)
         .bind(metadata.synced_at)
+        .bind(metadata.authenticated_before)
         .bind(metadata.created_at)
         .execute(pool)
         .await
         .map_err(|e| AppError::Database(format!("Failed to save cloud session: {}", e)))?;
+
+        Ok(())
+    }
+
+    pub async fn update_validation_timestamp(pool: &SqlitePool, user_id: &str, timestamp: i64) -> AppResult<()> {
+        sqlx::query("UPDATE cloud_sessions SET last_cloud_validation_at = ? WHERE user_id = ?")
+            .bind(timestamp)
+            .bind(user_id)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to update validation timestamp: {}", e)))?;
+
+        Ok(())
+    }
+
+    pub async fn update_session_expiry(
+        pool: &SqlitePool,
+        user_id: &str,
+        idle_expires_at: i64,
+        absolute_expires_at: i64,
+    ) -> AppResult<()> {
+        sqlx::query("UPDATE cloud_sessions SET idle_expires_at = ?, absolute_expires_at = ? WHERE user_id = ?")
+            .bind(idle_expires_at)
+            .bind(absolute_expires_at)
+            .bind(user_id)
+            .execute(pool)
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to update session expiry: {}", e)))?;
 
         Ok(())
     }
@@ -63,45 +110,12 @@ impl SyncManager {
         Ok(())
     }
 
-    /// Purges all local user-specific data upon logout or invalid session on server.
-    /// Only downloaded songs and local library tracks are preserved.
+    /// Clears session token and local session metadata on logout or revocation.
+    /// In accordance with the local-first security architecture, local songs,
+    /// playlists, statistics, and pending sync data are NOT deleted.
     pub async fn clear_user_local_data(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
         let _ = super::credentials::delete_session_token(user_id);
-
         let _ = sqlx::query("DELETE FROM cloud_sessions WHERE user_id = ?")
-            .bind(user_id)
-            .execute(pool)
-            .await;
-
-        let _ = sqlx::query(
-            "DELETE FROM playlist_tracks WHERE playlist_id IN (
-                SELECT id FROM playlists WHERE user_id = ? OR is_smart_mix = 0
-            )"
-        )
-        .bind(user_id)
-        .execute(pool)
-        .await;
-
-        let _ = sqlx::query("DELETE FROM playlists WHERE user_id = ? OR is_smart_mix = 0")
-            .bind(user_id)
-            .execute(pool)
-            .await;
-
-        let _ = sqlx::query("DELETE FROM playback_history WHERE user_id = ?")
-            .bind(user_id)
-            .execute(pool)
-            .await;
-
-        let _ = sqlx::query("DELETE FROM yearly_stats_archive WHERE user_id = ?")
-            .bind(user_id)
-            .execute(pool)
-            .await;
-
-        let _ = sqlx::query("UPDATE track_statistics SET manual_like = 0")
-            .execute(pool)
-            .await;
-
-        let _ = sqlx::query("DELETE FROM users WHERE id = ?")
             .bind(user_id)
             .execute(pool)
             .await;

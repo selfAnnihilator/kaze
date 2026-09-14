@@ -181,6 +181,10 @@ pub enum Command {
         password: String,
     },
     Logout,
+    LogoutAll,
+    RevokeSession {
+        session_id: String,
+    },
     // --- Cloud Authentication & Sync ---
     SyncCloudData,
     SetCloudServerUrl {

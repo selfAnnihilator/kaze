@@ -248,6 +248,8 @@ export type Command =
   | { command: "SignUp"; payload: { username: string; password: string } }
   | { command: "Login"; payload: { username: string; password: string } }
   | { command: "Logout" }
+  | { command: "LogoutAll" }
+  | { command: "RevokeSession"; payload: { session_id: string } }
   | { command: "SyncCloudData" }
   | { command: "SetCloudServerUrl"; payload: { url: string } }
   | {
@@ -289,14 +291,44 @@ export type Query =
   | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number } }
   | { query: "GetStatsOverview"; payload?: { year?: number; month?: number } }
   | { query: "GetCurrentUser" }
-  | { query: "GetCloudSyncStatus" };
+  | { query: "GetCloudSyncStatus" }
+  | { query: "GetSessionState" }
+  | { query: "ListSessions" };
+
+export type SessionExpiredReason = "idle_timeout" | "absolute_timeout" | "revoked" | "other";
+
+export type AuthSessionState =
+  | { type: "SignedOut" }
+  | { type: "Authenticating" }
+  | { type: "OnlineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string }
+  | { type: "OfflineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string }
+  | { type: "SessionExpired"; reason: SessionExpiredReason }
+  | { type: "CloudUnavailable" }
+  | { type: "SyncPaused" };
+
+export interface SessionInfo {
+  id: string;
+  device_id: string;
+  device_name: string;
+  client_version?: string | null;
+  created_at?: number | null;
+  last_used_at?: number | null;
+  idle_expires_at: number;
+  absolute_expires_at: number;
+  is_current: boolean;
+}
 
 export interface CloudSyncStatus {
   connected: boolean;
   worker_url: string;
   user_id?: string | null;
   username?: string | null;
+  session_id?: string | null;
+  device_name?: string | null;
+  idle_expires_at?: number | null;
+  absolute_expires_at?: number | null;
   last_synced_at?: number | null;
+  session_state?: AuthSessionState | null;
 }
 
 export interface RankedTrackItem {

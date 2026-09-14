@@ -474,3 +474,51 @@ Comprehensive security audit and hardening of the Cloudflare Worker authenticati
 - `cargo test`: All 35 tests pass with 0 failures across 12 test suites.
 - `npx tsc --noEmit` in `worker/`: Exits with code 0.
 - `npm run build`: TypeScript and Vite bundle production build cleanly in 1.12s.
+
+---
+
+## [Phase 14] - Hardened Hybrid Session Management, Multi-Device Revocation & D1 Write Throttling
+
+### Architecture & Hardening Overview
+To ensure session management is robust, revocable, offline-friendly, and bounded for long-running desktop players without write amplification against Cloudflare D1, implemented a complete hybrid session lifecycle:
+
+1. **Hybrid Expiry Logic (Idle Timeout + Absolute Ceiling)**:
+   - **Idle Inactivity Window**: 30 days (`now < idle_expires_at`).
+   - **Hard Absolute Ceiling**: 90 days (`now < absolute_expires_at`).
+   - **Active Revocation**: Requires `revoked_at IS NULL`.
+   - The session terminates when either timeout expires or if explicit revocation occurs.
+
+2. **Server-Side D1 Write Throttling**:
+   - To avoid write amplification and protect D1 limits during continuous playback and sync operations, `last_used_at` and `idle_expires_at` are refreshed at most once every 30 minutes (`now - last_used_at >= 1800`).
+   - The sliding idle expiration is strictly capped: `min(now + 30 days, absolute_expires_at)`.
+
+3. **Opaque Token & Hash Storage**:
+   - Authentication produces 256-bit cryptographically secure random bearer tokens (32 bytes via `crypto.getRandomValues`).
+   - Raw bearer tokens are returned exactly once to the client upon successful authentication.
+   - D1 stores only SHA-256 hashes (`token_hash`) in the `sessions` table.
+   - Client persists raw tokens in native OS credential storage (`keyring` / `0600` file) and stores non-secret session metadata in SQLite `cloud_sessions`.
+
+4. **Device Identity**:
+   - Each desktop installation creates a persistent UUID v4 on first launch (`application_settings` key `"device_id"`).
+   - Inferred friendly OS names ("Linux Desktop", "macOS Laptop", "Windows PC") are attached to remote session records without fingerprinting hardware.
+
+5. **Multi-Device Revocation & Session Management Endpoints**:
+   - `POST /api/auth/logout`: Revokes the current session (`revoked_at = now, revoked_reason = 'user_logout'`).
+   - `POST /api/auth/logout-all`: Revokes all active sessions for the user.
+   - `GET /api/auth/sessions`: Lists active user sessions with `is_current: true` for the active token.
+   - `DELETE /api/auth/sessions/:id`: Revokes a specific session with user ownership validation.
+   - Scheduled cleanup job running on Cloudflare Workers cron to prune revoked/expired sessions older than 30 days.
+
+6. **Client State Machine & Offline Continuation**:
+   - Strongly typed session states: `SignedOut`, `Authenticating`, `OnlineAuthenticated`, `OfflineAuthenticated`, `SessionExpired { reason }`, `CloudUnavailable`, `SyncPaused`.
+   - On startup or offline use, devices with `authenticated_before = 1` and unexpired local timestamps enter `OfflineAuthenticated`, permitting uninterrupted local playback and library organization without extending cloud validity offline.
+
+7. **Strict Non-Destructive Data Preservation**:
+   - User logout, session expiration, and remote revocation delete authentication credentials and session records only.
+   - Local audio files, playlists, play history, and downloads are preserved.
+
+8. **Verification**:
+   - `cargo test`: 34 unit and integration tests passing, including session lifecycle, data preservation, and offline continuation tests.
+   - `npx tsc --noEmit`: Exits with code 0 in `worker/`.
+   - `npm run build`: Production frontend build succeeds with zero errors.
+

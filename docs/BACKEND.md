@@ -167,3 +167,32 @@ Background operations (directory scanning, metadata fetching, taste recalculatio
   1. *Immediate UI tasks* (Command dispatch, playback adjustments) - prioritized latency < 10ms.
   2. *Interactive background tasks* (Local search queries, single-track metadata lookup).
   3. *Batch background tasks* (Recursive directory scanning, rolling statistics aggregation) - yield frequently via `tokio::task::yield_now()` to prevent starving I/O.
+
+---
+
+## 5. Cloud & Session Management Subsystem (`cloud/`)
+
+Located in `src-tauri/src/cloud/`, this subsystem manages cloud authentication, credential protection, and hybrid session lifecycle:
+
+```text
+src-tauri/src/cloud/
+├── mod.rs               // Module root re-exports
+├── client.rs            // CloudClient: HTTP client communicating with Cloudflare Worker
+├── credentials.rs       // Secure OS keyring and 0600 file credential storage
+├── device.rs            // Device ID generation (UUID v4) and OS friendly naming
+├── models.rs            // Data models: CloudUser, SessionInfo, AuthSessionState, SyncPayload
+└── sync_manager.rs      // SyncManager: SQLite sync staging, bidirectional push/pull
+```
+
+### 5.1 Hybrid Session Lifecycle Model
+* **Idle Inactivity Timeout**: 30 days (`now < idle_expires_at`).
+* **Absolute Hard Ceiling**: 90 days (`now < absolute_expires_at`).
+* **Server-Side Write Throttling**: The Cloudflare Worker updates `last_used_at` and `idle_expires_at` in D1 at most once every 30 minutes on authenticated traffic, capping D1 writes.
+* **Token Security**: 256-bit cryptographically secure random bearer tokens. The raw bearer token is stored exclusively in OS credential storage (`keyring` / `0600` file) and sent via HTTP `Authorization: Bearer <token>`. The server stores only the SHA-256 hash in D1; local SQLite stores only non-secret metadata.
+* **Multi-Device Revocation**:
+  - `Command::Logout`: Revokes the current session on the Worker.
+  - `Command::LogoutAll`: Revokes all sessions for the authenticated user.
+  - `Command::RevokeSession { session_id }`: Revokes an arbitrary remote session owned by the user.
+  - `Query::ListSessions`: Fetches active user sessions with device names and activity timestamps.
+* **Non-Destructive Operations**: User logout or session revocation never deletes local audio files, playlists, play history, or download tasks. Only authentication tokens and session rows are purged.
+

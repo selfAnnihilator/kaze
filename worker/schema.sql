@@ -8,16 +8,27 @@ CREATE TABLE IF NOT EXISTS users (
     created_at INTEGER NOT NULL
 );
 
--- Sessions store cryptographic SHA-256 hash of token (raw tokens are never stored in D1)
+-- Sessions store cryptographic SHA-256 hash of token with hybrid idle/absolute expiry
 CREATE TABLE IF NOT EXISTS sessions (
-    token_hash TEXT PRIMARY KEY NOT NULL,
+    id TEXT PRIMARY KEY NOT NULL,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    expires_at INTEGER NOT NULL,
-    created_at INTEGER NOT NULL
+    token_hash TEXT UNIQUE NOT NULL,
+    device_id TEXT NOT NULL,
+    device_name TEXT NOT NULL,
+    client_version TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER NOT NULL,
+    idle_expires_at INTEGER NOT NULL,
+    absolute_expires_at INTEGER NOT NULL,
+    revoked_at INTEGER,
+    revoked_reason TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_idle ON sessions(idle_expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_absolute ON sessions(absolute_expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_revoked ON sessions(revoked_at);
 
 -- Rate limiting tracking table for auth abuse mitigation
 CREATE TABLE IF NOT EXISTS auth_rate_limits (

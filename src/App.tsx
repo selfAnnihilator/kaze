@@ -503,6 +503,21 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleLogoutAll = async () => {
+    try {
+      await dispatchCommand({ command: "LogoutAll" });
+      setCurrentUser(null);
+      setPlaylists([]);
+      setTrackPlaylistMap({});
+      setCurrentView("discovery");
+      addAppNotification("info", "All Sessions Revoked", "You have been logged out from all devices successfully.");
+      await fetchPlaylists();
+      await fetchCloudSyncStatus();
+    } catch (err) {
+      console.error("Logout all failed:", err);
+    }
+  };
+
   const fetchStatsOverview = useCallback(
     async (year?: number, month?: number): Promise<StatsOverview | null> => {
       try {
@@ -2520,6 +2535,7 @@ export const App: React.FC = () => {
                   onImportSoulseek={handleImportSoulseekDownloads}
                   onSyncCloud={handleSyncCloud}
                   onSetCloudUrl={handleSetCloudUrl}
+                  onLogoutAll={handleLogoutAll}
                   isScanning={isScanning}
                   isSyncingCloud={isSyncingCloud}
                 />

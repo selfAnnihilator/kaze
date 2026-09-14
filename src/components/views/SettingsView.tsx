@@ -29,6 +29,7 @@ interface SettingsViewProps {
   onImportSoulseek: () => Promise<void>;
   onSyncCloud?: () => Promise<void>;
   onSetCloudUrl?: (url: string) => Promise<void>;
+  onLogoutAll?: () => Promise<void>;
   isScanning?: boolean;
   isSyncingCloud?: boolean;
 }
@@ -45,6 +46,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onImportSoulseek,
   onSyncCloud,
   onSetCloudUrl,
+  onLogoutAll,
   isScanning = false,
   isSyncingCloud = false,
 }) => {
@@ -446,11 +448,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Account Status Card */}
-            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
               <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
                 Cloud Account & Session Status
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px", flexWrap: "wrap" }}>
                 {cloudSyncStatus?.connected ? (
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--success)", fontWeight: 600, fontSize: "0.9rem" }}>
@@ -461,6 +463,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <span style={{ fontSize: "0.88rem", color: "#fff" }}>
                       User: <strong>{cloudSyncStatus.username || cloudSyncStatus.user_id}</strong>
                     </span>
+                    {cloudSyncStatus.device_name && (
+                      <>
+                        <span style={{ color: "var(--text-dim)" }}>•</span>
+                        <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                          Device: {cloudSyncStatus.device_name}
+                        </span>
+                      </>
+                    )}
                   </>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
@@ -469,9 +479,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 )}
               </div>
-              {cloudSyncStatus?.last_synced_at && (
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
-                  Last synchronized: {new Date(cloudSyncStatus.last_synced_at * 1000).toLocaleString()}
+
+              {cloudSyncStatus?.connected && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "4px" }}>
+                  {cloudSyncStatus.idle_expires_at && (
+                    <div>
+                      • <strong>Inactivity Timeout:</strong> 30-day idle window (refreshed up to {new Date(cloudSyncStatus.idle_expires_at * 1000).toLocaleDateString()})
+                    </div>
+                  )}
+                  {cloudSyncStatus.absolute_expires_at && (
+                    <div>
+                      • <strong>Hard Ceiling:</strong> 90-day absolute expiration on {new Date(cloudSyncStatus.absolute_expires_at * 1000).toLocaleDateString()}
+                    </div>
+                  )}
+                  {cloudSyncStatus.last_synced_at && (
+                    <div>
+                      • <strong>Last synchronized:</strong> {new Date(cloudSyncStatus.last_synced_at * 1000).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {cloudSyncStatus?.connected && onLogoutAll && (
+                <div style={{ marginTop: "6px" }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm("Are you sure you want to log out from ALL devices? Your music files, local playlists, and stats will remain safe.")) {
+                        await onLogoutAll();
+                      }
+                    }}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      backgroundColor: "rgba(239, 68, 68, 0.15)",
+                      color: "#f87171",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      fontSize: "0.8rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Log Out of All Devices
+                  </button>
                 </div>
               )}
             </div>

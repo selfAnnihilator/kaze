@@ -5,7 +5,10 @@ use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
-use crate::cloud::{credentials, CloudClient, CloudSessionMetadata, CloudSyncStatus, SyncManager};
+use crate::cloud::{
+    credentials, device, AuthSessionState, CloudClient, CloudSessionMetadata, CloudSyncStatus,
+    CloudUser, SessionExpiredReason, SyncManager,
+};
 use crate::database::repositories::{
     PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
@@ -42,6 +45,7 @@ pub struct CoreProcessor {
     cloud_client: Arc<CloudClient>,
     settings_repo: Arc<SqliteSettingsRepository>,
     current_user: Arc<RwLock<Option<UserProfile>>>,
+    pub session_state: Arc<RwLock<AuthSessionState>>,
     app_start_date: Arc<RwLock<i64>>,
     taste_engine: Arc<TasteProfileEngine>,
     recommender: Arc<LocalRecommender>,
@@ -152,10 +156,12 @@ impl CoreProcessor {
         let cloud_client = Arc::new(CloudClient::new());
         let settings_repo = Arc::new(SqliteSettingsRepository::new(db_pool.clone()));
         let current_user = Arc::new(RwLock::new(None));
+        let session_state = Arc::new(RwLock::new(AuthSessionState::SignedOut));
         let app_start_date = Arc::new(RwLock::new(0));
 
-        // Validate active cloud session on launch, sync with server, and purge if user not on server
+        // Validate active cloud session on launch, sync with server, and enforce hybrid expiry
         let current_user_init = current_user.clone();
+        let session_state_init = session_state.clone();
         let pool_init = db_pool.clone();
         let cloud_client_init = cloud_client.clone();
         let settings_repo_init = settings_repo.clone();
@@ -169,17 +175,36 @@ impl CoreProcessor {
 
             if let Ok(Some(session)) = SyncManager::get_active_session(&pool_init).await {
                 let now = chrono::Utc::now().timestamp();
-                let is_expired = session.expires_at <= now;
                 let token = credentials::get_session_token(&session.user_id);
 
-                // If session expired, token missing, or created for different worker instance, purge immediately
-                if is_expired || token.is_none() || session.worker_url != worker_url {
-                    let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
+                // If session was created for a different worker instance or token missing, reset session
+                if token.is_none() || session.worker_url != worker_url {
+                    let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
                     *current_user_init.write().await = None;
+                    *session_state_init.write().await = AuthSessionState::SignedOut;
+                    return;
+                }
+
+                // Check local absolute expiry (hard 90-day maximum lifetime)
+                if session.absolute_expires_at > 0 && now >= session.absolute_expires_at {
+                    *current_user_init.write().await = None;
+                    *session_state_init.write().await = AuthSessionState::SessionExpired {
+                        reason: SessionExpiredReason::AbsoluteTimeout,
+                    };
+                    return;
+                }
+
+                // Check local idle expiry (30-day inactivity timeout)
+                if session.idle_expires_at > 0 && now >= session.idle_expires_at {
+                    *current_user_init.write().await = None;
+                    *session_state_init.write().await = AuthSessionState::SessionExpired {
+                        reason: SessionExpiredReason::IdleTimeout,
+                    };
                     return;
                 }
 
                 let tok = token.unwrap();
+                *session_state_init.write().await = AuthSessionState::Authenticating;
 
                 // Validate session against authoritative server
                 match cloud_client_init.get_me(&worker_url, &tok).await {
@@ -195,11 +220,18 @@ impl CoreProcessor {
                         .execute(&pool_init)
                         .await;
 
-                        *current_user_init.write().await = Some(UserProfile {
+                        let profile = UserProfile {
                             id: cloud_user.id.clone(),
                             username: cloud_user.username.clone(),
                             created_at: cloud_user.created_at,
-                        });
+                        };
+                        *current_user_init.write().await = Some(profile);
+                        *session_state_init.write().await = AuthSessionState::OnlineAuthenticated {
+                            user: cloud_user.clone(),
+                            session_id: session.session_id.clone(),
+                        };
+
+                        let _ = SyncManager::update_validation_timestamp(&pool_init, &session.user_id, now).await;
 
                         // Automatically sync with server on launch
                         let _ = SyncManager::sync_with_cloud(
@@ -211,29 +243,44 @@ impl CoreProcessor {
                         ).await;
                     }
                     Err(AppError::Validation(_)) => {
-                        // User is not on server or session revoked: clear local user data
-                        let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
+                        // User is revoked on server, expired, or doesn't exist
+                        let _ = credentials::delete_session_token(&session.user_id);
                         *current_user_init.write().await = None;
+                        *session_state_init.write().await = AuthSessionState::SessionExpired {
+                            reason: SessionExpiredReason::Revoked,
+                        };
                     }
                     Err(AppError::Network(_)) => {
-                        // Truly offline with existing active session on current worker: allow offline access
-                        let user_row: Option<(String, String, i64)> = sqlx::query_as(
-                            "SELECT id, username, created_at FROM users WHERE id = ?"
-                        )
-                        .bind(&session.user_id)
-                        .fetch_optional(&pool_init)
-                        .await
-                        .unwrap_or(None);
-
-                        if let Some((id, username, created_at)) = user_row {
-                            *current_user_init.write().await = Some(UserProfile { id, username, created_at });
+                        // Truly offline with existing active session: allow offline continuation
+                        if session.authenticated_before == 1 {
+                            let cloud_user = CloudUser {
+                                id: session.user_id.clone(),
+                                username: session.username.clone(),
+                                created_at: session.created_at,
+                            };
+                            let profile = UserProfile {
+                                id: session.user_id.clone(),
+                                username: session.username.clone(),
+                                created_at: session.created_at,
+                            };
+                            *current_user_init.write().await = Some(profile);
+                            *session_state_init.write().await = AuthSessionState::OfflineAuthenticated {
+                                user: cloud_user,
+                                session_id: session.session_id.clone(),
+                            };
+                        } else {
+                            *current_user_init.write().await = None;
+                            *session_state_init.write().await = AuthSessionState::CloudUnavailable;
                         }
                     }
                     Err(_) => {
-                        let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
                         *current_user_init.write().await = None;
+                        *session_state_init.write().await = AuthSessionState::SignedOut;
                     }
                 }
+            } else {
+                *current_user_init.write().await = None;
+                *session_state_init.write().await = AuthSessionState::SignedOut;
             }
         });
 
@@ -250,6 +297,7 @@ impl CoreProcessor {
             cloud_client,
             settings_repo,
             current_user,
+            session_state,
             app_start_date,
             taste_engine,
             recommender,
@@ -736,14 +784,31 @@ impl CoreProcessor {
                 }
 
                 let worker_url = self.get_cloud_worker_url().await;
-                // Cloud authentication is the sole authority
-                let auth_res = self.cloud_client.register(&worker_url, &trimmed_user, &password).await?;
+                let device_id = device::get_or_create_device_id(&self.db_pool).await?;
+                let device_name = device::get_device_name();
+                let client_ver = device::get_client_version();
+
+                let auth_res = self.cloud_client.register(
+                    &worker_url,
+                    &trimmed_user,
+                    &password,
+                    Some(&device_id),
+                    Some(&device_name),
+                    Some(&client_ver),
+                ).await?;
+
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let profile = UserProfile {
                         id: cloud_user.id.clone(),
                         username: cloud_user.username.clone(),
                         created_at: cloud_user.created_at,
                     };
+
+                    let now = chrono::Utc::now().timestamp();
+                    let session_meta = auth_res.session;
+                    let session_id = session_meta.as_ref().map(|s| s.id.clone()).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                    let idle_expires_at = session_meta.as_ref().map(|s| s.idle_expires_at).unwrap_or(now + 30 * 86400);
+                    let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
 
                     // Cache user locally without storing password hash (hashes strictly server-side)
                     let _ = sqlx::query(
@@ -766,16 +831,26 @@ impl CoreProcessor {
                     let session = CloudSessionMetadata {
                         user_id: profile.id.clone(),
                         username: profile.username.clone(),
-                        expires_at: chrono::Utc::now().timestamp() + 30 * 86400,
+                        session_id: session_id.clone(),
+                        device_id: device_id.clone(),
+                        device_name: device_name.clone(),
+                        idle_expires_at,
+                        absolute_expires_at,
+                        last_cloud_validation_at: Some(now),
                         worker_url: worker_url.clone(),
                         synced_at: None,
-                        created_at: chrono::Utc::now().timestamp(),
+                        authenticated_before: 1,
+                        created_at: now,
                     };
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
                     // Claim guest data locally
                     let _ = self.user_repo.claim_guest_data_for_user(&profile.id).await;
                     *self.current_user.write().await = Some(profile.clone());
+                    *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
+                        user: cloud_user,
+                        session_id,
+                    };
 
                     // Background push to sync existing local playlists/data up to D1
                     let pool_clone = self.db_pool.clone();
@@ -804,14 +879,31 @@ impl CoreProcessor {
                 }
 
                 let worker_url = self.get_cloud_worker_url().await;
-                // Cloud authentication is the sole authority
-                let auth_res = self.cloud_client.login(&worker_url, &trimmed_user, &password).await?;
+                let device_id = device::get_or_create_device_id(&self.db_pool).await?;
+                let device_name = device::get_device_name();
+                let client_ver = device::get_client_version();
+
+                let auth_res = self.cloud_client.login(
+                    &worker_url,
+                    &trimmed_user,
+                    &password,
+                    Some(&device_id),
+                    Some(&device_name),
+                    Some(&client_ver),
+                ).await?;
+
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let profile = UserProfile {
                         id: cloud_user.id.clone(),
                         username: cloud_user.username.clone(),
                         created_at: cloud_user.created_at,
                     };
+
+                    let now = chrono::Utc::now().timestamp();
+                    let session_meta = auth_res.session;
+                    let session_id = session_meta.as_ref().map(|s| s.id.clone()).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                    let idle_expires_at = session_meta.as_ref().map(|s| s.idle_expires_at).unwrap_or(now + 30 * 86400);
+                    let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
 
                     // Upsert local user profile (without password hash)
                     let _ = sqlx::query(
@@ -834,14 +926,24 @@ impl CoreProcessor {
                     let session = CloudSessionMetadata {
                         user_id: profile.id.clone(),
                         username: profile.username.clone(),
-                        expires_at: chrono::Utc::now().timestamp() + 30 * 86400,
+                        session_id: session_id.clone(),
+                        device_id: device_id.clone(),
+                        device_name: device_name.clone(),
+                        idle_expires_at,
+                        absolute_expires_at,
+                        last_cloud_validation_at: Some(now),
                         worker_url: worker_url.clone(),
                         synced_at: None,
-                        created_at: chrono::Utc::now().timestamp(),
+                        authenticated_before: 1,
+                        created_at: now,
                     };
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
                     *self.current_user.write().await = Some(profile.clone());
+                    *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
+                        user: cloud_user,
+                        session_id,
+                    };
 
                     // Background bidirectional sync: pull remote D1 data down to local, then push local
                     let pool_clone = self.db_pool.clone();
@@ -874,9 +976,40 @@ impl CoreProcessor {
                             let _ = client.logout(&worker_url, &tok).await;
                         });
                     }
-                    let _ = SyncManager::clear_user_local_data(&self.db_pool, &user_id).await;
+                    let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
                 }
                 *self.current_user.write().await = None;
+                *self.session_state.write().await = AuthSessionState::SignedOut;
+                Ok(CommandResponse::Ok)
+            }
+            Command::LogoutAll => {
+                let worker_url = self.get_cloud_worker_url().await;
+                if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
+                    let client = self.cloud_client.clone();
+                    let user_id = session.user_id.clone();
+                    let token = credentials::get_session_token(&user_id);
+                    if let Some(tok) = token {
+                        let _ = client.logout_all(&worker_url, &tok).await;
+                    }
+                    let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
+                }
+                *self.current_user.write().await = None;
+                *self.session_state.write().await = AuthSessionState::SignedOut;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RevokeSession { session_id } => {
+                let worker_url = self.get_cloud_worker_url().await;
+                let active = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                if let Some(session) = active {
+                    let token = credentials::get_session_token(&session.user_id)
+                        .ok_or_else(|| AppError::Validation("No active session token".to_string()))?;
+                    self.cloud_client.revoke_session(&worker_url, &token, &session_id).await?;
+                    if session.session_id == session_id {
+                        let _ = SyncManager::delete_session(&self.db_pool, &session.user_id).await;
+                        *self.current_user.write().await = None;
+                        *self.session_state.write().await = AuthSessionState::SignedOut;
+                    }
+                }
                 Ok(CommandResponse::Ok)
             }
             Command::SyncCloudData => {
@@ -886,15 +1019,21 @@ impl CoreProcessor {
                     .ok_or_else(|| AppError::Validation("Not logged in to a cloud account".to_string()))?;
 
                 let now = chrono::Utc::now().timestamp();
-                if session.expires_at <= now {
-                    let _ = credentials::delete_session_token(&session.user_id);
-                    let _ = SyncManager::clear_all_sessions(&self.db_pool).await;
-                    *self.current_user.write().await = None;
+                let is_idle_expired = session.idle_expires_at > 0 && now >= session.idle_expires_at;
+                let is_abs_expired = session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
+                if is_idle_expired || is_abs_expired {
+                    *self.session_state.write().await = AuthSessionState::SessionExpired {
+                        reason: if is_abs_expired {
+                            SessionExpiredReason::AbsoluteTimeout
+                        } else {
+                            SessionExpiredReason::IdleTimeout
+                        },
+                    };
                     return Err(AppError::Validation("Session expired. Please log in again.".to_string()));
                 }
 
                 let token = credentials::get_session_token(&session.user_id)
-                    .ok_or_else(|| AppError::Validation("Session token missing. Please log in again.".to_string()))?;
+                    .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
 
                 // 1. Pull remote data
                 let remote_data = self.cloud_client.pull_sync(&worker_url, &token).await?;
@@ -904,6 +1043,7 @@ impl CoreProcessor {
                 let local_payload = SyncManager::prepare_local_sync_payload(&self.db_pool, &session.user_id).await?;
                 let synced_at = self.cloud_client.push_sync(&worker_url, &token, &local_payload).await?;
                 SyncManager::update_session_synced_at(&self.db_pool, &session.user_id, synced_at).await?;
+                SyncManager::update_validation_timestamp(&self.db_pool, &session.user_id, now).await?;
 
                 Ok(CommandResponse::CloudSyncCompleted { synced_at })
             }
@@ -1512,7 +1652,9 @@ impl CoreProcessor {
                 if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
                     let now = chrono::Utc::now().timestamp();
                     let worker_url = self.get_cloud_worker_url().await;
-                    if session.expires_at > now && session.worker_url == worker_url {
+                    let is_idle_expired = session.idle_expires_at > 0 && now >= session.idle_expires_at;
+                    let is_abs_expired = session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
+                    if !is_idle_expired && !is_abs_expired && session.worker_url == worker_url {
                         if let Some(_tok) = credentials::get_session_token(&session.user_id) {
                             let user_row: Option<(String, String, i64)> = sqlx::query_as(
                                 "SELECT id, username, created_at FROM users WHERE id = ?"
@@ -1537,17 +1679,49 @@ impl CoreProcessor {
                 let worker_url = self.get_cloud_worker_url().await;
                 let session = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
                 let current_user_guard = self.current_user.read().await;
+                let current_state = self.session_state.read().await.clone();
 
                 let status = CloudSyncStatus {
-                    connected: session.is_some(),
+                    connected: session.is_some() && !matches!(current_state, AuthSessionState::SignedOut | AuthSessionState::SessionExpired { .. }),
                     worker_url,
                     user_id: current_user_guard.as_ref().map(|u| u.id.clone()),
                     username: current_user_guard.as_ref().map(|u| u.username.clone()),
+                    session_id: session.as_ref().map(|s| s.session_id.clone()),
+                    device_name: session.as_ref().map(|s| s.device_name.clone()),
+                    idle_expires_at: session.as_ref().map(|s| s.idle_expires_at),
+                    absolute_expires_at: session.as_ref().map(|s| s.absolute_expires_at),
                     last_synced_at: session.and_then(|s| s.synced_at),
+                    session_state: Some(current_state),
                 };
 
                 let val = serde_json::to_value(&status).unwrap_or_default();
                 Ok(QueryResponse::CloudSyncStatus(val))
+            }
+            Query::GetSessionState => {
+                let state = self.session_state.read().await.clone();
+                let val = serde_json::to_value(&state).unwrap_or_default();
+                Ok(QueryResponse::SessionState(val))
+            }
+            Query::ListSessions => {
+                let worker_url = self.get_cloud_worker_url().await;
+                let session = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                if let Some(session) = session {
+                    if let Some(token) = credentials::get_session_token(&session.user_id) {
+                        match self.cloud_client.list_sessions(&worker_url, &token).await {
+                            Ok(sessions) => {
+                                let val: Vec<serde_json::Value> = sessions
+                                    .into_iter()
+                                    .filter_map(|s| serde_json::to_value(s).ok())
+                                    .collect();
+                                return Ok(QueryResponse::Sessions(val));
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to fetch remote sessions: {}", e);
+                            }
+                        }
+                    }
+                }
+                Ok(QueryResponse::Sessions(Vec::new()))
             }
             _ => {
                 warn!(?query, "Query handler routed to fallback");

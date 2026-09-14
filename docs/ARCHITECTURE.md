@@ -106,13 +106,35 @@ The `CoreProcessor` is the central orchestrator of the entire system.
   - Timing Discrepancy Defense: Login requests for non-existent users perform a dummy PBKDF2 verification (`DUMMY_HASH`) to prevent timing side-channel attacks and user enumeration. Generic `"Invalid username or password"` responses are strictly enforced.
   - Rate Limiting: D1-backed sliding-window rate limiting on `/api/auth/login` (5 req/min per IP) and `/api/auth/register` (3 req/min per IP) returning HTTP 429 Too Many Requests with `Retry-After`.
   - Input Validation: Server-side validation enforcing 3–50 character alphanumeric/punctuation usernames and 8–128 character passwords.
-* **Token & Session Architecture**:
-  - Server-Side (D1): Sessions table stores `token_hash TEXT PRIMARY KEY` (SHA-256 hash of the bearer token). Raw bearer tokens are never persisted in D1.
-  - Client-Side (Desktop App): Raw session tokens are stored securely in OS credential storage via `keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service). If OS keyring is unavailable (e.g. headless Linux or locked session), fallback to a private file with restricted permissions (`0600` on Unix) in the application data directory.
-  - Local SQLite (`cloud_sessions`): Stores session metadata only (`user_id`, `username`, `expires_at`, `worker_url`, `synced_at`, `created_at`). Raw tokens are never stored in SQLite.
-* **Local-First Resiliency & Offline Mode**:
-  - An authenticated user continues to use all local features, playback, library management, and stats offline without network connectivity or password re-entry, driven by local session metadata validation (`expires_at > now`).
-  - Network unavailability during login/signup returns clear connectivity errors; the client never silently creates a disconnected local password authority.
+### 3.7 Cloud-Backed Authentication & Cloudflare D1 Synchronization
+* **Authoritative Cloud Account System**: Cloudflare Worker (`worker/`) bound to Cloudflare D1 acts as the sole authoritative account system. Dual local password authorities are eliminated; local SQLite never stores or checks password hashes.
+* **Server-Side Security & PBKDF2 600,000 Iterations**:
+  - Hashing: Web Crypto API PBKDF2-HMAC-SHA256 with 600,000 iterations and a cryptographically secure 16-byte random salt per user (exceeding OWASP password hashing recommendations). Web Crypto executes natively in C++ inside Cloudflare Workers V8 isolates with zero WASM/cold-start overhead and predictable resource bounds.
+  - Timing Discrepancy Defense: Login requests for non-existent users perform a dummy PBKDF2 verification (`DUMMY_HASH`) to prevent timing side-channel attacks and user enumeration. Generic `"Invalid username or password"` responses are strictly enforced.
+  - Rate Limiting: D1-backed sliding-window rate limiting on `/api/auth/login` (5 req/min per IP) and `/api/auth/register` (3 req/min per IP) returning HTTP 429 Too Many Requests with `Retry-After`.
+  - Input Validation: Server-side validation enforcing 3–50 character alphanumeric/punctuation usernames and 8–128 character passwords.
+* **Hardened Hybrid Session Architecture**:
+  - **Opaque Cryptographic Tokens**: 256-bit cryptographically secure random bearer tokens generated via `crypto.getRandomValues`. The raw token is returned to the client once upon registration/login and is never stored in D1 or SQLite.
+  - **D1 Storage**: Stores only SHA-256 hash (`token_hash`) along with session metadata: `id`, `user_id`, `device_id`, `device_name`, `client_version`, `created_at`, `last_used_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at`, `revoked_reason`.
+  - **Hybrid Expiry & Validation**:
+    - **Idle Window**: 30-day inactivity timeout (`now < idle_expires_at`).
+    - **Hard Ceiling**: 90-day absolute expiration from session creation (`now < absolute_expires_at`).
+    - **Revocation**: Strictly requires `revoked_at IS NULL`.
+    - **D1 Write Throttling**: Updates `last_used_at` and `idle_expires_at` in D1 at most once every 30 minutes (`now - last_used_at >= 1800`), sliding the idle timeout forward by `min(now + 30 days, absolute_expires_at)` without write amplification.
+  - **Client-Side Storage**:
+    - Secure OS Keyring: Raw bearer token persisted in native OS credential storage (`keyring` crate) with restricted `0600` file fallback.
+    - Local SQLite (`cloud_sessions`): Stores non-secret metadata only (`session_id`, `device_id`, `device_name`, `idle_expires_at`, `absolute_expires_at`, `last_cloud_validation_at`, `worker_url`).
+  - **Device Identity**: Persistent random UUID v4 generated on first launch (`application_settings` key `"device_id"`) and non-invasive friendly device name derived from the operating system.
+  - **Multi-Device Session Control**:
+    - `POST /api/auth/logout`: Revokes the current session.
+    - `POST /api/auth/logout-all`: Revokes all active sessions for the user.
+    - `GET /api/auth/sessions`: Lists active sessions with `is_current: true` flag.
+    - `DELETE /api/auth/sessions/:id`: Revokes specific session with user ownership validation.
+    - Scheduled background cleanup bounded to prune revoked/expired sessions older than 30 days.
+* **Client Session Lifecycle & Offline Continuation**:
+  - Strongly typed state machine: `SignedOut`, `Authenticating`, `OnlineAuthenticated`, `OfflineAuthenticated`, `SessionExpired { reason }`, `CloudUnavailable`, `SyncPaused`.
+  - An authenticated client device with `authenticated_before = 1` retains offline continuation as `OfflineAuthenticated` when within local `idle_expires_at` and `absolute_expires_at` windows without extending cloud validity offline.
+* **Non-Destructive Logout**: Logging out or session expiry clears credentials and session metadata only. Local playlists, local play stats, and downloaded audio files are strictly preserved.
 * **Selective Synchronization Scope**: Synchronizes essential user entities only: `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
 
 ---

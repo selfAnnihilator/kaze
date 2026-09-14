@@ -24,16 +24,47 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
                 let req_str = String::from_utf8_lossy(&buf[..n]);
                 let first_line = req_str.lines().next().unwrap_or_default();
 
+                let now = chrono::Utc::now().timestamp();
                 let (status, body) = if first_line.contains("/api/auth/register") {
-                    if req_str.contains("johndoe") {
+                    if req_str.contains("sessionuser") {
+                        (200, serde_json::json!({
+                            "success": true,
+                            "user": {
+                                "id": "user_cf_session_test",
+                                "username": "sessionuser",
+                                "created_at": now
+                            },
+                            "token": "bearer_secret_token_session",
+                            "session": {
+                                "id": "sess_cf_session_1",
+                                "device_id": "test_device_uuid",
+                                "device_name": "Test Host",
+                                "client_version": "0.1.0",
+                                "created_at": now,
+                                "last_used_at": now,
+                                "idle_expires_at": now + 30 * 86400,
+                                "absolute_expires_at": now + 90 * 86400
+                            }
+                        }))
+                    } else if req_str.contains("johndoe") {
                         (200, serde_json::json!({
                             "success": true,
                             "user": {
                                 "id": "user_cf_123",
                                 "username": "johndoe",
-                                "created_at": 1700000000
+                                "created_at": now
                             },
-                            "token": "bearer_secret_token_12345"
+                            "token": "bearer_secret_token_12345",
+                            "session": {
+                                "id": "sess_cf_1",
+                                "device_id": "test_device_uuid",
+                                "device_name": "Test Host",
+                                "client_version": "0.1.0",
+                                "created_at": now,
+                                "last_used_at": now,
+                                "idle_expires_at": now + 30 * 86400,
+                                "absolute_expires_at": now + 90 * 86400
+                            }
                         }))
                     } else {
                         (400, serde_json::json!({
@@ -42,15 +73,45 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
                         }))
                     }
                 } else if first_line.contains("/api/auth/login") {
-                    if req_str.contains("secretpassword123") {
+                    if req_str.contains("sessionsecret123") {
+                        (200, serde_json::json!({
+                            "success": true,
+                            "user": {
+                                "id": "user_cf_session_test",
+                                "username": "sessionuser",
+                                "created_at": now
+                            },
+                            "token": "bearer_secret_token_session",
+                            "session": {
+                                "id": "sess_cf_session_1",
+                                "device_id": "test_device_uuid",
+                                "device_name": "Test Host",
+                                "client_version": "0.1.0",
+                                "created_at": now,
+                                "last_used_at": now,
+                                "idle_expires_at": now + 30 * 86400,
+                                "absolute_expires_at": now + 90 * 86400
+                            }
+                        }))
+                    } else if req_str.contains("secretpassword123") {
                         (200, serde_json::json!({
                             "success": true,
                             "user": {
                                 "id": "user_cf_123",
                                 "username": "johndoe",
-                                "created_at": 1700000000
+                                "created_at": now
                             },
-                            "token": "bearer_secret_token_12345"
+                            "token": "bearer_secret_token_12345",
+                            "session": {
+                                "id": "sess_cf_1",
+                                "device_id": "test_device_uuid",
+                                "device_name": "Test Host",
+                                "client_version": "0.1.0",
+                                "created_at": now,
+                                "last_used_at": now,
+                                "idle_expires_at": now + 30 * 86400,
+                                "absolute_expires_at": now + 90 * 86400
+                            }
                         }))
                     } else if req_str.contains("ratelimited") {
                         (429, serde_json::json!({
@@ -63,18 +124,58 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
                             "error": "Invalid username or password"
                         }))
                     }
+                } else if first_line.contains("/api/auth/logout-all") {
+                    (200, serde_json::json!({
+                        "success": true,
+                        "revoked_count": 2
+                    }))
+                } else if first_line.contains("/api/auth/sessions/") && first_line.starts_with("DELETE") {
+                    (200, serde_json::json!({
+                        "success": true
+                    }))
+                } else if first_line.contains("/api/auth/sessions") && first_line.starts_with("GET") {
+                    let sess_id = if req_str.contains("bearer_secret_token_session") {
+                        "sess_cf_session_1"
+                    } else {
+                        "sess_cf_1"
+                    };
+                    (200, serde_json::json!({
+                        "success": true,
+                        "sessions": [
+                            {
+                                "id": sess_id,
+                                "device_id": "test_device_uuid",
+                                "device_name": "Test Host",
+                                "client_version": "0.1.0",
+                                "created_at": now,
+                                "last_used_at": now,
+                                "idle_expires_at": now + 30 * 86400,
+                                "absolute_expires_at": now + 90 * 86400,
+                                "is_current": true
+                            }
+                        ]
+                    }))
                 } else if first_line.contains("/api/auth/logout") {
                     (200, serde_json::json!({
                         "success": true
                     }))
                 } else if first_line.contains("/api/auth/me") {
-                    if req_str.contains("bearer_secret_token_12345") {
+                    if req_str.contains("bearer_secret_token_session") {
+                        (200, serde_json::json!({
+                            "success": true,
+                            "user": {
+                                "id": "user_cf_session_test",
+                                "username": "sessionuser",
+                                "created_at": now
+                            }
+                        }))
+                    } else if req_str.contains("bearer_secret_token_12345") {
                         (200, serde_json::json!({
                             "success": true,
                             "user": {
                                 "id": "user_cf_123",
                                 "username": "johndoe",
-                                "created_at": 1700000000
+                                "created_at": now
                             }
                         }))
                     } else {
@@ -334,4 +435,115 @@ fn test_query_serde_deserialization() {
     let res2: Result<Query, _> = serde_json::from_str(s2);
     assert!(matches!(res2, Ok(Query::GetStatsOverview { year: None, month: None })));
 }
+
+#[tokio::test]
+async fn test_session_management_lifecycle_and_hybrid_expiry() {
+    let (mock_url, _server_handle) = spawn_mock_auth_worker().await;
+    let pool = create_in_memory_pool().await.expect("create db pool");
+    let config = AppConfig::default_with_dirs();
+    let backend = Box::new(MockAudioBackend::new());
+    let processor = CoreProcessor::new_with_backend(pool.clone(), config.clone(), backend);
+
+    processor
+        .dispatch_command(Command::SetCloudServerUrl {
+            url: mock_url.clone(),
+        })
+        .await
+        .expect("set server url");
+
+    // 1. Initial session state should be signed_out
+    let state_res = processor.execute_query(Query::GetSessionState).await.expect("query session state");
+    match state_res {
+        QueryResponse::SessionState(val) => {
+            assert_eq!(val["state"], "signed_out");
+        }
+        _ => panic!("Expected SessionState"),
+    }
+
+    // 2. Login
+    let login_cmd = Command::Login {
+        username: "sessionuser".to_string(),
+        password: "sessionsecret123".to_string(),
+    };
+    processor.dispatch_command(login_cmd).await.expect("login ok");
+
+    // 3. State should now be online_authenticated
+    let state_res = processor.execute_query(Query::GetSessionState).await.expect("query session state");
+    match state_res {
+        QueryResponse::SessionState(val) => {
+            assert_eq!(val["state"], "online_authenticated");
+            assert_eq!(val["payload"]["user"]["username"], "sessionuser");
+            assert_eq!(val["payload"]["session_id"], "sess_cf_session_1");
+        }
+        _ => panic!("Expected SessionState"),
+    }
+
+    // 4. Cloud sync status should reflect session metadata
+    let sync_res = processor.execute_query(Query::GetCloudSyncStatus).await.expect("sync status query");
+    match sync_res {
+        QueryResponse::CloudSyncStatus(val) => {
+            assert_eq!(val["connected"], true);
+            assert_eq!(val["username"], "sessionuser");
+            assert_eq!(val["session_id"], "sess_cf_session_1");
+            assert!(val["idle_expires_at"].as_i64().unwrap() > 0);
+            assert!(val["absolute_expires_at"].as_i64().unwrap() > 0);
+        }
+        _ => panic!("Expected CloudSyncStatus"),
+    }
+
+    // 5. ListSessions query returns active session list
+    let list_res = processor.execute_query(Query::ListSessions).await.expect("list sessions query");
+    match list_res {
+        QueryResponse::Sessions(sessions) => {
+            assert_eq!(sessions.len(), 1);
+            assert_eq!(sessions[0]["id"], "sess_cf_session_1");
+            assert_eq!(sessions[0]["is_current"], true);
+        }
+        _ => panic!("Expected Sessions"),
+    }
+
+    // 6. Data preservation test: create local playlist, then logout all devices
+    let create_pl = Command::CreatePlaylist {
+        name: "Preserved Favorites".to_string(),
+        description: Some("Should survive logout".to_string()),
+    };
+    processor.dispatch_command(create_pl).await.expect("create playlist ok");
+
+    // Verify playlist exists
+    let pl_res = processor.execute_query(Query::GetPlaylists).await.expect("get playlists");
+    match pl_res {
+        QueryResponse::Playlists(pls) => {
+            assert_eq!(pls.len(), 1);
+            assert_eq!(pls[0]["name"], "Preserved Favorites");
+        }
+        _ => panic!("Expected Playlists"),
+    }
+
+    // 7. LogoutAll
+    let logout_all_res = processor.dispatch_command(Command::LogoutAll).await.expect("logout-all ok");
+    assert!(matches!(logout_all_res, CommandResponse::Ok));
+
+    // Session state should now be signed_out
+    let state_after = processor.execute_query(Query::GetSessionState).await.expect("query session state");
+    match state_after {
+        QueryResponse::SessionState(val) => {
+            assert_eq!(val["state"], "signed_out");
+        }
+        _ => panic!("Expected SessionState"),
+    }
+
+    // Secure token must be purged
+    assert!(music_player_backend::cloud::credentials::get_session_token("user_cf_session_test").is_none());
+
+    // CRITICAL REQUIREMENT: User playlists and tracks must NOT be wiped on logout!
+    let pl_after = processor.execute_query(Query::GetPlaylists).await.expect("get playlists after logout");
+    match pl_after {
+        QueryResponse::Playlists(pls) => {
+            assert_eq!(pls.len(), 1, "Playlists must be preserved on logout");
+            assert_eq!(pls[0]["name"], "Preserved Favorites");
+        }
+        _ => panic!("Expected Playlists"),
+    }
+}
+
 

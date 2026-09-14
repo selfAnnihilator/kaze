@@ -113,6 +113,8 @@ pub enum Query {
     },
     GetCurrentUser,
     GetCloudSyncStatus,
+    GetSessionState,
+    ListSessions,
 }
 
 /// Query response wrapper.
@@ -151,5 +153,7 @@ pub enum QueryResponse {
     StatsOverview(serde_json::Value),
     CurrentUser(Option<serde_json::Value>),
     CloudSyncStatus(serde_json::Value),
+    SessionState(serde_json::Value),
+    Sessions(Vec<serde_json::Value>),
     Empty,
 }

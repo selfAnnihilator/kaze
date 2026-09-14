@@ -29,9 +29,25 @@ interface UserRecord {
 
 // Cloudflare Workers maximum supported iteration count for PBKDF2-HMAC-SHA256 (edge ceiling is 100,000)
 const PBKDF2_ITERATIONS = 100000;
-const SESSION_TTL_SECONDS = 30 * 24 * 3600; // 30 days
+const IDLE_TIMEOUT_SECONDS = 30 * 24 * 3600; // 30 days of inactivity
+const ABSOLUTE_TIMEOUT_SECONDS = 90 * 24 * 3600; // 90 days absolute maximum lifetime
+const ACTIVITY_UPDATE_THRESHOLD_SECONDS = 30 * 60; // 30 minutes throttled D1 session activity updates
+const CLEANUP_RETENTION_SECONDS = 30 * 24 * 3600; // Keep revoked/expired records up to 30 days before purge
 const DUMMY_HASH =
   "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000";
+
+export interface AuthenticatedSession {
+  session_id: string;
+  user_id: string;
+  username: string;
+  device_id: string;
+  device_name: string;
+  client_version: string;
+  created_at: number;
+  last_used_at: number;
+  idle_expires_at: number;
+  absolute_expires_at: number;
+}
 
 // --- Helper Functions: Cryptographic Utilities ---
 
@@ -160,11 +176,32 @@ function errorResponse(message: string, status = 400, extraHeaders: Record<strin
   return jsonResponse({ success: false, error: message }, status, extraHeaders);
 }
 
-// Authenticate Bearer token from header by comparing SHA-256 token hash
+// Lightweight periodic cleanup for expired/revoked sessions (> 30 days old)
+async function cleanupExpiredSessions(db: D1Database): Promise<void> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const cutoff = now - CLEANUP_RETENTION_SECONDS;
+    await db
+      .prepare(
+        "DELETE FROM sessions WHERE id IN (" +
+        "  SELECT id FROM sessions WHERE (revoked_at IS NOT NULL AND revoked_at < ?) " +
+        "  OR (idle_expires_at < ? AND absolute_expires_at < ?) LIMIT 50" +
+        ")"
+      )
+      .bind(cutoff, cutoff, cutoff)
+      .run();
+  } catch (e) {
+    // Non-fatal, bounded cleanup
+    console.warn("Session cleanup warning:", e);
+  }
+}
+
+// Authenticate Bearer token from header by comparing SHA-256 token hash against D1
+// Implements 30-day idle expiry, 90-day absolute ceiling, and throttled activity updates
 async function authenticateRequest(
   request: Request,
   db: D1Database
-): Promise<{ user_id: string; username: string } | null> {
+): Promise<AuthenticatedSession | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -176,14 +213,99 @@ async function authenticateRequest(
   const tokenHash = await hashToken(rawToken);
   const now = Math.floor(Date.now() / 1000);
 
-  const session = await db
+  const row = await db
     .prepare(
-      "SELECT s.user_id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token_hash = ? AND s.expires_at > ?"
+      "SELECT s.id, s.user_id, s.token_hash, s.device_id, s.device_name, s.client_version, " +
+      "s.created_at, s.last_used_at, s.idle_expires_at, s.absolute_expires_at, " +
+      "s.revoked_at, s.revoked_reason, u.username " +
+      "FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token_hash = ?"
     )
-    .bind(tokenHash, now)
-    .first<{ user_id: string; username: string }>();
+    .bind(tokenHash)
+    .first<any>();
 
-  return session || null;
+  if (!row) {
+    return null;
+  }
+
+  // Verify session is not revoked
+  if (row.revoked_at !== null && row.revoked_at !== undefined) {
+    return null;
+  }
+
+  // Verify idle expiry has not passed (30 days inactivity)
+  if (now >= row.idle_expires_at) {
+    return null;
+  }
+
+  // Verify absolute expiry has not passed (90 days hard maximum from creation)
+  if (now >= row.absolute_expires_at) {
+    return null;
+  }
+
+  // Throttled activity update: update last_used_at / idle_expires_at at most once every 30 minutes
+  // to prevent excessive D1 writes on routine requests
+  if (now - row.last_used_at >= ACTIVITY_UPDATE_THRESHOLD_SECONDS) {
+    const newIdleExpiresAt = Math.min(now + IDLE_TIMEOUT_SECONDS, row.absolute_expires_at);
+    try {
+      await db
+        .prepare("UPDATE sessions SET last_used_at = ?, idle_expires_at = ? WHERE id = ?")
+        .bind(now, newIdleExpiresAt, row.id)
+        .run();
+      row.last_used_at = now;
+      row.idle_expires_at = newIdleExpiresAt;
+    } catch (e) {
+      console.warn("Failed to throttle-update session activity:", e);
+    }
+  }
+
+  return {
+    session_id: row.id,
+    user_id: row.user_id,
+    username: row.username,
+    device_id: row.device_id,
+    device_name: row.device_name,
+    client_version: row.client_version,
+    created_at: row.created_at,
+    last_used_at: row.last_used_at,
+    idle_expires_at: row.idle_expires_at,
+    absolute_expires_at: row.absolute_expires_at,
+  };
+}
+
+let schemaEnsured = false;
+async function ensureSessionsSchema(db: D1Database): Promise<void> {
+  if (schemaEnsured) return;
+  try {
+    await db.prepare("SELECT idle_expires_at FROM sessions LIMIT 1").first();
+    schemaEnsured = true;
+  } catch {
+    try {
+      await db.prepare("DROP TABLE IF EXISTS sessions").run();
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token_hash TEXT UNIQUE NOT NULL,
+            device_id TEXT NOT NULL,
+            device_name TEXT NOT NULL,
+            client_version TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            last_used_at INTEGER NOT NULL,
+            idle_expires_at INTEGER NOT NULL,
+            absolute_expires_at INTEGER NOT NULL,
+            revoked_at INTEGER,
+            revoked_reason TEXT
+        )
+      `).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_idle ON sessions(idle_expires_at)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_sessions_absolute ON sessions(absolute_expires_at)").run();
+      schemaEnsured = true;
+    } catch (e) {
+      console.warn("Schema initialization notice:", e);
+    }
+  }
 }
 
 export default {
@@ -197,6 +319,8 @@ export default {
         },
       });
     }
+
+    await ensureSessionsSchema(env.DB);
 
     const url = new URL(request.url);
     const path = url.pathname;
@@ -271,15 +395,40 @@ export default {
           .bind(userId, username, passwordHash, now)
           .run();
 
-        // Generate raw token, store only token_hash in D1
+        // Generate raw token (256 bits), store only token_hash in D1
         const rawToken = generateRawToken();
         const tokenHash = await hashToken(rawToken);
-        const expiresAt = now + SESSION_TTL_SECONDS;
+        const sessionId = crypto.randomUUID();
+        const deviceId = typeof body.device_id === "string" && body.device_id.trim()
+          ? body.device_id.trim().slice(0, 100)
+          : crypto.randomUUID();
+        const deviceName = typeof body.device_name === "string" && body.device_name.trim()
+          ? body.device_name.trim().slice(0, 100)
+          : "Desktop Player";
+        const clientVersion = typeof body.client_version === "string" && body.client_version.trim()
+          ? body.client_version.trim().slice(0, 50)
+          : "0.1.0";
+        const idleExpiresAt = now + IDLE_TIMEOUT_SECONDS;
+        const absoluteExpiresAt = now + ABSOLUTE_TIMEOUT_SECONDS;
 
         await env.DB.prepare(
-          "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)"
+          "INSERT INTO sessions (" +
+          "  id, user_id, token_hash, device_id, device_name, client_version, " +
+          "  created_at, last_used_at, idle_expires_at, absolute_expires_at, revoked_at, revoked_reason" +
+          ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)"
         )
-          .bind(tokenHash, userId, expiresAt, now)
+          .bind(
+            sessionId,
+            userId,
+            tokenHash,
+            deviceId,
+            deviceName,
+            clientVersion,
+            now,
+            now,
+            idleExpiresAt,
+            absoluteExpiresAt
+          )
           .run();
 
         return jsonResponse({
@@ -290,6 +439,15 @@ export default {
             created_at: now,
           },
           token: rawToken,
+          session: {
+            id: sessionId,
+            device_id: deviceId,
+            device_name: deviceName,
+            client_version: clientVersion,
+            created_at: now,
+            idle_expires_at: idleExpiresAt,
+            absolute_expires_at: absoluteExpiresAt,
+          },
         });
       }
 
@@ -343,13 +501,41 @@ export default {
         const now = Math.floor(Date.now() / 1000);
         const rawToken = generateRawToken();
         const tokenHash = await hashToken(rawToken);
-        const expiresAt = now + SESSION_TTL_SECONDS;
+        const sessionId = crypto.randomUUID();
+        const deviceId = typeof body.device_id === "string" && body.device_id.trim()
+          ? body.device_id.trim().slice(0, 100)
+          : crypto.randomUUID();
+        const deviceName = typeof body.device_name === "string" && body.device_name.trim()
+          ? body.device_name.trim().slice(0, 100)
+          : "Desktop Player";
+        const clientVersion = typeof body.client_version === "string" && body.client_version.trim()
+          ? body.client_version.trim().slice(0, 50)
+          : "0.1.0";
+        const idleExpiresAt = now + IDLE_TIMEOUT_SECONDS;
+        const absoluteExpiresAt = now + ABSOLUTE_TIMEOUT_SECONDS;
 
         await env.DB.prepare(
-          "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)"
+          "INSERT INTO sessions (" +
+          "  id, user_id, token_hash, device_id, device_name, client_version, " +
+          "  created_at, last_used_at, idle_expires_at, absolute_expires_at, revoked_at, revoked_reason" +
+          ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)"
         )
-          .bind(tokenHash, user.id, expiresAt, now)
+          .bind(
+            sessionId,
+            user.id,
+            tokenHash,
+            deviceId,
+            deviceName,
+            clientVersion,
+            now,
+            now,
+            idleExpiresAt,
+            absoluteExpiresAt
+          )
           .run();
+
+        // Perform lightweight bounded cleanup on login
+        cleanupExpiredSessions(env.DB).catch(() => {});
 
         return jsonResponse({
           success: true,
@@ -359,6 +545,15 @@ export default {
             created_at: user.created_at,
           },
           token: rawToken,
+          session: {
+            id: sessionId,
+            device_id: deviceId,
+            device_name: deviceName,
+            client_version: clientVersion,
+            created_at: now,
+            idle_expires_at: idleExpiresAt,
+            absolute_expires_at: absoluteExpiresAt,
+          },
         });
       }
 
@@ -369,9 +564,94 @@ export default {
           const rawToken = authHeader.substring(7).trim();
           if (rawToken) {
             const tokenHash = await hashToken(rawToken);
-            await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
+            const now = Math.floor(Date.now() / 1000);
+            await env.DB.prepare(
+              "UPDATE sessions SET revoked_at = ?, revoked_reason = 'user_logout' WHERE token_hash = ? AND revoked_at IS NULL"
+            )
+              .bind(now, tokenHash)
+              .run();
           }
         }
+        return jsonResponse({ success: true });
+      }
+
+      // POST /api/auth/logout-all
+      if (path === "/api/auth/logout-all" && request.method === "POST") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare(
+          "UPDATE sessions SET revoked_at = ?, revoked_reason = 'logout_all' WHERE user_id = ? AND revoked_at IS NULL"
+        )
+          .bind(now, session.user_id)
+          .run();
+        return jsonResponse({ success: true });
+      }
+
+      // GET /api/auth/sessions
+      if (path === "/api/auth/sessions" && request.method === "GET") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        const rows = await env.DB.prepare(
+          "SELECT id, device_id, device_name, client_version, created_at, last_used_at, idle_expires_at, absolute_expires_at " +
+          "FROM sessions WHERE user_id = ? AND revoked_at IS NULL AND idle_expires_at > ? AND absolute_expires_at > ? " +
+          "ORDER BY last_used_at DESC"
+        )
+          .bind(session.user_id, now, now)
+          .all();
+
+        const safeSessions = (rows.results || []).map((r: any) => ({
+          id: r.id,
+          device_id: r.device_id,
+          device_name: r.device_name,
+          client_version: r.client_version,
+          created_at: r.created_at,
+          last_used_at: r.last_used_at,
+          idle_expires_at: r.idle_expires_at,
+          absolute_expires_at: r.absolute_expires_at,
+          is_current: r.id === session.session_id,
+        }));
+
+        return jsonResponse({ success: true, sessions: safeSessions });
+      }
+
+      // DELETE /api/auth/sessions/:id
+      if (path.startsWith("/api/auth/sessions/") && request.method === "DELETE") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+        const targetSessionId = path.substring("/api/auth/sessions/".length).trim();
+        if (!targetSessionId) {
+          return errorResponse("Session ID required", 400);
+        }
+
+        const target = await env.DB.prepare(
+          "SELECT id, user_id FROM sessions WHERE id = ?"
+        )
+          .bind(targetSessionId)
+          .first<any>();
+
+        if (!target) {
+          return errorResponse("Session not found", 404);
+        }
+
+        if (target.user_id !== session.user_id) {
+          return errorResponse("Forbidden: cannot revoke another user's session", 403);
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare(
+          "UPDATE sessions SET revoked_at = ?, revoked_reason = 'user_revoked' WHERE id = ?"
+        )
+          .bind(now, targetSessionId)
+          .run();
+
         return jsonResponse({ success: true });
       }
 
@@ -397,6 +677,15 @@ export default {
             id: user.id,
             username: user.username,
             created_at: user.created_at,
+          },
+          session: {
+            id: session.session_id,
+            device_id: session.device_id,
+            device_name: session.device_name,
+            client_version: session.client_version,
+            created_at: session.created_at,
+            idle_expires_at: session.idle_expires_at,
+            absolute_expires_at: session.absolute_expires_at,
           },
         });
       }
@@ -608,6 +897,13 @@ export default {
     } catch (err: any) {
       console.error("Worker error:", err);
       return errorResponse(err.message || "Internal server error", 500);
+    }
+  },
+  async scheduled(_event: any, env: Env, ctx: any): Promise<void> {
+    if (ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(cleanupExpiredSessions(env.DB));
+    } else {
+      await cleanupExpiredSessions(env.DB);
     }
   },
 };

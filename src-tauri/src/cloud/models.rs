@@ -4,9 +4,15 @@ use serde::{Deserialize, Serialize};
 pub struct AuthRequest {
     pub username: String,
     pub password: String,
+    #[serde(default)]
+    pub device_id: Option<String>,
+    #[serde(default)]
+    pub device_name: Option<String>,
+    #[serde(default)]
+    pub client_version: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CloudUser {
     pub id: String,
     pub username: String,
@@ -14,11 +20,68 @@ pub struct CloudUser {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoteSessionMetadata {
+    pub id: String,
+    pub device_id: String,
+    pub device_name: String,
+    #[serde(default)]
+    pub client_version: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<i64>,
+    pub idle_expires_at: i64,
+    pub absolute_expires_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub success: bool,
     pub user: Option<CloudUser>,
     pub token: Option<String>,
+    pub session: Option<RemoteSessionMetadata>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionInfo {
+    pub id: String,
+    pub device_id: String,
+    pub device_name: String,
+    pub client_version: String,
+    pub created_at: i64,
+    pub last_used_at: i64,
+    pub idle_expires_at: i64,
+    pub absolute_expires_at: i64,
+    pub is_current: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionListResponse {
+    pub success: bool,
+    #[serde(default)]
+    pub sessions: Vec<SessionInfo>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionExpiredReason {
+    IdleTimeout,
+    AbsoluteTimeout,
+    Revoked,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "state", content = "payload")]
+#[serde(rename_all = "snake_case")]
+pub enum AuthSessionState {
+    SignedOut,
+    Authenticating,
+    OnlineAuthenticated { user: CloudUser, session_id: String },
+    OfflineAuthenticated { user: CloudUser, session_id: String },
+    SessionExpired { reason: SessionExpiredReason },
+    CloudUnavailable,
+    SyncPaused,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,9 +194,15 @@ pub struct SyncPushResponse {
 pub struct CloudSessionMetadata {
     pub user_id: String,
     pub username: String,
-    pub expires_at: i64,
+    pub session_id: String,
+    pub device_id: String,
+    pub device_name: String,
+    pub idle_expires_at: i64,
+    pub absolute_expires_at: i64,
+    pub last_cloud_validation_at: Option<i64>,
     pub worker_url: String,
     pub synced_at: Option<i64>,
+    pub authenticated_before: i64,
     pub created_at: i64,
 }
 
@@ -143,5 +212,10 @@ pub struct CloudSyncStatus {
     pub worker_url: String,
     pub user_id: Option<String>,
     pub username: Option<String>,
+    pub session_id: Option<String>,
+    pub device_name: Option<String>,
+    pub idle_expires_at: Option<i64>,
+    pub absolute_expires_at: Option<i64>,
     pub last_synced_at: Option<i64>,
+    pub session_state: Option<AuthSessionState>,
 }
