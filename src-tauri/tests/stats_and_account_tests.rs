@@ -67,6 +67,22 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
                     (200, serde_json::json!({
                         "success": true
                     }))
+                } else if first_line.contains("/api/auth/me") {
+                    if req_str.contains("bearer_secret_token_12345") {
+                        (200, serde_json::json!({
+                            "success": true,
+                            "user": {
+                                "id": "user_cf_123",
+                                "username": "johndoe",
+                                "created_at": 1700000000
+                            }
+                        }))
+                    } else {
+                        (401, serde_json::json!({
+                            "success": false,
+                            "error": "Unauthorized"
+                        }))
+                    }
                 } else {
                     (404, serde_json::json!({
                         "success": false,

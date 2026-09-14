@@ -154,27 +154,85 @@ impl CoreProcessor {
         let current_user = Arc::new(RwLock::new(None));
         let app_start_date = Arc::new(RwLock::new(0));
 
-        // Restore active cloud session if present in local SQLite and not expired
+        // Validate active cloud session on launch, sync with server, and purge if user not on server
         let current_user_init = current_user.clone();
         let pool_init = db_pool.clone();
+        let cloud_client_init = cloud_client.clone();
+        let settings_repo_init = settings_repo.clone();
         tokio::spawn(async move {
+            let worker_url = settings_repo_init
+                .get_setting("cloud_sync_url")
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string());
+
             if let Ok(Some(session)) = SyncManager::get_active_session(&pool_init).await {
                 let now = chrono::Utc::now().timestamp();
-                if session.expires_at > now {
-                    let user_row: Option<(String, String, i64)> = sqlx::query_as(
-                        "SELECT id, username, created_at FROM users WHERE id = ?"
-                    )
-                    .bind(&session.user_id)
-                    .fetch_optional(&pool_init)
-                    .await
-                    .unwrap_or(None);
+                let is_expired = session.expires_at <= now;
+                let token = credentials::get_session_token(&session.user_id);
 
-                    if let Some((id, username, created_at)) = user_row {
-                        *current_user_init.write().await = Some(UserProfile { id, username, created_at });
+                // If session expired, token missing, or created for different worker instance, purge immediately
+                if is_expired || token.is_none() || session.worker_url != worker_url {
+                    let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
+                    *current_user_init.write().await = None;
+                    return;
+                }
+
+                let tok = token.unwrap();
+
+                // Validate session against authoritative server
+                match cloud_client_init.get_me(&worker_url, &tok).await {
+                    Ok(cloud_user) => {
+                        let _ = sqlx::query(
+                            "INSERT INTO users (id, username, password_hash, created_at)
+                             VALUES (?, ?, '', ?)
+                             ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                        )
+                        .bind(&cloud_user.id)
+                        .bind(&cloud_user.username)
+                        .bind(cloud_user.created_at)
+                        .execute(&pool_init)
+                        .await;
+
+                        *current_user_init.write().await = Some(UserProfile {
+                            id: cloud_user.id.clone(),
+                            username: cloud_user.username.clone(),
+                            created_at: cloud_user.created_at,
+                        });
+
+                        // Automatically sync with server on launch
+                        let _ = SyncManager::sync_with_cloud(
+                            &pool_init,
+                            &cloud_client_init,
+                            &worker_url,
+                            &cloud_user.id,
+                            &tok,
+                        ).await;
                     }
-                } else {
-                    // Session expired: purge local session metadata and secure token
-                    let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
+                    Err(AppError::Validation(_)) => {
+                        // User is not on server or session revoked: clear local user data
+                        let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
+                        *current_user_init.write().await = None;
+                    }
+                    Err(AppError::Network(_)) => {
+                        // Truly offline with existing active session on current worker: allow offline access
+                        let user_row: Option<(String, String, i64)> = sqlx::query_as(
+                            "SELECT id, username, created_at FROM users WHERE id = ?"
+                        )
+                        .bind(&session.user_id)
+                        .fetch_optional(&pool_init)
+                        .await
+                        .unwrap_or(None);
+
+                        if let Some((id, username, created_at)) = user_row {
+                            *current_user_init.write().await = Some(UserProfile { id, username, created_at });
+                        }
+                    }
+                    Err(_) => {
+                        let _ = SyncManager::clear_user_local_data(&pool_init, &session.user_id).await;
+                        *current_user_init.write().await = None;
+                    }
                 }
             }
         });
@@ -816,8 +874,7 @@ impl CoreProcessor {
                             let _ = client.logout(&worker_url, &tok).await;
                         });
                     }
-                    let _ = credentials::delete_session_token(&user_id);
-                    let _ = SyncManager::clear_all_sessions(&self.db_pool).await;
+                    let _ = SyncManager::clear_user_local_data(&self.db_pool, &user_id).await;
                 }
                 *self.current_user.write().await = None;
                 Ok(CommandResponse::Ok)

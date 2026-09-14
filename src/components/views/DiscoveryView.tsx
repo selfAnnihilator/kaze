@@ -1209,8 +1209,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       }}
     >
 
-      {/* SEPARATE SEARCH SECTION (Relevant results displayed above trending songs) */}
-      {searchResults !== null && (
+      {/* SEPARATE SEARCH SECTION (Displayed exclusively when search results are active) */}
+      {searchResults !== null ? (
         <OnlineSearchResultsSection
           searchQuery={searchQuery}
           searchResults={searchResults}
@@ -1233,9 +1233,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             handleSearchOnline(artist);
           }}
         />
-      )}
-
-      {/* SECTION 1: Trending & Recommended Songs (Always preserved) */}
+      ) : (
+        <>
+          {/* SECTION 1: Trending & Recommended Songs */}
       <div>
         <div
           style={{
@@ -1542,6 +1542,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           ))}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

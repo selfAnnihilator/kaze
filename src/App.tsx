@@ -492,7 +492,10 @@ export const App: React.FC = () => {
     try {
       await dispatchCommand({ command: "Logout" });
       setCurrentUser(null);
-      addAppNotification("info", "Logged Out", "You have signed out of your account.");
+      setPlaylists([]);
+      setTrackPlaylistMap({});
+      setCurrentView("discovery");
+      addAppNotification("info", "User Logged Out", "You have been logged out successfully.");
       await fetchPlaylists();
       await fetchCloudSyncStatus();
     } catch (err) {

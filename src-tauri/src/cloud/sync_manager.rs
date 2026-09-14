@@ -63,6 +63,70 @@ impl SyncManager {
         Ok(())
     }
 
+    /// Purges all local user-specific data upon logout or invalid session on server.
+    /// Only downloaded songs and local library tracks are preserved.
+    pub async fn clear_user_local_data(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
+        let _ = super::credentials::delete_session_token(user_id);
+
+        let _ = sqlx::query("DELETE FROM cloud_sessions WHERE user_id = ?")
+            .bind(user_id)
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query(
+            "DELETE FROM playlist_tracks WHERE playlist_id IN (
+                SELECT id FROM playlists WHERE user_id = ? OR is_smart_mix = 0
+            )"
+        )
+        .bind(user_id)
+        .execute(pool)
+        .await;
+
+        let _ = sqlx::query("DELETE FROM playlists WHERE user_id = ? OR is_smart_mix = 0")
+            .bind(user_id)
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("DELETE FROM playback_history WHERE user_id = ?")
+            .bind(user_id)
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("DELETE FROM yearly_stats_archive WHERE user_id = ?")
+            .bind(user_id)
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("UPDATE track_statistics SET manual_like = 0")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("DELETE FROM users WHERE id = ?")
+            .bind(user_id)
+            .execute(pool)
+            .await;
+
+        Ok(())
+    }
+
+    /// Performs full two-way synchronization with Cloudflare D1
+    pub async fn sync_with_cloud(
+        pool: &SqlitePool,
+        client: &super::client::CloudClient,
+        worker_url: &str,
+        user_id: &str,
+        token: &str,
+    ) -> AppResult<i64> {
+        let remote_data = client.pull_sync(worker_url, token).await?;
+        Self::apply_remote_sync_payload(pool, user_id, &remote_data).await?;
+
+        let local_payload = Self::prepare_local_sync_payload(pool, user_id).await?;
+        let synced_at = client.push_sync(worker_url, token, &local_payload).await?;
+        Self::update_session_synced_at(pool, user_id, synced_at).await?;
+
+        Ok(synced_at)
+    }
+
     pub async fn update_session_synced_at(
         pool: &SqlitePool,
         user_id: &str,
