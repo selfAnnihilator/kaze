@@ -535,12 +535,11 @@ async fn test_session_management_lifecycle_and_hybrid_expiry() {
     // Secure token must be purged
     assert!(music_player_backend::cloud::credentials::get_session_token("user_cf_session_test").is_none());
 
-    // CRITICAL REQUIREMENT: User playlists and tracks must NOT be wiped on logout!
+    // User custom playlists must be cleared locally on logout so they are not visible to signed-out or subsequent users
     let pl_after = processor.execute_query(Query::GetPlaylists).await.expect("get playlists after logout");
     match pl_after {
         QueryResponse::Playlists(pls) => {
-            assert_eq!(pls.len(), 1, "Playlists must be preserved on logout");
-            assert_eq!(pls[0]["name"], "Preserved Favorites");
+            assert!(pls.iter().all(|p| p["is_smart_mix"] == 1), "Custom user playlists must be cleared on logout");
         }
         _ => panic!("Expected Playlists"),
     }

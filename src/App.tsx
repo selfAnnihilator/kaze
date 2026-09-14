@@ -492,7 +492,7 @@ export const App: React.FC = () => {
     try {
       await dispatchCommand({ command: "Logout" });
       setCurrentUser(null);
-      setPlaylists([]);
+      setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
       setTrackPlaylistMap({});
       setCurrentView("discovery");
       addAppNotification("info", "User Logged Out", "You have been logged out successfully.");
@@ -507,7 +507,7 @@ export const App: React.FC = () => {
     try {
       await dispatchCommand({ command: "LogoutAll" });
       setCurrentUser(null);
-      setPlaylists([]);
+      setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
       setTrackPlaylistMap({});
       setCurrentView("discovery");
       addAppNotification("info", "All Sessions Revoked", "You have been logged out from all devices successfully.");
@@ -756,6 +756,33 @@ export const App: React.FC = () => {
           fetchWishlist();
           break;
 
+        case "SessionChanged": {
+          const user = event.payload?.user;
+          if (user) {
+            setCurrentUser(user);
+            fetchPlaylists();
+            fetchTrackPlaylistMemberships();
+            fetchCloudSyncStatus();
+          } else {
+            setCurrentUser(null);
+            setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
+            setTrackPlaylistMap({});
+            fetchCloudSyncStatus();
+          }
+          break;
+        }
+
+        case "UserLoggedOut": {
+          setCurrentUser(null);
+          setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
+          setTrackPlaylistMap({});
+          setCurrentView("discovery");
+          addAppNotification("info", "User Logged Out", "You have been logged out successfully.");
+          fetchPlaylists();
+          fetchCloudSyncStatus();
+          break;
+        }
+
         default:
           break;
       }
@@ -766,7 +793,7 @@ export const App: React.FC = () => {
     return () => {
       if (unlistenFn) unlistenFn();
     };
-  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification]);
+  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification, fetchPlaylists, fetchTrackPlaylistMemberships, fetchCloudSyncStatus]);
 
   // Smooth local playback progression ticker while playing
   useEffect(() => {
@@ -1378,6 +1405,10 @@ export const App: React.FC = () => {
 
   // Playlists & Smart Mixes
   const handleCreatePlaylist = async (name: string, description?: string): Promise<string | null> => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return null;
+    }
     let targetName = name.trim();
     while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
       const prompted = window.prompt(
@@ -2415,6 +2446,8 @@ export const App: React.FC = () => {
                 <PlaylistsView
                   viewMode="playlists"
                   playlists={playlists}
+                  currentUser={currentUser}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
                   activePlaylistId={playingPlaylistId}
                   onSelectPlaylist={() => {}}
                   onPlayPlaylist={handlePlayPlaylist}
@@ -2437,6 +2470,8 @@ export const App: React.FC = () => {
                 <PlaylistsView
                   viewMode="smart_mixes"
                   playlists={playlists}
+                  currentUser={currentUser}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
                   activePlaylistId={playingPlaylistId}
                   onSelectPlaylist={() => {}}
                   onPlayPlaylist={handlePlayPlaylist}

@@ -11,7 +11,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import { Playlist, Track, SpotifyPlaylistImport } from "../../types";
+import { Playlist, Track, SpotifyPlaylistImport, UserProfile } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
 
 interface PlaylistsViewProps {
@@ -32,6 +32,8 @@ interface PlaylistsViewProps {
   onEnqueueTrack: (trackId: string) => void;
   onDequeueTrack?: (trackId: string) => void;
   onOpenCollection?: (collection: CollectionData) => void;
+  currentUser?: UserProfile | null;
+  onOpenAuthModal?: () => void;
 }
 
 export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
@@ -51,6 +53,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onEnqueueTrack,
   onDequeueTrack,
   onOpenCollection,
+  currentUser,
+  onOpenAuthModal,
 }) => {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -82,7 +86,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     seenMixNames.add(key);
     return true;
   });
-  const customPlaylists = playlists.filter((p) => p.is_smart_mix !== 1);
+  const customPlaylists = currentUser ? playlists.filter((p) => p.is_smart_mix !== 1) : [];
 
   const handleSaveMixToUserPlaylist = async (mix: Playlist) => {
     try {
@@ -410,7 +414,33 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
             </div>
           )}
 
-          {customPlaylists.length === 0 ? (
+          {!currentUser ? (
+            <div
+              style={{
+                padding: "50px 20px",
+                borderRadius: "10px",
+                backgroundColor: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                textAlign: "center",
+                color: "var(--text-dim)",
+              }}
+            >
+              <ListMusic size={40} color="var(--text-dim)" style={{ margin: "0 auto 12px" }} />
+              <div style={{ fontWeight: 600, fontSize: "1.05rem", color: "var(--text-main)", marginBottom: "6px" }}>
+                Sign In to Manage Playlists
+              </div>
+              <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
+                Sign in to your account to create, customize, and synchronize your personal playlists across devices.
+              </p>
+              {onOpenAuthModal && (
+                <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+                  <button className="btn btn-primary" onClick={onOpenAuthModal}>
+                    <span>Sign In / Sign Up</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : customPlaylists.length === 0 ? (
             <div
               style={{
                 padding: "50px 20px",

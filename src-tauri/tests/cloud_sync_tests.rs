@@ -110,6 +110,13 @@ async fn test_cloud_sync_payload_and_database_persistence() {
         .await
         .expect("apply remote payload ok");
 
+    // Set active user profile on processor to verify user-scoped playlists
+    *processor.current_user.write().await = Some(music_player_backend::database::repositories::user_repo::UserProfile {
+        id: test_user_id.to_string(),
+        username: "cloud_user".to_string(),
+        created_at: 1700000000,
+    });
+
     // Verify local database now reflects the synced remote playlist and songs
     let playlists_res = processor.execute_query(Query::GetPlaylists).await.expect("query playlists");
     match playlists_res {

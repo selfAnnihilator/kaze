@@ -44,7 +44,7 @@ pub struct CoreProcessor {
     user_repo: Arc<SqliteUserRepository>,
     cloud_client: Arc<CloudClient>,
     settings_repo: Arc<SqliteSettingsRepository>,
-    current_user: Arc<RwLock<Option<UserProfile>>>,
+    pub current_user: Arc<RwLock<Option<UserProfile>>>,
     pub session_state: Arc<RwLock<AuthSessionState>>,
     app_start_date: Arc<RwLock<i64>>,
     taste_engine: Arc<TasteProfileEngine>,
@@ -165,6 +165,7 @@ impl CoreProcessor {
         let pool_init = db_pool.clone();
         let cloud_client_init = cloud_client.clone();
         let settings_repo_init = settings_repo.clone();
+        let event_bus_init = event_bus.clone();
         tokio::spawn(async move {
             let worker_url = settings_repo_init
                 .get_setting("cloud_sync_url")
@@ -180,26 +181,54 @@ impl CoreProcessor {
                 // If session was created for a different worker instance or token missing, reset session
                 if token.is_none() || session.worker_url != worker_url {
                     let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
+                    if let Some(_tok) = token {
+                        let _ = credentials::delete_session_token(&session.user_id);
+                    }
                     *current_user_init.write().await = None;
                     *session_state_init.write().await = AuthSessionState::SignedOut;
+                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
+                    let _ = event_bus_init.publish(Event::UserLoggedOut);
+                    let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
                 }
 
                 // Check local absolute expiry (hard 90-day maximum lifetime)
                 if session.absolute_expires_at > 0 && now >= session.absolute_expires_at {
+                    let _ = credentials::delete_session_token(&session.user_id);
+                    let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
                     *current_user_init.write().await = None;
                     *session_state_init.write().await = AuthSessionState::SessionExpired {
                         reason: SessionExpiredReason::AbsoluteTimeout,
                     };
+                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
+                    let _ = event_bus_init.publish(Event::UserLoggedOut);
+                    let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
                 }
 
                 // Check local idle expiry (30-day inactivity timeout)
                 if session.idle_expires_at > 0 && now >= session.idle_expires_at {
+                    let _ = credentials::delete_session_token(&session.user_id);
+                    let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
                     *current_user_init.write().await = None;
                     *session_state_init.write().await = AuthSessionState::SessionExpired {
                         reason: SessionExpiredReason::IdleTimeout,
                     };
+                    let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
+                    let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
+                    let _ = event_bus_init.publish(Event::UserLoggedOut);
+                    let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     return;
                 }
 
@@ -209,10 +238,14 @@ impl CoreProcessor {
                 // Validate session against authoritative server
                 match cloud_client_init.get_me(&worker_url, &tok).await {
                     Ok(cloud_user) => {
+                        let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
+                            .bind(&cloud_user.username)
+                            .bind(&cloud_user.id)
+                            .execute(&pool_init)
+                            .await;
                         let _ = sqlx::query(
                             "INSERT INTO users (id, username, password_hash, created_at)
-                             VALUES (?, ?, '', ?)
-                             ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                             VALUES (?, ?, '', ?)"
                         )
                         .bind(&cloud_user.id)
                         .bind(&cloud_user.username)
@@ -225,13 +258,23 @@ impl CoreProcessor {
                             username: cloud_user.username.clone(),
                             created_at: cloud_user.created_at,
                         };
-                        *current_user_init.write().await = Some(profile);
+                        *current_user_init.write().await = Some(profile.clone());
                         *session_state_init.write().await = AuthSessionState::OnlineAuthenticated {
                             user: cloud_user.clone(),
                             session_id: session.session_id.clone(),
                         };
 
+                        // Associate any orphan custom playlists with this user
+                        let _ = sqlx::query("UPDATE playlists SET user_id = ? WHERE is_smart_mix = 0 AND (user_id = 'default' OR user_id IS NULL)")
+                            .bind(&cloud_user.id)
+                            .execute(&pool_init)
+                            .await;
+
                         let _ = SyncManager::update_validation_timestamp(&pool_init, &session.user_id, now).await;
+
+                        // Broadcast session change to frontend
+                        let user_val = serde_json::to_value(&profile).ok();
+                        let _ = event_bus_init.publish(Event::SessionChanged { user: user_val });
 
                         // Automatically sync with server on launch
                         let _ = SyncManager::sync_with_cloud(
@@ -243,12 +286,20 @@ impl CoreProcessor {
                         ).await;
                     }
                     Err(AppError::Validation(_)) => {
-                        // User is revoked on server, expired, or doesn't exist
+                        // User is revoked on server, expired, or doesn't exist on server -> clear locally!
                         let _ = credentials::delete_session_token(&session.user_id);
+                        let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
                         *current_user_init.write().await = None;
                         *session_state_init.write().await = AuthSessionState::SessionExpired {
                             reason: SessionExpiredReason::Revoked,
                         };
+                        let _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id IN (SELECT id FROM playlists WHERE is_smart_mix = 0)").execute(&pool_init).await;
+                        let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0").execute(&pool_init).await;
+                        let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&pool_init).await;
+                        let _ = sqlx::query("DELETE FROM playback_history").execute(&pool_init).await;
+                        let _ = sqlx::query("DELETE FROM users").execute(&pool_init).await;
+                        let _ = event_bus_init.publish(Event::UserLoggedOut);
+                        let _ = event_bus_init.publish(Event::SessionChanged { user: None });
                     }
                     Err(AppError::Network(_)) => {
                         // Truly offline with existing active session: allow offline continuation
@@ -263,11 +314,13 @@ impl CoreProcessor {
                                 username: session.username.clone(),
                                 created_at: session.created_at,
                             };
-                            *current_user_init.write().await = Some(profile);
+                            *current_user_init.write().await = Some(profile.clone());
                             *session_state_init.write().await = AuthSessionState::OfflineAuthenticated {
                                 user: cloud_user,
                                 session_id: session.session_id.clone(),
                             };
+                            let user_val = serde_json::to_value(&profile).ok();
+                            let _ = event_bus_init.publish(Event::SessionChanged { user: user_val });
                         } else {
                             *current_user_init.write().await = None;
                             *session_state_init.write().await = AuthSessionState::CloudUnavailable;
@@ -592,7 +645,11 @@ impl CoreProcessor {
                     return Err(AppError::Validation("Playlist name cannot be empty".into()));
                 }
 
-                if let Some(_) = self.playlist_repo.find_by_name(&trimmed_name).await? {
+                let current_user_guard = self.current_user.read().await;
+                let user_id = current_user_guard.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string());
+                drop(current_user_guard);
+
+                if let Some(_) = self.playlist_repo.find_by_name_and_user(&trimmed_name, &user_id).await? {
                     return Err(AppError::Validation(format!(
                         "A playlist named '{}' already exists",
                         trimmed_name
@@ -612,7 +669,21 @@ impl CoreProcessor {
                     created_at: now,
                     updated_at: now,
                 };
-                self.playlist_repo.create_playlist(&record).await?;
+                self.playlist_repo.create_playlist_with_user(&record, &user_id).await?;
+
+                // Background sync if user is logged in
+                let pool_clone = self.db_pool.clone();
+                let client_clone = self.cloud_client.clone();
+                let worker_url = self.get_cloud_worker_url().await;
+                let uid = user_id.clone();
+                tokio::spawn(async move {
+                    if let Some(token) = credentials::get_session_token(&uid) {
+                        if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &uid).await {
+                            let _ = client_clone.push_sync(&worker_url, &token, &payload).await;
+                        }
+                    }
+                });
+
                 Ok(CommandResponse::EntityId(id))
             }
             Command::DeletePlaylist { playlist_id } => {
@@ -810,11 +881,15 @@ impl CoreProcessor {
                     let idle_expires_at = session_meta.as_ref().map(|s| s.idle_expires_at).unwrap_or(now + 30 * 86400);
                     let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
 
-                    // Cache user locally without storing password hash (hashes strictly server-side)
+                    // Upsert local user profile cleanly
+                    let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
+                        .bind(&profile.username)
+                        .bind(&profile.id)
+                        .execute(&self.db_pool)
+                        .await;
                     let _ = sqlx::query(
                         "INSERT INTO users (id, username, password_hash, created_at)
-                         VALUES (?, ?, '', ?)
-                         ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                         VALUES (?, ?, '', ?)"
                     )
                     .bind(&profile.id)
                     .bind(&profile.username)
@@ -844,6 +919,9 @@ impl CoreProcessor {
                     };
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
+                    // Reassign orphan playlists to this user
+                    let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
+
                     // Claim guest data locally
                     let _ = self.user_repo.claim_guest_data_for_user(&profile.id).await;
                     *self.current_user.write().await = Some(profile.clone());
@@ -865,6 +943,7 @@ impl CoreProcessor {
                     });
 
                     let val = serde_json::to_value(&profile).unwrap_or_default();
+                    let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
                     return Ok(CommandResponse::UserProfile(val));
                 }
                 Err(AppError::Validation("Cloud registration did not return user info".to_string()))
@@ -906,10 +985,14 @@ impl CoreProcessor {
                     let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
 
                     // Upsert local user profile (without password hash)
+                    let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
+                        .bind(&profile.username)
+                        .bind(&profile.id)
+                        .execute(&self.db_pool)
+                        .await;
                     let _ = sqlx::query(
                         "INSERT INTO users (id, username, password_hash, created_at)
-                         VALUES (?, ?, '', ?)
-                         ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                         VALUES (?, ?, '', ?)"
                     )
                     .bind(&profile.id)
                     .bind(&profile.username)
@@ -939,6 +1022,9 @@ impl CoreProcessor {
                     };
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
+                    // Reassign orphan playlists to this user
+                    let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
+
                     *self.current_user.write().await = Some(profile.clone());
                     *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
                         user: cloud_user,
@@ -961,6 +1047,7 @@ impl CoreProcessor {
                     });
 
                     let val = serde_json::to_value(&profile).unwrap_or_default();
+                    let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
                     return Ok(CommandResponse::UserProfile(val));
                 }
                 Err(AppError::Validation("Cloud login did not return user info".to_string()))
@@ -977,9 +1064,21 @@ impl CoreProcessor {
                         });
                     }
                     let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
+                    let _ = credentials::delete_session_token(&user_id);
                 }
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
+
+                // Clear all user-related data locally on logout:
+                // Delete user playlists and tracks, user stats, history, and users table row
+                let _ = self.playlist_repo.delete_all_user_playlists(None).await;
+                let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&self.db_pool).await;
+                let _ = sqlx::query("DELETE FROM playback_history").execute(&self.db_pool).await;
+                let _ = sqlx::query("DELETE FROM users").execute(&self.db_pool).await;
+
+                let _ = self.event_bus.publish(Event::UserLoggedOut);
+                let _ = self.event_bus.publish(Event::SessionChanged { user: None });
+
                 Ok(CommandResponse::Ok)
             }
             Command::LogoutAll => {
@@ -992,9 +1091,20 @@ impl CoreProcessor {
                         let _ = client.logout_all(&worker_url, &tok).await;
                     }
                     let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
+                    let _ = credentials::delete_session_token(&user_id);
                 }
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
+
+                // Clear all user-related data locally on logout all
+                let _ = self.playlist_repo.delete_all_user_playlists(None).await;
+                let _ = sqlx::query("DELETE FROM yearly_stats_archive").execute(&self.db_pool).await;
+                let _ = sqlx::query("DELETE FROM playback_history").execute(&self.db_pool).await;
+                let _ = sqlx::query("DELETE FROM users").execute(&self.db_pool).await;
+
+                let _ = self.event_bus.publish(Event::UserLoggedOut);
+                let _ = self.event_bus.publish(Event::SessionChanged { user: None });
+
                 Ok(CommandResponse::Ok)
             }
             Command::RevokeSession { session_id } => {
@@ -1312,7 +1422,12 @@ impl CoreProcessor {
             }
             Query::GetPlaylists => {
                 let _ = self.smart_mix_generator.ensure_default_mixes().await;
-                let playlists = self.playlist_repo.get_all_playlists().await?;
+                let current_user_guard = self.current_user.read().await;
+                let playlists = if let Some(ref u) = *current_user_guard {
+                    self.playlist_repo.get_user_playlists(&u.id).await?
+                } else {
+                    self.playlist_repo.get_smart_mixes().await?
+                };
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
@@ -1536,7 +1651,12 @@ impl CoreProcessor {
                 Ok(QueryResponse::CoverArt(cover_result))
             }
             Query::GetTrackPlaylistMemberships => {
-                let memberships = self.playlist_repo.get_track_playlist_memberships().await?;
+                let current_user_guard = self.current_user.read().await;
+                let memberships = if let Some(ref u) = *current_user_guard {
+                    self.playlist_repo.get_track_playlist_memberships_for_user(&u.id).await?
+                } else {
+                    std::collections::HashMap::new()
+                };
                 let val = serde_json::to_value(&memberships)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::TrackPlaylistMemberships(val))
@@ -1592,41 +1712,29 @@ impl CoreProcessor {
                     }
                 }
 
-                let req = client
-                    .get("https://lrclib.net/api/get")
-                    .header("User-Agent", "MusicPlayerApp/1.0 (https://github.com/local-music-player)")
-                    .query(&params);
-
-                if let Ok(resp) = req.send().await {
-                    if resp.status().is_success() {
-                        if let Ok(val) = resp.json::<serde_json::Value>().await {
-                            return Ok(QueryResponse::Lyrics(Some(val)));
+                match client.get("https://lrclib.net/api/get").query(&params).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        if let Ok(json) = resp.json::<serde_json::Value>().await {
+                            let plain = json.get("plainLyrics").and_then(|v| v.as_str()).map(|s| s.to_string());
+                            let synced = json.get("syncedLyrics").and_then(|v| v.as_str()).map(|s| s.to_string());
+                            let payload = serde_json::json!({
+                                "trackName": title,
+                                "artistName": artist,
+                                "plainLyrics": plain,
+                                "syncedLyrics": synced,
+                            });
+                            return Ok(QueryResponse::Lyrics(Some(payload)));
                         }
                     }
-                }
-
-                // Fallback: LRCLIB search endpoint
-                let search_req = client
-                    .get("https://lrclib.net/api/search")
-                    .header("User-Agent", "MusicPlayerApp/1.0 (https://github.com/local-music-player)")
-                    .query(&[("q", format!("{} {}", artist, title))]);
-
-                if let Ok(resp) = search_req.send().await {
-                    if resp.status().is_success() {
-                        if let Ok(results) = resp.json::<Vec<serde_json::Value>>().await {
-                            if let Some(first) = results.into_iter().next() {
-                                return Ok(QueryResponse::Lyrics(Some(first)));
-                            }
-                        }
-                    }
+                    _ => {}
                 }
 
                 Ok(QueryResponse::Lyrics(None))
             }
             Query::GetStatsOverview { year, month } => {
-                let app_start_date = self.get_or_init_app_start_date().await;
                 let current_user_guard = self.current_user.read().await;
                 let user_id = current_user_guard.as_ref().map(|u| u.id.as_str()).unwrap_or("default");
+                let app_start_date = self.get_or_init_app_start_date().await;
                 let user_joined_date = current_user_guard.as_ref().map(|u| u.created_at).unwrap_or(app_start_date);
                 let weights = self.config.read().await.ranking.clone();
                 let overview = self.stats_repo.get_stats_overview(
@@ -1656,19 +1764,22 @@ impl CoreProcessor {
                     let is_abs_expired = session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
                     if !is_idle_expired && !is_abs_expired && session.worker_url == worker_url {
                         if let Some(_tok) = credentials::get_session_token(&session.user_id) {
-                            let user_row: Option<(String, String, i64)> = sqlx::query_as(
-                                "SELECT id, username, created_at FROM users WHERE id = ?"
-                            )
-                            .bind(&session.user_id)
-                            .fetch_optional(&self.db_pool)
-                            .await
-                            .unwrap_or(None);
-
-                            if let Some((id, username, created_at)) = user_row {
-                                let profile = UserProfile { id, username, created_at };
-                                *self.current_user.write().await = Some(profile.clone());
-                                return Ok(QueryResponse::CurrentUser(serde_json::to_value(&profile).ok()));
-                            }
+                            let profile = UserProfile {
+                                id: session.user_id.clone(),
+                                username: session.username.clone(),
+                                created_at: session.created_at,
+                            };
+                            *self.current_user.write().await = Some(profile.clone());
+                            *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
+                                user: CloudUser {
+                                    id: session.user_id.clone(),
+                                    username: session.username.clone(),
+                                    created_at: session.created_at,
+                                },
+                                session_id: session.session_id.clone(),
+                            };
+                            let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&session.user_id).await;
+                            return Ok(QueryResponse::CurrentUser(serde_json::to_value(&profile).ok()));
                         }
                     }
                 }

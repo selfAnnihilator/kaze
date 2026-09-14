@@ -44,6 +44,12 @@ pub trait PlaylistRepository: Send + Sync {
     async fn get_playlist_tracks(&self, playlist_id: &str) -> AppResult<Vec<PlaylistTrackDetail>>;
     async fn get_track_count(&self, playlist_id: &str) -> AppResult<i64>;
     async fn get_track_playlist_memberships(&self) -> AppResult<std::collections::HashMap<String, Vec<String>>>;
+    async fn create_playlist_with_user(&self, playlist: &PlaylistRecord, user_id: &str) -> AppResult<()>;
+    async fn get_user_playlists(&self, user_id: &str) -> AppResult<Vec<PlaylistRecord>>;
+    async fn find_by_name_and_user(&self, name: &str, user_id: &str) -> AppResult<Option<PlaylistRecord>>;
+    async fn get_track_playlist_memberships_for_user(&self, user_id: &str) -> AppResult<std::collections::HashMap<String, Vec<String>>>;
+    async fn delete_all_user_playlists(&self, user_id: Option<&str>) -> AppResult<()>;
+    async fn reassign_orphan_playlists_to_user(&self, user_id: &str) -> AppResult<()>;
 }
 
 #[derive(Clone)]
@@ -350,5 +356,135 @@ impl PlaylistRepository for SqlitePlaylistRepository {
         }
 
         Ok(map)
+    }
+
+    async fn create_playlist_with_user(&self, playlist: &PlaylistRecord, user_id: &str) -> AppResult<()> {
+        sqlx::query(
+            "INSERT INTO playlists (
+                id, user_id, name, description, is_smart_mix, mix_type,
+                generation_reason, expires_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                user_id = excluded.user_id,
+                name = excluded.name,
+                description = excluded.description,
+                mix_type = excluded.mix_type,
+                generation_reason = excluded.generation_reason,
+                expires_at = excluded.expires_at,
+                updated_at = excluded.updated_at"
+        )
+        .bind(&playlist.id)
+        .bind(user_id)
+        .bind(&playlist.name)
+        .bind(&playlist.description)
+        .bind(playlist.is_smart_mix)
+        .bind(&playlist.mix_type)
+        .bind(&playlist.generation_reason)
+        .bind(playlist.expires_at)
+        .bind(playlist.created_at)
+        .bind(playlist.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn get_user_playlists(&self, user_id: &str) -> AppResult<Vec<PlaylistRecord>> {
+        let playlists = sqlx::query_as::<_, PlaylistRecord>(
+            "SELECT id, name, description, is_smart_mix, mix_type,
+                    generation_reason, expires_at, created_at, updated_at
+             FROM playlists
+             WHERE is_smart_mix = 1 OR user_id = ? OR user_id = 'default'
+             ORDER BY is_smart_mix DESC, updated_at DESC"
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(playlists)
+    }
+
+    async fn find_by_name_and_user(&self, name: &str, user_id: &str) -> AppResult<Option<PlaylistRecord>> {
+        let playlist = sqlx::query_as::<_, PlaylistRecord>(
+            "SELECT id, name, description, is_smart_mix, mix_type,
+                    generation_reason, expires_at, created_at, updated_at
+             FROM playlists
+             WHERE name = ? COLLATE BINARY AND is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')
+             LIMIT 1"
+        )
+        .bind(name)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(playlist)
+    }
+
+    async fn get_track_playlist_memberships_for_user(&self, user_id: &str) -> AppResult<std::collections::HashMap<String, Vec<String>>> {
+        let rows = sqlx::query_as::<_, (String, String)>(
+            "SELECT pt.track_id, pt.playlist_id
+             FROM playlist_tracks pt
+             JOIN playlists p ON p.id = pt.playlist_id
+             WHERE p.is_smart_mix = 0 AND (p.user_id = ? OR p.user_id = 'default')"
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        for (track_id, playlist_id) in rows {
+            map.entry(track_id).or_default().push(playlist_id);
+        }
+
+        Ok(map)
+    }
+
+    async fn delete_all_user_playlists(&self, user_id: Option<&str>) -> AppResult<()> {
+        if let Some(uid) = user_id {
+            let _ = sqlx::query(
+                "DELETE FROM playlist_tracks WHERE playlist_id IN (
+                    SELECT id FROM playlists WHERE is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')
+                )"
+            )
+            .bind(uid)
+            .execute(&self.pool)
+            .await;
+
+            let _ = sqlx::query(
+                "DELETE FROM playlists WHERE is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')"
+            )
+            .bind(uid)
+            .execute(&self.pool)
+            .await;
+        } else {
+            let _ = sqlx::query(
+                "DELETE FROM playlist_tracks WHERE playlist_id IN (
+                    SELECT id FROM playlists WHERE is_smart_mix = 0
+                )"
+            )
+            .execute(&self.pool)
+            .await;
+
+            let _ = sqlx::query("DELETE FROM playlists WHERE is_smart_mix = 0")
+                .execute(&self.pool)
+                .await;
+        }
+
+        Ok(())
+    }
+
+    async fn reassign_orphan_playlists_to_user(&self, user_id: &str) -> AppResult<()> {
+        let _ = sqlx::query(
+            "UPDATE playlists SET user_id = ? WHERE is_smart_mix = 0 AND (user_id = 'default' OR user_id IS NULL)"
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await;
+
+        Ok(())
     }
 }

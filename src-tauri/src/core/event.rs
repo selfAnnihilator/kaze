@@ -120,4 +120,10 @@ pub enum Event {
         task_id: String,
         error: String,
     },
+
+    // --- Auth & Session Lifecycle ---
+    SessionChanged {
+        user: Option<serde_json::Value>,
+    },
+    UserLoggedOut,
 }
