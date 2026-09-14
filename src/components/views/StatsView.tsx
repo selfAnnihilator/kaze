@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calendar,
   Activity,
@@ -15,6 +15,7 @@ import {
   User,
   Loader2,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import { DailyListeningPoint, StatsOverview, UserProfile } from "../../types";
 import { dispatchCommand } from "../../services/api";
@@ -59,6 +60,20 @@ export const StatsView: React.FC<StatsViewProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const avatarContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (avatarContainerRef.current && !avatarContainerRef.current.contains(e.target as Node)) {
+        setShowAvatarMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   const handlePickAvatar = async () => {
     if (!currentUser) {
@@ -185,11 +200,21 @@ export const StatsView: React.FC<StatsViewProps> = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-          {/* Profile Photo / Avatar with Edit Trigger */}
-          <div style={{ position: "relative" }}>
+          {/* Profile Photo / Avatar with Bottom-Left Pencil Edit Trigger */}
+          <div style={{ position: "relative", width: "72px", height: "72px" }} ref={avatarContainerRef}>
             <div
-              onClick={currentUser && !isUploadingAvatar ? handlePickAvatar : undefined}
-              title={currentUser ? "Click to change profile photo (256x256 WebP)" : undefined}
+              onClick={() => {
+                if (!currentUser) {
+                  onOpenAuthModal?.();
+                  return;
+                }
+                if (currentUser.avatar_data_url) {
+                  setShowAvatarMenu((prev) => !prev);
+                } else {
+                  handlePickAvatar();
+                }
+              }}
+              title={currentUser ? (currentUser.avatar_data_url ? "Click to manage photo" : "Click to upload photo") : undefined}
               style={{
                 width: "72px",
                 height: "72px",
@@ -227,34 +252,148 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 <User size={36} color="rgba(255, 255, 255, 0.5)" />
               )}
 
-              {/* Hover / Uploading overlay */}
-              {currentUser && (
+              {/* Uploading overlay */}
+              {isUploadingAvatar && (
                 <div
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: isUploadingAvatar ? "rgba(0, 0, 0, 0.75)" : "rgba(0, 0, 0, 0.45)",
+                    background: "rgba(0, 0, 0, 0.75)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    opacity: isUploadingAvatar ? 1 : 0,
-                    transition: "opacity 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isUploadingAvatar) e.currentTarget.style.opacity = "1";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isUploadingAvatar) e.currentTarget.style.opacity = "0";
                   }}
                 >
-                  {isUploadingAvatar ? (
-                    <Loader2 size={24} className="animate-spin" color="#c084fc" />
-                  ) : (
-                    <Camera size={22} color="#fff" />
-                  )}
+                  <Loader2 size={24} className="animate-spin" color="#c084fc" />
                 </div>
               )}
             </div>
+
+            {/* Pencil Icon Edit Button at Bottom-Left of Profile Circle */}
+            {currentUser && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentUser.avatar_data_url) {
+                    setShowAvatarMenu((prev) => !prev);
+                  } else {
+                    handlePickAvatar();
+                  }
+                }}
+                disabled={isUploadingAvatar}
+                title={currentUser.avatar_data_url ? "Edit or remove profile photo" : "Upload profile photo"}
+                style={{
+                  position: "absolute",
+                  bottom: "-2px",
+                  left: "-2px",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  background: "#8b5cf6",
+                  border: "2.5px solid #141328",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: isUploadingAvatar ? "not-allowed" : "pointer",
+                  color: "#fff",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
+                  transition: "all 0.15s ease",
+                  padding: 0,
+                  zIndex: 10,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isUploadingAvatar) e.currentTarget.style.background = "#7c3aed";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isUploadingAvatar) e.currentTarget.style.background = "#8b5cf6";
+                }}
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Pencil size={13} strokeWidth={2.5} />
+                )}
+              </button>
+            )}
+
+            {/* Dropdown menu when avatar exists */}
+            {showAvatarMenu && currentUser?.avatar_data_url && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: "8px",
+                  background: "#1e1b4b",
+                  border: "1px solid rgba(168, 85, 247, 0.35)",
+                  borderRadius: "12px",
+                  padding: "6px",
+                  zIndex: 50,
+                  minWidth: "160px",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAvatarMenu(false);
+                    handlePickAvatar();
+                  }}
+                  disabled={isUploadingAvatar}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#fff",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "background 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <Camera size={14} color="#c084fc" />
+                  <span>Change photo</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAvatarMenu(false);
+                    handleRemoveAvatar();
+                  }}
+                  disabled={isUploadingAvatar}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#f87171",
+                    padding: "8px 10px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "background 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <Trash2 size={14} color="#f87171" />
+                  <span>Remove photo</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* User Details */}
@@ -271,21 +410,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
               >
                 {currentUser ? currentUser.username : "Guest Listener"}
               </h2>
-              {currentUser && (
-                <span
-                  style={{
-                    background: "rgba(34, 197, 94, 0.15)",
-                    border: "1px solid rgba(34, 197, 94, 0.3)",
-                    color: "#4ade80",
-                    padding: "2px 8px",
-                    borderRadius: "9999px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                  }}
-                >
-                  Cloud Account
-                </span>
-              )}
             </div>
 
             <div
@@ -299,16 +423,12 @@ export const StatsView: React.FC<StatsViewProps> = ({
               }}
             >
               {currentUser ? (
-                <>
-                  <span>
-                    Member since{" "}
-                    <strong style={{ color: "#fff" }}>
-                      {formatDate(currentUser.created_at)}
-                    </strong>
-                  </span>
-                  <span>•</span>
-                  <span>Normalized 256×256 WebP Avatar</span>
-                </>
+                <span>
+                  Member since{" "}
+                  <strong style={{ color: "#fff" }}>
+                    {formatDate(currentUser.created_at)}
+                  </strong>
+                </span>
               ) : (
                 <span>
                   Listening history saved locally •{" "}
@@ -349,78 +469,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        {currentUser ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <button
-              onClick={handlePickAvatar}
-              disabled={isUploadingAvatar}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "rgba(168, 85, 247, 0.15)",
-                border: "1px solid rgba(168, 85, 247, 0.35)",
-                color: "#c084fc",
-                padding: "8px 16px",
-                borderRadius: "10px",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: isUploadingAvatar ? "not-allowed" : "pointer",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!isUploadingAvatar) e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isUploadingAvatar) e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
-              }}
-            >
-              {isUploadingAvatar ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Camera size={16} />
-                  <span>{currentUser.avatar_data_url ? "Change Photo" : "Upload Photo"}</span>
-                </>
-              )}
-            </button>
-
-            {currentUser.avatar_data_url && (
-              <button
-                onClick={handleRemoveAvatar}
-                disabled={isUploadingAvatar}
-                title="Remove profile photo"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.25)",
-                  color: "#f87171",
-                  padding: "8px 12px",
-                  borderRadius: "10px",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  cursor: isUploadingAvatar ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isUploadingAvatar) e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!isUploadingAvatar) e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
-                }}
-              >
-                <Trash2 size={15} />
-                <span>Remove</span>
-              </button>
-            )}
-          </div>
-        ) : (
+        {/* Guest Auth Button (No external buttons when logged in) */}
+        {!currentUser && (
           <button
             onClick={onOpenAuthModal}
             style={{
