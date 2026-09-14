@@ -762,6 +762,14 @@ export const App: React.FC = () => {
           break;
         }
 
+        case "UserProfileUpdated": {
+          const user = event.payload?.user;
+          if (user) {
+            setCurrentUser(user);
+          }
+          break;
+        }
+
         case "UserLoggedOut": {
           window.location.reload();
           break;
@@ -2336,8 +2344,8 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="main-content">
-          {/* Persistent Global Top Search Bar (hidden on discovery view when offline or when lyrics active) */}
-          {((!activeCollection && currentView === "discovery" && !isOnline) || isLyricsActive) ? null : (
+          {/* Persistent Global Top Search Bar (hidden on stats/profile view, lyrics active, or offline discovery) */}
+          {((!activeCollection && currentView === "discovery" && !isOnline) || isLyricsActive || currentView === "stats") ? null : (
             <GlobalTopSearchBar
               searchQuery={globalSearchQuery}
               setSearchQuery={setGlobalSearchQuery}
@@ -2545,6 +2553,7 @@ export const App: React.FC = () => {
                   onOpenAuthModal={() => setIsAuthModalOpen(true)}
                   fetchStatsOverview={fetchStatsOverview}
                   refreshTrigger={statsRefreshTrigger}
+                  onUpdateUser={(u) => setCurrentUser(u)}
                 />
               )}
 

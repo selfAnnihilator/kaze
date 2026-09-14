@@ -5,7 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    display_name TEXT,
+    avatar_key TEXT,
+    avatar_updated_at INTEGER
 );
 
 -- Sessions store cryptographic SHA-256 hash of token with hybrid idle/absolute expiry

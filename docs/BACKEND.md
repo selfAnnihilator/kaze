@@ -215,3 +215,25 @@ src-tauri/src/cloud/
 * All songs with `manual_like != 0` or `play_count > 0` are extracted into sync payloads even if not part of a playlist.
 * D1 updates use `manual_like = excluded.manual_like`, enabling accurate transitions to disliked (-1) and unrated (0).
 
+## 6. Profile Service & Avatar Processing Subsystem (`src-tauri/src/profile/`)
+
+```
+src-tauri/src/profile/
+└── mod.rs             // ProfileService: image normalization, WebP encoding, and disk caching
+```
+
+### 6.1 Client-Side Normalization Pipeline
+* **Input Formats**: JPEG, PNG, WebP parsed via the Rust `image` crate (features: `jpeg`, `png`, `webp`).
+* **Validation Bounds**: Enforces maximum 5 MB raw file size and strictly prevents zero-byte payloads.
+* **Centered Square Crop**: Identifies shortest side (`min(width, height)`) and computes centered offset `(width - square) / 2` and `(height - square) / 2` using `crop_imm`.
+* **Lanczos3 Resizing**: Downscales or upscales cleanly to exact 256×256 pixels using `imageops::FilterType::Lanczos3`.
+* **WebP Encoding**: Encodes the normalized buffer to WebP bytes (~20–100 KB target size).
+
+### 6.2 Local Disk Cache & Offline Loading
+* **Cache Location**: `<cache_dir>/avatars/{user_id}.webp`.
+* **Instant Retrieval**: Returns base64 data URL (`data:image/webp;base64,...`) directly from local disk for sub-millisecond offline UI rendering.
+* **Synchronization & Update**:
+  - `Command::UploadAvatar`: Prompts native file dialog or takes optional path, normalizes, uploads to Cloudflare R2 (`POST /api/profile/avatar`), caches to disk, updates SQLite metadata, and emits `Event::UserProfileUpdated`.
+  - `Command::RemoveAvatar`: Calls `DELETE /api/profile/avatar` on Cloudflare Worker, purges local cached file, clears SQLite metadata, and emits `Event::UserProfileUpdated`.
+  - `Query::GetProfile` & `Query::GetAvatar`: Resolves user profile and cached avatar data URL with offline fallback.
+

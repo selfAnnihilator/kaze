@@ -1,17 +1,26 @@
 # Project Task Tracking
 
-## Current (Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones - COMPLETE)
-- [x] Architectural correction: Logout (`Command::Logout`, `Command::LogoutAll`) strictly preserves local SQLite user data (custom playlists, playlist tracks, play history, track stats, and user records).
-- [x] Controller-level access gating: Unauthenticated queries (`Query::GetPlaylists`) return only algorithmic Smart Mixes; authenticated users receive custom playlists and cloud content.
-- [x] Deterministic bidirectional sync sequence: Login/Startup -> establish ActiveUser -> PULL first (`GET /api/sync`) -> RECONCILE locally -> PUSH legitimate changes (`POST /api/sync`) -> emit reactive event (`Event::PlaylistsUpdated`).
-- [x] Liked and disliked song synchronization: Store and sync `manual_like` (`1` = liked, `-1` = disliked, `0` = neutral). Worker D1 upsert fixed from `MAX()` to `manual_like = excluded.manual_like`. All rated songs synced even when not in playlists.
-- [x] Sync tombstones (`sync_tombstones` SQLite table): Track explicit deletions (`DeletePlaylist`, `RemoveTrackFromPlaylist`). Absence of item locally without tombstone never deletes remote data during pull. Pushed tombstones delete remote records in D1 and clear local tombstones.
-- [x] Serde resilience: Handle heterogeneous D1 response shapes for `user_stats` and `user_settings` (`Option<serde_json::Value>`), alias `total_seconds`, and add `#[serde(default)]` across cloud entities.
-- [x] Full integration testing in `tests/cloud_sync_tests.rs`: All 3 tests passing, verifying non-destructive logout, access gating, liked/disliked song sync, tombstone generation, and sync payload round-trips. All 35 tests pass in workspace.
-- [x] System documentation updated across `docs/ARCHITECTURE.md`, `docs/BACKEND.md`, `docs/SECURITY.md`, `PROJECT_STATUS.md`, `TODO.md`, and `docs/DEVELOPMENT_LOG.md`.
+## Current (Phase 16: User Profile & Cloudflare R2 Avatar Normalization - COMPLETE)
+- [x] Renamed "Stats" section to "Profile" across navigation sidebar, view headers, and component hierarchy.
+- [x] Hidden persistent global search bar when navigating to the Profile/Stats view (`currentView === "stats"`).
+- [x] User Profile Header Card: Displayed username, joined date ("Member since..."), cloud badge, and 72px round avatar above listening statistics.
+- [x] Client-Side Image Normalization: Uses Rust `image` crate with `imageops::FilterType::Lanczos3` to center-square-crop and resize uploads to 256×256 WebP (~20-100 KB), enforcing 5MB max payload and zero-byte protection.
+- [x] Cloudflare R2 + D1 Storage Architecture:
+  - D1 user metadata: Added `display_name`, `avatar_key`, and `avatar_updated_at` (remote migration applied via `migrations/0002_user_avatar.sql`).
+  - R2 object storage: Storage under `avatars/{user_id}.webp`. Pure binary storage in R2; zero base64 or binaries stored in D1. Graceful 503 fallback if R2 dashboard binding is not yet clicked.
+  - Endpoints: Implemented `GET /api/profile`, `POST /api/profile/avatar`, `DELETE /api/profile/avatar`, and `GET /api/profile/avatar`.
+  - Deployed worker to production Cloudflare Worker (`soundflow-cloud-worker.abhi-atlas-2026.workers.dev`).
+- [x] Local SQLite & Disk Cache:
+  - Migration `20260914000004_user_avatar.sql` added avatar metadata columns to local `users` table.
+  - Caches WebP files locally at `<cache_dir>/avatars/{user_id}.webp` for instant offline rendering.
+- [x] Offline Resilience & Fallbacks:
+  - Immediate offline startup display of cached avatar; fallback to first letter of username on dynamic gradient.
+  - Offline guard requiring internet connectivity for upload and removal actions.
+- [x] Unit & Integration Tests:
+  - All 36 tests passing, including tests for avatar normalization, empty/oversized validation, and cache roundtrips.
 
 ## Completed
-- [x] Phase 14: Hardened Hybrid Session Management & Multi-Device Control
+- [x] Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones
 - [x] Phase 11 User Experience & Integration Enhancements:
 - [x] Phase 11 User Experience & Integration Enhancements:
   - [x] Re-run Onboarding Setup: Added dedicated button in Settings to reset onboarding and trigger the directory selection modal from fresh without manual DB manipulation (`Command::ResetOnboarding`).

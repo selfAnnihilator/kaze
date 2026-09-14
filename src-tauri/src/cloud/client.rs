@@ -279,6 +279,128 @@ impl CloudClient {
             .synced_at
             .unwrap_or_else(|| chrono::Utc::now().timestamp()))
     }
+
+    pub async fn get_profile(&self, worker_url: &str, token: &str) -> AppResult<CloudUser> {
+        let url = format!("{}/api/profile", worker_url.trim_end_matches('/'));
+        let res = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to fetch profile: {}", e)))?;
+
+        let status = res.status();
+        let body: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Network(format!("Invalid profile response: {}", e)))?;
+
+        if !status.is_success() || body["success"] != true {
+            let msg = body["error"].as_str().unwrap_or("Failed to fetch profile");
+            return Err(AppError::Network(msg.to_string()));
+        }
+
+        let user: CloudUser = serde_json::from_value(body["user"].clone())
+            .map_err(|e| AppError::Validation(format!("Invalid profile data: {}", e)))?;
+
+        Ok(user)
+    }
+
+    pub async fn upload_avatar(
+        &self,
+        worker_url: &str,
+        token: &str,
+        webp_bytes: Vec<u8>,
+    ) -> AppResult<CloudAvatarResponse> {
+        let url = format!("{}/api/profile/avatar", worker_url.trim_end_matches('/'));
+        let res = self
+            .client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "image/webp")
+            .body(webp_bytes)
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to connect to avatar upload: {}", e)))?;
+
+        let status = res.status();
+        let body: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Network(format!("Invalid response from avatar upload: {}", e)))?;
+
+        if !status.is_success() || body["success"] != true {
+            let msg = body["error"].as_str().unwrap_or("Avatar upload failed");
+            return Err(AppError::Network(msg.to_string()));
+        }
+
+        let avatar_resp: CloudAvatarResponse = serde_json::from_value(body)
+            .map_err(|e| AppError::Validation(format!("Invalid avatar response format: {}", e)))?;
+
+        Ok(avatar_resp)
+    }
+
+    pub async fn delete_avatar(&self, worker_url: &str, token: &str) -> AppResult<()> {
+        let url = format!("{}/api/profile/avatar", worker_url.trim_end_matches('/'));
+        let res = self
+            .client
+            .delete(&url)
+            .header("Authorization", format!("Bearer {}", token))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to connect to delete avatar: {}", e)))?;
+
+        let status = res.status();
+        let body: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| AppError::Network(format!("Invalid response from delete avatar: {}", e)))?;
+
+        if !status.is_success() || body["success"] != true {
+            let msg = body["error"].as_str().unwrap_or("Failed to delete avatar");
+            return Err(AppError::Network(msg.to_string()));
+        }
+
+        Ok(())
+    }
+
+    pub async fn download_avatar(
+        &self,
+        worker_url: &str,
+        token: Option<&str>,
+        user_id: &str,
+    ) -> AppResult<Option<Vec<u8>>> {
+        let url = format!(
+            "{}/api/profile/avatar?user_id={}",
+            worker_url.trim_end_matches('/'),
+            user_id
+        );
+        let mut req = self.client.get(&url);
+        if let Some(tok) = token {
+            req = req.header("Authorization", format!("Bearer {}", tok));
+        }
+
+        let res = req
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to download avatar: {}", e)))?;
+
+        if res.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        if !res.status().is_success() {
+            return Ok(None);
+        }
+
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| AppError::Network(format!("Failed to read avatar bytes: {}", e)))?;
+
+        Ok(Some(bytes.to_vec()))
+    }
 }
 
 impl Default for CloudClient {

@@ -115,6 +115,11 @@ pub enum Query {
     GetCloudSyncStatus,
     GetSessionState,
     ListSessions,
+    GetProfile,
+    GetAvatar {
+        #[serde(default)]
+        user_id: Option<String>,
+    },
 }
 
 /// Query response wrapper.
@@ -155,5 +160,7 @@ pub enum QueryResponse {
     CloudSyncStatus(serde_json::Value),
     SessionState(serde_json::Value),
     Sessions(Vec<serde_json::Value>),
+    Profile(Option<serde_json::Value>),
+    Avatar(Option<String>),
     Empty,
 }

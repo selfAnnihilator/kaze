@@ -71,3 +71,17 @@ SoundFlow balances continuous desktop usability with strict bounding and revocat
   - Every sync request (`GET /api/sync`, `POST /api/sync`) requires an active, unrevoked bearer token.
   - All cloud operations are strictly isolated by `user_id`; users cannot read or modify another user's playlists, songs, or stats.
   - Sync tombstones ensure intentional deletions are distinguished from local absence, preventing inadvertent remote data wipeouts during multi-device synchronization. Local tombstones are cleared only upon confirmed server synchronization receipt.
+
+---
+
+## 6. Profile Avatar Security & R2 Isolation
+
+* **Strict Session Authority**:
+  - Avatar uploads (`POST /api/profile/avatar`) and deletions (`DELETE /api/profile/avatar`) derive identity strictly from the authenticated bearer session token (`auth.user.id`).
+  - Client-supplied `user_id` parameters are never accepted as authority for mutations.
+* **Payload Sanitization & Size Constraints**:
+  - Maximum upload size is strictly capped at 5 MB client-side and server-side.
+  - Raw image binaries are parsed and normalized client-side to 256×256 WebP before transmission, eliminating image-based exploits, malicious script embedding, or arbitrary binary storage.
+  - R2 object keys are strictly namespaced: `avatars/{user_id}.webp`. Path traversal via filenames is impossible.
+* **Database Isolation**:
+  - D1 stores only profile metadata (`avatar_key`, `avatar_updated_at`). Zero image binaries or base64 strings are stored in D1.

@@ -250,6 +250,8 @@ export type Command =
   | { command: "Logout" }
   | { command: "LogoutAll" }
   | { command: "RevokeSession"; payload: { session_id: string } }
+  | { command: "UploadAvatar"; payload?: { file_path?: string } }
+  | { command: "RemoveAvatar" }
   | { command: "SyncCloudData" }
   | { command: "SetCloudServerUrl"; payload: { url: string } }
   | {
@@ -291,6 +293,8 @@ export type Query =
   | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number } }
   | { query: "GetStatsOverview"; payload?: { year?: number; month?: number } }
   | { query: "GetCurrentUser" }
+  | { query: "GetProfile" }
+  | { query: "GetAvatar"; payload?: { user_id?: string } }
   | { query: "GetCloudSyncStatus" }
   | { query: "GetSessionState" }
   | { query: "ListSessions" };
@@ -385,6 +389,10 @@ export interface UserProfile {
   id: string;
   username: string;
   created_at: number;
+  display_name?: string;
+  avatar_key?: string;
+  avatar_updated_at?: number;
+  avatar_data_url?: string;
 }
 
 export interface LyricLine {

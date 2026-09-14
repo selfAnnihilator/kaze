@@ -560,4 +560,50 @@ After the initial authentication persistence hardening, user playlists and track
 - `cargo test`: All 35 tests pass with 0 failures across all 13 test suites.
 - `npm run build`: Production frontend build succeeds in 1.17s.
 
+---
+
+## [Phase 16] - User Profile & Cloudflare R2 Avatar Normalization
+
+### Requirements & Objectives
+1. Rename Stats section to "Profile" across navigation, views, and routing.
+2. Hide persistent global search bar when navigating to Profile/Stats view.
+3. Above listening stats, display dedicated User Profile Header Card with avatar on left, username, joined date ("Member since..."), and active cloud badge.
+4. Profile photo customization using Cloudflare R2:
+   - Optional, free-tier friendly, lightweight, secure, and offline resilient.
+   - Client-side normalization: 256×256 WebP centered-square crop using Rust `image` crate with `Lanczos3` filter (target ~20-100 KB, 5MB file size limit).
+   - Zero image binaries or base64 strings in D1; D1 stores metadata only (`avatar_key`, `avatar_updated_at`), while R2 stores the image.
+   - Local caching at `<cache_dir>/avatars/{user_id}.webp` for instant offline rendering.
+   - Fallback to first letter of username on dynamic gradient when no avatar is set.
+   - Offline guard requiring internet connectivity for upload and removal actions.
+
+### Implementation Details
+1. **Remote Cloudflare D1 & Worker**:
+   - Created migration `worker/migrations/0002_user_avatar.sql` adding `display_name`, `avatar_key`, `avatar_updated_at` to `users` table. Applied remotely to `soundflow-db`.
+   - Updated `worker/src/index.ts` with `GET /api/profile`, `POST /api/profile/avatar`, `DELETE /api/profile/avatar`, and `GET /api/profile/avatar`.
+   - Optional `PROFILE_IMAGES?: R2Bucket` binding with graceful 503 response if R2 bucket is not yet bound on Cloudflare dashboard.
+   - Deployed worker to production (`version 6fdea612-094f-4bd3-867b-d3e495dd89fe`).
+2. **Local SQLite Migration**:
+   - Migration `src-tauri/migrations/20260914000004_user_avatar.sql` adding `display_name`, `avatar_key`, `avatar_updated_at` to `users`.
+3. **Rust Profile Service & Image Processing**:
+   - Added `image` crate (features: `jpeg`, `png`, `webp`) and `rfd` native file dialog to `Cargo.toml`.
+   - Implemented `ProfileService` in `src-tauri/src/profile/mod.rs` with `normalize_avatar_image` (center square crop, Lanczos3 resize to 256×256, WebP encode) and local disk caching helpers.
+   - Added unit tests in `src-tauri/src/profile/mod.rs` validating dimensions, WebP format, empty/oversized payload bounds, and disk caching roundtrips.
+4. **Cloud Models, Client & Repositories**:
+   - Extended `CloudUser`, `UserProfile`, and `UserRecord` with avatar fields.
+   - Added `upload_avatar`, `delete_avatar`, `download_avatar`, and `get_profile` in `CloudClient`.
+   - Added `update_avatar_metadata` to `SqliteUserRepository`.
+5. **Core Processor Integration**:
+   - Integrated `ProfileService` into `CoreProcessor`.
+   - Implemented `Command::UploadAvatar`, `Command::RemoveAvatar`, `Query::GetProfile`, and `Query::GetAvatar`.
+   - Startup session validation immediately loads cached avatar, downloads fresh remote avatar if available, and broadcasts `SessionChanged`.
+   - Emits reactive `Event::UserProfileUpdated` on avatar changes.
+6. **Frontend UI Integration**:
+   - `Sidebar.tsx`: Renamed "Stats" to "Profile" with `User` icon; displays user avatar image in footer with fallback to letter avatar.
+   - `App.tsx`: Hidden `GlobalTopSearchBar` on `currentView === "stats"`; listens for `UserProfileUpdated`.
+   - `StatsView.tsx`: Added Profile Header Card above listening stats with 72px round avatar, hover camera overlay, "Change Photo", "Remove", username, joined date, and status indicators.
+
+### Verification
+- `cargo test`: All 36 tests pass with 0 failures across all 14 test suites.
+- `npm run build`: Production frontend build succeeds in 1.45s with zero errors.
+
 

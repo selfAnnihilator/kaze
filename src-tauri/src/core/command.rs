@@ -185,6 +185,11 @@ pub enum Command {
     RevokeSession {
         session_id: String,
     },
+    UploadAvatar {
+        #[serde(default)]
+        file_path: Option<String>,
+    },
+    RemoveAvatar,
     // --- Cloud Authentication & Sync ---
     SyncCloudData,
     SetCloudServerUrl {

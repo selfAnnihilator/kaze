@@ -14,7 +14,11 @@ All authenticated endpoints require the header `Authorization: Bearer <raw_token
 | `POST` | `/api/auth/logout-all` | Yes | Revokes all active sessions for the authenticated user. |
 | `GET` | `/api/auth/sessions` | Yes | Returns all active sessions for the user with `is_current: true` for calling token. |
 | `DELETE` | `/api/auth/sessions/:id` | Yes | Revokes a specific session owned by the authenticated user. |
-| `GET` | `/api/auth/me` | Yes | Validates session token and returns the current user profile. |
+| `GET` | `/api/auth/me` | Yes | Validates session token and returns current user profile with avatar metadata. |
+| `GET` | `/api/profile` | Yes | Returns user profile with `has_avatar`, `avatar_key`, `avatar_updated_at`. |
+| `POST` | `/api/profile/avatar` | Yes | Uploads raw WebP image binary to Cloudflare R2 under `avatars/{user_id}.webp`. |
+| `DELETE` | `/api/profile/avatar` | Yes | Deletes user avatar from Cloudflare R2 and clears D1 metadata. |
+| `GET` | `/api/profile/avatar` | Optional | Serves avatar image directly from Cloudflare R2 with cache headers. |
 
 #### Session Object Schema
 ```json
@@ -51,6 +55,8 @@ Dispatched from frontend via `invoke("execute_command", { command: { command: st
 | `Logout` | None | Revokes current session on cloud worker and purges local credentials. |
 | `LogoutAll` | None | Revokes all active user sessions across all devices and logs out locally. |
 | `RevokeSession` | `{ session_id }` | Revokes a specific session remotely. |
+| `UploadAvatar` | `{ file_path? }` | Opens native file dialog (or uses path), normalizes to 256x256 WebP, uploads to R2, and caches to disk. |
+| `RemoveAvatar` | None | Deletes profile avatar from Cloudflare R2, local disk cache, and database. |
 | `SyncCloudData` | None | Pulls remote cloud updates and pushes local modifications. |
 | `SetCloudServerUrl` | `{ url }` | Updates configured Cloudflare Worker endpoint URL. |
 | `PlayTrack` | `{ track_id }` | Starts playback of a track by ID. |
@@ -74,7 +80,9 @@ Dispatched from frontend via `invoke("execute_query", { query: { query: string, 
 
 | Query | Payload | Returns | Description |
 | :--- | :--- | :--- | :--- |
-| `GetCurrentUser` | None | `UserProfile \| null` | Returns active user profile if session is valid. |
+| `GetCurrentUser` | None | `UserProfile \| null` | Returns active user profile with cached avatar data URL if session is valid. |
+| `GetProfile` | None | `UserProfile \| null` | Returns user profile including avatar data URL and cloud synchronization info. |
+| `GetAvatar` | `{ user_id? }` | `string \| null` | Returns base64 data URL for requested user's cached avatar. |
 | `GetCloudSyncStatus` | None | `CloudSyncStatus` | Returns connection status, worker URL, device name, and session expiry timestamps. |
 | `GetSessionState` | None | `AuthSessionState` | Returns strongly typed session state (`OnlineAuthenticated`, `OfflineAuthenticated`, etc.). |
 | `ListSessions` | None | `SessionInfo[]` | Queries Cloudflare Worker for active user sessions. |

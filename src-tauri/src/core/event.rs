@@ -127,4 +127,7 @@ pub enum Event {
     },
     UserLoggedOut,
     PlaylistsUpdated,
+    UserProfileUpdated {
+        user: serde_json::Value,
+    },
 }

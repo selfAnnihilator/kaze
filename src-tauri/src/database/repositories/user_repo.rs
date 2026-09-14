@@ -12,13 +12,52 @@ pub struct UserRecord {
     pub username: String,
     pub password_hash: String,
     pub created_at: i64,
+    pub display_name: Option<String>,
+    pub avatar_key: Option<String>,
+    pub avatar_updated_at: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UserProfile {
     pub id: String,
     pub username: String,
     pub created_at: i64,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub avatar_key: Option<String>,
+    #[serde(default)]
+    pub avatar_updated_at: Option<i64>,
+    #[serde(default)]
+    pub avatar_data_url: Option<String>,
+}
+
+impl UserProfile {
+    pub fn new(id: String, username: String, created_at: i64) -> Self {
+        Self {
+            id,
+            username,
+            created_at,
+            display_name: None,
+            avatar_key: None,
+            avatar_updated_at: None,
+            avatar_data_url: None,
+        }
+    }
+
+    pub fn with_avatar(
+        mut self,
+        display_name: Option<String>,
+        avatar_key: Option<String>,
+        avatar_updated_at: Option<i64>,
+        avatar_data_url: Option<String>,
+    ) -> Self {
+        self.display_name = display_name;
+        self.avatar_key = avatar_key;
+        self.avatar_updated_at = avatar_updated_at;
+        self.avatar_data_url = avatar_data_url;
+        self
+    }
 }
 
 pub fn hash_password(password: &str, salt: &str) -> String {
@@ -44,6 +83,7 @@ pub trait UserRepository: Send + Sync {
     async fn create_user(&self, username: &str, password: &str) -> AppResult<UserProfile>;
     async fn authenticate_user(&self, username: &str, password: &str) -> AppResult<UserProfile>;
     async fn get_user_by_id(&self, id: &str) -> AppResult<Option<UserProfile>>;
+    async fn update_avatar_metadata(&self, user_id: &str, avatar_key: Option<&str>, avatar_updated_at: Option<i64>) -> AppResult<()>;
     async fn claim_guest_data_for_user(&self, user_id: &str) -> AppResult<()>;
 }
 
@@ -101,13 +141,17 @@ impl UserRepository for SqliteUserRepository {
             id: user_id,
             username: trimmed_name.to_string(),
             created_at: now,
+            display_name: None,
+            avatar_key: None,
+            avatar_updated_at: None,
+            avatar_data_url: None,
         })
     }
 
     async fn authenticate_user(&self, username: &str, password: &str) -> AppResult<UserProfile> {
         let trimmed_name = username.trim();
         let user: Option<UserRecord> = sqlx::query_as(
-            "SELECT id, username, password_hash, created_at FROM users WHERE username = ? COLLATE NOCASE"
+            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at FROM users WHERE username = ? COLLATE NOCASE"
         )
         .bind(trimmed_name)
         .fetch_optional(&self.pool)
@@ -121,6 +165,10 @@ impl UserRepository for SqliteUserRepository {
                         id: record.id,
                         username: record.username,
                         created_at: record.created_at,
+                        display_name: record.display_name,
+                        avatar_key: record.avatar_key,
+                        avatar_updated_at: record.avatar_updated_at,
+                        avatar_data_url: None,
                     })
                 } else {
                     Err(AppError::Validation("Invalid username or password".to_string()))
@@ -132,7 +180,7 @@ impl UserRepository for SqliteUserRepository {
 
     async fn get_user_by_id(&self, id: &str) -> AppResult<Option<UserProfile>> {
         let user: Option<UserRecord> = sqlx::query_as(
-            "SELECT id, username, password_hash, created_at FROM users WHERE id = ?"
+            "SELECT id, username, password_hash, created_at, display_name, avatar_key, avatar_updated_at FROM users WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -143,7 +191,30 @@ impl UserRepository for SqliteUserRepository {
             id: r.id,
             username: r.username,
             created_at: r.created_at,
+            display_name: r.display_name,
+            avatar_key: r.avatar_key,
+            avatar_updated_at: r.avatar_updated_at,
+            avatar_data_url: None,
         }))
+    }
+
+    async fn update_avatar_metadata(
+        &self,
+        user_id: &str,
+        avatar_key: Option<&str>,
+        avatar_updated_at: Option<i64>,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "UPDATE users SET avatar_key = ?, avatar_updated_at = ? WHERE id = ?"
+        )
+        .bind(avatar_key)
+        .bind(avatar_updated_at)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to update avatar metadata: {}", e)))?;
+
+        Ok(())
     }
 
     async fn claim_guest_data_for_user(&self, user_id: &str) -> AppResult<()> {

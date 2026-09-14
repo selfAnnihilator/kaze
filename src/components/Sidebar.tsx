@@ -7,7 +7,6 @@ import {
   Bell,
   Settings,
   Sparkles,
-  BarChart2,
   User,
   LogOut,
 } from "lucide-react";
@@ -115,8 +114,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={`nav-button ${currentView === "stats" ? "active" : ""}`}
           onClick={() => onSelectView("stats")}
         >
-          <BarChart2 size={18} />
-          <span>Stats</span>
+          <User size={18} />
+          <span>Profile</span>
         </button>
       </div>
 
@@ -143,23 +142,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                {currentUser.username[0].toUpperCase()}
-              </div>
+              {currentUser.avatar_data_url ? (
+                <img
+                  src={currentUser.avatar_data_url}
+                  alt={currentUser.username}
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    flexShrink: 0,
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#fff",
+                    flexShrink: 0,
+                  }}
+                >
+                  {currentUser.username[0].toUpperCase()}
+                </div>
+              )}
               <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <div
                   style={{

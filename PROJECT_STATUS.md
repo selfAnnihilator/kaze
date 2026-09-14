@@ -1,11 +1,12 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 15: Cloud Synchronization, Non-Destructive Access Gating & Sync Tombstones (Complete, Fully Audited & Production-Ready)**
+**Phase 16: User Profile & Cloudflare R2 Avatar Normalization (Complete, Fully Audited & Production-Ready)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
-- **Cloud Infrastructure**: Cloudflare Worker + Cloudflare D1 (serverless SQLite) for authoritative cloud-backed authentication and user data synchronization.
+- **Cloud Infrastructure**: Cloudflare Worker + Cloudflare D1 (serverless SQLite) + Cloudflare R2 Object Storage for authoritative cloud-backed authentication, data synchronization, and user avatar storage.
+- **User Profile & Avatar Storage**: Zero image binaries or base64 strings in D1; images stored strictly in Cloudflare R2 under `avatars/{user_id}.webp`. Client-side square-cropping and Lanczos3 resizing to 256×256 WebP (~20-100 KB) via the Rust `image` crate. Local disk cache at `<cache_dir>/avatars/{user_id}.webp` for instant offline loading and minimal egress.
 - **Security Posture**: PBKDF2-HMAC-SHA256 (600,000 iterations), server-side token hashing (`token_hash` in D1), client OS credential keyring storage with restricted file fallback, IP rate limiting, timing discrepancy defense, and sole authoritative cloud account authority.
 - **Session Management**: 30-day idle inactivity timeout, 90-day absolute hard ceiling, D1 write throttling (30 minutes), opaque 256-bit bearer tokens, multi-device listing and revocation (`logout-all`, `revoke_session`), and offline continuation.
 - **Cloud Synchronization & Access Gating**: Non-destructive logout preserving local SQLite data while gating UI queries to Smart Mixes; deterministic Pull -> Reconcile -> Push synchronization sequence; liked (`+1`) and disliked (`-1`) song feedback synchronization; sync tombstones (`sync_tombstones`) tracking explicit deletions.

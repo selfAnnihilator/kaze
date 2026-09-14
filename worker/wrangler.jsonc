@@ -10,4 +10,13 @@
       "database_id": "494e5f93-e8fa-4b2f-a7d3-cfa5607265e8"
     }
   ]
+  // NOTE: Once R2 is enabled in Cloudflare Dashboard and bucket is created via:
+  // npx wrangler r2 bucket create soundflow-profile-images
+  // uncomment the following block:
+  // "r2_buckets": [
+  //   {
+  //     "binding": "PROFILE_IMAGES",
+  //     "bucket_name": "soundflow-profile-images"
+  //   }
+  // ]
 }

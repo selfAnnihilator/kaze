@@ -28,6 +28,8 @@ All dependencies in this project are strictly free and open-source software (FOS
 | `reqwest` | 0.12.x | MIT / Apache-2.0 | Async HTTP client for MusicBrainz, Cover Art Archive, Spotify API | [seanmonstar/reqwest](https://github.com/seanmonstar/reqwest) | ureq, surf |
 | `strsim` | 0.11.x | MIT | String similarity algorithms (Jaro-Winkler, Levenshtein) for fuzzy track matching | [dguo/strsim-rs](https://github.com/dguo/strsim-rs) | fuzzy-matcher |
 | `unicode-normalization` | 0.1.x | MIT / Apache-2.0 | Unicode canonical decomposition for accurate metadata comparison | [unicode-rs/unicode-normalization](https://github.com/unicode-rs/unicode-normalization) | None |
+| `image` | 0.25.x | MIT / Apache-2.0 | Image decoding, center-square cropping, Lanczos3 resize, and WebP encoding for avatars | [image-rs/image](https://github.com/image-rs/image) | resvg / tiny-skia |
+| `rfd` | 0.15.x | MIT / Apache-2.0 | Native cross-platform file dialog for avatar and library folder picking | [PolyMeilex/rfd](https://github.com/PolyMeilex/rfd) | tinyfiledialogs |
 
 ---
 

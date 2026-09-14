@@ -142,11 +142,11 @@ async fn test_cloud_sync_payload_and_database_persistence() {
         .expect("apply remote payload ok");
 
     // Set active user profile on processor to verify user-scoped playlists
-    *processor.current_user.write().await = Some(UserProfile {
-        id: test_user_id.to_string(),
-        username: "cloud_user".to_string(),
-        created_at: 1700000000,
-    });
+    *processor.current_user.write().await = Some(UserProfile::new(
+        test_user_id.to_string(),
+        "cloud_user".to_string(),
+        1700000000,
+    ));
 
     // Verify local database now reflects the synced remote playlist and songs
     let playlists_res = processor.execute_query(Query::GetPlaylists).await.expect("query playlists");
@@ -179,11 +179,7 @@ async fn test_logout_preserves_local_user_data_while_gating_ui() {
     let processor = CoreProcessor::new_with_backend(pool.clone(), config, backend);
 
     let test_user_id = "user_persist_123";
-    let profile = UserProfile {
-        id: test_user_id.to_string(),
-        username: "persisting_user".to_string(),
-        created_at: 1700000000,
-    };
+    let profile = UserProfile::new(test_user_id.to_string(), "persisting_user".to_string(), 1700000000);
 
     // 1. Authenticate user
     *processor.current_user.write().await = Some(profile.clone());
@@ -293,11 +289,7 @@ async fn test_explicit_deletion_creates_tombstones() {
     let processor = CoreProcessor::new_with_backend(pool.clone(), config, backend);
 
     let test_user_id = "user_tombstone_test";
-    let profile = UserProfile {
-        id: test_user_id.to_string(),
-        username: "tombstone_tester".to_string(),
-        created_at: 1700000000,
-    };
+    let profile = UserProfile::new(test_user_id.to_string(), "tombstone_tester".to_string(), 1700000000);
 
     *processor.current_user.write().await = Some(profile);
 

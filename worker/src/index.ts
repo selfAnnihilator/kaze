@@ -18,6 +18,7 @@
 
 export interface Env {
   DB: D1Database;
+  PROFILE_IMAGES?: R2Bucket;
 }
 
 interface UserRecord {
@@ -662,10 +663,10 @@ export default {
           return errorResponse("Unauthorized", 401);
         }
         const user = await env.DB.prepare(
-          "SELECT id, username, created_at FROM users WHERE id = ?"
+          "SELECT id, username, display_name, avatar_key, avatar_updated_at, created_at FROM users WHERE id = ?"
         )
           .bind(session.user_id)
-          .first<UserRecord>();
+          .first<any>();
 
         if (!user) {
           return errorResponse("User not found", 404);
@@ -676,6 +677,9 @@ export default {
           user: {
             id: user.id,
             username: user.username,
+            display_name: user.display_name || user.username,
+            has_avatar: Boolean(user.avatar_key),
+            avatar_updated_at: user.avatar_updated_at || null,
             created_at: user.created_at,
           },
           session: {
@@ -688,6 +692,165 @@ export default {
             absolute_expires_at: session.absolute_expires_at,
           },
         });
+      }
+
+      // --- Profile & Avatar Endpoints ---
+
+      // GET /api/profile
+      if (path === "/api/profile" && request.method === "GET") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+        const user = await env.DB.prepare(
+          "SELECT id, username, display_name, avatar_key, avatar_updated_at, created_at FROM users WHERE id = ?"
+        )
+          .bind(session.user_id)
+          .first<any>();
+
+        if (!user) {
+          return errorResponse("User not found", 404);
+        }
+
+        return jsonResponse({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || user.username,
+            has_avatar: Boolean(user.avatar_key),
+            avatar_updated_at: user.avatar_updated_at || null,
+            created_at: user.created_at,
+          },
+        });
+      }
+
+      // POST /api/profile/avatar
+      if (path === "/api/profile/avatar" && request.method === "POST") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+
+        if (!env.PROFILE_IMAGES) {
+          return errorResponse(
+            "R2 storage (PROFILE_IMAGES) is not configured or enabled on Cloudflare. Please enable R2 in your Cloudflare dashboard.",
+            503
+          );
+        }
+
+        const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
+        if (contentLength > 5 * 1024 * 1024) {
+          return errorResponse("Avatar image exceeds 5 MB limit", 413);
+        }
+
+        const contentType = request.headers.get("Content-Type") || "";
+        if (contentType && !contentType.startsWith("image/")) {
+          return errorResponse("Invalid content type. Expected an image.", 400);
+        }
+
+        const imageBytes = await request.arrayBuffer();
+        if (!imageBytes || imageBytes.byteLength === 0) {
+          return errorResponse("Empty image upload body", 400);
+        }
+        if (imageBytes.byteLength > 5 * 1024 * 1024) {
+          return errorResponse("Avatar image exceeds 5 MB limit", 413);
+        }
+
+        const objectKey = `avatars/${session.user_id}/avatar.webp`;
+        await env.PROFILE_IMAGES.put(objectKey, imageBytes, {
+          httpMetadata: {
+            contentType: "image/webp",
+          },
+        });
+
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare(
+          "UPDATE users SET avatar_key = ?, avatar_updated_at = ? WHERE id = ?"
+        )
+          .bind(objectKey, now, session.user_id)
+          .run();
+
+        return jsonResponse({
+          success: true,
+          has_avatar: true,
+          avatar_key: objectKey,
+          avatar_updated_at: now,
+        });
+      }
+
+      // DELETE /api/profile/avatar
+      if (path === "/api/profile/avatar" && request.method === "DELETE") {
+        const session = await authenticateRequest(request, env.DB);
+        if (!session) {
+          return errorResponse("Unauthorized", 401);
+        }
+
+        const objectKey = `avatars/${session.user_id}/avatar.webp`;
+        if (env.PROFILE_IMAGES) {
+          try {
+            await env.PROFILE_IMAGES.delete(objectKey);
+          } catch (e) {
+            console.warn("Failed to delete avatar from R2:", e);
+          }
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        await env.DB.prepare(
+          "UPDATE users SET avatar_key = NULL, avatar_updated_at = ? WHERE id = ?"
+        )
+          .bind(now, session.user_id)
+          .run();
+
+        return jsonResponse({
+          success: true,
+          has_avatar: false,
+          avatar_updated_at: now,
+        });
+      }
+
+      // GET /api/profile/avatar
+      if (path === "/api/profile/avatar" && request.method === "GET") {
+        let targetUserId: string | null = null;
+        const paramUserId = url.searchParams.get("user_id");
+
+        if (paramUserId) {
+          if (!/^[a-zA-Z0-9_\-]+$/.test(paramUserId)) {
+            return errorResponse("Invalid user ID parameter", 400);
+          }
+          targetUserId = paramUserId;
+        } else {
+          const session = await authenticateRequest(request, env.DB);
+          if (session) {
+            targetUserId = session.user_id;
+          }
+        }
+
+        if (!targetUserId) {
+          return errorResponse("Unauthorized or user_id required", 401);
+        }
+
+        if (!env.PROFILE_IMAGES) {
+          return errorResponse("Avatar storage not configured", 404);
+        }
+
+        const objectKey = `avatars/${targetUserId}/avatar.webp`;
+        const object = await env.PROFILE_IMAGES.get(objectKey);
+        if (!object) {
+          return errorResponse("Avatar not found", 404);
+        }
+
+        const headers = new Headers();
+        headers.set("Content-Type", "image/webp");
+        headers.set("Cache-Control", "public, max-age=3600");
+        if (object.httpEtag) {
+          headers.set("ETag", object.httpEtag);
+        }
+        headers.set("Access-Control-Allow-Origin", "*");
+        headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+        return new Response(object.body, { headers });
       }
 
       // --- Data Synchronization Endpoints ---
