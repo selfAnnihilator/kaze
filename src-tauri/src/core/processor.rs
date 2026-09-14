@@ -229,19 +229,14 @@ impl CoreProcessor {
                     Ok(cloud_user) => {
                         let has_avatar = cloud_user.has_avatar.unwrap_or(false);
                         let mut avatar_data_url = profile_service_init.get_cached_avatar_data_url(&cloud_user.id);
-                        if has_avatar {
-                            if avatar_data_url.is_none() {
-                                if let Ok(Some(bytes)) = cloud_client_init.download_avatar(&worker_url, Some(&tok), &cloud_user.id).await {
-                                    let _ = profile_service_init.save_cached_avatar(&cloud_user.id, &bytes);
-                                    avatar_data_url = profile_service_init.get_cached_avatar_data_url(&cloud_user.id);
-                                }
+                        if has_avatar && avatar_data_url.is_none() {
+                            if let Ok(Some(bytes)) = cloud_client_init.download_avatar(&worker_url, Some(&tok), &cloud_user.id).await {
+                                let _ = profile_service_init.save_cached_avatar(&cloud_user.id, &bytes);
+                                avatar_data_url = profile_service_init.get_cached_avatar_data_url(&cloud_user.id);
                             }
-                        } else {
-                            profile_service_init.remove_cached_avatar(&cloud_user.id);
-                            avatar_data_url = None;
                         }
 
-                        let avatar_key = if has_avatar {
+                        let avatar_key = if has_avatar || avatar_data_url.is_some() {
                             Some(format!("avatars/{}.webp", cloud_user.id))
                         } else {
                             None
@@ -1062,19 +1057,14 @@ impl CoreProcessor {
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let has_avatar = cloud_user.has_avatar.unwrap_or(false);
                     let mut avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
-                    if has_avatar {
-                        if avatar_data_url.is_none() {
-                            if let Ok(Some(bytes)) = self.cloud_client.download_avatar(&worker_url, Some(&token), &cloud_user.id).await {
-                                let _ = self.profile_service.save_cached_avatar(&cloud_user.id, &bytes);
-                                avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
-                            }
+                    if has_avatar && avatar_data_url.is_none() {
+                        if let Ok(Some(bytes)) = self.cloud_client.download_avatar(&worker_url, Some(&token), &cloud_user.id).await {
+                            let _ = self.profile_service.save_cached_avatar(&cloud_user.id, &bytes);
+                            avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
                         }
-                    } else {
-                        self.profile_service.remove_cached_avatar(&cloud_user.id);
-                        avatar_data_url = None;
                     }
 
-                    let avatar_key = if has_avatar {
+                    let avatar_key = if has_avatar || avatar_data_url.is_some() {
                         Some(format!("avatars/{}.webp", cloud_user.id))
                     } else {
                         None
@@ -1266,22 +1256,32 @@ impl CoreProcessor {
                     .map_err(|e| AppError::Io(format!("Failed to read selected image: {}", e)))?;
                 let normalized_webp = ProfileService::normalize_avatar_image(&raw_bytes)?;
 
-                let avatar_resp = self.cloud_client.upload_avatar(&worker_url, &token, normalized_webp.clone()).await?;
-
+                // Save to local cache immediately so the user has their photo locally regardless of cloud R2 status
                 let _ = self.profile_service.save_cached_avatar(&session.user_id, &normalized_webp);
                 let data_url = self.profile_service.get_cached_avatar_data_url(&session.user_id);
+                let now = chrono::Utc::now().timestamp();
+                let local_avatar_key = format!("avatars/{}.webp", session.user_id);
+
+                // Attempt cloud upload to R2, gracefully fall back to local if R2 is not yet configured or offline
+                let (avatar_key, avatar_updated_at) = match self.cloud_client.upload_avatar(&worker_url, &token, normalized_webp.clone()).await {
+                    Ok(resp) => (resp.avatar_key, resp.avatar_updated_at),
+                    Err(e) => {
+                        tracing::warn!("Cloud avatar upload deferred / unavailable: {}", e);
+                        (Some(local_avatar_key), Some(now))
+                    }
+                };
 
                 let _ = self.user_repo.update_avatar_metadata(
                     &session.user_id,
-                    avatar_resp.avatar_key.as_deref(),
-                    avatar_resp.avatar_updated_at,
+                    avatar_key.as_deref(),
+                    avatar_updated_at,
                 ).await;
 
                 let updated_profile = {
                     let mut guard = self.current_user.write().await;
                     if let Some(ref mut u) = *guard {
-                        u.avatar_key = avatar_resp.avatar_key.clone();
-                        u.avatar_updated_at = avatar_resp.avatar_updated_at;
+                        u.avatar_key = avatar_key.clone();
+                        u.avatar_updated_at = avatar_updated_at;
                         u.avatar_data_url = data_url.clone();
                     }
                     guard.clone()
@@ -1301,7 +1301,10 @@ impl CoreProcessor {
                 let token = credentials::get_session_token(&session.user_id)
                     .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
 
-                self.cloud_client.delete_avatar(&worker_url, &token).await?;
+                // Attempt cloud delete, ignore 503/offline errors
+                if let Err(e) = self.cloud_client.delete_avatar(&worker_url, &token).await {
+                    tracing::warn!("Cloud avatar delete deferred / unavailable: {}", e);
+                }
 
                 self.profile_service.remove_cached_avatar(&session.user_id);
                 let _ = self.user_repo.update_avatar_metadata(&session.user_id, None, None).await;
