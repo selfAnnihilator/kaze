@@ -86,7 +86,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
     setAvatarError(null);
     setIsUploadingAvatar(true);
     try {
-      const res = await dispatchCommand({ command: "UploadAvatar" });
+      const res = await dispatchCommand({ command: "UploadAvatar", payload: {} });
       if (res?.data) {
         onUpdateUser?.(res.data);
       }

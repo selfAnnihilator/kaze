@@ -11,10 +11,19 @@ use tracing::info;
 #[tauri::command]
 async fn execute_command(
     processor: tauri::State<'_, Arc<CoreProcessor>>,
-    command: Command,
+    command: serde_json::Value,
 ) -> Result<CommandResponse, String> {
+    let mut val = command;
+    if let Some(obj) = val.as_object_mut() {
+        if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null) {
+            if serde_json::from_value::<Command>(serde_json::Value::Object(obj.clone())).is_err() {
+                obj.insert("payload".to_string(), serde_json::json!({}));
+            }
+        }
+    }
+    let parsed_command: Command = serde_json::from_value(val).map_err(|e| format!("Command parse error: {}", e))?;
     processor
-        .dispatch_command(command)
+        .dispatch_command(parsed_command)
         .await
         .map_err(|e| e.to_string())
 }
