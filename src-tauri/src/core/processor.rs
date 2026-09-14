@@ -1502,8 +1502,36 @@ impl CoreProcessor {
             }
             Query::GetCurrentUser => {
                 let current_user_guard = self.current_user.read().await;
-                let val = current_user_guard.as_ref().and_then(|u| serde_json::to_value(u).ok());
-                Ok(QueryResponse::CurrentUser(val))
+                if let Some(ref u) = *current_user_guard {
+                    let val = serde_json::to_value(u).ok();
+                    return Ok(QueryResponse::CurrentUser(val));
+                }
+                drop(current_user_guard);
+
+                // If startup background validation is still resolving, return active valid local session
+                if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
+                    let now = chrono::Utc::now().timestamp();
+                    let worker_url = self.get_cloud_worker_url().await;
+                    if session.expires_at > now && session.worker_url == worker_url {
+                        if let Some(_tok) = credentials::get_session_token(&session.user_id) {
+                            let user_row: Option<(String, String, i64)> = sqlx::query_as(
+                                "SELECT id, username, created_at FROM users WHERE id = ?"
+                            )
+                            .bind(&session.user_id)
+                            .fetch_optional(&self.db_pool)
+                            .await
+                            .unwrap_or(None);
+
+                            if let Some((id, username, created_at)) = user_row {
+                                let profile = UserProfile { id, username, created_at };
+                                *self.current_user.write().await = Some(profile.clone());
+                                return Ok(QueryResponse::CurrentUser(serde_json::to_value(&profile).ok()));
+                            }
+                        }
+                    }
+                }
+
+                Ok(QueryResponse::CurrentUser(None))
             }
             Query::GetCloudSyncStatus => {
                 let worker_url = self.get_cloud_worker_url().await;
