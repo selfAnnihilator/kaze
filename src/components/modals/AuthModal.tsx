@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Lock, User, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
 import { UserProfile } from "../../types";
 
@@ -22,7 +22,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const clearFields = () => {
+    setUsername("");
+    setPassword("");
+    setConfirmPassword("");
+    setError(null);
+  };
+
+  // Explicitly clear all credentials whenever modal opens or switches tabs
+  useEffect(() => {
+    if (isOpen) {
+      clearFields();
+    }
+  }, [isOpen, tab]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    clearFields();
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,12 +68,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (tab === "login") {
         const profile = await onLogin(trimmedUser, password);
         if (profile) {
-          onClose();
+          handleClose();
         }
       } else {
         const profile = await onSignUp(trimmedUser, password);
         if (profile) {
-          onClose();
+          handleClose();
         }
       }
     } catch (err: any) {
@@ -77,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         justifyContent: "center",
         zIndex: 9999,
       }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         style={{
@@ -131,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: "transparent",
               border: "none",
@@ -221,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label
               style={{
@@ -253,6 +272,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 placeholder="e.g. musiclover"
                 required
                 autoFocus
+                autoComplete="off"
                 style={{
                   flex: 1,
                   background: "transparent",
@@ -296,6 +316,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 required
+                autoComplete="new-password"
                 style={{
                   flex: 1,
                   background: "transparent",
@@ -340,6 +361,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter password"
                   required
+                  autoComplete="new-password"
                   style={{
                     flex: 1,
                     background: "transparent",

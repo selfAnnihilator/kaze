@@ -2624,12 +2624,14 @@ export const App: React.FC = () => {
       />
 
       {/* Auth Modal (Login / Sign Up) */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLogin={handleLogin}
-        onSignUp={handleSignUp}
-      />
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLogin={handleLogin}
+          onSignUp={handleSignUp}
+        />
+      )}
 
       {/* Center Modal Popup for Track Download */}
       <DownloadOptionsModal
