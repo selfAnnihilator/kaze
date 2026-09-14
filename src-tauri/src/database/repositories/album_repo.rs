@@ -40,7 +40,7 @@ impl AlbumRepository for SqliteAlbumRepository {
                    al.cover_art_path, COUNT(t.id) as track_count,
                    (
                        SELECT t2.id FROM tracks t2
-                       WHERE t2.album_id = al.id
+                       WHERE t2.album_id = al.id AND t2.has_cover_art = 1
                        ORDER BY t2.track_number ASC, t2.title ASC
                        LIMIT 1
                    ) as first_track_id

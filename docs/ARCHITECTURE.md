@@ -99,6 +99,22 @@ The `CoreProcessor` is the central orchestrator of the entire system.
 * Enforces caching and graceful fallback: external API downtime never degrades local playback.
 * Implements `DownloadProvider` for optional local Soulseek integration via documented local client interfaces/IPC.
 
+### 3.7 Cloud-Backed Authentication & Cloudflare D1 Synchronization
+* **Authoritative Cloud Account System**: Cloudflare Worker (`worker/`) bound to Cloudflare D1 acts as the sole authoritative account system. Dual local password authorities are eliminated; local SQLite never stores or checks password hashes.
+* **Server-Side Security & PBKDF2 600,000 Iterations**:
+  - Hashing: Web Crypto API PBKDF2-HMAC-SHA256 with 600,000 iterations and a cryptographically secure 16-byte random salt per user (exceeding OWASP password hashing recommendations). Web Crypto executes natively in C++ inside Cloudflare Workers V8 isolates with zero WASM/cold-start overhead and predictable resource bounds.
+  - Timing Discrepancy Defense: Login requests for non-existent users perform a dummy PBKDF2 verification (`DUMMY_HASH`) to prevent timing side-channel attacks and user enumeration. Generic `"Invalid username or password"` responses are strictly enforced.
+  - Rate Limiting: D1-backed sliding-window rate limiting on `/api/auth/login` (5 req/min per IP) and `/api/auth/register` (3 req/min per IP) returning HTTP 429 Too Many Requests with `Retry-After`.
+  - Input Validation: Server-side validation enforcing 3–50 character alphanumeric/punctuation usernames and 8–128 character passwords.
+* **Token & Session Architecture**:
+  - Server-Side (D1): Sessions table stores `token_hash TEXT PRIMARY KEY` (SHA-256 hash of the bearer token). Raw bearer tokens are never persisted in D1.
+  - Client-Side (Desktop App): Raw session tokens are stored securely in OS credential storage via `keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service). If OS keyring is unavailable (e.g. headless Linux or locked session), fallback to a private file with restricted permissions (`0600` on Unix) in the application data directory.
+  - Local SQLite (`cloud_sessions`): Stores session metadata only (`user_id`, `username`, `expires_at`, `worker_url`, `synced_at`, `created_at`). Raw tokens are never stored in SQLite.
+* **Local-First Resiliency & Offline Mode**:
+  - An authenticated user continues to use all local features, playback, library management, and stats offline without network connectivity or password re-entry, driven by local session metadata validation (`expires_at > now`).
+  - Network unavailability during login/signup returns clear connectivity errors; the client never silently creates a disconnected local password authority.
+* **Selective Synchronization Scope**: Synchronizes essential user entities only: `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
+
 ---
 
 ## 4. Threading & Concurrency Model

@@ -1,9 +1,17 @@
 # Project Task Tracking
 
-## Current (Production Maintenance & Future Extensions)
-- [ ] Add lyric parsing and LRC synchronized display.
-- [ ] Add 10-band graphic equalizer with DSP presets.
-- [ ] Add scrobbling support for ListenBrainz.
+## Current (Phase 13: Security Review & Authentication Hardening - COMPLETE)
+- [x] Increase PBKDF2-HMAC-SHA256 password hashing from 100,000 to at least 600,000 iterations (OWASP recommendation) with 16-byte random salt.
+- [x] Document decision on PBKDF2 vs Argon2id: Native Web Crypto C++ implementation in V8 isolates provides optimal zero-cold-start performance and predictable resource safety.
+- [x] Eliminate dual password authorities: Cloudflare Worker is the sole authoritative account system. Removed local password creation and verification fallback.
+- [x] Offline support: Validates existing cached session metadata (`expires_at > now`) without re-authenticating against local password hashes or contacting the Worker.
+- [x] Server-side session security in D1: Store SHA-256 token hashes (`token_hash`) instead of raw bearer tokens.
+- [x] Client-side desktop session security: Store raw tokens in OS credential store via `keyring` (Keychain, Windows Credential Manager, Secret Service) with restricted private file (`0600`) fallback. Local SQLite stores metadata only.
+- [x] Implement D1-backed sliding-window rate limiting on `/api/auth/login` (5/min) and `/api/auth/register` (3/min) returning 429 Too Many Requests with `Retry-After`.
+- [x] Timing discrepancy defense: Constant-time dummy PBKDF2 verification on non-existent usernames during login to prevent user enumeration. Generic error `"Invalid username or password"`.
+- [x] Strict input validation: Server- and client-side validation for usernames (3-50 chars, alphanumeric + symbols) and passwords (8-128 chars).
+- [x] Session expiry and logout verification: Logout invalidates D1 session and purges local credentials; expired sessions are automatically purged.
+- [x] Verification: Run complete test suites (`cargo test` all 35 tests passing, `npx tsc --noEmit` exits 0, `npm run build` exits 0).
 
 ## Completed
 - [x] Phase 11 User Experience & Integration Enhancements:

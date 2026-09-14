@@ -13,6 +13,7 @@ import {
   OnboardingStatus,
   SpotifyPlaylistImport,
   AppNotification,
+  CloudSyncStatus,
 } from "./types";
 import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
 import { Sidebar, ViewType } from "./components/Sidebar";
@@ -22,7 +23,6 @@ import { LibraryView } from "./components/views/LibraryView";
 import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
 import { DiscoveryView } from "./components/views/DiscoveryView";
-import { WishlistView } from "./components/views/WishlistView";
 import { NotificationsView } from "./components/views/NotificationsView";
 import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
@@ -40,6 +40,11 @@ import {
   CollectionData,
   CollectionTrackItem,
 } from "./components/views/CollectionDetailView";
+import { LyricsView } from "./components/views/LyricsView";
+import { FullScreenPlayerView } from "./components/views/FullScreenPlayerView";
+import { StatsView } from "./components/views/StatsView";
+import { AuthModal } from "./components/modals/AuthModal";
+import { StatsOverview, UserProfile } from "./types";
 
 export const App: React.FC = () => {
   // Navigation
@@ -62,6 +67,12 @@ export const App: React.FC = () => {
   const activeOnlinePlayIdRef = useRef<number>(0);
   const handleNextTrackRef = useRef<() => void>(() => {});
   const handlePlayCollectionTrackRef = useRef<(track: CollectionTrackItem) => void>(() => {});
+  const playingOnlineRecRef = useRef<DiscoveryRecommendation | null>(null);
+
+  // User Authentication & Profile
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
 
   // Playback
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
@@ -82,11 +93,13 @@ export const App: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [, setWishlist] = useState<WishlistItem[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus | null>(null);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   // Notifications & Toasts System
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -117,6 +130,98 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Full Screen & Lyrics View State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLyricsActive, setIsLyricsActive] = useState(false);
+
+  // Playing Origin state: identifies where the current track is playing from
+  const [playingOrigin, setPlayingOrigin] = useState<{
+    type: "playlist" | "mix" | "album" | "discovery";
+    id?: string;
+    name?: string;
+    collectionData?: CollectionData;
+  } | null>(null);
+
+  // Local track cover art cache
+  const [currentTrackCoverUrl, setCurrentTrackCoverUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (playbackState.current_track?.id) {
+      if (playbackState.current_track.cover_art_url) {
+        setCurrentTrackCoverUrl(playbackState.current_track.cover_art_url);
+      }
+      let isMounted = true;
+      executeQuery({
+        query: "GetTrackCoverArt",
+        payload: { track_id: playbackState.current_track.id },
+      })
+        .then((res) => {
+          if (isMounted && res.data) {
+            setCurrentTrackCoverUrl(res.data);
+          }
+        })
+        .catch(() => {});
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setCurrentTrackCoverUrl(null);
+    }
+  }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url]);
+
+  const handleToggleFullscreen = useCallback(
+    async (override?: boolean) => {
+      const nextState = typeof override === "boolean" ? override : !isFullscreen;
+      setIsFullscreen(nextState);
+
+      // 1. Tauri OS Window Fullscreen (takes entire monitor, hides titlebar/OS panel like YouTube video full screen)
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const appWindow = getCurrentWindow();
+        await appWindow.setFullscreen(nextState);
+      } catch (err) {
+        console.warn("Tauri window setFullscreen failed:", err);
+      }
+
+      // 2. HTML5 document fullscreen standard
+      try {
+        if (nextState) {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          }
+        } else {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        }
+      } catch (err) {
+        // Ignore fallback errors
+      }
+    },
+    [isFullscreen]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "Escape" && isFullscreen) || e.key === "F11") {
+        e.preventDefault();
+        handleToggleFullscreen(e.key === "Escape" ? false : undefined);
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        handleToggleFullscreen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [isFullscreen, handleToggleFullscreen]);
 
   // --- Notification Handlers ---
   const addAppNotification = useCallback(
@@ -131,6 +236,11 @@ export const App: React.FC = () => {
       };
       setNotifications((prev) => [newNotification, ...prev]);
       setToasts((prev) => [...prev, newNotification]);
+
+      // Automatically dismiss popup toast notification after 3 seconds
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== newNotification.id));
+      }, 3000);
     },
     []
   );
@@ -278,7 +388,7 @@ export const App: React.FC = () => {
     try {
       const res = await executeQuery({
         query: "GetDiscoveryRecommendations",
-        payload: { limit: 25, force_refresh: forceRefresh },
+        payload: { limit: 100, force_refresh: forceRefresh },
       });
       if (Array.isArray(res.data)) {
         setDiscoveryRecs(res.data);
@@ -299,6 +409,118 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const res = await executeQuery({ query: "GetCurrentUser" });
+      if (res && res.data) {
+        setCurrentUser(res.data);
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch current user:", err);
+    }
+  }, []);
+
+  const fetchCloudSyncStatus = useCallback(async () => {
+    try {
+      const res = await executeQuery({ query: "GetCloudSyncStatus" });
+      if (res && res.type === "CloudSyncStatus" && res.data) {
+        setCloudSyncStatus(res.data);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch cloud sync status:", err);
+    }
+  }, []);
+
+  const handleSyncCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      await dispatchCommand({ command: "SyncCloudData" });
+      addAppNotification("success", "Cloud Synchronized", "Your playlists, songs, and stats have been synchronized with Cloudflare D1.");
+      await fetchCloudSyncStatus();
+      await fetchPlaylists();
+      await fetchTracks();
+    } catch (err: any) {
+      addAppNotification("error", "Sync Failed", err?.message || "Failed to synchronize with cloud.");
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
+  const handleSetCloudUrl = async (url: string) => {
+    try {
+      await dispatchCommand({ command: "SetCloudServerUrl", payload: { url } });
+      addAppNotification("success", "Cloud Endpoint Updated", `Configured worker URL: ${url}`);
+      await fetchCloudSyncStatus();
+    } catch (err: any) {
+      addAppNotification("error", "Failed to update URL", err?.message || "Could not save cloud server URL.");
+    }
+  };
+
+  const handleLogin = async (username: string, password: string): Promise<UserProfile | null> => {
+    const res = await dispatchCommand({
+      command: "Login",
+      payload: { username, password },
+    });
+    if (res && res.status === "UserProfile" && res.data) {
+      setCurrentUser(res.data);
+      addAppNotification("success", "Logged In", `Welcome back, ${res.data.username}!`);
+      await fetchPlaylists();
+      await fetchCloudSyncStatus();
+      return res.data;
+    }
+    return null;
+  };
+
+  const handleSignUp = async (username: string, password: string): Promise<UserProfile | null> => {
+    const res = await dispatchCommand({
+      command: "SignUp",
+      payload: { username, password },
+    });
+    if (res && res.status === "UserProfile" && res.data) {
+      setCurrentUser(res.data);
+      addAppNotification("success", "Account Created", `Welcome to SoundFlow, ${res.data.username}!`);
+      await fetchPlaylists();
+      await fetchCloudSyncStatus();
+      return res.data;
+    }
+    return null;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await dispatchCommand({ command: "Logout" });
+      setCurrentUser(null);
+      addAppNotification("info", "Logged Out", "You have signed out of your account.");
+      await fetchPlaylists();
+      await fetchCloudSyncStatus();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
+  const fetchStatsOverview = useCallback(
+    async (year?: number, month?: number): Promise<StatsOverview | null> => {
+      try {
+        const payload: { year?: number; month?: number } = {};
+        if (year !== undefined) payload.year = year;
+        if (month !== undefined) payload.month = month;
+        const res = await executeQuery({
+          query: "GetStatsOverview",
+          payload,
+        });
+        if (res && res.data) {
+          return res.data as StatsOverview;
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats overview:", err);
+      }
+      return null;
+    },
+    []
+  );
+
   // Initial load
   useEffect(() => {
     fetchOnboardingStatus();
@@ -311,6 +533,8 @@ export const App: React.FC = () => {
     fetchDownloads();
     fetchDiscovery();
     fetchSettings();
+    fetchCurrentUser();
+    fetchCloudSyncStatus();
   }, [
     fetchOnboardingStatus,
     fetchPlaybackState,
@@ -322,6 +546,8 @@ export const App: React.FC = () => {
     fetchDownloads,
     fetchDiscovery,
     fetchSettings,
+    fetchCurrentUser,
+    fetchCloudSyncStatus,
   ]);
 
   // Backend Event Subscriptions
@@ -560,11 +786,32 @@ export const App: React.FC = () => {
   const handleStopOnlineAudio = useCallback(() => {
     activeOnlinePlayIdRef.current++;
     if (onlineAudioRef.current) {
+      const listened = onlineAudioRef.current.currentTime;
+      const rec = playingOnlineRecRef.current;
+      if (rec && listened > 5) {
+        const dur = onlineAudioRef.current.duration || rec.duration_secs || 210;
+        const completed = listened >= dur - 3;
+        dispatchCommand({
+          command: "RecordPlaybackSession",
+          payload: {
+            track_id: rec.external_track_id,
+            title: rec.title,
+            artist: rec.artist,
+            album: rec.album,
+            duration_secs: dur,
+            seconds_listened: listened,
+            completed,
+            skipped: !completed && listened < 30,
+            source: "online",
+          },
+        }).catch(console.warn);
+      }
       onlineAudioRef.current.pause();
       onlineAudioRef.current.removeAttribute("src");
       onlineAudioRef.current.load();
       onlineAudioRef.current = null;
     }
+    playingOnlineRecRef.current = null;
     setOnlineTrack(null);
   }, []);
 
@@ -624,11 +871,18 @@ export const App: React.FC = () => {
 
   const handlePlayOnlineTrack = useCallback(
     async (rec: DiscoveryRecommendation) => {
+      const hasRealLocalMatch =
+        !!rec.matched_local_track_id &&
+        !rec.matched_local_track_id.startsWith("itunes:") &&
+        !rec.matched_local_track_id.startsWith("online:");
+
       // 1. Check if this track is currently playing locally through Rodio
       const isCurrentlyPlayingLocal =
         playbackState.is_playing &&
         playbackState.current_track &&
-        ((rec.matched_local_track_id && playbackState.current_track.id === rec.matched_local_track_id) ||
+        playbackState.current_track.format !== "online" &&
+        !playbackState.current_track.file_path.startsWith("online://") &&
+        ((hasRealLocalMatch && playbackState.current_track.id === rec.matched_local_track_id) ||
           rec.external_track_id === playbackState.current_track.id ||
           (rec.title.toLowerCase().trim() === playbackState.current_track.title.toLowerCase().trim() &&
             playbackState.current_track.artist_name &&
@@ -641,9 +895,9 @@ export const App: React.FC = () => {
       }
 
       // 2. If this track is in local library, play it locally through Rodio!
-      if (rec.matched_local_track_id) {
+      if (hasRealLocalMatch) {
         handleStopOnlineAudio();
-        await handlePlayTrack(rec.matched_local_track_id);
+        await handlePlayTrack(rec.matched_local_track_id!);
         return;
       }
 
@@ -724,6 +978,7 @@ export const App: React.FC = () => {
       const audio = new Audio(streamUrl);
       audio.volume = playbackState.is_muted ? 0 : playbackState.volume;
       onlineAudioRef.current = audio;
+      playingOnlineRecRef.current = rec;
 
       audio.ontimeupdate = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
@@ -758,6 +1013,23 @@ export const App: React.FC = () => {
 
       audio.onended = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
+        const listened = audio.currentTime;
+        dispatchCommand({
+          command: "RecordPlaybackSession",
+          payload: {
+            track_id: rec.external_track_id,
+            title: rec.title,
+            artist: rec.artist,
+            album: rec.album,
+            duration_secs: duration,
+            seconds_listened: listened,
+            completed: true,
+            skipped: false,
+            source: "online",
+          },
+        }).catch(console.warn);
+        playingOnlineRecRef.current = null;
+
         if (handleNextTrackRef.current) {
           handleNextTrackRef.current();
         } else {
@@ -1030,6 +1302,17 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSelectAlbum = useCallback(
+    (albumId: string) => {
+      const album = albums.find((al) => al.id === albumId);
+      if (album) {
+        handleSearchLibrary(album.title);
+        setCurrentView("library");
+      }
+    },
+    [albums]
+  );
+
   // Onboarding completion
   const handleCompleteOnboarding = async (folders: string[], startScan: boolean) => {
     setShowOnboarding(false);
@@ -1155,6 +1438,12 @@ export const App: React.FC = () => {
 
   const handlePlayPlaylist = async (playlistId: string) => {
     setPlayingPlaylistId(playlistId);
+    const pl = playlists.find((p) => p.id === playlistId);
+    setPlayingOrigin({
+      type: "playlist",
+      id: playlistId,
+      name: pl?.name || "Playlist",
+    });
     try {
       const res = await executeQuery({
         query: "GetPlaylistTracks",
@@ -1298,18 +1587,26 @@ export const App: React.FC = () => {
           payload: { query: collection.searchQuery, limit: 50 },
         });
         const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
-        const items: CollectionTrackItem[] = onlineRecs.map((r) => ({
-          id: r.external_track_id,
-          title: r.title,
-          artist: r.artist,
-          album: r.album,
-          duration_secs: r.duration_secs || 210,
-          cover_art_url: r.cover_art_url,
-          preview_url: r.preview_url,
-          is_downloaded: !!r.matched_local_track_id,
-          matched_local_track_id: r.matched_local_track_id,
-          rawRecommendation: r,
-        }));
+        const items: CollectionTrackItem[] = onlineRecs.map((r) => {
+          const validLocalId =
+            r.matched_local_track_id &&
+            !r.matched_local_track_id.startsWith("online:") &&
+            !r.matched_local_track_id.startsWith("itunes:")
+              ? r.matched_local_track_id
+              : undefined;
+          return {
+            id: r.external_track_id,
+            title: r.title,
+            artist: r.artist,
+            album: r.album,
+            duration_secs: r.duration_secs || 210,
+            cover_art_url: r.cover_art_url,
+            preview_url: r.preview_url,
+            is_downloaded: !!validLocalId,
+            matched_local_track_id: validLocalId,
+            rawRecommendation: r,
+          };
+        });
         setActiveCollection((prev) =>
           prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
         );
@@ -1321,10 +1618,47 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  const handleOpenPlayingOrigin = useCallback(() => {
+    if (!playingOrigin) return;
+    if (playingOrigin.collectionData) {
+      setIsLyricsActive(false);
+      handleOpenCollection(playingOrigin.collectionData);
+    } else if (playingOrigin.type === "playlist" && playingOrigin.id) {
+      const pl = playlists.find((p) => p.id === playingOrigin.id);
+      if (pl) {
+        setIsLyricsActive(false);
+        handleOpenCollection({
+          id: pl.id,
+          title: pl.name,
+          type: "playlist",
+          tag: "PLAYLIST",
+          playlistId: pl.id,
+          subtitle: `${pl.track_count || 0} tracks`,
+          bgGradient: "linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%)",
+          accentColor: "#6366f1",
+        });
+      }
+    }
+  }, [playingOrigin, playlists, handleOpenCollection]);
+
   const handlePlayCollectionTrack = useCallback(
     async (item: CollectionTrackItem) => {
+      if (activeCollection) {
+        setPlayingOrigin({
+          type: activeCollection.type === "playlist" ? "playlist" : "mix",
+          id: activeCollection.id,
+          name: activeCollection.title,
+          collectionData: activeCollection,
+        });
+      }
+
+      const hasRealLocalMatch =
+        item.matched_local_track_id &&
+        !item.matched_local_track_id.startsWith("online:") &&
+        !item.matched_local_track_id.startsWith("itunes:");
+
       const isCurrentlyPlaying =
-        (item.matched_local_track_id &&
+        (hasRealLocalMatch &&
           playbackState.is_playing &&
           playbackState.current_track?.id === item.matched_local_track_id) ||
         (onlineTrack &&
@@ -1336,18 +1670,18 @@ export const App: React.FC = () => {
         return;
       }
 
-      if (item.matched_local_track_id) {
+      if (hasRealLocalMatch) {
         handleStopOnlineAudio();
         await dispatchCommand({ command: "ClearQueue" });
         await dispatchCommand({
           command: "PlayTrack",
-          payload: { track_id: item.matched_local_track_id, source: "collection" },
+          payload: { track_id: item.matched_local_track_id!, source: "collection" },
         });
         if (activeCollection && activeCollection.tracks) {
           const itemIdx = activeCollection.tracks.findIndex((t) => t.id === item.id);
           for (let i = itemIdx + 1; i < activeCollection.tracks.length; i++) {
             const tid = activeCollection.tracks[i].matched_local_track_id;
-            if (tid) {
+            if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
               await dispatchCommand({
                 command: "EnqueueTrack",
                 payload: { track_id: tid, play_next: false },
@@ -1356,7 +1690,7 @@ export const App: React.FC = () => {
           }
           for (let i = 0; i < itemIdx; i++) {
             const tid = activeCollection.tracks[i].matched_local_track_id;
-            if (tid) {
+            if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
               await dispatchCommand({
                 command: "EnqueueTrack",
                 payload: { track_id: tid, play_next: false },
@@ -1368,6 +1702,7 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Offline check: Cannot stream online audio without an internet connection
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         addAppNotification(
           "warning",
@@ -1392,8 +1727,8 @@ export const App: React.FC = () => {
         duration_secs: item.duration_secs,
         cover_art_url: item.cover_art_url,
         preview_url: item.preview_url,
-        match_status: item.matched_local_track_id ? "EXACT_MATCH" : "NOT_FOUND",
-        matched_local_track_id: item.matched_local_track_id,
+        match_status: hasRealLocalMatch ? "EXACT_MATCH" : "NOT_FOUND",
+        matched_local_track_id: hasRealLocalMatch ? item.matched_local_track_id : undefined,
         recommendation_reason: "From collection",
         in_wishlist: false,
       };
@@ -1444,16 +1779,21 @@ export const App: React.FC = () => {
 
     const tracks = activeCollection.tracks;
     const first = tracks[0];
-    if (first.matched_local_track_id) {
+    const firstHasLocal =
+      first.matched_local_track_id &&
+      !first.matched_local_track_id.startsWith("online:") &&
+      !first.matched_local_track_id.startsWith("itunes:");
+
+    if (firstHasLocal) {
       handleStopOnlineAudio();
       await dispatchCommand({ command: "ClearQueue" });
       await dispatchCommand({
         command: "PlayTrack",
-        payload: { track_id: first.matched_local_track_id, source: "collection" },
+        payload: { track_id: first.matched_local_track_id!, source: "collection" },
       });
       for (let i = 1; i < tracks.length; i++) {
         const tid = tracks[i].matched_local_track_id;
-        if (tid) {
+        if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
           await dispatchCommand({
             command: "EnqueueTrack",
             payload: { track_id: tid, play_next: false },
@@ -1493,7 +1833,11 @@ export const App: React.FC = () => {
 
     // Otherwise, start playing this collection in shuffle mode
     const tracks = activeCollection.tracks;
-    const localTracks = tracks.filter((t) => !!t.matched_local_track_id);
+    const localTracks = tracks.filter((t) =>
+      !!t.matched_local_track_id &&
+      !t.matched_local_track_id.startsWith("online:") &&
+      !t.matched_local_track_id.startsWith("itunes:")
+    );
 
     if (localTracks.length > 0) {
       handleStopOnlineAudio();
@@ -1505,7 +1849,7 @@ export const App: React.FC = () => {
       });
       for (let i = 1; i < localTracks.length; i++) {
         const tid = localTracks[i].matched_local_track_id;
-        if (tid) {
+        if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
           await dispatchCommand({
             command: "EnqueueTrack",
             payload: { track_id: tid, play_next: false },
@@ -1644,7 +1988,13 @@ export const App: React.FC = () => {
         }
 
         const allTracks = collection.tracks || [];
-        const trackIds = allTracks.map((t) => t.matched_local_track_id || t.id);
+        const trackIds = allTracks.map((t) =>
+          t.matched_local_track_id &&
+          !t.matched_local_track_id.startsWith("online:") &&
+          !t.matched_local_track_id.startsWith("itunes:")
+            ? t.matched_local_track_id
+            : t.id
+        );
 
         if (trackIds.length > 0) {
           await handleSaveImportedPlaylist(targetName, trackIds, allTracks);
@@ -1672,17 +2022,6 @@ export const App: React.FC = () => {
     await dispatchCommand({
       command: "AddToWishlist",
       payload: { title, artist, album },
-    });
-    fetchWishlist();
-  };
-
-  const handleUpdateWishlistStatus = async (
-    wishlistId: string,
-    status: "want" | "ignore" | "already_own" | "downloaded"
-  ) => {
-    await dispatchCommand({
-      command: "UpdateWishlistStatus",
-      payload: { wishlist_id: wishlistId, status },
     });
     fetchWishlist();
   };
@@ -1786,35 +2125,29 @@ export const App: React.FC = () => {
       if (res && Array.isArray(res.data)) {
         incoming = res.data;
       }
+
+      // Relevant results filter: Keep items that directly match query words or artist/title
       const qLower = q.toLowerCase();
-      const seenKeys = new Set(
-        incoming.map((r) => `${r.artist.toLowerCase().trim()}:${r.title.toLowerCase().trim()}`)
-      );
-      for (const rec of discoveryRecs) {
-        const key = `${rec.artist.toLowerCase().trim()}:${rec.title.toLowerCase().trim()}`;
-        if (!seenKeys.has(key)) {
-          if (
-            rec.title.toLowerCase().includes(qLower) ||
-            rec.artist.toLowerCase().includes(qLower) ||
-            (rec.album && rec.album.toLowerCase().includes(qLower)) ||
-            (rec.genre && rec.genre.toLowerCase().includes(qLower))
-          ) {
-            incoming.push(rec);
-            seenKeys.add(key);
-          }
+      const qTokens = qLower.split(/\s+/).filter((t) => t.length > 1);
+
+      const relevant = incoming.filter((r) => {
+        const titleLower = r.title.toLowerCase();
+        const artistLower = r.artist.toLowerCase();
+        const albumLower = r.album ? r.album.toLowerCase() : "";
+
+        // Direct substring match
+        if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
+          return true;
         }
-      }
-      setGlobalSearchResults(incoming);
+
+        // Token match: title or artist contains any significant token
+        return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
+      });
+
+      setGlobalSearchResults(relevant.length > 0 ? relevant : incoming);
     } catch (err) {
       console.error("Global online music search failed:", err);
-      const qLower = q.toLowerCase();
-      const fallbackMatches = discoveryRecs.filter(
-        (rec) =>
-          rec.title.toLowerCase().includes(qLower) ||
-          rec.artist.toLowerCase().includes(qLower) ||
-          (rec.album && rec.album.toLowerCase().includes(qLower))
-      );
-      setGlobalSearchResults(fallbackMatches);
+      setGlobalSearchResults([]);
     } finally {
       setIsGlobalSearching(false);
     }
@@ -1843,6 +2176,104 @@ export const App: React.FC = () => {
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
+  const isPlayingOnline = !!onlineTrack && !playbackState.is_playing;
+  const activePlayingTitle = isPlayingOnline
+    ? onlineTrack.title
+    : playbackState.current_track?.title || "No Track Selected";
+  const activePlayingArtist = isPlayingOnline
+    ? onlineTrack.artist
+    : playbackState.current_track?.artist_name || "";
+  const activePlayingTrackId = isPlayingOnline ? undefined : playbackState.current_track?.id;
+  const activePlayingDuration = isPlayingOnline
+    ? onlineTrack.duration
+    : playbackState.duration_secs || playbackState.current_track?.duration_secs || 0;
+  const activePlayingCurrentTime = isPlayingOnline
+    ? onlineTrack.currentTime
+    : playbackState.position_secs || 0;
+  const activePlayingArtwork = useMemo(() => {
+    if (isPlayingOnline && onlineTrack?.cover_art_url) {
+      return onlineTrack.cover_art_url;
+    }
+    // 1. Direct local cover extracted from audio file or cache
+    if (currentTrackCoverUrl) {
+      return currentTrackCoverUrl;
+    }
+    // 2. Track's own cover_art_url property
+    if (playbackState.current_track?.cover_art_url) {
+      return playbackState.current_track.cover_art_url;
+    }
+    // 3. Track in loaded library tracks
+    if (playbackState.current_track?.id) {
+      const matchInLibrary = tracks.find((t) => t.id === playbackState.current_track?.id);
+      if (matchInLibrary?.cover_art_url) {
+        return matchInLibrary.cover_art_url;
+      }
+    }
+    // 4. Track in activeCollection (playlist, mix, collection)
+    if (activeCollection?.tracks && playbackState.current_track) {
+      const matchInCollection = activeCollection.tracks.find(
+        (t) =>
+          t.matched_local_track_id === playbackState.current_track?.id ||
+          t.id === playbackState.current_track?.id ||
+          (t.title.toLowerCase().trim() === playbackState.current_track?.title.toLowerCase().trim() &&
+            t.artist.toLowerCase().trim() === playbackState.current_track?.artist_name?.toLowerCase().trim())
+      );
+      if (matchInCollection?.cover_art_url) {
+        return matchInCollection.cover_art_url;
+      }
+    }
+    // 5. Track in discovery/trending recommendations
+    if (playbackState.current_track) {
+      const matchInDiscovery = discoveryRecs.find(
+        (r) =>
+          r.matched_local_track_id === playbackState.current_track?.id ||
+          r.external_track_id === playbackState.current_track?.id ||
+          (r.title.toLowerCase().trim() === playbackState.current_track?.title.toLowerCase().trim() &&
+            r.artist.toLowerCase().trim() === playbackState.current_track?.artist_name?.toLowerCase().trim())
+      );
+      if (matchInDiscovery?.cover_art_url) {
+        return matchInDiscovery.cover_art_url;
+      }
+    }
+    // 6. Track's album cover in albums list
+    if (playbackState.current_track?.album_title) {
+      const matchAlbum = albums.find(
+        (a) =>
+          a.title.toLowerCase().trim() === playbackState.current_track?.album_title?.toLowerCase().trim()
+      );
+      if (matchAlbum?.cover_art_path) {
+        return matchAlbum.cover_art_path;
+      }
+    }
+    return null;
+  }, [
+    isPlayingOnline,
+    onlineTrack?.cover_art_url,
+    currentTrackCoverUrl,
+    playbackState.current_track,
+    tracks,
+    activeCollection?.tracks,
+    discoveryRecs,
+    albums,
+  ]);
+
+  const isCurrentTrackInPlaylist = useMemo(() => {
+    if (isPlayingOnline && onlineTrack) {
+      const id1 = onlineTrack.id;
+      const id2 = `online:${onlineTrack.artist}-${onlineTrack.title}`;
+      return (
+        (id1 && trackPlaylistMap[id1] && trackPlaylistMap[id1].length > 0) ||
+        (id2 && trackPlaylistMap[id2] && trackPlaylistMap[id2].length > 0) ||
+        false
+      );
+    }
+    if (playbackState.current_track) {
+      const tid = playbackState.current_track.id;
+      return (trackPlaylistMap[tid] && trackPlaylistMap[tid].length > 0) || false;
+    }
+    return false;
+  }, [isPlayingOnline, onlineTrack, playbackState.current_track, trackPlaylistMap]);
+
   return (
     <div className="app-container">
       <div className="app-body">
@@ -1851,15 +2282,22 @@ export const App: React.FC = () => {
           currentView={currentView}
           onSelectView={(view) => {
             setActiveCollection(null);
+            setIsLyricsActive(false);
+            if (view === "stats") {
+              setStatsRefreshTrigger((prev) => prev + 1);
+            }
             setCurrentView(view);
           }}
           unreadNotificationsCount={unreadNotificationsCount}
+          currentUser={currentUser}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
         <main className="main-content">
-          {/* Persistent Global Top Search Bar (hidden on discovery view when offline) */}
-          {(!activeCollection && currentView === "discovery" && !isOnline) ? null : (
+          {/* Persistent Global Top Search Bar (hidden on discovery view when offline or when lyrics active) */}
+          {((!activeCollection && currentView === "discovery" && !isOnline) || isLyricsActive) ? null : (
             <GlobalTopSearchBar
               searchQuery={globalSearchQuery}
               setSearchQuery={setGlobalSearchQuery}
@@ -1870,7 +2308,19 @@ export const App: React.FC = () => {
             />
           )}
 
-          {activeCollection ? (
+          {isLyricsActive ? (
+            <div style={{ flex: 1, minHeight: 0, height: "100%", width: "100%", position: "relative" }}>
+              <LyricsView
+                trackId={activePlayingTrackId}
+                artist={activePlayingArtist}
+                title={activePlayingTitle}
+                durationSecs={activePlayingDuration}
+                currentTime={activePlayingCurrentTime}
+                onSeek={handleUnifiedSeek}
+                isFullScreen={false}
+              />
+            </div>
+          ) : activeCollection ? (
             <CollectionDetailView
               collection={activeCollection}
               isLoadingTracks={isLoadingCollectionTracks}
@@ -1897,7 +2347,12 @@ export const App: React.FC = () => {
               trackPlaylistMap={trackPlaylistMap}
               onAddToPlaylist={(track) =>
                 handleOpenAddToPlaylistModal({
-                  id: track.matched_local_track_id || track.id,
+                  id:
+                    track.matched_local_track_id &&
+                    !track.matched_local_track_id.startsWith("online:") &&
+                    !track.matched_local_track_id.startsWith("itunes:")
+                      ? track.matched_local_track_id
+                      : track.id,
                   title: track.title,
                   artist: track.artist,
                   album: track.album,
@@ -1934,14 +2389,7 @@ export const App: React.FC = () => {
               {currentView === "albums" && (
                 <AlbumsView
                   albums={albums}
-                  tracks={tracks}
-                  onSelectAlbum={(albumId) => {
-                    const album = albums.find((al) => al.id === albumId);
-                    if (album) {
-                      handleSearchLibrary(album.title);
-                      setCurrentView("library");
-                    }
-                  }}
+                  onSelectAlbum={handleSelectAlbum}
                 />
               )}
 
@@ -2020,7 +2468,12 @@ export const App: React.FC = () => {
                   trackPlaylistMap={trackPlaylistMap}
                   onAddToPlaylist={(rec) =>
                     handleOpenAddToPlaylistModal({
-                      id: rec.matched_local_track_id || rec.external_track_id,
+                      id:
+                        rec.matched_local_track_id &&
+                        !rec.matched_local_track_id.startsWith("online:") &&
+                        !rec.matched_local_track_id.startsWith("itunes:")
+                          ? rec.matched_local_track_id
+                          : rec.external_track_id,
                       title: rec.title,
                       artist: rec.artist,
                       album: rec.album,
@@ -2028,16 +2481,6 @@ export const App: React.FC = () => {
                     })
                   }
                   onGoToLibrary={() => setCurrentView("library")}
-                />
-              )}
-
-              {currentView === "wishlist" && (
-                <WishlistView
-                  wishlist={wishlist}
-                  onAddToWishlist={handleAddToWishlist}
-                  onUpdateStatus={handleUpdateWishlistStatus}
-                  onSearchDirect={handleInitiateDirectDownloadSearch}
-                  onLaunchSoulseek={handleLaunchSoulseek}
                 />
               )}
 
@@ -2051,17 +2494,31 @@ export const App: React.FC = () => {
                 />
               )}
 
+              {currentView === "stats" && (
+                <StatsView
+                  currentUser={currentUser}
+                  onPlayTrack={handlePlayTrack}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                  fetchStatsOverview={fetchStatsOverview}
+                  refreshTrigger={statsRefreshTrigger}
+                />
+              )}
+
               {currentView === "settings" && (
                 <SettingsView
                   settings={settings}
                   configuredFolders={onboardingStatus?.configured_folders || []}
+                  cloudSyncStatus={cloudSyncStatus}
                   onAddFolder={handleAddFolder}
                   onRemoveFolder={handleRemoveFolder}
                   onRescanLibrary={handleRescanLibrary}
                   onRerunOnboarding={handleRerunOnboarding}
                   onLaunchSoulseek={handleLaunchSoulseek}
                   onImportSoulseek={handleImportSoulseekDownloads}
+                  onSyncCloud={handleSyncCloud}
+                  onSetCloudUrl={handleSetCloudUrl}
                   isScanning={isScanning}
+                  isSyncingCloud={isSyncingCloud}
                 />
               )}
             </>
@@ -2074,6 +2531,7 @@ export const App: React.FC = () => {
         playbackState={playbackState}
         currentTrack={playbackState.current_track}
         onlineTrack={onlineTrack}
+        coverArtUrl={activePlayingArtwork}
         onPlayPause={handleUnifiedPlayPause}
         onNext={handleNextTrack}
         onPrevious={handlePreviousTrack}
@@ -2086,7 +2544,63 @@ export const App: React.FC = () => {
         onDislike={handleDislike}
         onRemoveFeedback={handleRemoveFeedback}
         onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
+        isInPlaylist={isCurrentTrackInPlaylist}
+        onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
+        onOpenOrigin={
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+            ? handleOpenPlayingOrigin
+            : undefined
+        }
+        originName={
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+            ? playingOrigin.name
+            : undefined
+        }
+        isLyricsActive={isLyricsActive}
+        onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={() => handleToggleFullscreen()}
       />
+
+      {/* Full Screen Player View (matching user uploaded images) */}
+      {isFullscreen && (
+        <FullScreenPlayerView
+          playbackState={playbackState}
+          currentTrack={playbackState.current_track}
+          onlineTrack={onlineTrack}
+          coverArtUrl={activePlayingArtwork}
+          isInPlaylist={isCurrentTrackInPlaylist}
+          onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
+          isLyricsActive={isLyricsActive}
+          onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
+          onToggleFullscreen={() => handleToggleFullscreen(false)}
+          onPlayPause={handleUnifiedPlayPause}
+          onNext={handleNextTrack}
+          onPrevious={handlePreviousTrack}
+          onSeek={handleUnifiedSeek}
+          onVolumeChange={handleVolumeChange}
+          onToggleMute={handleToggleMute}
+          onToggleRepeat={handleToggleRepeat}
+          onToggleShuffle={handleToggleShuffle}
+          onLike={handleLike}
+          onDislike={handleDislike}
+          onRemoveFeedback={handleRemoveFeedback}
+          onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
+          onOpenOrigin={
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+              ? () => {
+                  handleToggleFullscreen(false);
+                  handleOpenPlayingOrigin();
+                }
+              : undefined
+          }
+          originName={
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+              ? playingOrigin.name
+              : undefined
+          }
+        />
+      )}
 
       {/* Top-Right Floating Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
@@ -2107,6 +2621,14 @@ export const App: React.FC = () => {
         }
         onTogglePlaylist={handleToggleTrackInPlaylist}
         onCreatePlaylist={handleCreatePlaylist}
+      />
+
+      {/* Auth Modal (Login / Sign Up) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
       />
 
       {/* Center Modal Popup for Track Download */}

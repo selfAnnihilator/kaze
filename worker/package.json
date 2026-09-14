@@ -1,0 +1,16 @@
+{
+  "name": "soundflow-cloud-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker & D1 synchronization service for SoundFlow Music Player",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute soundflow-db --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute soundflow-db --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260914.1",
+    "wrangler": "^4.131.2"
+  }
+}

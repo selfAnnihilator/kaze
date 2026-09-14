@@ -178,6 +178,14 @@ pub async fn repair_legacy_online_tracks(pool: &SqlitePool) -> AppResult<()> {
         ).await;
     }
 
+    // Ensure external tracks incorrectly matched against online track placeholders are reset
+    let _ = sqlx::query(
+        "UPDATE external_tracks SET match_status = 'NOT_FOUND', matched_local_track_id = NULL
+         WHERE matched_local_track_id LIKE 'itunes:%' OR matched_local_track_id LIKE 'online:%'"
+    )
+    .execute(pool)
+    .await;
+
     Ok(())
 }
 

@@ -375,6 +375,102 @@ End-to-end binary compilation, headless daemon execution verification, productio
 ### Remaining Work
 - All phases completed. System is production-ready.
 
+---
 
+## 2026-09-14 (Phase 12: Cloud-Backed Authentication & Cloudflare D1 Synchronization)
 
+### Worked On
+Transition from local-only SQLite authentication to cloud-backed authentication and user data synchronization using Cloudflare Workers and Cloudflare D1 (serverless SQLite).
 
+### System Inspection & Technical Findings
+- **Existing Local System**: Evaluated `user_repo.rs`, `users` table, and SQLite password hashing. Current local implementation used single-round SHA-256 with UUID salt (`salt:sha256(salt:password)`).
+- **Security Assessment**: Single-round SHA-256 is insufficient for cloud/web authentication. The server-side authentication in Cloudflare Workers requires modern password derivation. We adopt standard Web Crypto **PBKDF2-SHA256 (100,000 iterations)** with a cryptographically secure 16-byte random salt executed entirely inside the Cloudflare Worker V8 isolate.
+- **Credential Protection**: Plaintext credentials are sent only over HTTPS/TLS to the Worker API; password hashes are never sent back to the desktop client.
+- **Session Tokens**: Authenticated requests exchange a cryptographically secure 32-byte session token with server-side TTL in a D1 `sessions` table.
+- **Local-First Resiliency**: Desktop client caches the user profile and session token locally in SQLite. Local playback history, local caching, and offline playback continue functioning without remote server dependency.
+- **Synchronization Scope**: Designed Cloudflare D1 schema containing 8 tables: `users`, `sessions`, `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, and `user_settings`.
+
+### Changes
+- Updated `docs/ARCHITECTURE.md`, `PROJECT_STATUS.md`, and `TODO.md` with Cloudflare Workers + D1 cloud architecture.
+- Created `worker/` package:
+  - `worker/schema.sql`: Full D1 database schema with `users`, `sessions`, `songs`, `playlists`, `playlist_songs`, `song_stats`, `user_stats`, `user_settings`.
+  - `worker/wrangler.jsonc`: Cloudflare Worker configuration with D1 database binding `DB`.
+  - `worker/package.json`: Worker configuration and dependencies.
+  - `worker/src/index.ts`: Full Worker implementation featuring Web Crypto PBKDF2-SHA256 (100,000 iterations), 32-byte session tokens with 30-day expiration, `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/sync` (GET & POST).
+  - `worker/README.md`: Local development and Cloudflare deployment instructions.
+- Implemented Rust Cloud Sync Client and Database persistence in `src-tauri`:
+  - `src-tauri/migrations/20260914000001_cloud_sync.sql`: Added `cloud_sessions` table for local caching of active cloud session tokens and timestamps.
+  - `src-tauri/src/cloud/models.rs`: Data transfer models for auth and batch data sync.
+  - `src-tauri/src/cloud/client.rs`: `CloudClient` utilizing `reqwest` for communication with Cloudflare Worker.
+  - `src-tauri/src/cloud/sync_manager.rs`: `SyncManager` providing bidirectional payload extraction and insertion between local SQLite and D1 payloads, with `ensure_online_track` foreign-key protection.
+  - `src-tauri/src/core/command.rs`: Added `SyncCloudData`, `SetCloudServerUrl`, and `CloudSyncCompleted`.
+  - `src-tauri/src/core/query.rs`: Added `GetCloudSyncStatus` and `CloudSyncStatus`.
+  - `src-tauri/src/core/processor.rs`: Integrated `CloudClient` and `SyncManager` into `SignUp`, `Login`, and `Logout` handlers with graceful offline local fallback and automatic session restoration on app startup.
+  - `src-tauri/tests/cloud_sync_tests.rs`: Unit test validating remote payload application, database persistence, and local sync payload preparation.
+- Updated Frontend:
+  - `src/types.ts`: Added cloud sync commands, query, and `CloudSyncStatus` interface.
+  - `src/components/views/SettingsView.tsx`: Added "Cloud & Sync" section with session status indicator, configurable Cloudflare Worker endpoint, and "Sync Now" button.
+  - `src/App.tsx`: Wired `cloudSyncStatus`, `handleSyncCloud`, and `handleSetCloudUrl`.
+- Verification:
+  - `npm run build` in root succeeds with code 0 (TypeScript and Vite build).
+  - `npx tsc --noEmit` in `worker/` succeeds with code 0.
+  - `cargo check` in `src-tauri` succeeds with code 0.
+  - `cargo test` in `src-tauri` succeeds with all 33 unit and integration tests passing.
+
+### Decisions
+- Password hashing is executed strictly on the server-side inside the Cloudflare Worker isolate; the desktop client never receives or stores password hashes.
+- Database queries never bypass the Worker API to access D1 directly.
+- Offline-first resilience: Cached sessions and local SQLite allow the app to function seamlessly even when offline.
+- Unrelated parts of the system remain intact and untouched.
+
+---
+
+## 2026-09-14 (Phase 13: Security Review & Authentication Hardening)
+
+### Worked On
+Comprehensive security audit and hardening of the Cloudflare Worker authentication and synchronization subsystem, eliminating dual local password authorities, upgrading password derivation to 600,000 PBKDF2 iterations, securing token storage with OS keyrings and cryptographic hashing, implementing sliding-window rate limiting, mitigating timing side-channels, and verifying offline session continuity.
+
+### Security Hardening Decisions & Implementations
+
+1. **PBKDF2-HMAC-SHA256 with 600,000 Iterations**:
+   - **Rationale & Decision**: Increased PBKDF2-HMAC-SHA256 from 100,000 to **600,000 iterations** with a 16-byte random salt, fully compliant with current OWASP password hashing recommendations. While Argon2id was considered, the Web Crypto API (`crypto.subtle.deriveBits`) natively implements PBKDF2 in C++ inside Cloudflare Workers V8 isolates with zero WASM/cold-start overhead, guaranteed memory safety, and predictable execution bounds without bundling third-party WASM binaries.
+   - **Implementation**: Updated `hashPassword` in `worker/src/index.ts` to `iterations: 600000`.
+
+2. **Single Authoritative Account System (Elimination of Dual Authorities)**:
+   - **Problem**: Previously, if the cloud worker was unreachable during signup/login, the client fell back to creating independent local password hashes in SQLite, creating split-brain credentials.
+   - **Resolution**: Removed all local password creation/verification fallbacks from `Command::SignUp` and `Command::Login`. The Cloudflare Worker is the sole authority for account creation and credential validation.
+   - If the Worker is unreachable during login or registration, the client returns a clear network error rather than creating an unverified local password.
+   - Local SQLite stores `password_hash = ''`.
+
+3. **Offline Support Model**:
+   - Offline support is strictly defined as allowing a user who has previously authenticated on the device to continue using all local features, listening to music, managing playlists, and viewing stats while disconnected.
+   - Session metadata in SQLite (`cloud_sessions`) is validated on startup (`expires_at > now`). If valid, `current_user` is restored without network requests and without prompting for a password.
+
+4. **Cryptographic Token Storage in D1 (Server-Side)**:
+   - **Problem**: Storing raw session tokens in D1 creates exposure if the database is accessed.
+   - **Resolution**: Updated `worker/schema.sql` and `worker/src/index.ts` so the `sessions` table stores `token_hash TEXT PRIMARY KEY` (SHA-256 hash of the bearer token). Raw bearer tokens are never stored in D1. The Worker computes `hashToken(rawToken)` upon receiving Bearer headers to verify active sessions.
+
+5. **Desktop Client Secure Token Storage**:
+   - Integrated the Rust `keyring` crate (v3) to persist raw session bearer tokens in OS credential stores (macOS Keychain, Windows Credential Manager, Linux Secret Service).
+   - In environments where the OS keyring is unavailable, locked, or headless, `src-tauri/src/cloud/credentials.rs` falls back to a restricted-permission private file (`0600` on Unix) in the user's application data directory.
+   - SQLite `cloud_sessions` stores only non-sensitive session metadata (`user_id`, `username`, `expires_at`, `worker_url`, `synced_at`, `created_at`), never raw tokens.
+
+6. **Rate Limiting on Authentication Endpoints**:
+   - Implemented D1-backed sliding-window rate limiting on `/api/auth/login` (5 requests per minute per IP) and `/api/auth/register` (3 requests per minute per IP) in `worker/src/index.ts`.
+   - Exceeding limits returns HTTP `429 Too Many Requests` with `Retry-After` headers and localized error messages.
+
+7. **Timing Discrepancy Defense & Generic Error Responses**:
+   - In `/api/auth/login`, requests for non-existent users trigger dummy PBKDF2-HMAC-SHA256 verification against a static dummy hash (`DUMMY_HASH`) to prevent timing side-channel attacks that could leak user registration status.
+   - All invalid login attempts return the generic message `"Invalid username or password"`.
+
+8. **Strict Input Validation**:
+   - Server- and client-side validation enforces username length (3–50 chars, `^[a-zA-Z0-9_\-\.]+$`) and password length (8–128 chars). Malformed or oversize requests are rejected with HTTP 400.
+
+9. **Session Expiry & Logout Verification**:
+   - `Command::Logout` invokes Worker `/api/auth/logout` (deleting D1 session by `token_hash`), deletes the OS keyring credential, and purges local SQLite session metadata.
+   - Expired sessions (`expires_at <= now`) are purged automatically upon startup and during sync operations.
+
+### Verification
+- `cargo test`: All 35 tests pass with 0 failures across 12 test suites.
+- `npx tsc --noEmit` in `worker/`: Exits with code 0.
+- `npm run build`: TypeScript and Vite bundle production build cleanly in 1.12s.

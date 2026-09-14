@@ -22,10 +22,19 @@ async fn execute_command(
 #[tauri::command]
 async fn execute_query(
     processor: tauri::State<'_, Arc<CoreProcessor>>,
-    query: Query,
+    query: serde_json::Value,
 ) -> Result<QueryResponse, String> {
+    let mut val = query;
+    if let Some(obj) = val.as_object_mut() {
+        if obj.get("query").and_then(|q| q.as_str()) == Some("GetStatsOverview") {
+            if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null) {
+                obj.insert("payload".to_string(), serde_json::json!({}));
+            }
+        }
+    }
+    let parsed_query: Query = serde_json::from_value(val).map_err(|e| format!("Query parse error: {}", e))?;
     processor
-        .execute_query(query)
+        .execute_query(parsed_query)
         .await
         .map_err(|e| e.to_string())
 }

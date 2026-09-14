@@ -1,10 +1,12 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 10: Packaging, Verification & Polish (Completed)** -> **Production-Ready Release**
+**Phase 13: Hardened Cloud Authentication & Synchronization (Complete, Fully Audited & Production-Ready)**
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
+- **Cloud Infrastructure**: Cloudflare Worker + Cloudflare D1 (serverless SQLite) for authoritative cloud-backed authentication and user data synchronization.
+- **Security Posture**: PBKDF2-HMAC-SHA256 (600,000 iterations), server-side token hashing (`token_hash` in D1), client OS credential keyring storage with restricted file fallback, IP rate limiting, timing discrepancy defense, and sole authoritative cloud account authority.
 - **IPC & Desktop Shell**: Tauri v2 with React 19 + TypeScript + Vite.
 - **Database**: SQLite 3 with WAL mode, managed through `sqlx` and embedded migrations.
 - **Core Pattern**: Central Processor for validated command execution + Tokio broadcast Event Bus for decoupled notifications.

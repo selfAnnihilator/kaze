@@ -1,67 +1,152 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Disc, Calendar } from "lucide-react";
-import { Album, Track } from "../../types";
+import { Album } from "../../types";
 import { executeQuery } from "../../services/api";
+
+// In-memory frontend cache for album covers to avoid re-extracting from disk on every view switch
+const albumCoverCache = new Map<string, string>();
+
+// Concurrency limiter to prevent IPC congestion and memory spikes
+const MAX_CONCURRENT_COVER_REQUESTS = 4;
+let activeRequests = 0;
+const requestQueue: (() => void)[] = [];
+
+function enqueueCoverRequest<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      activeRequests++;
+      fn()
+        .then(resolve)
+        .catch(reject)
+        .finally(() => {
+          activeRequests--;
+          if (requestQueue.length > 0) {
+            const next = requestQueue.shift();
+            next?.();
+          }
+        });
+    };
+    if (activeRequests < MAX_CONCURRENT_COVER_REQUESTS) {
+      run();
+    } else {
+      requestQueue.push(run);
+    }
+  });
+}
+
+// Single shared IntersectionObserver for all album cards to eliminate per-card observer overhead
+const observerCallbacks = new Map<Element, () => void>();
+let sharedCoverObserver: IntersectionObserver | null = null;
+
+function getSharedCoverObserver(): IntersectionObserver | null {
+  if (typeof window === "undefined" || !("IntersectionObserver" in window)) return null;
+  if (!sharedCoverObserver) {
+    sharedCoverObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const cb = observerCallbacks.get(entry.target);
+            if (cb) {
+              cb();
+              observerCallbacks.delete(entry.target);
+              sharedCoverObserver?.unobserve(entry.target);
+            }
+          }
+        }
+      },
+      { rootMargin: "250px 0px" }
+    );
+  }
+  return sharedCoverObserver;
+}
 
 interface AlbumCardProps {
   album: Album;
-  onSelect: () => void;
-  tracks?: Track[];
+  onSelectAlbum: (albumId: string) => void;
 }
 
-const AlbumCard: React.FC<AlbumCardProps> = ({ album, onSelect, tracks }) => {
-  const [coverUrl, setCoverUrl] = useState<string | null>(album.cover_art_path || null);
-  const [isHovered, setIsHovered] = useState(false);
+const AlbumCard: React.FC<AlbumCardProps> = React.memo(({ album, onSelectAlbum }) => {
+  const cacheKey = album.id || album.title;
+  const [coverUrl, setCoverUrl] = useState<string | null>(() => {
+    if (album.cover_art_path) return album.cover_art_path;
+    if (cacheKey && albumCoverCache.has(cacheKey)) {
+      return albumCoverCache.get(cacheKey)!;
+    }
+    return null;
+  });
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
+  // Single shared intersection observer to detect when this card approaches the viewport
   useEffect(() => {
-    if (coverUrl) return;
+    if (coverUrl || isVisible || !cardRef.current) return;
 
-    let targetTrackId = album.first_track_id;
-    if (!targetTrackId && tracks && tracks.length > 0) {
-      const found = tracks.find(
-        (t) =>
-          (t.album_title && t.album_title.toLowerCase() === album.title.toLowerCase()) ||
-          t.id === album.first_track_id
-      );
-      if (found) targetTrackId = found.id;
+    if (cacheKey && albumCoverCache.has(cacheKey)) {
+      setCoverUrl(albumCoverCache.get(cacheKey)!);
+      return;
     }
 
+    const el = cardRef.current;
+    const observer = getSharedCoverObserver();
+    if (!observer) {
+      setIsVisible(true);
+      return;
+    }
+
+    observerCallbacks.set(el, () => {
+      setIsVisible(true);
+    });
+    observer.observe(el);
+
+    return () => {
+      observerCallbacks.delete(el);
+      observer.unobserve(el);
+    };
+  }, [cacheKey, coverUrl, isVisible]);
+
+  // Request cover art only when card enters viewport and has a track ID with artwork
+  useEffect(() => {
+    if (!isVisible || coverUrl) return;
+
+    if (cacheKey && albumCoverCache.has(cacheKey)) {
+      setCoverUrl(albumCoverCache.get(cacheKey)!);
+      return;
+    }
+
+    const targetTrackId = album.first_track_id;
     if (!targetTrackId) return;
 
     let isMounted = true;
-    executeQuery({
-      query: "GetTrackCoverArt",
-      payload: { track_id: targetTrackId },
-    })
-      .then((res) => {
+    enqueueCoverRequest(() =>
+      executeQuery({
+        query: "GetTrackCoverArt",
+        payload: { track_id: targetTrackId },
+      })
+    )
+      .then((res: any) => {
         if (isMounted && res.data) {
           setCoverUrl(res.data);
+          if (cacheKey) {
+            albumCoverCache.set(cacheKey, res.data);
+          }
         }
       })
-      .catch((_err) => {});
+      .catch(() => {});
 
     return () => {
       isMounted = false;
     };
-  }, [album.id, album.title, album.first_track_id, album.cover_art_path, coverUrl, tracks]);
+  }, [isVisible, coverUrl, album.first_track_id, cacheKey]);
+
+  const handleClick = useCallback(() => {
+    onSelectAlbum(album.id);
+  }, [album.id, onSelectAlbum]);
 
   return (
     <div
-      onClick={onSelect}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{
-        backgroundColor: "var(--bg-card)",
-        borderRadius: "12px",
-        padding: "14px",
-        display: "flex",
-        flexDirection: "column",
-        cursor: "pointer",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-4px)" : "none",
-        boxShadow: isHovered ? "0 10px 24px rgba(0, 0, 0, 0.4)" : "0 2px 8px rgba(0, 0, 0, 0.15)",
-        border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
-      }}
+      ref={cardRef}
+      className="album-card"
+      onClick={handleClick}
     >
       <div
         style={{
@@ -75,32 +160,39 @@ const AlbumCard: React.FC<AlbumCardProps> = ({ album, onSelect, tracks }) => {
           marginBottom: "12px",
           overflow: "hidden",
           position: "relative",
+          flexShrink: 0,
         }}
       >
-        {coverUrl ? (
+        {/* Constant background gradient fallback: prevents layout shifts */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1))",
+          }}
+        >
+          <Disc size={44} color="var(--accent-light)" />
+        </div>
+
+        {/* Cover image overlay */}
+        {coverUrl && (
           <img
             src={coverUrl}
             alt={album.title}
+            loading="lazy"
+            decoding="async"
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
               objectFit: "cover",
               display: "block",
             }}
           />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1))",
-            }}
-          >
-            <Disc size={44} color="var(--accent-light)" />
-          </div>
         )}
       </div>
 
@@ -155,15 +247,44 @@ const AlbumCard: React.FC<AlbumCardProps> = ({ album, onSelect, tracks }) => {
       </div>
     </div>
   );
-};
+});
 
 interface AlbumsViewProps {
   albums: Album[];
-  tracks?: Track[];
   onSelectAlbum: (albumId: string) => void;
 }
 
-export const AlbumsView: React.FC<AlbumsViewProps> = ({ albums, tracks, onSelectAlbum }) => {
+const INITIAL_BATCH = 48;
+const BATCH_STEP = 36;
+
+export const AlbumsView: React.FC<AlbumsViewProps> = React.memo(({ albums, onSelectAlbum }) => {
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isLoadingMoreRef = useRef(false);
+
+  // Progressive infinite scroll sentinel with debounce to prevent cascading loop
+  useEffect(() => {
+    if (visibleCount >= albums.length || !loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMoreRef.current) {
+          isLoadingMoreRef.current = true;
+          setVisibleCount((prev) => Math.min(prev + BATCH_STEP, albums.length));
+          setTimeout(() => {
+            isLoadingMoreRef.current = false;
+          }, 180);
+        }
+      },
+      { rootMargin: "150px" }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, albums.length]);
+
+  const visibleAlbums = albums.slice(0, visibleCount);
+
   return (
     <div>
       <div className="view-header">
@@ -182,15 +303,28 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({ albums, tracks, onSelect
           gap: "24px",
         }}
       >
-        {albums.map((album) => (
+        {visibleAlbums.map((album) => (
           <AlbumCard
             key={album.id}
             album={album}
-            tracks={tracks}
-            onSelect={() => onSelectAlbum(album.id)}
+            onSelectAlbum={onSelectAlbum}
           />
         ))}
       </div>
+
+      {/* Sentinel for progressive infinite loading */}
+      {visibleCount < albums.length && (
+        <div
+          ref={loadMoreRef}
+          style={{
+            height: "40px",
+            margin: "20px 0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        />
+      )}
     </div>
   );
-};
+});

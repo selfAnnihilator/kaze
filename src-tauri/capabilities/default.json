@@ -10,6 +10,8 @@
     "core:event:allow-unlisten",
     "core:event:allow-emit",
     "core:window:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
     "core:webview:default",
     "core:app:default",
     "core:path:default"

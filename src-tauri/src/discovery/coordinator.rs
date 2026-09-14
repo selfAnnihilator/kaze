@@ -124,14 +124,17 @@ impl DiscoveryCoordinator {
     ) -> AppResult<MatchResult> {
         let local_tracks = self.track_repo.list_tracks(0, 50000, None, true).await?;
 
-        let candidates = local_tracks.iter().map(|t| {
-            (
-                t.id.as_str(),
-                t.title.as_str(),
-                t.artist_name.as_deref().unwrap_or(""),
-                t.duration_secs,
-            )
-        });
+        let candidates = local_tracks
+            .iter()
+            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
+            .map(|t| {
+                (
+                    t.id.as_str(),
+                    t.title.as_str(),
+                    t.artist_name.as_deref().unwrap_or(""),
+                    t.duration_secs,
+                )
+            });
 
         Ok(FuzzyTrackMatcher::find_best_match(
             ext_title,
@@ -601,6 +604,7 @@ impl DiscoveryCoordinator {
 
         let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
             .iter()
+            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
             .map(|t| {
                 (
                     t.id.as_str(),
@@ -625,7 +629,7 @@ impl DiscoveryCoordinator {
 
             let status = match_res.status;
             let status_str = status.as_str().to_string();
-            if track.match_status != status_str {
+            if track.match_status != status_str || track.matched_local_track_id != match_res.matched_track_id {
                 track.match_status = status_str;
                 track.matched_local_track_id = match_res.matched_track_id.clone();
                 let _ = self.wishlist_repo.upsert_external_track(&track).await;
@@ -675,8 +679,9 @@ impl DiscoveryCoordinator {
 
             // On force_refresh, apply a hash-based rotation offset so the recommendations rotate and feel fresh
             if force_refresh {
-                let hash = (track.id.len() * 19 + track.title.len() * 37 + (now_millis as usize % 97)) % 50;
-                base_score += (hash as f64) - 25.0;
+                let salt = (now_millis % 9973) as usize;
+                let hash = ((track.id.len() * 37 + track.title.len() * 59 + salt) % 90) as f64;
+                base_score += hash - 45.0;
             }
 
             let reason = match status {
@@ -710,24 +715,11 @@ impl DiscoveryCoordinator {
             });
         }
 
-        // Sort candidates: Unowned tracks first (NotFound > PossibleMatch > LikelyMatch > ExactMatch),
-        // and within each group by taste affinity score descending!
+        // Sort candidates by score descending without demoting owned or playlist songs
         scored_list.sort_by(|a, b| {
-            let match_order = |status: &str| match status {
-                "NOT_FOUND" => 0,
-                "POSSIBLE_MATCH" => 1,
-                "LIKELY_MATCH" => 2,
-                _ => 3,
-            };
-            let order_a = match_order(&a.track.match_status);
-            let order_b = match_order(&b.track.match_status);
-            if order_a != order_b {
-                order_a.cmp(&order_b)
-            } else {
-                b.score
-                    .partial_cmp(&a.score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // 6. Enforce STRICT ARTIST DIVERSITY (maximum 2 tracks per artist)
@@ -830,6 +822,7 @@ impl DiscoveryCoordinator {
 
         let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
             .iter()
+            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
             .map(|t| (t.id.as_str(), t.title.as_str(), t.artist_name.as_deref().unwrap_or(""), t.duration_secs))
             .collect();
 
@@ -1014,6 +1007,10 @@ impl DiscoveryCoordinator {
 
         // 5. Synthesize matching local library tracks that aren't already represented
         for lt in &local_tracks {
+            if lt.format == "online" || lt.file_path.starts_with("online://") || lt.id.starts_with("itunes:") || lt.id.starts_with("online:") {
+                continue;
+            }
+
             let lt_title = lt.title.trim();
             let lt_artist = lt.artist_name.as_deref().unwrap_or("").trim();
             let lt_key = format!("{}:{}", lt_artist.to_lowercase(), lt_title.to_lowercase());

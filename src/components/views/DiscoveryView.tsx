@@ -12,8 +12,6 @@ import {
   Music2,
   Play,
   Pause,
-  X,
-  Globe,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +20,7 @@ import {
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
 import { executeQuery } from "../../services/api";
 import { CollectionData } from "./CollectionDetailView";
+import { OnlineSearchResultsSection } from "./OnlineSearchResultsSection";
 
 interface DiscoveryTrackCardProps {
   rec: DiscoveryRecommendation;
@@ -71,10 +70,15 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
     return titleMatch && artistMatch;
   });
 
+  const hasRealLocalMatch =
+    rec.match_status === "EXACT_MATCH" &&
+    !!rec.matched_local_track_id &&
+    !rec.matched_local_track_id.startsWith("itunes:") &&
+    !rec.matched_local_track_id.startsWith("online:");
+
   const isDownloaded =
-    rec.provider === "library" ||
-    rec.match_status === "EXACT_MATCH" ||
-    !!rec.matched_local_track_id ||
+    (rec.provider === "library" && !rec.external_track_id.startsWith("itunes:") && !rec.external_track_id.startsWith("online:")) ||
+    hasRealLocalMatch ||
     activeDownload?.status === "COMPLETED";
 
   const isDownloading =
@@ -753,9 +757,52 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onGoToLibrary,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
+  const [visibleCount, setVisibleCount] = useState(15);
+  const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== "undefined" ? navigator.onLine : true
   );
+
+  const handleRefreshTrending = async () => {
+    if (isRefreshingTrending || !_onRefresh) return;
+    setIsRefreshingTrending(true);
+    try {
+      await _onRefresh(true);
+      setVisibleCount(15);
+      if (songsScrollRef.current) {
+        songsScrollRef.current.scrollLeft = 0;
+      }
+    } catch (err) {
+      console.error("Failed to refresh trending:", err);
+    } finally {
+      setIsRefreshingTrending(false);
+    }
+  };
+
+  const filteredTrendingRecs = recommendations.filter((rec) => {
+    if (filter === "ALL") return true;
+    const r = rec.recommendation_reason.toLowerCase();
+    if (filter === "TRENDING") return r.includes("trending") || r.includes("chart");
+    if (filter === "GENRE") return r.includes("genre") || r.includes("popular in") || r.includes("trending in");
+    if (filter === "SIMILAR") return r.includes("similar") || r.includes("listening") || r.includes("library artist");
+    return true;
+  });
+
+  const handleFilterChange = (newFilter: "ALL" | "TRENDING" | "GENRE" | "SIMILAR") => {
+    setFilter(newFilter);
+    setVisibleCount(15);
+    if (songsScrollRef.current) {
+      songsScrollRef.current.scrollLeft = 0;
+    }
+  };
+
+  const handleSongsScroll = () => {
+    const el = songsScrollRef.current;
+    if (!el) return;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 350) {
+      setVisibleCount((prev) => Math.min(prev + 10, filteredTrendingRecs.length));
+    }
+  };
 
   useEffect(() => {
     const handleOnline = () => {
@@ -806,40 +853,24 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         incoming = res.data;
       }
 
-      // Case-insensitive merge with loaded recommendations matching query
-      // so songs that were already displayed on screen never vanish
+      // Filter to relevant results matching the search query
       const qLower = q.toLowerCase();
-      const seenKeys = new Set(
-        incoming.map((r) => `${r.artist.toLowerCase().trim()}:${r.title.toLowerCase().trim()}`)
-      );
+      const qTokens = qLower.split(/\s+/).filter((t) => t.length > 1);
 
-      for (const rec of recommendations) {
-        const key = `${rec.artist.toLowerCase().trim()}:${rec.title.toLowerCase().trim()}`;
-        if (!seenKeys.has(key)) {
-          if (
-            rec.title.toLowerCase().includes(qLower) ||
-            rec.artist.toLowerCase().includes(qLower) ||
-            (rec.album && rec.album.toLowerCase().includes(qLower)) ||
-            (rec.genre && rec.genre.toLowerCase().includes(qLower))
-          ) {
-            incoming.push(rec);
-            seenKeys.add(key);
-          }
+      const relevant = incoming.filter((r) => {
+        const titleLower = r.title.toLowerCase();
+        const artistLower = r.artist.toLowerCase();
+        const albumLower = r.album ? r.album.toLowerCase() : "";
+        if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
+          return true;
         }
-      }
+        return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
+      });
 
-      setSearchResults(incoming);
+      setSearchResults(relevant.length > 0 ? relevant : incoming);
     } catch (err) {
       console.error("Online music search failed:", err);
-      // Fallback: Show loaded recommendations matching the query case-insensitively
-      const qLower = q.toLowerCase();
-      const fallbackMatches = recommendations.filter(
-        (rec) =>
-          rec.title.toLowerCase().includes(qLower) ||
-          rec.artist.toLowerCase().includes(qLower) ||
-          (rec.album && rec.album.toLowerCase().includes(qLower))
-      );
-      setSearchResults(fallbackMatches);
+      setSearchResults([]);
     } finally {
       if (propIsSearchingOnline === undefined) setInternalIsSearching(false);
     }
@@ -853,34 +884,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setSearchQuery("");
     setSearchResults(null);
   };
-
-  const isSearchActive = searchResults !== null;
-  const currentList = isSearchActive ? searchResults : recommendations;
-
-  const qClean = searchQuery.trim();
-  const qLower = qClean.toLowerCase();
-
-  const filteredRecs = currentList.filter((rec) => {
-    if (isSearchActive) return true;
-
-    // Instant case-insensitive filtering on loaded recommendations
-    if (qLower) {
-      const matchTitle = rec.title.toLowerCase().includes(qLower);
-      const matchArtist = rec.artist.toLowerCase().includes(qLower);
-      const matchAlbum = rec.album ? rec.album.toLowerCase().includes(qLower) : false;
-      const matchGenre = rec.genre ? rec.genre.toLowerCase().includes(qLower) : false;
-      if (!matchTitle && !matchArtist && !matchAlbum && !matchGenre) {
-        return false;
-      }
-    }
-
-    if (filter === "ALL") return true;
-    const r = rec.recommendation_reason.toLowerCase();
-    if (filter === "TRENDING") return r.includes("trending") || r.includes("chart");
-    if (filter === "GENRE") return r.includes("genre") || r.includes("popular in") || r.includes("trending in");
-    if (filter === "SIMILAR") return r.includes("similar") || r.includes("listening") || r.includes("library artist");
-    return true;
-  });
 
   const trendingCount = recommendations.filter((r) => {
     const s = r.recommendation_reason.toLowerCase();
@@ -1205,99 +1208,34 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         paddingBottom: "40px",
       }}
     >
-      {/* Music Discovery Title Header */}
-      <div className="view-header" style={{ marginBottom: 0 }}>
-        <div>
-          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Sparkles size={26} color="var(--accent-light)" />
-            <span>Music Discovery</span>
-          </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", marginTop: "4px" }}>
-            Explore trending charts, user-tailored genres, or search any music online worldwide.
-          </p>
-        </div>
-      </div>
 
-      {/* Active Search Results Banner */}
-      {isSearchActive && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "rgba(99, 102, 241, 0.12)",
-            border: "1px solid rgba(99, 102, 241, 0.3)",
-            borderRadius: "10px",
-            padding: "10px 18px",
+      {/* SEPARATE SEARCH SECTION (Relevant results displayed above trending songs) */}
+      {searchResults !== null && (
+        <OnlineSearchResultsSection
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          onClearSearch={handleClearSearch}
+          onPlayOnlineTrack={onPlayOnlineTrack}
+          onStopTrack={onStopTrack}
+          activeOnlineTrackId={activeOnlineTrackId}
+          isOnlinePlaying={isOnlinePlaying}
+          isOnlineLoading={isOnlineLoading}
+          currentLocalTrack={currentLocalTrack}
+          isLocalPlaying={isLocalPlaying}
+          onAddToPlaylist={onAddToPlaylist}
+          onAddToWishlist={onAddToWishlist}
+          onSearchDirect={onSearchDirect}
+          downloads={downloads}
+          trackPlaylistMap={trackPlaylistMap}
+          playlists={playlists}
+          onSelectArtist={(artist) => {
+            setSearchQuery(artist);
+            handleSearchOnline(artist);
           }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Globe size={18} color="var(--accent-light)" />
-            <span style={{ fontSize: "0.92rem", fontWeight: 600, color: "#fff" }}>
-              Online Search: {searchResults.length} {searchResults.length === 1 ? "track" : "tracks"} found for &ldquo;{searchQuery}&rdquo;
-            </span>
-          </div>
-          <button
-            onClick={handleClearSearch}
-            className="btn btn-secondary"
-            style={{
-              padding: "5px 12px",
-              fontSize: "0.8rem",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <X size={14} />
-            <span>Clear & Show Recommendations</span>
-          </button>
-        </div>
+        />
       )}
 
-      {/* Curated Category Tabs (Only when not in active online search) */}
-      {!isSearchActive && recommendations.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <button
-            onClick={() => setFilter("ALL")}
-            className={`subtab-btn ${filter === "ALL" ? "active" : ""}`}
-          >
-            All For You ({recommendations.length})
-          </button>
-          {genreCount > 0 && (
-            <button
-              onClick={() => setFilter("GENRE")}
-              className={`subtab-btn ${filter === "GENRE" ? "active" : ""}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-            >
-              <Radio size={12} color="var(--accent-light)" />
-              <span>Top Genres ({genreCount})</span>
-            </button>
-          )}
-          {similarCount > 0 && (
-            <button
-              onClick={() => setFilter("SIMILAR")}
-              className={`subtab-btn ${filter === "SIMILAR" ? "active" : ""}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-            >
-              <Sparkles size={12} color="var(--accent-light)" />
-              <span>Similar Artists ({similarCount})</span>
-            </button>
-          )}
-          {trendingCount > 0 && (
-            <button
-              onClick={() => setFilter("TRENDING")}
-              className={`subtab-btn ${filter === "TRENDING" ? "active" : ""}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-            >
-              <Flame size={12} color="#f59e0b" />
-              <span>Trending Hits ({trendingCount})</span>
-            </button>
-          )}
-        </div>
-      )}
-
-
-      {/* SECTION 1: Trending & Recommended Songs (Horizontal Scroll) */}
+      {/* SECTION 1: Trending & Recommended Songs (Always preserved) */}
       <div>
         <div
           style={{
@@ -1319,16 +1257,37 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               }}
             >
               <Music2 size={18} color="var(--accent-light)" />
-              <span>{isSearchActive ? `Search Results (${filteredRecs.length})` : "Trending Songs"}</span>
+              <span>Trending Songs</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              {isSearchActive
-                ? `Songs found online for "${searchQuery}"`
-                : "Top recommended songs tailored to your taste"}
+              Top recommended songs tailored to your taste
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {_onRefresh && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleRefreshTrending}
+                disabled={isRefreshingTrending}
+                style={{
+                  padding: "5px 12px",
+                  fontSize: "0.82rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  borderRadius: "8px",
+                }}
+                title="Refresh trending songs"
+              >
+                <RefreshCw
+                  size={14}
+                  className={isRefreshingTrending ? "spin-animation" : ""}
+                />
+                <span>Refresh</span>
+              </button>
+            )}
             <button
               type="button"
               className="scroll-arrow-btn"
@@ -1348,40 +1307,79 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           </div>
         </div>
 
-        {filteredRecs.length === 0 ? (
+        {/* Curated Filter Words (Below Trending Songs title) */}
+        {recommendations.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+            <button
+              onClick={() => handleFilterChange("ALL")}
+              className={`subtab-btn ${filter === "ALL" ? "active" : ""}`}
+            >
+              All For You ({recommendations.length})
+            </button>
+            {genreCount > 0 && (
+              <button
+                onClick={() => handleFilterChange("GENRE")}
+                className={`subtab-btn ${filter === "GENRE" ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Radio size={12} color="var(--accent-light)" />
+                <span>Top Genres ({genreCount})</span>
+              </button>
+            )}
+            {similarCount > 0 && (
+              <button
+                onClick={() => handleFilterChange("SIMILAR")}
+                className={`subtab-btn ${filter === "SIMILAR" ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Sparkles size={12} color="var(--accent-light)" />
+                <span>Similar Artists ({similarCount})</span>
+              </button>
+            )}
+            {trendingCount > 0 && (
+              <button
+                onClick={() => handleFilterChange("TRENDING")}
+                className={`subtab-btn ${filter === "TRENDING" ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Flame size={12} color="#f59e0b" />
+                <span>Trending Hits ({trendingCount})</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {filteredTrendingRecs.length === 0 ? (
           <div
             className="content-card"
             style={{ textAlign: "center", padding: "45px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
           >
-            {isSearchActive ? (
-              <>
-                <Globe size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
-                <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
-                  No online songs found matching &ldquo;{searchQuery}&rdquo;
-                </p>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
-                  Try searching for another artist or title, or browse our curated mixes below.
-                </p>
-              </>
-            ) : (
-              <>
-                <Sparkles size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
-                <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
-                  No recommendations found
-                </p>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
-                  Click Refresh to discover fresh trending and genre tracks.
-                </p>
-              </>
-            )}
+            <Sparkles size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
+            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+              No recommendations found
+            </p>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
+              Click Refresh to discover fresh trending and genre tracks.
+            </p>
           </div>
         ) : (
-          <div ref={songsScrollRef} className="horizontal-scroll-row">
-            {filteredRecs.map((rec) => {
+          <div
+            ref={songsScrollRef}
+            className="horizontal-scroll-row"
+            onScroll={handleSongsScroll}
+          >
+            {filteredTrendingRecs.slice(0, visibleCount).map((rec) => {
+              const hasRealLocalMatch =
+                !!rec.matched_local_track_id &&
+                !rec.matched_local_track_id.startsWith("itunes:") &&
+                !rec.matched_local_track_id.startsWith("online:");
+
               const isPlayingLocal =
                 isLocalPlaying &&
                 !!currentLocalTrack &&
-                ((rec.matched_local_track_id && rec.matched_local_track_id === currentLocalTrack.id) ||
+                currentLocalTrack.format !== "online" &&
+                !currentLocalTrack.file_path.startsWith("online://") &&
+                ((hasRealLocalMatch && rec.matched_local_track_id === currentLocalTrack.id) ||
                   rec.external_track_id === currentLocalTrack.id ||
                   (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
                     currentLocalTrack.artist_name &&

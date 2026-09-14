@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { AppSettings } from "../../types";
+import React, { useState, useEffect } from "react";
+import { AppSettings, CloudSyncStatus } from "../../types";
 import {
   Settings as SettingsIcon,
   FolderPlus,
@@ -13,34 +13,54 @@ import {
   CheckCircle,
   Sparkles,
   ExternalLink,
+  Cloud,
+  ShieldCheck,
 } from "lucide-react";
 
 interface SettingsViewProps {
   settings: AppSettings | null;
   configuredFolders: Array<{ id: string; path: string; track_count?: number }>;
+  cloudSyncStatus?: CloudSyncStatus | null;
   onAddFolder: (path: string) => Promise<void>;
   onRemoveFolder: (folderId: string) => Promise<void>;
   onRescanLibrary: () => Promise<void>;
   onRerunOnboarding: () => void;
   onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onImportSoulseek: () => Promise<void>;
+  onSyncCloud?: () => Promise<void>;
+  onSetCloudUrl?: (url: string) => Promise<void>;
   isScanning?: boolean;
+  isSyncingCloud?: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   configuredFolders,
+  cloudSyncStatus,
   onAddFolder,
   onRemoveFolder,
   onRescanLibrary,
   onRerunOnboarding,
   onLaunchSoulseek,
   onImportSoulseek,
+  onSyncCloud,
+  onSetCloudUrl,
   isScanning = false,
+  isSyncingCloud = false,
 }) => {
   const [newFolderPath, setNewFolderPath] = useState("");
   const [addingFolder, setAddingFolder] = useState(false);
-  const [activeSection, setActiveSection] = useState<"folders" | "audio" | "metadata" | "soulseek" | "system">("folders");
+  const [workerUrlInput, setWorkerUrlInput] = useState(
+    cloudSyncStatus?.worker_url || "https://soundflow-test-worker.abhi-atlas-2026.workers.dev"
+  );
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [activeSection, setActiveSection] = useState<"folders" | "audio" | "metadata" | "soulseek" | "system" | "cloud">("folders");
+
+  useEffect(() => {
+    if (cloudSyncStatus?.worker_url) {
+      setWorkerUrlInput(cloudSyncStatus.worker_url);
+    }
+  }, [cloudSyncStatus?.worker_url]);
 
   const handleAddFolderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +125,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         >
           <Database size={16} />
           <span>System & Storage</span>
+        </button>
+        <button
+          onClick={() => setActiveSection("cloud")}
+          className={`tab-btn ${activeSection === "cloud" ? "active" : ""}`}
+        >
+          <Cloud size={16} />
+          <span>Cloud & Sync</span>
         </button>
       </div>
 
@@ -371,6 +398,150 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
                   {settings?.cache_dir || "Default user cache dir / artwork"}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION: CLOUD & SYNC */}
+      {activeSection === "cloud" && (
+        <div className="content-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+            <div>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Cloud size={20} color="#38bdf8" />
+                <span>Cloudflare Workers & D1 Synchronization</span>
+              </h3>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                Secure, serverless cloud storage for your user profile, custom playlists, track statistics, and listening history.
+              </p>
+            </div>
+
+            {onSyncCloud && (
+              <button
+                onClick={onSyncCloud}
+                disabled={isSyncingCloud}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  backgroundColor: "#2563eb",
+                  color: "#fff",
+                  border: "none",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  cursor: isSyncingCloud ? "not-allowed" : "pointer",
+                  opacity: isSyncingCloud ? 0.7 : 1,
+                  transition: "background-color 0.2s",
+                }}
+              >
+                <RefreshCw size={15} className={isSyncingCloud ? "spinning" : ""} />
+                <span>{isSyncingCloud ? "Syncing..." : "Sync Now"}</span>
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Account Status Card */}
+            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                Cloud Account & Session Status
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
+                {cloudSyncStatus?.connected ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--success)", fontWeight: 600, fontSize: "0.9rem" }}>
+                      <ShieldCheck size={18} />
+                      <span>Authenticated & Connected</span>
+                    </div>
+                    <span style={{ color: "var(--text-dim)" }}>•</span>
+                    <span style={{ fontSize: "0.88rem", color: "#fff" }}>
+                      User: <strong>{cloudSyncStatus.username || cloudSyncStatus.user_id}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                    <Cloud size={16} />
+                    <span>Local Mode (Offline or not logged in to cloud). Click Account in the sidebar to log in.</span>
+                  </div>
+                )}
+              </div>
+              {cloudSyncStatus?.last_synced_at && (
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                  Last synchronized: {new Date(cloudSyncStatus.last_synced_at * 1000).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            {/* Cloudflare Worker Endpoint Config */}
+            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                Cloudflare Worker API Endpoint
+              </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!workerUrlInput.trim() || !onSetCloudUrl) return;
+                  setSavingUrl(true);
+                  try {
+                    await onSetCloudUrl(workerUrlInput.trim());
+                  } finally {
+                    setSavingUrl(false);
+                  }
+                }}
+                style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "600px" }}
+              >
+                <input
+                  type="text"
+                  value={workerUrlInput}
+                  onChange={(e) => setWorkerUrlInput(e.target.value)}
+                  placeholder="https://soundflow-test-worker.abhi-atlas-2026.workers.dev"
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    backgroundColor: "rgba(0, 0, 0, 0.2)",
+                    color: "#fff",
+                    fontSize: "0.88rem",
+                    fontFamily: "monospace",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={savingUrl || workerUrlInput === cloudSyncStatus?.worker_url}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    backgroundColor: "#3f3f46",
+                    color: "#fff",
+                    border: "none",
+                    fontWeight: 500,
+                    fontSize: "0.85rem",
+                    cursor: savingUrl ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {savingUrl ? "Saving..." : "Save Endpoint"}
+                </button>
+              </form>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
+                All authentication credentials and requests are processed exclusively through this Worker. Passwords are securely hashed with PBKDF2-SHA256 on the worker edge and stored in Cloudflare D1. The desktop client never receives or stores password hashes.
+              </div>
+            </div>
+
+            {/* Architecture Highlights */}
+            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                Data Synced
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                • <strong>User Profile</strong>: Username, account creation date, secure session token<br />
+                • <strong>Playlists & Tracks</strong>: Custom playlists, track associations, and online track metadata<br />
+                • <strong>Listening Stats</strong>: Play count, listening time, skip count, likes, and yearly history archives<br />
+                • <strong>Application Settings</strong>: Selected player preferences and volume
               </div>
             </div>
           </div>

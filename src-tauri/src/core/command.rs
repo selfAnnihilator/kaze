@@ -171,6 +171,33 @@ pub enum Command {
     TriggerMetadataRefresh {
         track_id: String,
     },
+    // --- User Profile & Auth ---
+    SignUp {
+        username: String,
+        password: String,
+    },
+    Login {
+        username: String,
+        password: String,
+    },
+    Logout,
+    // --- Cloud Authentication & Sync ---
+    SyncCloudData,
+    SetCloudServerUrl {
+        url: String,
+    },
+    // --- Playback Session Tracking ---
+    RecordPlaybackSession {
+        track_id: String,
+        title: String,
+        artist: Option<String>,
+        album: Option<String>,
+        duration_secs: f64,
+        seconds_listened: f64,
+        completed: bool,
+        skipped: bool,
+        source: String,
+    },
 }
 
 /// Result returned from command execution.
@@ -188,4 +215,6 @@ pub enum CommandResponse {
     SoulseekLaunched { message: String },
     SoulseekImported { imported_count: usize },
     WishlistAdded { count: usize },
+    UserProfile(serde_json::Value),
+    CloudSyncCompleted { synced_at: i64 },
 }

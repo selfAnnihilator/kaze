@@ -97,6 +97,22 @@ pub enum Query {
         track_id: String,
     },
     GetTrackPlaylistMemberships,
+    GetTrackLyrics {
+        #[serde(default)]
+        track_id: Option<String>,
+        artist: String,
+        title: String,
+        #[serde(default)]
+        duration_secs: Option<f64>,
+    },
+    GetStatsOverview {
+        #[serde(default)]
+        year: Option<i32>,
+        #[serde(default)]
+        month: Option<u32>,
+    },
+    GetCurrentUser,
+    GetCloudSyncStatus,
 }
 
 /// Query response wrapper.
@@ -131,5 +147,9 @@ pub enum QueryResponse {
     },
     CoverArt(Option<String>),
     TrackPlaylistMemberships(serde_json::Value),
+    Lyrics(Option<serde_json::Value>),
+    StatsOverview(serde_json::Value),
+    CurrentUser(Option<serde_json::Value>),
+    CloudSyncStatus(serde_json::Value),
     Empty,
 }

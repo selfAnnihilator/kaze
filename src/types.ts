@@ -126,6 +126,7 @@ export interface OnlinePlayingTrack {
   id: string;
   title: string;
   artist: string;
+  album?: string;
   cover_art_url?: string;
   duration: number;
   currentTime: number;
@@ -243,7 +244,26 @@ export type Command =
   | { command: "LaunchSoulseek"; payload: { search_query?: string; filter_query?: string } }
   | { command: "ImportSoulseekDownloads" }
   | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string } }
-  | { command: "CancelDownload"; payload: { task_id: string } };
+  | { command: "CancelDownload"; payload: { task_id: string } }
+  | { command: "SignUp"; payload: { username: string; password: string } }
+  | { command: "Login"; payload: { username: string; password: string } }
+  | { command: "Logout" }
+  | { command: "SyncCloudData" }
+  | { command: "SetCloudServerUrl"; payload: { url: string } }
+  | {
+      command: "RecordPlaybackSession";
+      payload: {
+        track_id: string;
+        title: string;
+        artist?: string;
+        album?: string;
+        duration_secs: number;
+        seconds_listened: number;
+        completed: boolean;
+        skipped: boolean;
+        source: string;
+      };
+    };
 
 export type Query =
   | { query: "GetOnboardingStatus" }
@@ -265,7 +285,88 @@ export type Query =
   | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } }
   | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }
-  | { query: "GetTrackPlaylistMemberships" };
+  | { query: "GetTrackPlaylistMemberships" }
+  | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number } }
+  | { query: "GetStatsOverview"; payload?: { year?: number; month?: number } }
+  | { query: "GetCurrentUser" }
+  | { query: "GetCloudSyncStatus" };
+
+export interface CloudSyncStatus {
+  connected: boolean;
+  worker_url: string;
+  user_id?: string | null;
+  username?: string | null;
+  last_synced_at?: number | null;
+}
+
+export interface RankedTrackItem {
+  track_id: string;
+  title: string;
+  artist_name?: string;
+  album_title?: string;
+  play_count: number;
+  total_seconds: number;
+  completion_count: number;
+  skip_count: number;
+  score: number;
+}
+
+export interface RankedArtistItem {
+  artist_id: string;
+  name: string;
+  play_count: number;
+  total_seconds: number;
+  score: number;
+}
+
+export interface TopListeningDay {
+  day_date: string;
+  day_name: string;
+  total_seconds: number;
+}
+
+export interface DailyListeningPoint {
+  day: number;
+  date: string;
+  total_seconds: number;
+}
+
+export interface StatsOverview {
+  app_start_date: number;
+  user_joined_date: number;
+  current_year: number;
+  selected_year: number;
+  available_years: number[];
+  selected_month: number;
+  available_months: number[];
+  daily_seconds: number;
+  weekly_seconds: number;
+  monthly_seconds: number;
+  total_year_seconds: number;
+  monthly_graph: DailyListeningPoint[];
+  top_songs: RankedTrackItem[];
+  top_artists: RankedArtistItem[];
+  top_days: TopListeningDay[];
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  created_at: number;
+}
+
+export interface LyricLine {
+  timeSecs: number;
+  text: string;
+}
+
+export interface TrackLyricsData {
+  trackName?: string;
+  artistName?: string;
+  plainLyrics?: string;
+  syncedLyrics?: string;
+  instrumental?: boolean;
+}
 
 export interface QueryResponse {
   type: string;

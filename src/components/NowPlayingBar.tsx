@@ -14,6 +14,11 @@ import {
   Music,
   Download,
   RefreshCw,
+  Bookmark,
+  BookmarkCheck,
+  Mic2,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { OnlinePlayingTrack, PlaybackState, Track } from "../types";
 
@@ -21,6 +26,7 @@ interface NowPlayingBarProps {
   playbackState: PlaybackState;
   currentTrack?: Track;
   onlineTrack?: OnlinePlayingTrack | null;
+  coverArtUrl?: string | null;
   onPlayPause: () => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -33,6 +39,20 @@ interface NowPlayingBarProps {
   onDislike: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
   onDownloadOnlineTrack?: (artist: string, title: string) => void;
+  isInPlaylist?: boolean;
+  onOpenAddToPlaylist?: (track: {
+    id: string;
+    title: string;
+    artist?: string;
+    album?: string;
+    cover_art_url?: string;
+  }) => void;
+  onOpenOrigin?: () => void;
+  originName?: string;
+  isLyricsActive?: boolean;
+  onToggleLyrics?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 const formatTime = (seconds: number): string => {
@@ -46,6 +66,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   playbackState,
   currentTrack,
   onlineTrack,
+  coverArtUrl,
   onPlayPause,
   onNext,
   onPrevious,
@@ -58,6 +79,14 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onDislike,
   onRemoveFeedback,
   onDownloadOnlineTrack,
+  isInPlaylist = false,
+  onOpenAddToPlaylist,
+  onOpenOrigin,
+  originName,
+  isLyricsActive = false,
+  onToggleLyrics,
+  isFullscreen = false,
+  onToggleFullscreen,
 }) => {
   const [seekingValue, setSeekingValue] = useState<number | null>(null);
 
@@ -66,7 +95,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   const activeArtist = isOnline
     ? onlineTrack.artist
     : currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "Select a track to start playback");
-  const activeArtworkUrl = isOnline ? onlineTrack.cover_art_url : undefined;
+  const activeArtworkUrl = isOnline ? onlineTrack.cover_art_url : coverArtUrl || undefined;
   const isPlaying = isOnline ? onlineTrack.isPlaying : playbackState.is_playing;
   const duration = isOnline
     ? onlineTrack.duration
@@ -117,7 +146,30 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             }}
             title={activeTitle}
           >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{activeTitle}</span>
+            <span
+              onClick={onOpenOrigin}
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                cursor: onOpenOrigin ? "pointer" : "default",
+                textDecoration: onOpenOrigin ? "underline" : "none",
+                textDecorationColor: onOpenOrigin ? "rgba(255, 255, 255, 0.4)" : "transparent",
+                transition: "color 0.15s ease",
+              }}
+              title={
+                onOpenOrigin
+                  ? `Playing from: ${originName || "Collection"} (Click to open)`
+                  : activeTitle
+              }
+              onMouseEnter={(e) => {
+                if (onOpenOrigin) e.currentTarget.style.color = "var(--accent-light)";
+              }}
+              onMouseLeave={(e) => {
+                if (onOpenOrigin) e.currentTarget.style.color = "inherit";
+              }}
+            >
+              {activeTitle}
+            </span>
             {isOnline && (
               <span
                 style={{
@@ -183,6 +235,37 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             style={{ color: "var(--accent-light)", marginLeft: "4px" }}
           >
             <Download size={16} />
+          </button>
+        )}
+        {onOpenAddToPlaylist && activeTitle !== "No Track Selected" && (
+          <button
+            className="player-icon-btn"
+            title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+            onClick={() => {
+              if (isOnline && onlineTrack) {
+                onOpenAddToPlaylist({
+                  id: onlineTrack.id || `online:${onlineTrack.artist}-${onlineTrack.title}`,
+                  title: onlineTrack.title,
+                  artist: onlineTrack.artist,
+                  album: onlineTrack.album,
+                  cover_art_url: activeArtworkUrl,
+                });
+              } else if (currentTrack) {
+                onOpenAddToPlaylist({
+                  id: currentTrack.id,
+                  title: currentTrack.title,
+                  artist: currentTrack.artist_name,
+                  album: currentTrack.album_title,
+                  cover_art_url: activeArtworkUrl,
+                });
+              }
+            }}
+            style={{
+              color: isInPlaylist ? "#10b981" : "var(--text-muted)",
+              marginLeft: "4px",
+            }}
+          >
+            {isInPlaylist ? <BookmarkCheck size={16} color="#10b981" /> : <Bookmark size={16} />}
           </button>
         )}
       </div>
@@ -275,8 +358,22 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         </div>
       </div>
 
-      {/* Right: Volume Controls */}
-      <div className="player-volume">
+      {/* Right: Lyrics, Volume, and Full Screen Controls */}
+      <div className="player-volume" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        {onToggleLyrics && (
+          <button
+            className={`player-icon-btn ${isLyricsActive ? "active" : ""}`}
+            title={isLyricsActive ? "Hide Lyrics" : "Show Lyrics"}
+            onClick={onToggleLyrics}
+            style={{
+              color: isLyricsActive ? "#10b981" : "var(--text-muted)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Mic2 size={18} color={isLyricsActive ? "#10b981" : undefined} />
+          </button>
+        )}
+
         <button className="player-icon-btn" onClick={onToggleMute}>
           {playbackState.is_muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
@@ -290,6 +387,20 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           value={playbackState.is_muted ? 0 : playbackState.volume}
           onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
         />
+
+        {onToggleFullscreen && (
+          <button
+            className="player-icon-btn"
+            title={isFullscreen ? "Exit Full Screen" : "Full Screen"}
+            onClick={onToggleFullscreen}
+            style={{
+              color: isFullscreen ? "#ffffff" : "var(--text-muted)",
+              marginLeft: "4px",
+            }}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+        )}
       </div>
     </footer>
   );

@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "soundflow-test-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "soundflow-test-db",
+      "database_id": "ef5b35a9-8d21-445b-8456-4f2444d09420"
+    }
+  ]
+}

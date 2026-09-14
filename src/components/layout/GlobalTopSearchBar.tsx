@@ -27,9 +27,9 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
   searchQuery,
   setSearchQuery,
   onSearch,
-  onRefresh,
+  onRefresh: _onRefresh,
   isSearching = false,
-  isRefreshing = false,
+  isRefreshing: _isRefreshing = false,
 }) => {
   return (
     <div
@@ -124,27 +124,6 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
           )}
           <span>Search Online</span>
         </button>
-
-        {onRefresh && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            style={{
-              padding: "9px 14px",
-              fontSize: "0.9rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              flexShrink: 0,
-            }}
-            title="Refresh recommendations & library"
-          >
-            <RefreshCw size={15} className={isRefreshing ? "animate-spin" : ""} />
-            <span>Refresh</span>
-          </button>
-        )}
       </form>
 
       {/* Quick Suggestion Chips */}

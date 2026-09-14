@@ -5,13 +5,15 @@ use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
+use crate::cloud::{credentials, CloudClient, CloudSessionMetadata, CloudSyncStatus, SyncManager};
 use crate::database::repositories::{
-    PlaylistRepository, SqliteDownloadRepository, SqliteHistoryRepository,
-    SqlitePlaylistRepository, SqliteStatsRepository, SqliteWishlistRepository,
+    PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
+    SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
+    SqliteUserRepository, SqliteWishlistRepository, StatsRepository, UserProfile, UserRepository,
 };
 use crate::discovery::{DiscoveryCoordinator, DiscoveryRecommendation, FuzzyTrackMatcher, WishlistManager};
 use crate::downloads::{DownloadProvider, DownloadService, SoulseekProvider};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -35,6 +37,12 @@ pub struct CoreProcessor {
     history_service: Arc<HistoryService>,
     ranking_engine: Arc<RankingEngine>,
     playlist_repo: Arc<SqlitePlaylistRepository>,
+    stats_repo: Arc<SqliteStatsRepository>,
+    user_repo: Arc<SqliteUserRepository>,
+    cloud_client: Arc<CloudClient>,
+    settings_repo: Arc<SqliteSettingsRepository>,
+    current_user: Arc<RwLock<Option<UserProfile>>>,
+    app_start_date: Arc<RwLock<i64>>,
     taste_engine: Arc<TasteProfileEngine>,
     recommender: Arc<LocalRecommender>,
     smart_mix_generator: Arc<SmartMixGenerator>,
@@ -43,6 +51,7 @@ pub struct CoreProcessor {
     discovery_coordinator: Arc<DiscoveryCoordinator>,
     download_service: Arc<DownloadService>,
     config: Arc<RwLock<AppConfig>>,
+    cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, Option<String>>>>,
 }
 
 impl CoreProcessor {
@@ -139,6 +148,37 @@ impl CoreProcessor {
             config.downloads.auto_import,
         ));
 
+        let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
+        let cloud_client = Arc::new(CloudClient::new());
+        let settings_repo = Arc::new(SqliteSettingsRepository::new(db_pool.clone()));
+        let current_user = Arc::new(RwLock::new(None));
+        let app_start_date = Arc::new(RwLock::new(0));
+
+        // Restore active cloud session if present in local SQLite and not expired
+        let current_user_init = current_user.clone();
+        let pool_init = db_pool.clone();
+        tokio::spawn(async move {
+            if let Ok(Some(session)) = SyncManager::get_active_session(&pool_init).await {
+                let now = chrono::Utc::now().timestamp();
+                if session.expires_at > now {
+                    let user_row: Option<(String, String, i64)> = sqlx::query_as(
+                        "SELECT id, username, created_at FROM users WHERE id = ?"
+                    )
+                    .bind(&session.user_id)
+                    .fetch_optional(&pool_init)
+                    .await
+                    .unwrap_or(None);
+
+                    if let Some((id, username, created_at)) = user_row {
+                        *current_user_init.write().await = Some(UserProfile { id, username, created_at });
+                    }
+                } else {
+                    // Session expired: purge local session metadata and secure token
+                    let _ = SyncManager::delete_session(&pool_init, &session.user_id).await;
+                }
+            }
+        });
+
         Self {
             event_bus,
             db_pool,
@@ -147,6 +187,12 @@ impl CoreProcessor {
             history_service,
             ranking_engine,
             playlist_repo,
+            stats_repo,
+            user_repo,
+            cloud_client,
+            settings_repo,
+            current_user,
+            app_start_date,
             taste_engine,
             recommender,
             smart_mix_generator,
@@ -155,7 +201,50 @@ impl CoreProcessor {
             discovery_coordinator,
             download_service,
             config: Arc::new(RwLock::new(config)),
+            cover_art_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
+    }
+
+    async fn get_or_init_app_start_date(&self) -> i64 {
+        let mut guard = self.app_start_date.write().await;
+        if *guard > 0 {
+            return *guard;
+        }
+        let row: Option<(String,)> = sqlx::query_as("SELECT value FROM application_settings WHERE key = 'app_first_start_date'")
+            .fetch_optional(&self.db_pool)
+            .await
+            .ok()
+            .flatten();
+
+        if let Some((val,)) = row {
+            if let Ok(ts) = val.parse::<i64>() {
+                *guard = ts;
+                return ts;
+            }
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        let _ = sqlx::query(
+            "INSERT INTO application_settings (key, value, updated_at) VALUES ('app_first_start_date', ?, ?)
+             ON CONFLICT(key) DO NOTHING"
+        )
+        .bind(now.to_string())
+        .bind(now)
+        .execute(&self.db_pool)
+        .await;
+
+        *guard = now;
+        now
+    }
+
+    /// Retrieve the configured Cloudflare Worker URL (or fallback to test instance default)
+    pub async fn get_cloud_worker_url(&self) -> String {
+        self.settings_repo
+            .get_setting("cloud_sync_url")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "https://soundflow-test-worker.abhi-atlas-2026.workers.dev".to_string())
     }
 
     /// Access the internal EventBus handle.
@@ -571,6 +660,290 @@ impl CoreProcessor {
                 let _ = self.download_service.poll_task(&task_id).await?;
                 Ok(CommandResponse::Ok)
             }
+
+            // --- User Authentication & Profiles ---
+            Command::SignUp { username, password } => {
+                let trimmed_user = username.trim().to_string();
+                if trimmed_user.is_empty() {
+                    return Err(AppError::Validation("Username cannot be empty".to_string()));
+                }
+                if trimmed_user.len() < 3 || trimmed_user.len() > 50 {
+                    return Err(AppError::Validation("Username must be between 3 and 50 characters".to_string()));
+                }
+                if !trimmed_user.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.') {
+                    return Err(AppError::Validation("Username can only contain alphanumeric characters, underscores, hyphens, and dots".to_string()));
+                }
+                if password.len() < 8 || password.len() > 128 {
+                    return Err(AppError::Validation("Password must be between 8 and 128 characters".to_string()));
+                }
+
+                let worker_url = self.get_cloud_worker_url().await;
+                // Cloud authentication is the sole authority
+                let auth_res = self.cloud_client.register(&worker_url, &trimmed_user, &password).await?;
+                if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
+                    let profile = UserProfile {
+                        id: cloud_user.id.clone(),
+                        username: cloud_user.username.clone(),
+                        created_at: cloud_user.created_at,
+                    };
+
+                    // Cache user locally without storing password hash (hashes strictly server-side)
+                    let _ = sqlx::query(
+                        "INSERT INTO users (id, username, password_hash, created_at)
+                         VALUES (?, ?, '', ?)
+                         ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                    )
+                    .bind(&profile.id)
+                    .bind(&profile.username)
+                    .bind(profile.created_at)
+                    .execute(&self.db_pool)
+                    .await;
+
+                    // Store raw bearer token securely in OS keyring (fallback to private local file)
+                    if let Err(e) = credentials::store_session_token(&profile.id, &token) {
+                        tracing::warn!("Failed to store session token in secure credentials: {}", e);
+                    }
+
+                    // Cache session metadata only in cloud_sessions (never store raw tokens in SQLite)
+                    let session = CloudSessionMetadata {
+                        user_id: profile.id.clone(),
+                        username: profile.username.clone(),
+                        expires_at: chrono::Utc::now().timestamp() + 30 * 86400,
+                        worker_url: worker_url.clone(),
+                        synced_at: None,
+                        created_at: chrono::Utc::now().timestamp(),
+                    };
+                    let _ = SyncManager::save_session(&self.db_pool, &session).await;
+
+                    // Claim guest data locally
+                    let _ = self.user_repo.claim_guest_data_for_user(&profile.id).await;
+                    *self.current_user.write().await = Some(profile.clone());
+
+                    // Background push to sync existing local playlists/data up to D1
+                    let pool_clone = self.db_pool.clone();
+                    let client_clone = self.cloud_client.clone();
+                    let user_id_clone = profile.id.clone();
+                    tokio::spawn(async move {
+                        if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &user_id_clone).await {
+                            if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &payload).await {
+                                let _ = SyncManager::update_session_synced_at(&pool_clone, &user_id_clone, synced_at).await;
+                            }
+                        }
+                    });
+
+                    let val = serde_json::to_value(&profile).unwrap_or_default();
+                    return Ok(CommandResponse::UserProfile(val));
+                }
+                Err(AppError::Validation("Cloud registration did not return user info".to_string()))
+            }
+            Command::Login { username, password } => {
+                let trimmed_user = username.trim().to_string();
+                if trimmed_user.is_empty() {
+                    return Err(AppError::Validation("Username cannot be empty".to_string()));
+                }
+                if password.is_empty() {
+                    return Err(AppError::Validation("Password cannot be empty".to_string()));
+                }
+
+                let worker_url = self.get_cloud_worker_url().await;
+                // Cloud authentication is the sole authority
+                let auth_res = self.cloud_client.login(&worker_url, &trimmed_user, &password).await?;
+                if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
+                    let profile = UserProfile {
+                        id: cloud_user.id.clone(),
+                        username: cloud_user.username.clone(),
+                        created_at: cloud_user.created_at,
+                    };
+
+                    // Upsert local user profile (without password hash)
+                    let _ = sqlx::query(
+                        "INSERT INTO users (id, username, password_hash, created_at)
+                         VALUES (?, ?, '', ?)
+                         ON CONFLICT(id) DO UPDATE SET username = excluded.username"
+                    )
+                    .bind(&profile.id)
+                    .bind(&profile.username)
+                    .bind(profile.created_at)
+                    .execute(&self.db_pool)
+                    .await;
+
+                    // Store raw bearer token securely in OS keyring (fallback to private local file)
+                    if let Err(e) = credentials::store_session_token(&profile.id, &token) {
+                        tracing::warn!("Failed to store session token in secure credentials: {}", e);
+                    }
+
+                    // Cache session metadata only in cloud_sessions (never store raw tokens in SQLite)
+                    let session = CloudSessionMetadata {
+                        user_id: profile.id.clone(),
+                        username: profile.username.clone(),
+                        expires_at: chrono::Utc::now().timestamp() + 30 * 86400,
+                        worker_url: worker_url.clone(),
+                        synced_at: None,
+                        created_at: chrono::Utc::now().timestamp(),
+                    };
+                    let _ = SyncManager::save_session(&self.db_pool, &session).await;
+
+                    *self.current_user.write().await = Some(profile.clone());
+
+                    // Background bidirectional sync: pull remote D1 data down to local, then push local
+                    let pool_clone = self.db_pool.clone();
+                    let client_clone = self.cloud_client.clone();
+                    let user_id_clone = profile.id.clone();
+                    tokio::spawn(async move {
+                        if let Ok(remote_data) = client_clone.pull_sync(&worker_url, &token).await {
+                            let _ = SyncManager::apply_remote_sync_payload(&pool_clone, &user_id_clone, &remote_data).await;
+                        }
+                        if let Ok(local_payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &user_id_clone).await {
+                            if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &local_payload).await {
+                                let _ = SyncManager::update_session_synced_at(&pool_clone, &user_id_clone, synced_at).await;
+                            }
+                        }
+                    });
+
+                    let val = serde_json::to_value(&profile).unwrap_or_default();
+                    return Ok(CommandResponse::UserProfile(val));
+                }
+                Err(AppError::Validation("Cloud login did not return user info".to_string()))
+            }
+            Command::Logout => {
+                let worker_url = self.get_cloud_worker_url().await;
+                if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
+                    let client = self.cloud_client.clone();
+                    let user_id = session.user_id.clone();
+                    let token = credentials::get_session_token(&user_id);
+                    if let Some(tok) = token {
+                        tokio::spawn(async move {
+                            let _ = client.logout(&worker_url, &tok).await;
+                        });
+                    }
+                    let _ = credentials::delete_session_token(&user_id);
+                    let _ = SyncManager::clear_all_sessions(&self.db_pool).await;
+                }
+                *self.current_user.write().await = None;
+                Ok(CommandResponse::Ok)
+            }
+            Command::SyncCloudData => {
+                let worker_url = self.get_cloud_worker_url().await;
+                let session = SyncManager::get_active_session(&self.db_pool)
+                    .await?
+                    .ok_or_else(|| AppError::Validation("Not logged in to a cloud account".to_string()))?;
+
+                let now = chrono::Utc::now().timestamp();
+                if session.expires_at <= now {
+                    let _ = credentials::delete_session_token(&session.user_id);
+                    let _ = SyncManager::clear_all_sessions(&self.db_pool).await;
+                    *self.current_user.write().await = None;
+                    return Err(AppError::Validation("Session expired. Please log in again.".to_string()));
+                }
+
+                let token = credentials::get_session_token(&session.user_id)
+                    .ok_or_else(|| AppError::Validation("Session token missing. Please log in again.".to_string()))?;
+
+                // 1. Pull remote data
+                let remote_data = self.cloud_client.pull_sync(&worker_url, &token).await?;
+                SyncManager::apply_remote_sync_payload(&self.db_pool, &session.user_id, &remote_data).await?;
+
+                // 2. Push local data
+                let local_payload = SyncManager::prepare_local_sync_payload(&self.db_pool, &session.user_id).await?;
+                let synced_at = self.cloud_client.push_sync(&worker_url, &token, &local_payload).await?;
+                SyncManager::update_session_synced_at(&self.db_pool, &session.user_id, synced_at).await?;
+
+                Ok(CommandResponse::CloudSyncCompleted { synced_at })
+            }
+            Command::SetCloudServerUrl { url } => {
+                let trimmed = url.trim().to_string();
+                if trimmed.is_empty() {
+                    return Err(AppError::Validation("Server URL cannot be empty".to_string()));
+                }
+                self.settings_repo.set_setting("cloud_sync_url", &trimmed).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RecordPlaybackSession {
+                track_id,
+                title,
+                artist,
+                album,
+                duration_secs,
+                seconds_listened,
+                completed,
+                skipped,
+                source,
+            } => {
+                let now = chrono::Utc::now().timestamp();
+                let current_user_guard = self.current_user.read().await;
+                let user_id = current_user_guard.as_ref().map(|u| u.id.as_str()).unwrap_or("default");
+
+                // Ensure external track exists in db if needed
+                let _ = sqlx::query(
+                    "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, created_at)
+                     VALUES (?, 'online', ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(provider, provider_id) DO UPDATE SET title = excluded.title, artist = excluded.artist"
+                )
+                .bind(&track_id)
+                .bind(&track_id)
+                .bind(&title)
+                .bind(artist.as_deref().unwrap_or("Unknown Artist"))
+                .bind(album.as_deref().unwrap_or(""))
+                .bind(duration_secs)
+                .bind(now)
+                .execute(&self.db_pool)
+                .await;
+
+                let _ = crate::recommendations::mixes::ensure_online_track(
+                    &self.db_pool,
+                    &track_id,
+                    if title.is_empty() { &track_id } else { &title },
+                    artist.as_deref(),
+                    album.as_deref(),
+                    Some(duration_secs),
+                    None,
+                    None,
+                )
+                .await;
+
+                let percentage = if duration_secs > 0.0 {
+                    (seconds_listened / duration_secs).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+
+                let entry_id = uuid::Uuid::new_v4().to_string();
+                let started_at = now - (seconds_listened.round() as i64);
+
+                sqlx::query(
+                    "INSERT INTO playback_history (
+                        id, track_id, started_at, ended_at, seconds_listened,
+                        percentage_listened, completed, skipped, source, playlist_id,
+                        recommendation_session_id, user_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&entry_id)
+                .bind(&track_id)
+                .bind(started_at)
+                .bind(now)
+                .bind(seconds_listened)
+                .bind(percentage)
+                .bind(if completed { 1 } else { 0 })
+                .bind(if skipped { 1 } else { 0 })
+                .bind(&source)
+                .bind(None::<String>)
+                .bind(None::<String>)
+                .bind(user_id)
+                .execute(&self.db_pool)
+                .await
+                .map_err(|e| AppError::Database(format!("Failed to record playback history: {}", e)))?;
+
+                let is_meaningful = seconds_listened >= 30.0 || completed;
+                let _ = self.stats_repo.update_track_playback_stats(
+                    &track_id,
+                    seconds_listened,
+                    is_meaningful,
+                    completed,
+                    skipped,
+                ).await;
+
+                Ok(CommandResponse::Ok)
+            }
         }
     }
 
@@ -847,6 +1220,7 @@ impl CoreProcessor {
                             .unwrap_or_default();
                         let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
                             .iter()
+                            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
                             .map(|t| (t.id.as_str(), t.title.as_str(), t.artist_name.as_deref().unwrap_or(""), t.duration_secs))
                             .collect();
 
@@ -910,6 +1284,11 @@ impl CoreProcessor {
                 Ok(QueryResponse::DiscoveryRecommendations(json_arr))
             }
             Query::GetTrackCoverArt { track_id } => {
+                if let Some(cached) = self.cover_art_cache.read().await.get(&track_id) {
+                    return Ok(QueryResponse::CoverArt(cached.clone()));
+                }
+
+                let mut cover_result: Option<String> = None;
                 let track = self
                     .library_service
                     .track_repo()
@@ -921,11 +1300,34 @@ impl CoreProcessor {
                         if let Ok(probe) = lofty::probe::Probe::open(path) {
                             if let Ok(probe) = probe.guess_file_type() {
                                 if let Ok(tagged_file) = probe.read() {
-                                    if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
-                                        if let Some(pic) = tag.pictures().first() {
-                                            let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
-                                            let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
-                                            return Ok(QueryResponse::CoverArt(Some(format!("data:{};base64,{}", mime, encoded))));
+                                    // Search across all tags for pictures
+                                    let picture = tagged_file
+                                        .tags()
+                                        .iter()
+                                        .find_map(|tag| tag.pictures().first())
+                                        .or_else(|| tagged_file.primary_tag().and_then(|tag| tag.pictures().first()))
+                                        .or_else(|| tagged_file.first_tag().and_then(|tag| tag.pictures().first()));
+
+                                    if let Some(pic) = picture {
+                                        let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
+                                        let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
+                                        cover_result = Some(format!("data:{};base64,{}", mime, encoded));
+                                    }
+                                }
+                            }
+                        }
+
+                        // If not found in tags, check folder for cover.jpg / folder.jpg / album.jpg / cover.png
+                        if cover_result.is_none() {
+                            if let Some(parent) = path.parent() {
+                                for candidate in &["cover.jpg", "folder.jpg", "album.jpg", "cover.png", "folder.png", "front.jpg", "front.png"] {
+                                    let img_path = parent.join(candidate);
+                                    if img_path.is_file() {
+                                        if let Ok(bytes) = std::fs::read(&img_path) {
+                                            let mime = if candidate.ends_with(".png") { "image/png" } else { "image/jpeg" };
+                                            let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                                            cover_result = Some(format!("data:{};base64,{}", mime, encoded));
+                                            break;
                                         }
                                     }
                                 }
@@ -933,7 +1335,8 @@ impl CoreProcessor {
                         }
                     }
                 }
-                Ok(QueryResponse::CoverArt(None))
+                self.cover_art_cache.write().await.insert(track_id, cover_result.clone());
+                Ok(QueryResponse::CoverArt(cover_result))
             }
             Query::GetTrackPlaylistMemberships => {
                 let memberships = self.playlist_repo.get_track_playlist_memberships().await?;
@@ -941,8 +1344,128 @@ impl CoreProcessor {
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::TrackPlaylistMemberships(val))
             }
+            Query::GetTrackLyrics {
+                track_id,
+                artist,
+                title,
+                duration_secs,
+            } => {
+                // 1. If local track_id provided, attempt to read embedded lyrics from file tags
+                if let Some(ref tid) = track_id {
+                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id(tid).await {
+                        let path = std::path::Path::new(&track.file_path);
+                        if path.exists() {
+                            if let Ok(probe) = lofty::probe::Probe::open(path) {
+                                if let Ok(probe) = probe.guess_file_type() {
+                                    if let Ok(tagged_file) = probe.read() {
+                                        if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
+                                            if let Some(lyrics_val) = tag.get_string(&lofty::tag::ItemKey::Lyrics) {
+                                                let is_synced = lyrics_val.contains('[') && lyrics_val.contains(']');
+                                                let payload = serde_json::json!({
+                                                    "trackName": title,
+                                                    "artistName": artist,
+                                                    "plainLyrics": if is_synced { None } else { Some(lyrics_val) },
+                                                    "syncedLyrics": if is_synced { Some(lyrics_val) } else { None },
+                                                });
+                                                return Ok(QueryResponse::Lyrics(Some(payload)));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Query LRCLIB API for time-synced or plain lyrics
+                let client = reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(6))
+                    .build()
+                    .unwrap_or_default();
+
+                let mut params = vec![
+                    ("artist_name", artist.clone()),
+                    ("track_name", title.clone()),
+                ];
+                let dur_str;
+                if let Some(d) = duration_secs {
+                    if d > 0.0 {
+                        dur_str = format!("{}", d.round() as u64);
+                        params.push(("duration", dur_str));
+                    }
+                }
+
+                let req = client
+                    .get("https://lrclib.net/api/get")
+                    .header("User-Agent", "MusicPlayerApp/1.0 (https://github.com/local-music-player)")
+                    .query(&params);
+
+                if let Ok(resp) = req.send().await {
+                    if resp.status().is_success() {
+                        if let Ok(val) = resp.json::<serde_json::Value>().await {
+                            return Ok(QueryResponse::Lyrics(Some(val)));
+                        }
+                    }
+                }
+
+                // Fallback: LRCLIB search endpoint
+                let search_req = client
+                    .get("https://lrclib.net/api/search")
+                    .header("User-Agent", "MusicPlayerApp/1.0 (https://github.com/local-music-player)")
+                    .query(&[("q", format!("{} {}", artist, title))]);
+
+                if let Ok(resp) = search_req.send().await {
+                    if resp.status().is_success() {
+                        if let Ok(results) = resp.json::<Vec<serde_json::Value>>().await {
+                            if let Some(first) = results.into_iter().next() {
+                                return Ok(QueryResponse::Lyrics(Some(first)));
+                            }
+                        }
+                    }
+                }
+
+                Ok(QueryResponse::Lyrics(None))
+            }
+            Query::GetStatsOverview { year, month } => {
+                let app_start_date = self.get_or_init_app_start_date().await;
+                let current_user_guard = self.current_user.read().await;
+                let user_id = current_user_guard.as_ref().map(|u| u.id.as_str()).unwrap_or("default");
+                let user_joined_date = current_user_guard.as_ref().map(|u| u.created_at).unwrap_or(app_start_date);
+                let weights = self.config.read().await.ranking.clone();
+                let overview = self.stats_repo.get_stats_overview(
+                    user_id,
+                    user_joined_date,
+                    app_start_date,
+                    year,
+                    month,
+                    &weights,
+                ).await?;
+                let val = serde_json::to_value(&overview).unwrap_or_default();
+                Ok(QueryResponse::StatsOverview(val))
+            }
+            Query::GetCurrentUser => {
+                let current_user_guard = self.current_user.read().await;
+                let val = current_user_guard.as_ref().and_then(|u| serde_json::to_value(u).ok());
+                Ok(QueryResponse::CurrentUser(val))
+            }
+            Query::GetCloudSyncStatus => {
+                let worker_url = self.get_cloud_worker_url().await;
+                let session = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                let current_user_guard = self.current_user.read().await;
+
+                let status = CloudSyncStatus {
+                    connected: session.is_some(),
+                    worker_url,
+                    user_id: current_user_guard.as_ref().map(|u| u.id.clone()),
+                    username: current_user_guard.as_ref().map(|u| u.username.clone()),
+                    last_synced_at: session.and_then(|s| s.synced_at),
+                };
+
+                let val = serde_json::to_value(&status).unwrap_or_default();
+                Ok(QueryResponse::CloudSyncStatus(val))
+            }
             _ => {
-                warn!(?query, "Query handler routed to stub during Phase 8");
+                warn!(?query, "Query handler routed to fallback");
                 Ok(QueryResponse::Empty)
             }
         }

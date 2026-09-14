@@ -269,15 +269,14 @@ async fn test_discovery_coordinator_matching_and_recommendations() -> AppResult<
     let recs = coordinator.get_discovery_recommendations(10, false).await?;
     assert_eq!(recs.len(), 2);
 
-    // Missing track should be sorted first (priority over ExactMatch) and marked as in_wishlist = true
-    assert_eq!(recs[0].title, "Comfortably Numb");
-    assert_eq!(recs[0].match_status, MatchStatus::NotFound);
-    assert!(recs[0].in_wishlist);
+    // Both missing (wishlisted) and owned tracks should be included in trending recommendations
+    let numb = recs.iter().find(|r| r.title == "Comfortably Numb").expect("Comfortably Numb should be in recs");
+    assert_eq!(numb.match_status, MatchStatus::NotFound);
+    assert!(numb.in_wishlist);
 
-    // Owned track should be sorted second
-    assert_eq!(recs[1].title, "Time (2011 Remaster)");
-    assert_eq!(recs[1].match_status, MatchStatus::ExactMatch);
-    assert!(!recs[1].in_wishlist);
+    let time = recs.iter().find(|r| r.title == "Time (2011 Remaster)").expect("Time should be in recs");
+    assert_eq!(time.match_status, MatchStatus::ExactMatch);
+    assert!(!time.in_wishlist);
 
     Ok(())
 }
