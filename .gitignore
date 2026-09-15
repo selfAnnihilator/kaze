@@ -3,6 +3,9 @@
 **/*.rs.bk
 # Note: Cargo.lock IS committed for binary apps (ensures reproducible builds)
 
+# Private dev docs (never commit)
+DEV_SHIPPING.md
+
 # macOS
 .DS_Store
 
