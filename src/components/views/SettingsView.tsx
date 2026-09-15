@@ -526,61 +526,63 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
             </div>
 
-            {/* Cloudflare Worker Endpoint Config */}
-            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                Cloudflare Worker API Endpoint
-              </div>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!workerUrlInput.trim() || !onSetCloudUrl) return;
-                  setSavingUrl(true);
-                  try {
-                    await onSetCloudUrl(workerUrlInput.trim());
-                  } finally {
-                    setSavingUrl(false);
-                  }
-                }}
-                style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "600px" }}
-              >
-                <input
-                  type="text"
-                  value={workerUrlInput}
-                  onChange={(e) => setWorkerUrlInput(e.target.value)}
-                  placeholder="https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    backgroundColor: "rgba(0, 0, 0, 0.2)",
-                    color: "#fff",
-                    fontSize: "0.88rem",
-                    fontFamily: "monospace",
+            {/* Cloudflare Worker Endpoint Config (Hidden in production) */}
+            {import.meta.env.DEV && (
+              <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                  Cloudflare Worker API Endpoint (Dev Mode)
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!workerUrlInput.trim() || !onSetCloudUrl) return;
+                    setSavingUrl(true);
+                    try {
+                      await onSetCloudUrl(workerUrlInput.trim());
+                    } finally {
+                      setSavingUrl(false);
+                    }
                   }}
-                />
-                <button
-                  type="submit"
-                  disabled={savingUrl || workerUrlInput === cloudSyncStatus?.worker_url}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    backgroundColor: "#3f3f46",
-                    color: "#fff",
-                    border: "none",
-                    fontWeight: 500,
-                    fontSize: "0.85rem",
-                    cursor: savingUrl ? "not-allowed" : "pointer",
-                  }}
+                  style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "600px" }}
                 >
-                  {savingUrl ? "Saving..." : "Save Endpoint"}
-                </button>
-              </form>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
-                All authentication credentials and requests are processed exclusively through this Worker. Passwords are securely hashed with PBKDF2-SHA256 on the worker edge and stored in Cloudflare D1. The desktop client never receives or stores password hashes.
+                  <input
+                    type="text"
+                    value={workerUrlInput}
+                    onChange={(e) => setWorkerUrlInput(e.target.value)}
+                    placeholder="https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      backgroundColor: "rgba(0, 0, 0, 0.2)",
+                      color: "#fff",
+                      fontSize: "0.88rem",
+                      fontFamily: "monospace",
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingUrl || workerUrlInput === cloudSyncStatus?.worker_url}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      backgroundColor: "#3f3f46",
+                      color: "#fff",
+                      border: "none",
+                      fontWeight: 500,
+                      fontSize: "0.85rem",
+                      cursor: savingUrl ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {savingUrl ? "Saving..." : "Save Endpoint"}
+                  </button>
+                </form>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
+                  All authentication credentials and requests are processed exclusively through this Worker. Passwords are securely hashed with PBKDF2-SHA256 on the worker edge and stored in Cloudflare D1. The desktop client never receives or stores password hashes.
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Architecture Highlights */}
             <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>

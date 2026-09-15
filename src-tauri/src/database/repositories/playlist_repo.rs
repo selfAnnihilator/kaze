@@ -307,7 +307,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
                     t.track_number, t.disc_number, t.year,
                     CASE WHEN t.duration_secs > 0.0 THEN t.duration_secs ELSE COALESCE(ext.duration_secs, 210.0) END as duration_secs,
                     t.bitrate, t.sample_rate, t.format, t.has_cover_art,
-                    ext.cover_art_url,
+                    COALESCE(ext.cover_art_url, al.cover_art_path) as cover_art_url,
                     ext.preview_url,
                     t.created_at
              FROM tracks t

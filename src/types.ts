@@ -48,6 +48,8 @@ export interface Playlist {
   mix_type?: string;
   generation_reason?: string;
   track_count?: number;
+  cover_art_url?: string;
+  first_track_id?: string;
 }
 
 export interface PlaybackState {

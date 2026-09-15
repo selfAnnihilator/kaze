@@ -424,6 +424,7 @@ interface MixItem {
   accentColor: string;
   searchQuery?: string;
   playlistId?: string;
+  cover_art_url?: string;
 }
 
 const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void }> = ({
@@ -470,20 +471,30 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           textAlign: "center",
         }}
       >
-        <Sparkles size={38} color="#fff" style={{ opacity: 0.9, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }} />
-        <span
-          style={{
-            marginTop: "8px",
-            fontSize: "0.72rem",
-            fontWeight: 700,
-            letterSpacing: "1px",
-            color: "rgba(255, 255, 255, 0.9)",
-            textTransform: "uppercase",
-            textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-          }}
-        >
-          MIX
-        </span>
+        {mix.cover_art_url ? (
+          <img
+            src={mix.cover_art_url}
+            alt={mix.name}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <>
+            <Sparkles size={38} color="#fff" style={{ opacity: 0.9, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }} />
+            <span
+              style={{
+                marginTop: "8px",
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                color: "rgba(255, 255, 255, 0.9)",
+                textTransform: "uppercase",
+                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+              }}
+            >
+              MIX
+            </span>
+          </>
+        )}
 
         <button
           type="button"
@@ -935,6 +946,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         bgGradient: gradients[idx % gradients.length],
         accentColor: "#a78bfa",
         playlistId: p.id,
+        cover_art_url: p.cover_art_url,
       };
     });
 
@@ -1087,6 +1099,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         accentColor: mix.accentColor,
         searchQuery: mix.searchQuery,
         playlistId: mix.playlistId,
+        cover_art_url: mix.cover_art_url,
       });
     } else {
       handlePlayMixItem(mix);

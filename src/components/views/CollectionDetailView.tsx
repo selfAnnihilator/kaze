@@ -41,6 +41,7 @@ export interface CollectionData {
   playlistId?: string;
   curator?: string;
   tracks?: CollectionTrackItem[];
+  cover_art_url?: string;
 }
 
 interface CollectionDetailViewProps {
@@ -105,9 +106,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   };
 
   // 3 hero circular images
-  const heroImage1 = tracks[0]?.cover_art_url;
-  const heroImage2 = tracks[1]?.cover_art_url || tracks[0]?.cover_art_url;
-  const heroImage3 = tracks[2]?.cover_art_url || tracks[1]?.cover_art_url;
+  const heroImage1 = collection.cover_art_url || tracks[0]?.cover_art_url;
+  const heroImage2 = tracks[1]?.cover_art_url || heroImage1;
+  const heroImage3 = tracks[2]?.cover_art_url || tracks[1]?.cover_art_url || heroImage1;
 
   const bgGradient =
     collection.bgGradient ||

@@ -141,6 +141,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         subtitle: pl.description || (pl.is_smart_mix === 1 ? "Custom algorithmic smart mix" : "Created playlist"),
         tag: pl.is_smart_mix === 1 ? "SMART MIX" : "PUBLIC PLAYLIST",
         playlistId: pl.id,
+        cover_art_url: pl.cover_art_url,
       });
       return;
     }
@@ -334,9 +335,19 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
+                            overflow: "hidden",
+                            flexShrink: 0,
                           }}
                         >
-                          <Sparkles size={24} color="#c084fc" />
+                          {mix.cover_art_url ? (
+                            <img
+                              src={mix.cover_art_url}
+                              alt={mix.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <Sparkles size={24} color="#c084fc" />
+                          )}
                         </div>
                         <span className="badge badge-exact">Smart Mix</span>
                       </div>
@@ -514,9 +525,18 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         alignItems: "center",
                         justifyContent: "center",
                         marginBottom: "12px",
+                        overflow: "hidden",
                       }}
                     >
-                      <ListMusic size={42} color="#8b5cf6" />
+                      {pl.cover_art_url ? (
+                        <img
+                          src={pl.cover_art_url}
+                          alt={pl.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <ListMusic size={42} color="#8b5cf6" />
+                      )}
                     </div>
                     <div style={{ fontWeight: 600, fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pl.name}
@@ -599,14 +619,23 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>{selectedPlaylist.name}</h3>
-                  {selectedPlaylist.is_smart_mix === 1 && <span className="badge badge-exact">Smart Mix</span>}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                {selectedPlaylist.cover_art_url && (
+                  <img
+                    src={selectedPlaylist.cover_art_url}
+                    alt={selectedPlaylist.name}
+                    style={{ width: "56px", height: "56px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+                  />
+                )}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>{selectedPlaylist.name}</h3>
+                    {selectedPlaylist.is_smart_mix === 1 && <span className="badge badge-exact">Smart Mix</span>}
+                  </div>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginTop: "4px" }}>
+                    {selectedPlaylist.description || selectedPlaylist.generation_reason || "Custom playlist"}
+                  </p>
                 </div>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginTop: "4px" }}>
-                  {selectedPlaylist.description || selectedPlaylist.generation_reason || "Custom playlist"}
-                </p>
               </div>
 
               <button

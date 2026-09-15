@@ -1729,9 +1729,75 @@ impl CoreProcessor {
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
+
+                    // Query the first track in the playlist to use its thumbnail/cover
+                    let first_song: Option<(String, Option<String>, Option<String>, i64, Option<String>)> = sqlx::query_as(
+                        "SELECT pt.track_id, 
+                                ext.cover_art_url, 
+                                al.cover_art_path, 
+                                COALESCE(t.has_cover_art, 0),
+                                t.file_path
+                         FROM playlist_tracks pt
+                         LEFT JOIN tracks t ON t.id = pt.track_id
+                         LEFT JOIN albums al ON al.id = t.album_id
+                         LEFT JOIN external_tracks ext ON ext.id = pt.track_id
+                         WHERE pt.playlist_id = ?
+                         ORDER BY pt.position ASC
+                         LIMIT 1"
+                    )
+                    .bind(&p.id)
+                    .fetch_optional(&self.db_pool)
+                    .await
+                    .ok()
+                    .flatten();
+
                     if let Ok(mut v) = serde_json::to_value(&p) {
                         if let Some(obj) = v.as_object_mut() {
                             obj.insert("track_count".to_string(), serde_json::json!(count));
+
+                            if let Some((track_id, ext_cover, album_cover, has_cover, file_path_opt)) = first_song {
+                                obj.insert("first_track_id".to_string(), serde_json::json!(&track_id));
+
+                                let mut resolved_cover = ext_cover.or(album_cover);
+
+                                if resolved_cover.is_none() {
+                                    if let Some(cached) = self.cover_art_cache.read().await.get(&track_id) {
+                                        resolved_cover = cached.clone();
+                                    }
+                                }
+
+                                if resolved_cover.is_none() && has_cover == 1 {
+                                    if let Some(fp) = file_path_opt {
+                                        let path = std::path::Path::new(&fp);
+                                        if path.exists() {
+                                            if let Ok(probe) = lofty::probe::Probe::open(path) {
+                                                if let Ok(probe) = probe.guess_file_type() {
+                                                    if let Ok(tagged_file) = probe.read() {
+                                                        let picture = tagged_file
+                                                            .tags()
+                                                            .iter()
+                                                            .find_map(|tag| tag.pictures().first())
+                                                            .or_else(|| tagged_file.primary_tag().and_then(|tag| tag.pictures().first()))
+                                                            .or_else(|| tagged_file.first_tag().and_then(|tag| tag.pictures().first()));
+
+                                                        if let Some(pic) = picture {
+                                                            let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
+                                                            let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
+                                                            let data_url = format!("data:{};base64,{}", mime, encoded);
+                                                            self.cover_art_cache.write().await.insert(track_id.clone(), Some(data_url.clone()));
+                                                            resolved_cover = Some(data_url);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if let Some(cover) = resolved_cover {
+                                    obj.insert("cover_art_url".to_string(), serde_json::json!(cover));
+                                }
+                            }
                         }
                         val.push(v);
                     }
