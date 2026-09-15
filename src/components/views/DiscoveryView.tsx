@@ -765,6 +765,7 @@ interface DiscoveryViewProps {
   currentLocalTrack?: Track | null;
   isLocalPlaying?: boolean;
   onOpenCollection?: (collection: CollectionData) => void;
+  onPlayCollection?: (collection: CollectionData) => Promise<void>;
   downloads?: DownloadTask[];
   searchQuery?: string;
   setSearchQuery?: (q: string) => void;
@@ -796,6 +797,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   currentLocalTrack,
   isLocalPlaying = false,
   onOpenCollection,
+  onPlayCollection,
   downloads = [],
   searchQuery: propSearchQuery,
   setSearchQuery: propSetSearchQuery,
@@ -1170,18 +1172,20 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     }
   };
 
+  const chartToCollection = (chart: ChartItem): CollectionData => ({
+    id: chart.id,
+    type: "chart",
+    title: chart.title,
+    subtitle: chart.subtitle,
+    tag: `TOP CHART • ${chart.region.toUpperCase()}`,
+    bgGradient: chart.bgGradient,
+    accentColor: chart.badgeBg,
+    searchQuery: chart.searchQuery,
+  });
+
   const handleOpenChart = (chart: ChartItem) => {
     if (onOpenCollection) {
-      onOpenCollection({
-        id: chart.id,
-        type: "chart",
-        title: chart.title,
-        subtitle: chart.subtitle,
-        tag: `TOP CHART • ${chart.region.toUpperCase()}`,
-        bgGradient: chart.bgGradient,
-        accentColor: chart.badgeBg,
-        searchQuery: chart.searchQuery,
-      });
+      onOpenCollection(chartToCollection(chart));
     } else {
       handlePlayChartItem(chart);
     }
@@ -1197,6 +1201,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   };
 
   const handlePlayChartItem = (chart: ChartItem) => {
+    if (onPlayCollection) {
+      void onPlayCollection(chartToCollection(chart));
+      return;
+    }
     setSearchQuery(chart.searchQuery);
     handleSearchOnline(chart.searchQuery);
   };
