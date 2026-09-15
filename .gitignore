@@ -1,13 +1,66 @@
+# Rust
 /target
 **/*.rs.bk
-Cargo.lock
+# Note: Cargo.lock IS committed for binary apps (ensures reproducible builds)
+
+# macOS
 .DS_Store
+
+# SQLite databases (user data — never commit)
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*.db3
+
+# Caches
 .cache/
+
+# Node / Frontend
 node_modules/
 dist/
-**/gen/schemas
-.wrangler/
 
+# Tauri generated schemas (auto-generated, not needed in git)
+**/gen/schemas
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Credentials and private key material
+.npmrc
+.secrets/
+secrets/
+credentials.json
+credentials.*.json
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Logs, coverage, and temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+*.tmp
+*.temp
+*.bak
+
+# IDE
+.idea/
+.vscode/

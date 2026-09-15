@@ -324,7 +324,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <span className="badge badge-exact">Detected</span>
                 </div>
                 <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "6px" }}>
-                  Binary: /home/abhi/Applications/SoulseekQt-2024-6-30.AppImage
+                  Binary: ~/Applications/SoulseekQt*.AppImage or system launcher
                 </div>
                 <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "2px" }}>
                   Downloads: ~/Soulseek Downloads/complete

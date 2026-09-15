@@ -2439,23 +2439,29 @@ impl CoreProcessor {
             }
         }
 
-        let possible_paths = [
-            "/home/abhi/Applications/SoulseekQt-2024-6-30.AppImage",
-            "/home/abhi/Applications/SoulseekQt.AppImage",
-            "/home/abhi/Documents/SoulseekQt-2024-6-30.AppImage",
-        ];
+        let possible_paths = directories::UserDirs::new()
+            .map(|dirs| {
+                let home = dirs.home_dir();
+                vec![
+                    home.join("Applications/SoulseekQt-2024-6-30.AppImage"),
+                    home.join("Applications/SoulseekQt.AppImage"),
+                    home.join("Documents/SoulseekQt-2024-6-30.AppImage"),
+                ]
+            })
+            .unwrap_or_default();
 
         let mut launched_path = String::new();
         if !is_running {
             let mut launched = false;
             for p in possible_paths {
-                if std::path::Path::new(p).exists() {
-                    if let Ok(_) = std::process::Command::new(p)
+                if p.exists() {
+                    if std::process::Command::new(&p)
                         .env("QT_QPA_PLATFORM", "xcb")
                         .spawn()
+                        .is_ok()
                     {
                         launched = true;
-                        launched_path = p.to_string();
+                        launched_path = p.to_string_lossy().into_owned();
                         break;
                     }
                 }
@@ -2678,14 +2684,21 @@ impl CoreProcessor {
     }
 
     async fn import_soulseek_downloads(&self) -> AppResult<usize> {
-        let soulseek_complete = "/home/abhi/Soulseek Downloads/complete";
-        let path = std::path::PathBuf::from(soulseek_complete);
+        let Some(user_dirs) = directories::UserDirs::new() else {
+            warn!("Could not determine the user's home directory for Soulseek downloads");
+            return Ok(0);
+        };
+        let path = user_dirs
+            .home_dir()
+            .join("Soulseek Downloads")
+            .join("complete");
         if !path.exists() {
             return Ok(0);
         }
 
         // 1. Add folder if not already present
-        let _ = self.library_service.add_folder(soulseek_complete).await;
+        let path_string = path.to_string_lossy().into_owned();
+        let _ = self.library_service.add_folder(&path_string).await;
 
         // 2. Scan folder
         let summaries = self.library_service.scan_library(None, true).await?;
