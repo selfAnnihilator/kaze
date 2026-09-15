@@ -30,7 +30,8 @@ interface FullScreenPlayerViewProps {
   onToggleRepeat: () => void;
   onToggleShuffle: () => void;
   onLike: (trackId: string) => void;
-  onDislike: (trackId: string) => void;
+  onLikeOnline?: (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => void;
+  isOnlineLiked?: boolean;
   onRemoveFeedback: (trackId: string) => void;
   onDownloadOnlineTrack?: (artist: string, title: string) => void;
   onOpenOrigin?: () => void;
@@ -56,7 +57,8 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
   onToggleRepeat,
   onToggleShuffle,
   onLike,
-  onDislike,
+  onLikeOnline,
+  isOnlineLiked = false,
   onRemoveFeedback,
   onDownloadOnlineTrack,
   onOpenOrigin,
@@ -114,7 +116,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        color: "#ffffff",
+        color: "#e8d8c9",
         overflow: "hidden",
         userSelect: "none",
       }}
@@ -283,7 +285,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
                   fontSize: "1.75rem",
                   fontWeight: 700,
                   letterSpacing: "-0.02em",
-                  color: "#ffffff",
+                  color: "#e8d8c9",
                   margin: 0,
                   maxWidth: "100%",
                   overflow: "hidden",
@@ -341,7 +343,8 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
           onToggleRepeat={onToggleRepeat}
           onToggleShuffle={onToggleShuffle}
           onLike={onLike}
-          onDislike={onDislike}
+          onLikeOnline={onLikeOnline}
+          isOnlineLiked={isOnlineLiked}
           onRemoveFeedback={onRemoveFeedback}
           onDownloadOnlineTrack={onDownloadOnlineTrack}
           onOpenOrigin={onOpenOrigin}

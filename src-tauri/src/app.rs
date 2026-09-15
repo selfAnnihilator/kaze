@@ -8,6 +8,9 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tracing::info;
 
+#[cfg(target_os = "linux")]
+mod window_chrome;
+
 #[tauri::command]
 async fn execute_command(
     processor: tauri::State<'_, Arc<CoreProcessor>>,
@@ -55,6 +58,19 @@ pub fn run() {
     let config = AppConfig::default_with_dirs();
     let db_path = config.database_path.clone();
 
+    let context = tauri::generate_context!();
+    #[cfg(target_os = "linux")]
+    let context = {
+        let mut context = context;
+        if window_chrome::is_niri_session(|name| std::env::var(name).ok()) {
+            // Apply before window creation to avoid flashing a title bar on Niri.
+            for window in &mut context.config_mut().app.windows {
+                window.decorations = false;
+            }
+        }
+        context
+    };
+
     tauri::Builder::default()
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -96,7 +112,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![execute_command, execute_query])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import {
   DownloadCloud,
   Sparkles,
@@ -16,6 +16,9 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  ListPlus,
+  Check,
+  Heart,
 } from "lucide-react";
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
 import { executeQuery } from "../../services/api";
@@ -35,6 +38,9 @@ interface DiscoveryTrackCardProps {
   downloads?: DownloadTask[];
   trackPlaylistMap?: Record<string, string[]>;
   onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
+  isQueued?: boolean;
+  onEnqueue?: (rec: DiscoveryRecommendation) => void;
+  isLiked?: boolean;
 }
 
 const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
@@ -50,6 +56,9 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   downloads,
   trackPlaylistMap,
   onAddToPlaylist,
+  isQueued = false,
+  onEnqueue,
+  isLiked = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -116,12 +125,12 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       onClick={handleCardClick}
       style={{
         backgroundColor: isPlaying
-          ? "rgba(16, 185, 129, 0.09)"
+          ? "rgba(139, 124, 246, 0.09)"
           : isSelected
-          ? "rgba(99, 102, 241, 0.12)"
+          ? "rgba(243, 112, 30, 0.12)"
           : "var(--bg-card)",
         border: isPlaying
-          ? "1.5px solid #10b981"
+          ? "1.5px solid var(--accent-secondary)"
           : isSelected
           ? "1px solid var(--accent-light)"
           : isHovered
@@ -136,11 +145,11 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         transform: isHovered ? "translateY(-4px)" : "none",
         boxShadow: isPlaying
-          ? "0 0 20px rgba(16, 185, 129, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
+          ? "0 0 20px rgba(139, 124, 246, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
           : isHovered
           ? "0 10px 24px rgba(0, 0, 0, 0.4)"
           : isSelected
-          ? "0 4px 18px rgba(99, 102, 241, 0.2)"
+          ? "0 4px 18px rgba(243, 112, 30, 0.2)"
           : "0 2px 8px rgba(0, 0, 0, 0.15)",
       }}
     >
@@ -173,7 +182,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15))",
+              background: "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(232, 216, 201, 0.15))",
             }}
           >
             <Music2 size={36} color="var(--text-dim)" />
@@ -199,7 +208,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             }}
             title="Downloaded & in your local library"
           >
-            <CheckCircle2 size={16} color="#10b981" />
+            <CheckCircle2 size={16} color="var(--accent-secondary)" />
           </div>
         )}
 
@@ -210,7 +219,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               position: "absolute",
               top: "7px",
               left: "7px",
-              backgroundColor: "rgba(16, 185, 129, 0.92)",
+              backgroundColor: "rgba(139, 124, 246, 0.92)",
               backdropFilter: "blur(4px)",
               borderRadius: "20px",
               padding: "2px 8px",
@@ -227,13 +236,13 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
             </div>
-            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#fff", letterSpacing: "0.4px" }}>
+            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#e8d8c9", letterSpacing: "0.4px" }}>
               PLAYING
             </span>
           </div>
         )}
 
-        {/* Hover Play Button (Fades in, bottom-left corner of thumbnail) */}
+        {/* Hover Play Button (Fades in opposite the queue control) */}
         {/* On hover when playing, play icon becomes pause and clicking stops music */}
         <button
           type="button"
@@ -241,13 +250,13 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           style={{
             position: "absolute",
             bottom: "8px",
-            left: "8px",
+            right: "8px",
             width: "38px",
             height: "38px",
             borderRadius: "50%",
-            backgroundColor: isPlaying ? "#10b981" : "var(--accent)",
+            backgroundColor: isPlaying ? "var(--accent-secondary)" : "var(--accent)",
             border: "none",
-            color: "#fff",
+            color: "#e8d8c9",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -263,10 +272,40 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           {isLoading ? (
             <RefreshCw size={16} className="animate-spin" />
           ) : isPlaying ? (
-            <Pause size={17} fill="#fff" />
+            <Pause size={17} fill="#e8d8c9" />
           ) : (
-            <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+            <Play size={17} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEnqueue?.(rec);
+          }}
+          style={{
+            position: "absolute",
+            bottom: "8px",
+            left: "8px",
+            width: "38px",
+            height: "38px",
+            borderRadius: "50%",
+            backgroundColor: isQueued ? "rgba(139,124,246,0.92)" : "rgba(0,0,0,0.72)",
+            border: isQueued ? "1px solid rgba(232,216,201,0.45)" : "1px solid rgba(255,255,255,0.16)",
+            color: isQueued ? "#e8d8c9" : "var(--text-muted)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            opacity: isHovered || isQueued ? 1 : 0,
+            transform: isHovered || isQueued ? "scale(1)" : "scale(0.85)",
+            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            zIndex: 3,
+          }}
+          title={isQueued ? "Already in queue" : "Add to queue"}
+        >
+          {isQueued ? <Check size={17} /> : <ListPlus size={17} />}
         </button>
       </div>
 
@@ -276,7 +315,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: isPlaying ? "#10b981" : "#fff",
+          color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -335,7 +374,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               alignItems: "center",
               gap: "4px",
               fontSize: "0.72rem",
-              color: "#10b981",
+              color: "var(--accent-secondary)",
               fontWeight: 500,
             }}
           >
@@ -350,11 +389,11 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               gap: "4px",
               padding: "2px 7px",
               borderRadius: "12px",
-              background: "rgba(99, 102, 241, 0.15)",
-              border: "1px solid rgba(99, 102, 241, 0.35)",
+              background: "rgba(243, 112, 30, 0.15)",
+              border: "1px solid rgba(243, 112, 30, 0.35)",
               fontSize: "0.72rem",
               fontWeight: 600,
-              color: "#818cf8",
+              color: "var(--accent-secondary)",
             }}
             title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
           >
@@ -383,34 +422,51 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           </button>
         )}
 
-        <button
-          type="button"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: isInPlaylist ? "#10b981" : "var(--text-dim)",
-            padding: "4px",
-            display: "flex",
-            alignItems: "center",
-            transition: "color 0.15s ease",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onAddToPlaylist) {
-              onAddToPlaylist(rec);
-            } else {
-              onAddToWishlist(rec);
-            }
-          }}
-          title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
-        >
-          {isInPlaylist ? (
-            <BookmarkCheck size={16} color="#10b981" />
-          ) : (
-            <Bookmark size={16} />
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+          {isLiked && (
+            <span
+              title="Liked song"
+              aria-label="Liked song"
+              style={{
+                color: "#ff5c8a",
+                padding: "4px",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+            >
+              <Heart size={16} fill="currentColor" />
+            </span>
           )}
-        </button>
+
+          <button
+            type="button"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              transition: "color 0.15s ease",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onAddToPlaylist) {
+                onAddToPlaylist(rec);
+              } else {
+                onAddToWishlist(rec);
+              }
+            }}
+            title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+          >
+            {isInPlaylist ? (
+              <BookmarkCheck size={16} color="var(--accent-secondary)" />
+            ) : (
+              <Bookmark size={16} />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -436,6 +492,7 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
 
   return (
     <div
+      className="mix-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onOpen || onPlay}
@@ -462,7 +519,7 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           aspectRatio: "1 / 1",
           borderRadius: "8px",
           overflow: "hidden",
-          background: mix.bgGradient,
+          background: "var(--bg-card)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -471,30 +528,11 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           textAlign: "center",
         }}
       >
-        {mix.cover_art_url ? (
           <img
-            src={mix.cover_art_url}
+            src={mix.cover_art_url || "/kaze-playlist-default.svg"}
             alt={mix.name}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
-        ) : (
-          <>
-            <Sparkles size={38} color="#fff" style={{ opacity: 0.9, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }} />
-            <span
-              style={{
-                marginTop: "8px",
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                letterSpacing: "1px",
-                color: "rgba(255, 255, 255, 0.9)",
-                textTransform: "uppercase",
-                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-              }}
-            >
-              MIX
-            </span>
-          </>
-        )}
 
         <button
           type="button"
@@ -511,7 +549,7 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
             borderRadius: "50%",
             backgroundColor: "var(--accent)",
             border: "none",
-            color: "#fff",
+            color: "#e8d8c9",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -524,7 +562,7 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           }}
           title={`Play ${mix.name}`}
         >
-          <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+          <Play size={17} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
         </button>
       </div>
 
@@ -533,7 +571,7 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: "#fff",
+          color: "#e8d8c9",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -627,7 +665,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
             fontSize: "0.68rem",
             fontWeight: 800,
             letterSpacing: "1.5px",
-            color: "#fff",
+            color: "#e8d8c9",
             marginBottom: "6px",
           }}
         >
@@ -638,7 +676,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
             fontSize: "1.05rem",
             fontWeight: 900,
             letterSpacing: "0.5px",
-            color: "#fff",
+            color: "#e8d8c9",
             textShadow: "0 2px 8px rgba(0,0,0,0.6)",
           }}
         >
@@ -660,7 +698,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
             borderRadius: "50%",
             backgroundColor: chart.badgeBg || "var(--accent)",
             border: "none",
-            color: "#fff",
+            color: "#e8d8c9",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -673,7 +711,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
           }}
           title={`Play ${chart.title}`}
         >
-          <Play size={17} fill="#fff" style={{ marginLeft: "2px" }} />
+          <Play size={17} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
         </button>
       </div>
 
@@ -682,7 +720,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: "#fff",
+          color: "#e8d8c9",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -738,6 +776,9 @@ interface DiscoveryViewProps {
   trackPlaylistMap?: Record<string, string[]>;
   onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
   onGoToLibrary?: () => void;
+  queuedTrackIds?: Set<string>;
+  onEnqueueTrack?: (rec: DiscoveryRecommendation) => void;
+  likedTrackIds?: Set<string>;
 }
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
@@ -766,6 +807,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   trackPlaylistMap,
   onAddToPlaylist,
   onGoToLibrary,
+  queuedTrackIds,
+  onEnqueueTrack,
+  likedTrackIds,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
   const [visibleCount, setVisibleCount] = useState(15);
@@ -914,6 +958,26 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const songsScrollRef = useRef<HTMLDivElement>(null);
   const mixesScrollRef = useRef<HTMLDivElement>(null);
   const chartsScrollRef = useRef<HTMLDivElement>(null);
+  const discoveryRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const discovery = discoveryRef.current;
+    const scroller = discovery?.closest<HTMLElement>(".main-content");
+    if (!discovery || !scroller) return;
+
+    // Pin to the hero's original position, including wrapped search suggestions.
+    const updateBackdropPosition = () => {
+      const top = discovery.getBoundingClientRect().top
+        - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      discovery.style.setProperty("--backdrop-top", `${top}px`);
+    };
+    updateBackdropPosition();
+    const observer = new ResizeObserver(updateBackdropPosition);
+    observer.observe(scroller);
+    const search = scroller.querySelector(".global-search");
+    if (search) observer.observe(search);
+    return () => observer.disconnect();
+  }, [isOnline, searchResults !== null]);
 
   const handleScroll = (ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") => {
     if (ref.current) {
@@ -933,18 +997,18 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     })
     .map((p, idx) => {
       const gradients = [
-        "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-        "linear-gradient(135deg, #059669 0%, #0d9488 100%)",
-        "linear-gradient(135deg, #dc2626 0%, #ea580c 100%)",
-        "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
-        "linear-gradient(135deg, #d946ef 0%, #ec4899 100%)",
+        "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
+        "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
+        "linear-gradient(135deg, #1a1714 0%, #4b607f 100%)",
+        "linear-gradient(135deg, #2a211b 0%, #8b7cf6 100%)",
+        "linear-gradient(135deg, #f3701e 0%, #8b7cf6 100%)",
       ];
       return {
         id: p.id,
         name: p.name,
         subtitle: p.description || p.generation_reason || `${p.track_count || 0} tracks`,
         bgGradient: gradients[idx % gradients.length],
-        accentColor: "#a78bfa",
+        accentColor: "var(--accent-light)",
         playlistId: p.id,
         cover_art_url: p.cover_art_url,
       };
@@ -955,56 +1019,56 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       id: "daily_mix_1",
       name: "Daily Mix 1",
       subtitle: "Personalized blend tailored to your recent favorites",
-      bgGradient: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-      accentColor: "#818cf8",
+      bgGradient: "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
+      accentColor: "#8b7cf6",
       searchQuery: "Daily Mix Hits",
     },
     {
       id: "chill_vibes",
       name: "Chill Vibes",
       subtitle: "Mellow acoustic, lo-fi, and downtempo ambient melodies",
-      bgGradient: "linear-gradient(135deg, #059669 0%, #0d9488 100%)",
-      accentColor: "#34d399",
+      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 100%)",
+      accentColor: "#4b607f",
       searchQuery: "Chill Lo-Fi Vibes",
     },
     {
       id: "hiphop_urban",
       name: "Hip-Hop & Urban",
       subtitle: "Hard-hitting beats, lyrical flows, and urban anthems",
-      bgGradient: "linear-gradient(135deg, #dc2626 0%, #ea580c 100%)",
-      accentColor: "#f87171",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
+      accentColor: "#f3701e",
       searchQuery: "Hip-Hop Hits",
     },
     {
       id: "late_night_drive",
       name: "Late Night Drive",
       subtitle: "Moody synths, atmospheric basslines, and nocturnal rhythms",
-      bgGradient: "linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)",
-      accentColor: "#a5b4fc",
+      bgGradient: "linear-gradient(135deg, #1a1714 0%, #8b7cf6 100%)",
+      accentColor: "#8b7cf6",
       searchQuery: "Synthwave Night Drive",
     },
     {
       id: "pop_viral_hits",
       name: "Pop & Viral Hits",
       subtitle: "Catchy melodies, trending hooks, and radio favorites",
-      bgGradient: "linear-gradient(135deg, #d946ef 0%, #ec4899 100%)",
-      accentColor: "#f472b6",
+      bgGradient: "linear-gradient(135deg, #8b7cf6 0%, #f3701e 100%)",
+      accentColor: "#8b7cf6",
       searchQuery: "Top Pop Hits",
     },
     {
       id: "acoustic_afternoon",
       name: "Acoustic Afternoon",
       subtitle: "Warm acoustic guitars, gentle keys, and soul-stirring vocals",
-      bgGradient: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-      accentColor: "#fbbf24",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
+      accentColor: "#f3701e",
       searchQuery: "Acoustic Pop Indie",
     },
     {
       id: "edm_dance_mix",
       name: "EDM Energy",
       subtitle: "Festival bangers, dance floor anthems, and club beats",
-      bgGradient: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
-      accentColor: "#38bdf8",
+      bgGradient: "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
+      accentColor: "#8b7cf6",
       searchQuery: "EDM Dance Hits",
     },
   ];
@@ -1031,8 +1095,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "The most played tracks worldwide right now",
       chartNumber: "GLOBAL",
       region: "Worldwide",
-      bgGradient: "linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)",
-      badgeBg: "#10b981",
+      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 55%, #8b7cf6 100%)",
+      badgeBg: "#8b7cf6",
       searchQuery: "Top 50 Global",
     },
     {
@@ -1041,8 +1105,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Trending blockbusters, Hindi, Punjabi, and Indian indie hits",
       chartNumber: "INDIA",
       region: "India",
-      bgGradient: "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)",
-      badgeBg: "#f97316",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
+      badgeBg: "#f3701e",
       searchQuery: "Top 50 India",
     },
     {
@@ -1051,8 +1115,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "The tracks going viral on social and streaming charts",
       chartNumber: "VIRAL",
       region: "Worldwide",
-      bgGradient: "linear-gradient(135deg, #831843 0%, #be185d 50%, #ec4899 100%)",
-      badgeBg: "#f43f5e",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
+      badgeBg: "#8b7cf6",
       searchQuery: "Viral 50 Global",
     },
     {
@@ -1061,8 +1125,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Hottest charting tracks and Billboard favorites in the United States",
       chartNumber: "USA",
       region: "United States",
-      bgGradient: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%)",
-      badgeBg: "#3b82f6",
+      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #8b7cf6 100%)",
+      badgeBg: "#4b607f",
       searchQuery: "Top 50 USA",
     },
     {
@@ -1071,8 +1135,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Blockbuster film songs, Punjabi hits, and Desi pop anthems",
       chartNumber: "DESI",
       region: "India / Global",
-      bgGradient: "linear-gradient(135deg, #701a75 0%, #a21caf 50%, #c026d3 100%)",
-      badgeBg: "#d946ef",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 58%, #8b7cf6 100%)",
+      badgeBg: "#f3701e",
       searchQuery: "Bollywood Punjabi Hits",
     },
     {
@@ -1081,8 +1145,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Top club anthems, festival bangers, and electronic dance hits",
       chartNumber: "DANCE",
       region: "Worldwide",
-      bgGradient: "linear-gradient(135deg, #0e7490 0%, #06b6d4 50%, #22d3ee 100%)",
-      badgeBg: "#06b6d4",
+      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #f3701e 100%)",
+      badgeBg: "#8b7cf6",
       searchQuery: "Top 50 EDM Dance",
     },
   ];
@@ -1181,7 +1245,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           >
             <WifiOff size={28} color="#ef4444" />
           </div>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#fff", margin: 0 }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#e8d8c9", margin: 0 }}>
             No internet connection
           </h2>
           <p style={{ fontSize: "0.92rem", color: "var(--text-muted)", margin: 0, maxWidth: "420px", lineHeight: 1.5 }}>
@@ -1214,6 +1278,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 
   return (
     <div
+      ref={discoveryRef}
+      className="discovery-view"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -1248,6 +1314,15 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         />
       ) : (
         <>
+          <section className="discovery-hero" aria-label="Welcome to Kaze">
+            <div className="discovery-hero-copy">
+              <p className="hero-eyebrow">A DIFFERENT KIND OF FEELING</p>
+              <h1>Let<br />the music<br />take you<br />somewhere else.</h1>
+              <p className="hero-japanese" lang="ja">どこかへ、音楽と。</p>
+            </div>
+            <div className="hero-signature" aria-hidden="true"><span lang="ja">音で、呼吸する。</span></div>
+          </section>
+          <div className="discovery-scroll-content">
           {/* SECTION 1: Trending & Recommended Songs */}
       <div>
         <div
@@ -1263,7 +1338,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               style={{
                 fontSize: "1.18rem",
                 fontWeight: 700,
-                color: "#fff",
+                color: "#e8d8c9",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
@@ -1298,7 +1373,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                   size={14}
                   className={isRefreshingTrending ? "spin-animation" : ""}
                 />
-                <span>Refresh</span>
               </button>
             )}
             <button
@@ -1355,7 +1429,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                 className={`subtab-btn ${filter === "TRENDING" ? "active" : ""}`}
                 style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
               >
-                <Flame size={12} color="#f59e0b" />
+                <Flame size={12} color="#f3701e" />
                 <span>Trending Hits ({trendingCount})</span>
               </button>
             )}
@@ -1424,6 +1498,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     downloads={downloads}
                     trackPlaylistMap={trackPlaylistMap}
                     onAddToPlaylist={onAddToPlaylist}
+                    isQueued={queuedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
+                    onEnqueue={onEnqueueTrack}
+                    isLiked={likedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
                   />
                 </div>
               );
@@ -1447,13 +1524,13 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               style={{
                 fontSize: "1.18rem",
                 fontWeight: 700,
-                color: "#fff",
+                color: "#e8d8c9",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}
             >
-              <Sparkles size={18} color="#c084fc" />
+              <Sparkles size={18} color="var(--accent-secondary)" />
               <span>Mixes For You</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -1509,13 +1586,13 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               style={{
                 fontSize: "1.18rem",
                 fontWeight: 700,
-                color: "#fff",
+                color: "#e8d8c9",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}
             >
-              <TrendingUp size={18} color="#f59e0b" />
+              <TrendingUp size={18} color="#f3701e" />
               <span>Top Charts</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -1555,6 +1632,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           ))}
         </div>
       </div>
+          </div>
         </>
       )}
     </div>

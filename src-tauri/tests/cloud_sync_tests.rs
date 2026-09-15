@@ -223,8 +223,9 @@ async fn test_logout_preserves_local_user_data_while_gating_ui() {
     match logged_in_pls {
         QueryResponse::Playlists(list) => {
             let custom: Vec<_> = list.iter().filter(|p| p["is_smart_mix"] != 1).collect();
-            assert_eq!(custom.len(), 1);
-            assert_eq!(custom[0]["name"], "My Drive Mix");
+            assert_eq!(custom.len(), 2);
+            assert!(custom.iter().any(|p| p["name"] == "My Drive Mix"));
+            assert!(custom.iter().any(|p| p["name"] == "Liked Songs"));
         }
         _ => panic!("Expected Playlists"),
     }
@@ -240,7 +241,7 @@ async fn test_logout_preserves_local_user_data_while_gating_ui() {
         .fetch_one(&pool)
         .await
         .expect("db query");
-    assert_eq!(count_in_db.0, 1, "Logout must NOT delete user playlists from local SQLite!");
+    assert_eq!(count_in_db.0, 2, "Logout must preserve user playlists and the default Liked Songs playlist!");
 
     let track_count_in_db: (i64,) = sqlx::query_as("SELECT count(*) FROM playlist_tracks WHERE playlist_id = ?")
         .bind(&pl_id)
@@ -274,8 +275,9 @@ async fn test_logout_preserves_local_user_data_while_gating_ui() {
     match re_login_pls {
         QueryResponse::Playlists(list) => {
             let custom: Vec<_> = list.iter().filter(|p| p["is_smart_mix"] != 1).collect();
-            assert_eq!(custom.len(), 1);
-            assert_eq!(custom[0]["name"], "My Drive Mix");
+            assert_eq!(custom.len(), 2);
+            assert!(custom.iter().any(|p| p["name"] == "My Drive Mix"));
+            assert!(custom.iter().any(|p| p["name"] == "Liked Songs"));
         }
         _ => panic!("Expected Playlists"),
     }
@@ -334,4 +336,49 @@ async fn test_explicit_deletion_creates_tombstones() {
         .await
         .expect("get tombstones ok");
     assert_eq!(cleared.len(), 0);
+}
+
+#[tokio::test]
+async fn test_liked_songs_is_per_account_and_protected() {
+    let pool = create_in_memory_pool().await.expect("create db pool");
+    let config = AppConfig::default_with_dirs();
+    let backend = Box::new(MockAudioBackend::new());
+    let processor = CoreProcessor::new_with_backend(pool, config, backend);
+
+    let first_user = UserProfile::new("liked_user_one".to_string(), "first".to_string(), 1700000000);
+    *processor.current_user.write().await = Some(first_user);
+    let first_playlists = processor.execute_query(Query::GetPlaylists).await.expect("first playlists");
+    let first_liked_id = match first_playlists {
+        QueryResponse::Playlists(list) => list
+            .iter()
+            .find(|playlist| playlist["name"] == "Liked Songs")
+            .and_then(|playlist| playlist["id"].as_str())
+            .expect("first account liked songs")
+            .to_string(),
+        _ => panic!("Expected Playlists"),
+    };
+
+    assert!(processor
+        .dispatch_command(Command::DeletePlaylist { playlist_id: first_liked_id.clone() })
+        .await
+        .is_err());
+    assert!(processor
+        .dispatch_command(Command::RenamePlaylist {
+            playlist_id: first_liked_id.clone(),
+            name: "Favorites".to_string(),
+        })
+        .await
+        .is_err());
+
+    let second_user = UserProfile::new("liked_user_two".to_string(), "second".to_string(), 1700000000);
+    *processor.current_user.write().await = Some(second_user);
+    let second_playlists = processor.execute_query(Query::GetPlaylists).await.expect("second playlists");
+    match second_playlists {
+        QueryResponse::Playlists(list) => {
+            let second_liked = list.iter().find(|playlist| playlist["name"] == "Liked Songs").expect("second account liked songs");
+            assert_ne!(second_liked["id"].as_str(), Some(first_liked_id.as_str()));
+            assert!(list.iter().all(|playlist| playlist["id"] != first_liked_id));
+        }
+        _ => panic!("Expected Playlists"),
+    }
 }

@@ -221,7 +221,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
           }}
         >
           <Mic2 size={42} color="var(--text-dim)" style={{ marginBottom: "16px" }} />
-          <h3 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: "8px" }}>
+          <h3 style={{ color: "#e8d8c9", fontSize: "1.1rem", marginBottom: "8px" }}>
             {lyricsData?.instrumental ? "Instrumental Track" : "No Lyrics Available"}
           </h3>
           <p style={{ fontSize: "0.88rem", lineHeight: 1.5 }}>
@@ -274,7 +274,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
                   cursor: "pointer",
                   transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                   color: isActive
-                    ? "#ffffff"
+                    ? "#e8d8c9"
                     : isPast
                     ? "rgba(255, 255, 255, 0.45)"
                     : "rgba(255, 255, 255, 0.3)",
@@ -348,7 +348,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             bottom: "24px",
             left: "50%",
             transform: "translateX(-50%)",
-            backgroundColor: "#ffffff",
+            backgroundColor: "#e8d8c9",
             color: "#0f172a",
             padding: "8px 22px",
             borderRadius: "9999px",

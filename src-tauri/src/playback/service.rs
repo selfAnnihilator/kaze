@@ -5,6 +5,8 @@ use crate::core::event_bus::EventBus;
 use crate::database::repositories::TrackRepository;
 use crate::playback::backend::AudioBackend;
 use crate::playback::queue::PlaybackQueue;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -94,7 +96,7 @@ impl PlaybackService {
                     position_secs: pos_secs,
                     duration_secs: duration,
                 });
-            } else if was_playing && is_finished {
+            } else if was_playing && is_finished && duration > 0.0 {
                 // Track finished!
                 was_playing = false;
                 if let Some(ref track_id) = current_track_id_cache {
@@ -106,8 +108,8 @@ impl PlaybackService {
                     });
                 }
 
-                // Automatically play next in queue
-                let _ = self.next().await;
+                // Automatically advance, honoring repeat-one on natural completion.
+                let _ = self.advance_after_finished().await;
             }
         }
     }
@@ -121,6 +123,7 @@ impl PlaybackService {
             .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", track_id)))?;
 
         let src = source.unwrap_or_else(|| "library".to_string());
+        let previous_src = self.current_source.read().await.clone();
         *self.current_source.write().await = src.clone();
         *self.current_duration_secs.write().await = track.duration_secs;
 
@@ -135,21 +138,15 @@ impl PlaybackService {
 
         {
             let mut q_guard = self.queue.write().await;
-            q_guard.set_queue(vec![queue_item], Some(0));
+            if src == "collection" || src == "playlist" {
+                q_guard.set_queue(vec![queue_item.clone()], Some(0));
+            } else {
+                let preserve_history = previous_src != "collection" && previous_src != "playlist";
+                q_guard.play_independent(queue_item.clone(), preserve_history);
+            }
         }
 
-        self.load_and_play_file(&track.file_path).await?;
-
-        let _ = self.event_bus.publish(Event::PlaybackStarted {
-            track_id: track.id,
-            title: track.title,
-            artist: artist_name,
-            duration_secs: track.duration_secs,
-            source: src,
-        });
-
-        self.emit_queue_updated().await;
-        Ok(())
+        self.play_item(&queue_item).await
     }
 
     /// Plays an item from the current queue by index.
@@ -171,6 +168,24 @@ impl PlaybackService {
             .find_by_id(&item.track_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", item.track_id)))?;
+
+        let is_online = track.format == "online" || track.file_path.starts_with("online://");
+        if is_online {
+            {
+                let mut backend = self.backend.lock().await;
+                let _ = backend.stop();
+            }
+            *self.current_duration_secs.write().await = 0.0;
+            let _ = self.event_bus.publish(Event::OnlinePlaybackRequested {
+                track_id: track.id,
+                title: track.title,
+                artist: track.artist_name.unwrap_or_else(|| "Unknown Artist".into()),
+                album: track.album_title,
+                duration_secs: track.duration_secs,
+            });
+            self.emit_queue_updated().await;
+            return Ok(());
+        }
 
         *self.current_duration_secs.write().await = track.duration_secs;
         self.load_and_play_file(&track.file_path).await?;
@@ -263,10 +278,14 @@ impl PlaybackService {
     }
 
     pub async fn next(&self) -> AppResult<()> {
-        let next_item = {
+        let mut next_item = {
             let mut q_guard = self.queue.write().await;
             q_guard.next().cloned()
         };
+
+        if next_item.is_none() {
+            next_item = self.refill_random_queue().await?;
+        }
 
         if let Some(item) = next_item {
             self.play_item(&item).await?;
@@ -276,18 +295,66 @@ impl PlaybackService {
         Ok(())
     }
 
-    pub async fn previous(&self) -> AppResult<()> {
-        // If track played for >3 seconds, restart current track; otherwise go to previous
-        let current_pos = {
-            let backend = self.backend.lock().await;
-            backend.position().as_secs_f64()
+    async fn advance_after_finished(&self) -> AppResult<()> {
+        let mut next_item = {
+            let mut q_guard = self.queue.write().await;
+            q_guard.next_after_finish().cloned()
         };
 
-        if current_pos > 3.0 {
-            self.seek(0.0).await?;
-            return Ok(());
+        if next_item.is_none() {
+            next_item = self.refill_random_queue().await?;
         }
 
+        if let Some(item) = next_item {
+            self.play_item(&item).await?;
+        } else {
+            self.stop().await?;
+        }
+        Ok(())
+    }
+
+    async fn refill_random_queue(&self) -> AppResult<Option<QueueItem>> {
+        let current_track_id = {
+            let q_guard = self.queue.read().await;
+            q_guard.current().map(|item| item.track_id.clone())
+        };
+        let mut candidates = self
+            .track_repo
+            .list_tracks(0, 10_000, None, true)
+            .await?
+            .into_iter()
+            .filter(|track| current_track_id.as_deref() != Some(track.id.as_str()))
+            .collect::<Vec<_>>();
+        candidates.shuffle(&mut thread_rng());
+        candidates.truncate(50);
+
+        let items = candidates
+            .into_iter()
+            .map(|track| QueueItem {
+                queue_id: Uuid::new_v4().to_string(),
+                track_id: track.id,
+                title: track.title,
+                artist: track.artist_name.unwrap_or_else(|| "Unknown Artist".into()),
+                duration_secs: track.duration_secs,
+            })
+            .collect::<Vec<_>>();
+
+        if items.is_empty() {
+            return Ok(None);
+        }
+
+        let next = {
+            let mut q_guard = self.queue.write().await;
+            for item in items {
+                q_guard.enqueue(item, false);
+            }
+            q_guard.next().cloned()
+        };
+        self.emit_queue_updated().await;
+        Ok(next)
+    }
+
+    pub async fn previous(&self) -> AppResult<()> {
         let prev_item = {
             let mut q_guard = self.queue.write().await;
             q_guard.previous().cloned()
@@ -299,7 +366,7 @@ impl PlaybackService {
         Ok(())
     }
 
-    pub async fn enqueue_track(&self, track_id: &str, play_next: bool) -> AppResult<()> {
+    pub async fn enqueue_track(&self, track_id: &str, play_next: bool) -> AppResult<bool> {
         let track = self
             .track_repo
             .find_by_id(track_id)
@@ -314,13 +381,15 @@ impl PlaybackService {
             duration_secs: track.duration_secs,
         };
 
-        {
+        let added = {
             let mut q_guard = self.queue.write().await;
-            q_guard.enqueue(queue_item, play_next);
-        }
+            q_guard.enqueue(queue_item, play_next)
+        };
 
-        self.emit_queue_updated().await;
-        Ok(())
+        if added {
+            self.emit_queue_updated().await;
+        }
+        Ok(added)
     }
 
     pub async fn dequeue_track(&self, track_id: &str) -> bool {
@@ -402,8 +471,7 @@ impl PlaybackService {
 
     async fn emit_queue_updated(&self) {
         let q_guard = self.queue.read().await;
-        let duration = *self.current_duration_secs.read().await;
-        let has_active_track = duration > 0.0;
+        let has_active_track = q_guard.current_index().is_some();
 
         let queue_track_ids: Vec<String> = if has_active_track {
             if let Some(curr) = q_guard.current_index() {

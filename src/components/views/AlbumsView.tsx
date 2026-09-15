@@ -171,7 +171,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(({ album, onSelectAlbum }
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1))",
+            background: "linear-gradient(135deg, rgba(243, 112, 30, 0.15), rgba(232, 216, 201, 0.1))",
           }}
         >
           <Disc size={44} color="var(--accent-light)" />

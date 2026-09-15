@@ -209,8 +209,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               fontWeight: 600,
               cursor: "pointer",
               border: "none",
-              backgroundColor: activeTab === "all" ? "#ffffff" : "rgba(255, 255, 255, 0.08)",
-              color: activeTab === "all" ? "#000000" : "#ffffff",
+              backgroundColor: activeTab === "all" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+              color: activeTab === "all" ? "#1a1714" : "#e8d8c9",
               transition: "all 0.15s ease",
             }}
           >
@@ -226,8 +226,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               fontWeight: 600,
               cursor: "pointer",
               border: "none",
-              backgroundColor: activeTab === "songs" ? "#ffffff" : "rgba(255, 255, 255, 0.08)",
-              color: activeTab === "songs" ? "#000000" : "#ffffff",
+              backgroundColor: activeTab === "songs" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+              color: activeTab === "songs" ? "#1a1714" : "#e8d8c9",
               transition: "all 0.15s ease",
             }}
           >
@@ -244,8 +244,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "artists" ? "#ffffff" : "rgba(255, 255, 255, 0.08)",
-                color: activeTab === "artists" ? "#000000" : "#ffffff",
+                backgroundColor: activeTab === "artists" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                color: activeTab === "artists" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
             >
@@ -263,8 +263,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "albums" ? "#ffffff" : "rgba(255, 255, 255, 0.08)",
-                color: activeTab === "albums" ? "#000000" : "#ffffff",
+                backgroundColor: activeTab === "albums" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                color: activeTab === "albums" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
             >
@@ -282,8 +282,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "playlists" ? "#ffffff" : "rgba(255, 255, 255, 0.08)",
-                color: activeTab === "playlists" ? "#000000" : "#ffffff",
+                backgroundColor: activeTab === "playlists" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                color: activeTab === "playlists" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
             >
@@ -295,7 +295,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         {/* Clear Search & Results info */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-            Search results for &ldquo;<span style={{ color: "#fff" }}>{searchQuery}</span>&rdquo;
+            Search results for &ldquo;<span style={{ color: "#e8d8c9" }}>{searchQuery}</span>&rdquo;
           </span>
           <button
             type="button"
@@ -330,7 +330,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
           }}
         >
           <Music size={40} color="var(--text-dim)" />
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>
             No relevant results found for &ldquo;{searchQuery}&rdquo;
           </h3>
           <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", maxWidth: "420px" }}>
@@ -358,7 +358,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       style={{
                         fontSize: "1.2rem",
                         fontWeight: 700,
-                        color: "#fff",
+                        color: "#e8d8c9",
                         marginBottom: "14px",
                       }}
                     >
@@ -368,10 +368,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       onClick={() => handleTogglePlay(topResult)}
                       style={{
                         backgroundColor: isTrackPlaying(topResult)
-                          ? "rgba(16, 185, 129, 0.14)"
+                          ? "rgba(139, 124, 246, 0.14)"
                           : "var(--bg-card)",
                         border: isTrackPlaying(topResult)
-                          ? "1.5px solid #10b981"
+                          ? "1.5px solid var(--accent-secondary)"
                           : "1px solid var(--border)",
                         borderRadius: "12px",
                         padding: "20px",
@@ -412,7 +412,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               alignItems: "center",
                               justifyContent: "center",
                               background:
-                                "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15))",
+                                "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(232, 216, 201, 0.15))",
                             }}
                           >
                             <Disc size={40} color="var(--accent-light)" />
@@ -425,7 +425,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           fontSize: "1.45rem",
                           fontWeight: 700,
-                          color: isTrackPlaying(topResult) ? "#10b981" : "#ffffff",
+                          color: isTrackPlaying(topResult) ? "var(--accent-secondary)" : "#e8d8c9",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -451,7 +451,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             padding: "2px 8px",
                             borderRadius: "10px",
                             backgroundColor: "rgba(255, 255, 255, 0.1)",
-                            color: "#fff",
+                            color: "#e8d8c9",
                             fontSize: "0.72rem",
                             fontWeight: 600,
                           }}
@@ -499,7 +499,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 borderRadius: "50%",
                                 border: "1px solid rgba(255, 255, 255, 0.15)",
                                 backgroundColor: "rgba(255, 255, 255, 0.06)",
-                                color: "#fff",
+                                color: "#e8d8c9",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -525,7 +525,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 border: "1px solid rgba(255, 255, 255, 0.15)",
                                 backgroundColor: "rgba(255, 255, 255, 0.06)",
                                 color: getDownloadStatus(topResult).isCompleted
-                                  ? "#10b981"
+                                  ? "var(--accent-secondary)"
                                   : getDownloadStatus(topResult).isDownloading
                                   ? "var(--accent-light)"
                                   : "var(--text-muted)",
@@ -563,14 +563,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             width: "48px",
                             height: "48px",
                             borderRadius: "50%",
-                            backgroundColor: "#10b981",
+                            backgroundColor: "var(--accent-secondary)",
                             border: "none",
-                            color: "#fff",
+                            color: "#e8d8c9",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
-                            boxShadow: "0 8px 18px rgba(16, 185, 129, 0.35)",
+                            boxShadow: "0 8px 18px rgba(139, 124, 246, 0.35)",
                             transition: "transform 0.15s ease, background-color 0.15s ease",
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
@@ -583,15 +583,15 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 width: "18px",
                                 height: "18px",
-                                border: "2px solid #fff",
+                                border: "2px solid #e8d8c9",
                                 borderTopColor: "transparent",
                                 borderRadius: "50%",
                               }}
                             />
                           ) : isTrackPlaying(topResult) ? (
-                            <Pause size={22} fill="#fff" />
+                            <Pause size={22} fill="#e8d8c9" />
                           ) : (
-                            <Play size={22} fill="#fff" style={{ marginLeft: "2px" }} />
+                            <Play size={22} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
                           )}
                         </button>
                       </div>
@@ -605,7 +605,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     style={{
                       fontSize: "1.2rem",
                       fontWeight: 700,
-                      color: "#fff",
+                      color: "#e8d8c9",
                       marginBottom: "14px",
                     }}
                   >
@@ -634,7 +634,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             padding: "8px 12px",
                             borderRadius: "8px",
                             backgroundColor: isPlaying
-                              ? "rgba(16, 185, 129, 0.1)"
+                              ? "rgba(139, 124, 246, 0.1)"
                               : isHovered
                               ? "rgba(255, 255, 255, 0.06)"
                               : "transparent",
@@ -693,15 +693,15 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                     style={{
                                       width: "14px",
                                       height: "14px",
-                                      border: "2px solid #fff",
+                                      border: "2px solid #e8d8c9",
                                       borderTopColor: "transparent",
                                       borderRadius: "50%",
                                     }}
                                   />
                                 ) : isPlaying ? (
-                                  <Pause size={16} fill="#10b981" color="#10b981" />
+                                  <Pause size={16} fill="var(--accent-secondary)" color="var(--accent-secondary)" />
                                 ) : (
-                                  <Play size={16} fill="#fff" color="#fff" />
+                                  <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
                                 )}
                               </div>
                             )}
@@ -713,7 +713,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 fontSize: "0.93rem",
                                 fontWeight: 600,
-                                color: isPlaying ? "#10b981" : "#ffffff",
+                                color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -764,7 +764,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 background: "none",
                                 border: "none",
-                                color: inPlaylist ? "#10b981" : "var(--text-dim)",
+                                color: inPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
                                 cursor: "pointer",
                                 padding: "6px",
                                 display: "flex",
@@ -790,7 +790,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 background: "none",
                                 border: "none",
                                 color: getDownloadStatus(rec).isCompleted
-                                  ? "#10b981"
+                                  ? "var(--accent-secondary)"
                                   : getDownloadStatus(rec).isDownloading
                                   ? "var(--accent-light)"
                                   : "var(--text-dim)",
@@ -846,7 +846,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       marginBottom: "12px",
                     }}
                   >
-                    <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
+                    <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#e8d8c9" }}>
                       More Matching Results ({remainingSongs.length})
                     </h4>
                     <button
@@ -885,7 +885,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             padding: "8px 12px",
                             borderRadius: "8px",
                             backgroundColor: isPlaying
-                              ? "rgba(16, 185, 129, 0.1)"
+                              ? "rgba(139, 124, 246, 0.1)"
                               : "rgba(255, 255, 255, 0.03)",
                             border: "1px solid rgba(255, 255, 255, 0.05)",
                             cursor: "pointer",
@@ -927,7 +927,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 fontSize: "0.88rem",
                                 fontWeight: 600,
-                                color: isPlaying ? "#10b981" : "#fff",
+                                color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -1014,7 +1014,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       padding: "8px 12px",
                       borderRadius: "8px",
                       backgroundColor: isPlaying
-                        ? "rgba(16, 185, 129, 0.1)"
+                        ? "rgba(139, 124, 246, 0.1)"
                         : isHovered
                         ? "rgba(255, 255, 255, 0.06)"
                         : "transparent",
@@ -1066,9 +1066,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           }}
                         >
                           {isPlaying ? (
-                            <Pause size={16} fill="#10b981" color="#10b981" />
+                            <Pause size={16} fill="var(--accent-secondary)" color="var(--accent-secondary)" />
                           ) : (
-                            <Play size={16} fill="#fff" color="#fff" />
+                            <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
                           )}
                         </div>
                       )}
@@ -1079,7 +1079,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           fontSize: "0.93rem",
                           fontWeight: 600,
-                          color: isPlaying ? "#10b981" : "#ffffff",
+                          color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -1111,7 +1111,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           background: "none",
                           border: "none",
-                          color: inPlaylist ? "#10b981" : "var(--text-dim)",
+                          color: inPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
                           cursor: "pointer",
                           padding: "6px",
                           display: "flex",
@@ -1198,7 +1198,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       borderRadius: "50%",
                       overflow: "hidden",
                       margin: "0 auto 12px auto",
-                      backgroundColor: "rgba(139, 92, 246, 0.15)",
+                      backgroundColor: "rgba(243, 112, 30, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1218,7 +1218,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     style={{
                       fontWeight: 700,
                       fontSize: "0.95rem",
-                      color: "#fff",
+                      color: "#e8d8c9",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -1299,7 +1299,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     style={{
                       fontWeight: 700,
                       fontSize: "0.92rem",
-                      color: "#fff",
+                      color: "#e8d8c9",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -1349,7 +1349,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       width: "100%",
                       aspectRatio: "1/1",
                       borderRadius: "8px",
-                      backgroundColor: "rgba(139, 92, 246, 0.15)",
+                      backgroundColor: "rgba(243, 112, 30, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1358,7 +1358,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   >
                     <ListMusic size={40} color="var(--accent-light)" />
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#e8d8c9" }}>
                     {pl.name}
                   </div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>

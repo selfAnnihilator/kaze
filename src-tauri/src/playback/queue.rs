@@ -25,11 +25,33 @@ impl PlaybackQueue {
         self.rebuild_shuffle_indices();
     }
 
+    /// Makes an independently selected track current while retaining already-played
+    /// independent tracks as Previous history and preserving the upcoming queue.
+    pub fn play_independent(&mut self, item: QueueItem, preserve_history: bool) {
+        let split_at = self.current_index.map_or(0, |index| index + 1);
+        let mut upcoming = self.items.split_off(split_at.min(self.items.len()));
+        upcoming.retain(|queued| queued.track_id != item.track_id);
+
+        if !preserve_history {
+            self.items.clear();
+        }
+
+        self.items.push(item);
+        self.current_index = Some(self.items.len() - 1);
+        self.items.append(&mut upcoming);
+        self.shuffle_enabled = false;
+        self.rebuild_shuffle_indices();
+    }
+
     /// Enqueues a single item. If `play_next` is true, inserts after current index; otherwise appends.
-    pub fn enqueue(&mut self, item: QueueItem, play_next: bool) {
+    pub fn enqueue(&mut self, item: QueueItem, play_next: bool) -> bool {
+        let upcoming_start = self.current_index.map_or(0, |index| index + 1);
+        if self.items.iter().skip(upcoming_start).any(|queued| queued.track_id == item.track_id) {
+            return false;
+        }
         if self.items.is_empty() {
             self.items.push(item);
-            self.current_index = Some(0);
+            self.current_index = None;
         } else if play_next {
             let insert_at = self.current_index.map(|idx| idx + 1).unwrap_or(self.items.len());
             self.items.insert(insert_at, item);
@@ -37,6 +59,7 @@ impl PlaybackQueue {
             self.items.push(item);
         }
         self.rebuild_shuffle_indices();
+        true
     }
 
     /// Removes an item by index.
@@ -102,14 +125,24 @@ impl PlaybackQueue {
         }
     }
 
-    /// Advances to the next track respecting repeat and shuffle modes.
+    /// Advances to the next track for an explicit user action. Repeat-one does not
+    /// trap the Next button on the current track.
     pub fn next(&mut self) -> Option<&QueueItem> {
+        self.advance(false)
+    }
+
+    /// Advances after natural completion, honoring repeat-one.
+    pub fn next_after_finish(&mut self) -> Option<&QueueItem> {
+        self.advance(true)
+    }
+
+    fn advance(&mut self, honor_repeat_one: bool) -> Option<&QueueItem> {
         if self.items.is_empty() {
             return None;
         }
 
         // Repeat One: replay same track
-        if self.repeat_mode == RepeatMode::One {
+        if honor_repeat_one && self.repeat_mode == RepeatMode::One {
             return self.current();
         }
 
@@ -237,5 +270,42 @@ impl PlaybackQueue {
             }
         }
         self.shuffle_indices = indices;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(id: &str) -> QueueItem {
+        QueueItem {
+            queue_id: format!("queue-{id}"),
+            track_id: id.to_string(),
+            title: id.to_string(),
+            artist: "Artist".to_string(),
+            duration_secs: 180.0,
+        }
+    }
+
+    #[test]
+    fn repeat_one_only_replays_on_natural_completion() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("one"), item("two")], Some(0));
+        queue.set_repeat_mode(RepeatMode::One);
+
+        assert_eq!(queue.next_after_finish().map(|entry| entry.track_id.as_str()), Some("one"));
+        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("two"));
+    }
+
+    #[test]
+    fn independent_selection_keeps_history_and_upcoming_queue() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("first"), item("queued")], Some(0));
+        queue.play_independent(item("second"), true);
+
+        assert_eq!(queue.current().map(|entry| entry.track_id.as_str()), Some("second"));
+        assert_eq!(queue.previous().map(|entry| entry.track_id.as_str()), Some("first"));
+        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("second"));
+        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("queued"));
     }
 }

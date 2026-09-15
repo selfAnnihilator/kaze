@@ -129,7 +129,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           }}
         >
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#fff", margin: 0 }}>
+            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#e8d8c9", margin: 0 }}>
               Add to Playlist
             </h2>
             <p
@@ -217,7 +217,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   border: createError ? "1px solid #ef4444" : "1px solid rgba(255, 255, 255, 0.15)",
                   borderRadius: "8px",
                   padding: "8px 12px",
-                  color: "#fff",
+                  color: "#e8d8c9",
                   fontSize: "0.88rem",
                   outline: "none",
                 }}
@@ -281,7 +281,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           {userPlaylists.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-dim)" }}>
               <ListMusic size={36} color="var(--text-dim)" style={{ marginBottom: "10px" }} />
-              <p style={{ fontSize: "0.92rem", fontWeight: 600, color: "#fff", marginBottom: "4px" }}>
+              <p style={{ fontSize: "0.92rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "4px" }}>
                 No playlists available
               </p>
               <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
@@ -304,9 +304,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                     padding: "10px 12px",
                     borderRadius: "10px",
                     cursor: "pointer",
-                    backgroundColor: isMember ? "rgba(99, 102, 241, 0.08)" : "transparent",
+                    backgroundColor: isMember ? "rgba(243, 112, 30, 0.08)" : "transparent",
                     border: isMember
-                      ? "1px solid rgba(99, 102, 241, 0.3)"
+                      ? "1px solid rgba(243, 112, 30, 0.3)"
                       : "1px solid transparent",
                     transition: "all 0.15s ease",
                   }}
@@ -328,9 +328,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       height: "22px",
                       borderRadius: "6px",
                       border: isMember
-                        ? "2px solid #10b981"
+                        ? "2px solid var(--accent-secondary)"
                         : "2px solid rgba(255, 255, 255, 0.3)",
-                      backgroundColor: isMember ? "#10b981" : "transparent",
+                      backgroundColor: isMember ? "var(--accent-secondary)" : "transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -338,7 +338,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       transition: "all 0.15s ease",
                     }}
                   >
-                    {isMember && <Check size={14} color="#fff" strokeWidth={3} />}
+                    {isMember && <Check size={14} color="#e8d8c9" strokeWidth={3} />}
                   </div>
 
                   {/* Playlist details */}
@@ -347,7 +347,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       style={{
                         fontWeight: 600,
                         fontSize: "0.92rem",
-                        color: isMember ? "#fff" : "var(--text-main)",
+                        color: isMember ? "#e8d8c9" : "var(--text-main)",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",

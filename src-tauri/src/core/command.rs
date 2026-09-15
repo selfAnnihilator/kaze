@@ -67,6 +67,16 @@ pub enum Command {
         track_id: String,
         play_next: bool,
     },
+    EnqueueOnlineTrack {
+        track_id: String,
+        title: String,
+        artist: String,
+        album: Option<String>,
+        duration_secs: Option<f64>,
+        cover_art_url: Option<String>,
+        preview_url: Option<String>,
+        play_next: bool,
+    },
     DequeueTrack {
         track_id: String,
     },
@@ -98,6 +108,11 @@ pub enum Command {
     DeletePlaylist {
         playlist_id: String,
     },
+    RenamePlaylist {
+        playlist_id: String,
+        name: String,
+    },
+    EnsureLikedSongsPlaylist,
     AddTrackToPlaylist {
         playlist_id: String,
         track_id: String,

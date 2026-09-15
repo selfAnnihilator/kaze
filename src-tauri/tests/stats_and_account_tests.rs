@@ -513,8 +513,9 @@ async fn test_session_management_lifecycle_and_hybrid_expiry() {
     let pl_res = processor.execute_query(Query::GetPlaylists).await.expect("get playlists");
     match pl_res {
         QueryResponse::Playlists(pls) => {
-            assert_eq!(pls.len(), 1);
-            assert_eq!(pls[0]["name"], "Preserved Favorites");
+            assert_eq!(pls.len(), 2);
+            assert!(pls.iter().any(|p| p["name"] == "Preserved Favorites"));
+            assert!(pls.iter().any(|p| p["name"] == "Liked Songs"));
         }
         _ => panic!("Expected Playlists"),
     }
@@ -595,6 +596,5 @@ async fn test_cloudinary_avatar_metadata_persistence_and_profile() {
     assert!(cleared.avatar_version.is_none());
     assert!(cleared.avatar_updated_at.is_none());
 }
-
 
 

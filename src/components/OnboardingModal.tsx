@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Folder, Sparkles, Check } from "lucide-react";
+import { Folder, Check } from "lucide-react";
 
 interface OnboardingModalProps {
   defaultMusicDir: string;
@@ -26,13 +26,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-content">
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-          <Sparkles size={28} color="#8b5cf6" />
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 700 }}>Welcome to SoundFlow</h2>
+          <img className="kage-logo" src="/kaze-icon.png" alt="" />
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 700 }}>Welcome to Kaze</h2>
         </div>
 
         <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "20px" }}>
-          SoundFlow is a local-first, privacy-respecting music player. To get started, confirm your
-          music directory. SoundFlow stays strictly within this folder and never scans outside your
+          Kaze is a local-first, privacy-respecting music player. To get started, confirm your
+          music directory. Kaze stays strictly within this folder and never scans outside your
           approved roots.
         </p>
 
@@ -46,7 +46,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               padding: "14px",
               borderRadius: "8px",
               border: useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
-              backgroundColor: useDefault ? "rgba(139, 92, 246, 0.08)" : "var(--bg-card)",
+              backgroundColor: useDefault ? "rgba(243, 112, 30, 0.08)" : "var(--bg-card)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -54,7 +54,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Folder size={20} color={useDefault ? "#a78bfa" : "#9ca3af"} />
+              <Folder size={20} color={useDefault ? "var(--accent-light)" : "#9ca3af"} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>Use Default System Music Directory</div>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", wordBreak: "break-all" }}>
@@ -62,7 +62,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 </div>
               </div>
             </div>
-            {useDefault && <Check size={18} color="#8b5cf6" />}
+            {useDefault && <Check size={18} color="var(--accent)" />}
           </div>
 
           {/* Custom Folder Option */}
@@ -72,16 +72,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               padding: "14px",
               borderRadius: "8px",
               border: !useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
-              backgroundColor: !useDefault ? "rgba(139, 92, 246, 0.08)" : "var(--bg-card)",
+              backgroundColor: !useDefault ? "rgba(243, 112, 30, 0.08)" : "var(--bg-card)",
               cursor: "pointer",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <Folder size={20} color={!useDefault ? "#a78bfa" : "#9ca3af"} />
+                <Folder size={20} color={!useDefault ? "var(--accent-light)" : "#9ca3af"} />
                 <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Choose Custom Music Directory</span>
               </div>
-              {!useDefault && <Check size={18} color="#8b5cf6" />}
+              {!useDefault && <Check size={18} color="var(--accent)" />}
             </div>
 
             {!useDefault && (
@@ -96,7 +96,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   borderRadius: "6px",
                   backgroundColor: "var(--bg-sidebar)",
                   border: "1px solid var(--border-light)",
-                  color: "#fff",
+                  color: "#e8d8c9",
                   fontSize: "0.88rem",
                   marginTop: "8px",
                 }}
@@ -122,7 +122,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             style={{ padding: "12px", justifyContent: "center", marginTop: "8px" }}
             disabled={!useDefault && !customPath.trim()}
           >
-            Confirm & Start SoundFlow
+            Confirm & Start Kaze
           </button>
         </form>
       </div>

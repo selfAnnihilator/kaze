@@ -182,7 +182,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
         padding: "32px 40px 100px",
         maxWidth: "1200px",
         margin: "0 auto",
-        color: "#fff",
+        color: "#e8d8c9",
       }}
     >
       {/* Profile Section Header Card */}
@@ -224,15 +224,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 borderRadius: "50%",
                 background: currentUser?.avatar_data_url
                   ? "transparent"
-                  : "linear-gradient(135deg, #7c3aed 0%, #ec4899 100%)",
+                  : "linear-gradient(135deg, #f3701e 0%, #4b607f 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "28px",
                 fontWeight: 800,
-                color: "#fff",
-                border: "3px solid rgba(168, 85, 247, 0.5)",
-                boxShadow: "0 0 20px rgba(168, 85, 247, 0.25)",
+                color: "#e8d8c9",
+                border: "3px solid rgba(232, 216, 201, 0.5)",
+                boxShadow: "0 0 20px rgba(232, 216, 201, 0.25)",
                 overflow: "hidden",
                 cursor: currentUser ? "pointer" : "default",
                 position: "relative",
@@ -267,7 +267,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     justifyContent: "center",
                   }}
                 >
-                  <Loader2 size={24} className="animate-spin" color="#c084fc" />
+                  <Loader2 size={24} className="animate-spin" color="var(--accent-light)" />
                 </div>
               )}
             </div>
@@ -292,23 +292,23 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   width: "28px",
                   height: "28px",
                   borderRadius: "50%",
-                  background: "#8b5cf6",
-                  border: "2.5px solid #141328",
+                  background: "var(--accent)",
+                  border: "2.5px solid var(--bg-main)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: isUploadingAvatar ? "not-allowed" : "pointer",
-                  color: "#fff",
+                  color: "#e8d8c9",
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
                   transition: "all 0.15s ease",
                   padding: 0,
                   zIndex: 10,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isUploadingAvatar) e.currentTarget.style.background = "#7c3aed";
+                  if (!isUploadingAvatar) e.currentTarget.style.background = "#f3701e";
                 }}
                 onMouseLeave={(e) => {
-                  if (!isUploadingAvatar) e.currentTarget.style.background = "#8b5cf6";
+                  if (!isUploadingAvatar) e.currentTarget.style.background = "var(--accent)";
                 }}
               >
                 {isUploadingAvatar ? (
@@ -327,8 +327,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   top: "100%",
                   left: 0,
                   marginTop: "8px",
-                  background: "#1e1b4b",
-                  border: "1px solid rgba(168, 85, 247, 0.35)",
+                  background: "var(--bg-card)",
+                  border: "1px solid rgba(232, 216, 201, 0.35)",
                   borderRadius: "12px",
                   padding: "6px",
                   zIndex: 50,
@@ -352,7 +352,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     gap: "8px",
                     background: "transparent",
                     border: "none",
-                    color: "#fff",
+                    color: "#e8d8c9",
                     padding: "8px 10px",
                     borderRadius: "8px",
                     fontSize: "12px",
@@ -361,10 +361,10 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     textAlign: "left",
                     transition: "background 0.15s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232, 216, 201, 0.2)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  <Camera size={14} color="#c084fc" />
+                  <Camera size={14} color="var(--accent-light)" />
                   <span>Change photo</span>
                 </button>
                 <button
@@ -407,7 +407,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   fontSize: "26px",
                   fontWeight: 800,
                   margin: 0,
-                  color: "#fff",
+                  color: "#e8d8c9",
                   letterSpacing: "-0.5px",
                 }}
               >
@@ -428,7 +428,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               {currentUser ? (
                 <span>
                   Member since{" "}
-                  <strong style={{ color: "#fff" }}>
+                  <strong style={{ color: "#e8d8c9" }}>
                     {formatDate(currentUser.created_at)}
                   </strong>
                 </span>
@@ -440,7 +440,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#a78bfa",
+                      color: "var(--accent-light)",
                       cursor: "pointer",
                       textDecoration: "underline",
                       padding: 0,
@@ -509,9 +509,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <button
             onClick={onOpenAuthModal}
             style={{
-              background: "linear-gradient(135deg, #7c3aed, #6366f1)",
+              background: "linear-gradient(135deg, #f3701e, #4b607f)",
               border: "none",
-              color: "#fff",
+              color: "#e8d8c9",
               padding: "8px 16px",
               borderRadius: "10px",
               fontSize: "13px",
@@ -556,9 +556,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
             </h1>
             <span
               style={{
-                background: "linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.2))",
-                border: "1px solid rgba(139, 92, 246, 0.4)",
-                color: "#c084fc",
+                background: "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(243, 112, 30, 0.2))",
+                border: "1px solid rgba(243, 112, 30, 0.4)",
+                color: "var(--accent-light)",
                 padding: "2px 10px",
                 borderRadius: "9999px",
                 fontSize: "12px",
@@ -603,9 +603,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       borderRadius: "8px",
                       border: "none",
                       background: isActive
-                        ? "linear-gradient(135deg, #8b5cf6, #6366f1)"
+                        ? "linear-gradient(135deg, var(--accent), #866760)"
                         : "transparent",
-                      color: isActive ? "#fff" : "rgba(255, 255, 255, 0.6)",
+                      color: isActive ? "#e8d8c9" : "rgba(255, 255, 255, 0.6)",
                       fontWeight: isActive ? 700 : 500,
                       fontSize: "13px",
                       cursor: "pointer",
@@ -631,7 +631,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               borderRadius: "10px",
               border: "1px solid rgba(255, 255, 255, 0.12)",
               background: "rgba(255, 255, 255, 0.06)",
-              color: "#fff",
+              color: "#e8d8c9",
               fontSize: "12px",
               fontWeight: 600,
               cursor: "pointer",
@@ -643,7 +643,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
             title="Refresh listening stats"
           >
             <RotateCw size={14} className={isRefreshing ? "spin-animation" : ""} />
-            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -661,8 +660,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
             style={{
               width: "36px",
               height: "36px",
-              border: "3px solid rgba(139, 92, 246, 0.2)",
-              borderTopColor: "#8b5cf6",
+              border: "3px solid rgba(243, 112, 30, 0.2)",
+              borderTopColor: "var(--accent)",
               borderRadius: "50%",
               margin: "0 auto 16px",
               animation: "spin 1s linear infinite",
@@ -685,7 +684,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             <div
               style={{
                 background: "linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%)",
-                border: "1px solid rgba(139, 92, 246, 0.2)",
+                border: "1px solid rgba(243, 112, 30, 0.2)",
                 borderRadius: "18px",
                 padding: "20px 24px",
                 position: "relative",
@@ -726,7 +725,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   <Flame size={20} />
                 </div>
               </div>
-              <div style={{ fontSize: "32px", fontWeight: 800, color: "#fff" }}>
+              <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
                 {formatSeconds(stats?.daily_seconds || 0)}
               </div>
               <div
@@ -783,7 +782,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   <Calendar size={20} />
                 </div>
               </div>
-              <div style={{ fontSize: "32px", fontWeight: 800, color: "#fff" }}>
+              <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
                 {formatSeconds(stats?.weekly_seconds || 0)}
               </div>
               <div
@@ -802,7 +801,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <div
             style={{
               background: "linear-gradient(135deg, rgba(16, 50, 40, 0.55) 0%, rgba(24, 24, 27, 0.85) 100%)",
-              border: "1px solid rgba(16, 185, 129, 0.25)",
+              border: "1px solid rgba(139, 124, 246, 0.25)",
               borderRadius: "20px",
               padding: "24px 28px",
               marginBottom: "36px",
@@ -837,11 +836,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       width: "32px",
                       height: "32px",
                       borderRadius: "8px",
-                      background: "rgba(16, 185, 129, 0.15)",
+                      background: "rgba(139, 124, 246, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "#34d399",
+                      color: "#8b7cf6",
                     }}
                   >
                     <Activity size={18} />
@@ -864,7 +863,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     style={{
                       fontSize: "36px",
                       fontWeight: 800,
-                      color: "#fff",
+                      color: "#e8d8c9",
                       letterSpacing: "-0.5px",
                     }}
                   >
@@ -891,9 +890,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    background: "rgba(16, 185, 129, 0.15)",
-                    border: "1px solid rgba(16, 185, 129, 0.35)",
-                    color: "#34d399",
+                    background: "rgba(139, 124, 246, 0.15)",
+                    border: "1px solid rgba(139, 124, 246, 0.35)",
+                    color: "#8b7cf6",
                     padding: "6px 14px",
                     borderRadius: "9999px",
                     fontSize: "13px",
@@ -917,7 +916,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       backgroundColor: "rgba(255, 255, 255, 0.08)",
                       border: "1px solid rgba(255, 255, 255, 0.18)",
                       borderRadius: "10px",
-                      color: "#fff",
+                      color: "#e8d8c9",
                       padding: "7px 34px 7px 14px",
                       fontSize: "13px",
                       fontWeight: 600,
@@ -932,7 +931,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         <option
                           key={mNum}
                           value={mNum}
-                          style={{ backgroundColor: "#18181b", color: "#fff" }}
+                          style={{ backgroundColor: "var(--bg-card)", color: "#e8d8c9" }}
                         >
                           {mName}
                         </option>
@@ -977,8 +976,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
               >
                 <div>
                   {hoveredDay ? (
-                    <span style={{ color: "#fff" }}>
-                      📅 <strong style={{ color: "#34d399" }}>{hoveredDay.date}</strong> (Day {hoveredDay.day}):{" "}
+                    <span style={{ color: "#e8d8c9" }}>
+                      📅 <strong style={{ color: "#8b7cf6" }}>{hoveredDay.date}</strong> (Day {hoveredDay.day}):{" "}
                       <strong>{formatSeconds(hoveredDay.total_seconds)}</strong>
                     </span>
                   ) : (
@@ -988,10 +987,10 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
                 <div style={{ display: "flex", gap: "16px" }}>
                   <span>
-                    Active days: <strong style={{ color: "#fff" }}>{daysWithMusic}</strong>/{monthlyGraph.length}
+                    Active days: <strong style={{ color: "#e8d8c9" }}>{daysWithMusic}</strong>/{monthlyGraph.length}
                   </span>
                   <span>
-                    Daily avg: <strong style={{ color: "#fff" }}>{formatSeconds(dailyAvgSecs)}</strong>
+                    Daily avg: <strong style={{ color: "#e8d8c9" }}>{formatSeconds(dailyAvgSecs)}</strong>
                   </span>
                 </div>
               </div>
@@ -1038,8 +1037,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
                             position: "absolute",
                             bottom: "calc(100% + 8px)",
                             background: "rgba(24, 24, 27, 0.95)",
-                            border: "1px solid rgba(16, 185, 129, 0.4)",
-                            color: "#fff",
+                            border: "1px solid rgba(139, 124, 246, 0.4)",
+                            color: "#e8d8c9",
                             padding: "6px 10px",
                             borderRadius: "8px",
                             fontSize: "11px",
@@ -1051,7 +1050,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           }}
                         >
                           <div>Day {point.day} ({point.date})</div>
-                          <div style={{ color: "#34d399", fontWeight: 700 }}>
+                          <div style={{ color: "var(--accent-secondary)", fontWeight: 700 }}>
                             {formatSeconds(point.total_seconds)}
                           </div>
                         </div>
@@ -1065,14 +1064,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           height: `${heightPct}%`,
                           borderRadius: "4px 4px 0 0",
                           background: isHovered
-                            ? "linear-gradient(180deg, #6ee7b7 0%, #10b981 100%)"
+                            ? "linear-gradient(180deg, #8b7cf6 0%, #4b607f 100%)"
                             : hasTime
-                            ? "linear-gradient(180deg, #34d399 0%, #059669 100%)"
+                            ? "linear-gradient(180deg, #4b607f 0%, #8b7cf6 100%)"
                             : "rgba(255, 255, 255, 0.07)",
                           boxShadow: isHovered
-                            ? "0 0 12px rgba(52, 211, 153, 0.6)"
+                            ? "0 0 12px rgba(139, 124, 246, 0.45)"
                             : hasTime
-                            ? "0 0 4px rgba(52, 211, 153, 0.2)"
+                            ? "0 0 4px rgba(75, 96, 127, 0.35)"
                             : "none",
                           transition: "all 0.15s ease",
                         }}
@@ -1116,7 +1115,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             {/* Top 10 Songs */}
             <div
               style={{
-                background: "#18181b",
+                background: "var(--bg-card)",
                 border: "1px solid rgba(255, 255, 255, 0.08)",
                 borderRadius: "16px",
                 padding: "24px",
@@ -1135,11 +1134,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     width: "32px",
                     height: "32px",
                     borderRadius: "8px",
-                    background: "rgba(139, 92, 246, 0.15)",
+                    background: "rgba(243, 112, 30, 0.15)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#a78bfa",
+                    color: "var(--accent-light)",
                   }}
                 >
                   <Music size={18} />
@@ -1209,7 +1208,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                             style={{
                               fontSize: "14px",
                               fontWeight: 600,
-                              color: "#fff",
+                              color: "#e8d8c9",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
@@ -1231,7 +1230,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         </div>
 
                         <div style={{ textAlign: "right", marginRight: "12px" }}>
-                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#e8d8c9" }}>
                             {formatSeconds(song.total_seconds)}
                           </div>
                           <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
@@ -1247,9 +1246,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
                               width: "32px",
                               height: "32px",
                               borderRadius: "50%",
-                              background: "rgba(139, 92, 246, 0.2)",
+                              background: "rgba(243, 112, 30, 0.2)",
                               border: "none",
-                              color: "#c084fc",
+                              color: "var(--accent-light)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -1270,7 +1269,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             {/* Top 10 Artists */}
             <div
               style={{
-                background: "#18181b",
+                background: "var(--bg-card)",
                 border: "1px solid rgba(255, 255, 255, 0.08)",
                 borderRadius: "16px",
                 padding: "24px",
@@ -1361,7 +1360,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                             style={{
                               fontSize: "14px",
                               fontWeight: 600,
-                              color: "#fff",
+                              color: "#e8d8c9",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
@@ -1372,7 +1371,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         </div>
 
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#e8d8c9" }}>
                             {formatSeconds(artist.total_seconds)}
                           </div>
                           <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
@@ -1390,7 +1389,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           {/* Top 5 Days User Listened to Most */}
           <div
             style={{
-              background: "#18181b",
+              background: "var(--bg-card)",
               border: "1px solid rgba(255, 255, 255, 0.08)",
               borderRadius: "16px",
               padding: "24px",
@@ -1409,7 +1408,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   width: "32px",
                   height: "32px",
                   borderRadius: "8px",
-                  background: "rgba(245, 158, 11, 0.15)",
+                  background: "rgba(243, 112, 30, 0.15)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1484,7 +1483,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                           height: "24px",
                           borderRadius: "50%",
                           background: rankBadgeBg,
-                          color: "#fff",
+                          color: "#e8d8c9",
                           fontSize: "12px",
                           fontWeight: 800,
                           display: "flex",
@@ -1498,7 +1497,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         style={{
                           fontSize: "11px",
                           fontWeight: 700,
-                          color: "#a78bfa",
+                          color: "var(--accent-light)",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           marginBottom: "4px",
@@ -1510,7 +1509,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         style={{
                           fontSize: "14px",
                           fontWeight: 600,
-                          color: "#fff",
+                          color: "#e8d8c9",
                           marginBottom: "8px",
                         }}
                       >
@@ -1520,7 +1519,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         style={{
                           fontSize: "20px",
                           fontWeight: 800,
-                          color: "#34d399",
+                          color: "#8b7cf6",
                         }}
                       >
                         {formatSeconds(day.total_seconds)}
@@ -1538,8 +1537,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
           {/* Archived Year Hero Banner */}
           <div
             style={{
-              background: "linear-gradient(135deg, #311042 0%, #18181b 100%)",
-              border: "1px solid rgba(168, 85, 247, 0.3)",
+              background: "linear-gradient(135deg, #3b2a1d 0%, var(--bg-card) 100%)",
+              border: "1px solid rgba(232, 216, 201, 0.3)",
               borderRadius: "20px",
               padding: "32px",
               marginBottom: "36px",
@@ -1556,7 +1555,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  color: "#d8b4fe",
+                  color: "var(--text-main)",
                   fontSize: "13px",
                   fontWeight: 700,
                   textTransform: "uppercase",
@@ -1612,7 +1611,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 style={{
                   fontSize: "32px",
                   fontWeight: 800,
-                  color: "#c084fc",
+                  color: "var(--accent-light)",
                 }}
               >
                 {formatSeconds(stats?.total_year_seconds || 0)}
@@ -1631,7 +1630,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             {/* Top 10 Songs of the Year */}
             <div
               style={{
-                background: "#18181b",
+                background: "var(--bg-card)",
                 border: "1px solid rgba(255, 255, 255, 0.08)",
                 borderRadius: "16px",
                 padding: "24px",
@@ -1676,7 +1675,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         {idx + 1}
                       </span>
                       <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
-                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#e8d8c9" }}>
                           {song.title}
                         </div>
                         <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.5)" }}>
@@ -1684,7 +1683,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#e8d8c9" }}>
                           {formatSeconds(song.total_seconds)}
                         </div>
                         <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
@@ -1700,7 +1699,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             {/* Top 10 Artists of the Year */}
             <div
               style={{
-                background: "#18181b",
+                background: "var(--bg-card)",
                 border: "1px solid rgba(255, 255, 255, 0.08)",
                 borderRadius: "16px",
                 padding: "24px",
@@ -1745,12 +1744,12 @@ export const StatsView: React.FC<StatsViewProps> = ({
                         {idx + 1}
                       </span>
                       <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
-                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#fff" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#e8d8c9" }}>
                           {artist.name}
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "#e8d8c9" }}>
                           {formatSeconds(artist.total_seconds)}
                         </div>
                         <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>

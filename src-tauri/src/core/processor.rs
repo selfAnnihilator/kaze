@@ -682,8 +682,38 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::EnqueueTrack { track_id, play_next } => {
-                self.playback_service.enqueue_track(&track_id, play_next).await?;
-                Ok(CommandResponse::Ok)
+                if self.playback_service.enqueue_track(&track_id, play_next).await? {
+                    Ok(CommandResponse::Ok)
+                } else {
+                    Err(AppError::Validation("Track is already in the queue".into()))
+                }
+            }
+            Command::EnqueueOnlineTrack {
+                track_id,
+                title,
+                artist,
+                album,
+                duration_secs,
+                cover_art_url,
+                preview_url,
+                play_next,
+            } => {
+                crate::recommendations::mixes::ensure_online_track(
+                    &self.db_pool,
+                    &track_id,
+                    &title,
+                    Some(&artist),
+                    album.as_deref(),
+                    duration_secs,
+                    cover_art_url.as_deref(),
+                    preview_url.as_deref(),
+                )
+                .await?;
+                if self.playback_service.enqueue_track(&track_id, play_next).await? {
+                    Ok(CommandResponse::Ok)
+                } else {
+                    Err(AppError::Validation("Track is already in the queue".into()))
+                }
             }
             Command::DequeueTrack { track_id } => {
                 self.playback_service.dequeue_track(&track_id).await;
@@ -697,19 +727,62 @@ impl CoreProcessor {
             // --- User Feedback & Taste ---
             Command::LikeTrack { track_id } => {
                 self.history_service.set_track_like(&track_id, 1).await?;
+                // Also add to Liked Songs playlist
+                let user_id = {
+                    let g = self.current_user.read().await;
+                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+                };
+                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                // Only add if it's a local track (not an online: prefixed id); online tracks use AddTrackToPlaylist
+                if !track_id.starts_with("online:") && !track_id.starts_with("itunes:") {
+                    let already_liked: i64 = sqlx::query_scalar(
+                        "SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?"
+                    )
+                    .bind(&liked_id)
+                    .bind(&track_id)
+                    .fetch_one(&self.db_pool)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+                    if already_liked == 0 {
+                        self.playlist_repo.add_track(&liked_id, &track_id, None).await?;
+                    }
+                }
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::DislikeTrack { track_id } => {
                 self.history_service.set_track_like(&track_id, -1).await?;
+                // Remove from Liked Songs if it's there
+                let user_id = {
+                    let g = self.current_user.read().await;
+                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+                };
+                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::RemoveTrackFeedback { track_id } => {
                 self.history_service.set_track_like(&track_id, 0).await?;
+                // Remove from Liked Songs
+                let user_id = {
+                    let g = self.current_user.read().await;
+                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+                };
+                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
+            Command::EnsureLikedSongsPlaylist => {
+                let user_id = {
+                    let g = self.current_user.read().await;
+                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+                };
+                let id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                Ok(CommandResponse::EntityId(id))
+            }
+
 
             // --- Playlists & Recommendations ---
             Command::GenerateSmartMix { mix_type } => {
@@ -771,10 +844,62 @@ impl CoreProcessor {
                     let current_user_guard = self.current_user.read().await;
                     current_user_guard.as_ref().map(|u| u.id.clone())
                 };
+                let Some(ref uid) = user_id else {
+                    return Err(AppError::Validation("Sign in to delete playlists.".into()));
+                };
+                let owned: Option<(String,)> = sqlx::query_as(
+                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0"
+                )
+                .bind(&playlist_id)
+                .bind(uid)
+                .fetch_optional(&self.db_pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+                let Some((playlist_name,)) = owned else {
+                    return Err(AppError::Validation("Playlist not found or not owned by this account.".into()));
+                };
+                if playlist_name == "Liked Songs" {
+                    return Err(AppError::Validation("The Liked Songs playlist cannot be deleted.".into()));
+                }
                 if let Some(ref uid) = user_id {
                     let _ = SyncManager::record_tombstone(&self.db_pool, uid, "playlist", &playlist_id).await;
                 }
                 self.playlist_repo.delete_playlist(&playlist_id).await?;
+                self.trigger_background_sync().await;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RenamePlaylist { playlist_id, name } => {
+                let trimmed = name.trim().to_string();
+                if trimmed.is_empty() {
+                    return Err(AppError::Validation("Playlist name cannot be empty".into()));
+                }
+                let user_id = {
+                    let current_user_guard = self.current_user.read().await;
+                    current_user_guard.as_ref().map(|u| u.id.clone())
+                };
+                let Some(uid) = user_id else {
+                    return Err(AppError::Validation("Sign in to rename playlists.".into()));
+                };
+                let owned: Option<(String,)> = sqlx::query_as(
+                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0"
+                )
+                .bind(&playlist_id)
+                .bind(&uid)
+                .fetch_optional(&self.db_pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+                let Some((playlist_name,)) = owned else {
+                    return Err(AppError::Validation("Playlist not found or not owned by this account.".into()));
+                };
+                if playlist_name == "Liked Songs" {
+                    return Err(AppError::Validation("The Liked Songs playlist cannot be renamed.".into()));
+                }
+                if let Some(existing) = self.playlist_repo.find_by_name_and_user(&trimmed, &uid).await? {
+                    if existing.id != playlist_id {
+                        return Err(AppError::Validation(format!("A playlist named '{}' already exists", trimmed)));
+                    }
+                }
+                self.playlist_repo.rename_playlist(&playlist_id, &trimmed).await?;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
@@ -1602,8 +1727,11 @@ impl CoreProcessor {
                 let folders = self.library_service.get_folders().await?;
                 let mut folders_val = Vec::new();
                 for f in folders {
-                    let track_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tracks WHERE folder_id = ?")
-                        .bind(&f.id)
+                    let pattern = format!("{}/%", f.path.trim_end_matches('/'));
+                    let track_count: i64 = sqlx::query_scalar(
+                        "SELECT COUNT(*) FROM tracks WHERE file_path LIKE ?"
+                    )
+                        .bind(&pattern)
                         .fetch_one(&self.db_pool)
                         .await
                         .unwrap_or(0);
@@ -1722,6 +1850,7 @@ impl CoreProcessor {
                 let _ = self.smart_mix_generator.ensure_default_mixes().await;
                 let current_user_guard = self.current_user.read().await;
                 let playlists = if let Some(ref u) = *current_user_guard {
+                    self.playlist_repo.ensure_liked_songs_playlist(&u.id).await?;
                     self.playlist_repo.get_user_playlists(&u.id).await?
                 } else {
                     self.playlist_repo.get_smart_mixes().await?

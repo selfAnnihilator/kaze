@@ -26,10 +26,10 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const borderColor = isError
     ? "rgba(239, 68, 68, 0.4)"
     : isSuccess
-    ? "rgba(16, 185, 129, 0.4)"
-    : "rgba(139, 92, 246, 0.4)";
+    ? "rgba(139, 124, 246, 0.4)"
+    : "rgba(243, 112, 30, 0.4)";
 
-  const accentColor = isError ? "#ef4444" : isSuccess ? "#10b981" : "#8b5cf6";
+  const accentColor = isError ? "#ef4444" : isSuccess ? "var(--accent-secondary)" : "var(--accent)";
 
   return (
     <div
@@ -55,9 +55,9 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         {isError ? (
           <AlertTriangle size={18} color="#ef4444" />
         ) : isSuccess ? (
-          <CheckCircle2 size={18} color="#10b981" />
+          <CheckCircle2 size={18} color="var(--accent-secondary)" />
         ) : (
-          <Info size={18} color="#8b5cf6" />
+          <Info size={18} color="var(--accent)" />
         )}
       </div>
 
@@ -66,7 +66,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           style={{
             fontSize: "0.88rem",
             fontWeight: 700,
-            color: "#fff",
+            color: "#e8d8c9",
             marginBottom: "2px",
           }}
         >
@@ -99,7 +99,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           marginTop: "2px",
           transition: "color 0.15s ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#e8d8c9")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
         title="Dismiss notification"
       >

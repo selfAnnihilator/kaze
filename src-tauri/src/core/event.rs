@@ -31,6 +31,13 @@ pub enum Event {
         position_secs: f64,
     },
     PlaybackStopped,
+    OnlinePlaybackRequested {
+        track_id: String,
+        title: String,
+        artist: String,
+        album: Option<String>,
+        duration_secs: f64,
+    },
     PlaybackPositionChanged {
         position_secs: f64,
         duration_secs: f64,

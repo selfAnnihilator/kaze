@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 440" fill="none">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="#51463d"/><stop offset="1" stop-color="#9a7660"/></linearGradient>
+    <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer><feBlend in="SourceGraphic" mode="soft-light"/></filter>
+  </defs>
+  <g filter="url(#paper)">
+    <path fill="url(#sky)" d="M0 0h1400v440H0z"/>
+    <circle cx="1010" cy="152" r="95" fill="#df702f"/>
+    <path d="m290 390 165-115 92 36 208-207 110 141 85-47 245 198 205-96v140H0Z" fill="#595047"/>
+    <path d="m584 275 171-171 110 141-86-47-22-42-28 46-35 10-18 38-42-2Z" fill="#c0aa91" opacity=".7"/>
+    <path d="m0 342 217-84 132 83 178-45 191 70 131-106 82 51 91-31 167 86 211-54v128H0Z" fill="#33332f"/>
+    <path d="m0 400 195-44 209 55 156-42 219 51 208-69 196 22 217-105v172H0Z" fill="#202520"/>
+    <g stroke="#20231e" stroke-linecap="round"><path d="M1279 460q-61-156-40-271t85-196" stroke-width="20"/><path d="m1245 252-114-87-92-18m202 57 90-94 69-12m-133 26-66-72-70-18" stroke-width="9"/><path d="m1131 165-20-53m220-2 5-52m-135-6-4-46" stroke-width="4"/></g>
+    <g fill="#24271f"><path d="m1088 77 102 45-149 8 55 17-94-15 29-31Zm206-44 106-8v76l-94 20 31-28-76 13 61-39Zm-115-33 104 15-33 18-118-6 36-11Z"/></g>
+  </g>
+</svg>

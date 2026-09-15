@@ -10,7 +10,6 @@ import {
   Volume2,
   VolumeX,
   Heart,
-  ThumbsDown,
   Music,
   Download,
   RefreshCw,
@@ -36,7 +35,8 @@ interface NowPlayingBarProps {
   onToggleRepeat: () => void;
   onToggleShuffle: () => void;
   onLike: (trackId: string) => void;
-  onDislike: (trackId: string) => void;
+  onLikeOnline?: (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => void;
+  isOnlineLiked?: boolean;
   onRemoveFeedback: (trackId: string) => void;
   onDownloadOnlineTrack?: (artist: string, title: string) => void;
   isInPlaylist?: boolean;
@@ -76,7 +76,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onToggleRepeat,
   onToggleShuffle,
   onLike,
-  onDislike,
+  onLikeOnline,
+  isOnlineLiked = false,
   onRemoveFeedback,
   onDownloadOnlineTrack,
   isInPlaylist = false,
@@ -102,6 +103,10 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
     : playbackState.duration_secs || currentTrack?.duration_secs || 0;
   const position = isOnline ? onlineTrack.currentTime : playbackState.position_secs || 0;
   const displayPos = seekingValue !== null ? seekingValue : position;
+  const seekProgress = duration > 0 ? Math.min(100, Math.max(0, (displayPos / duration) * 100)) : 0;
+  const volumeProgress = playbackState.is_muted
+    ? 0
+    : Math.min(100, Math.max(0, playbackState.volume * 100));
 
   return (
     <footer className="player-bar">
@@ -132,17 +137,15 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             <Music size={24} color="var(--text-dim)" />
           )}
         </div>
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div className="player-track-metadata">
           <div
+            className="player-track-title"
             style={{
               fontWeight: 600,
               fontSize: "0.92rem",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
             }}
             title={activeTitle}
           >
@@ -155,6 +158,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
                 textDecoration: onOpenOrigin ? "underline" : "none",
                 textDecorationColor: onOpenOrigin ? "rgba(255, 255, 255, 0.4)" : "transparent",
                 transition: "color 0.15s ease",
+                display: "block",
               }}
               title={
                 onOpenOrigin
@@ -170,21 +174,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             >
               {activeTitle}
             </span>
-            {isOnline && (
-              <span
-                style={{
-                  fontSize: "10px",
-                  padding: "1px 6px",
-                  borderRadius: "4px",
-                  backgroundColor: "rgba(99, 102, 241, 0.2)",
-                  color: "var(--accent-light)",
-                  fontWeight: 600,
-                  flexShrink: 0,
-                }}
-              >
-                Online Stream
-              </span>
-            )}
           </div>
           <div
             style={{
@@ -199,32 +188,42 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             {activeArtist}
           </div>
         </div>
-        {!isOnline && currentTrack && (
+        {/* Heart — works for both local and online tracks */}
+        {(currentTrack || (isOnline && onlineTrack)) && (
           <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
-            <button
-              className="player-icon-btn"
-              title={currentTrack.manual_like === 1 ? "Unlike track" : "Like track"}
-              onClick={() =>
-                currentTrack.manual_like === 1
-                  ? onRemoveFeedback(currentTrack.id)
-                  : onLike(currentTrack.id)
-              }
-              style={{ color: currentTrack.manual_like === 1 ? "#ef4444" : "var(--text-muted)" }}
-            >
-              <Heart size={16} fill={currentTrack.manual_like === 1 ? "#ef4444" : "none"} />
-            </button>
-            <button
-              className="player-icon-btn"
-              title={currentTrack.manual_like === -1 ? "Remove dislike" : "Dislike track"}
-              onClick={() =>
-                currentTrack.manual_like === -1
-                  ? onRemoveFeedback(currentTrack.id)
-                  : onDislike(currentTrack.id)
-              }
-              style={{ color: currentTrack.manual_like === -1 ? "#f59e0b" : "var(--text-muted)" }}
-            >
-              <ThumbsDown size={16} fill={currentTrack.manual_like === -1 ? "#f59e0b" : "none"} />
-            </button>
+            {currentTrack && !isOnline ? (
+              <button
+                className="player-icon-btn"
+                title={currentTrack.manual_like === 1 ? "Unlike track" : "Like track"}
+                onClick={() =>
+                  currentTrack.manual_like === 1
+                    ? onRemoveFeedback(currentTrack.id)
+                    : onLike(currentTrack.id)
+                }
+                style={{ color: currentTrack.manual_like === 1 ? "#ef4444" : "var(--text-muted)" }}
+              >
+                <Heart size={16} fill={currentTrack.manual_like === 1 ? "#ef4444" : "none"} />
+              </button>
+            ) : isOnline && onlineTrack && onLikeOnline ? (
+              <button
+                className="player-icon-btn"
+                title={isOnlineLiked ? "Unlike track" : "Like track"}
+                onClick={() =>
+                  onLikeOnline({
+                    id: onlineTrack.id || `online:${onlineTrack.artist}-${onlineTrack.title}`,
+                    title: onlineTrack.title,
+                    artist: onlineTrack.artist,
+                    album: onlineTrack.album,
+                    cover_art_url: onlineTrack.cover_art_url,
+                    preview_url: onlineTrack.preview_url,
+                    duration_secs: onlineTrack.duration,
+                  })
+                }
+                style={{ color: isOnlineLiked ? "#ef4444" : "var(--text-muted)" }}
+              >
+                <Heart size={16} fill={isOnlineLiked ? "#ef4444" : "none"} />
+              </button>
+            ) : null}
           </div>
         )}
         {isOnline && onDownloadOnlineTrack && (
@@ -261,11 +260,11 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               }
             }}
             style={{
-              color: isInPlaylist ? "#10b981" : "var(--text-muted)",
+              color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-muted)",
               marginLeft: "4px",
             }}
           >
-            {isInPlaylist ? <BookmarkCheck size={16} color="#10b981" /> : <Bookmark size={16} />}
+            {isInPlaylist ? <BookmarkCheck size={16} color="var(--accent-secondary)" /> : <Bookmark size={16} />}
           </button>
         )}
       </div>
@@ -286,8 +285,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             className="player-icon-btn"
             title="Previous Track"
             onClick={onPrevious}
-            disabled={isOnline}
-            style={{ opacity: isOnline ? 0.3 : 1 }}
           >
             <SkipBack size={18} />
           </button>
@@ -308,17 +305,13 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             className="player-icon-btn"
             title="Next Track"
             onClick={onNext}
-            disabled={isOnline}
-            style={{ opacity: isOnline ? 0.3 : 1 }}
           >
             <SkipForward size={18} />
           </button>
           <button
-            className={`player-icon-btn ${playbackState.repeat_mode !== "off" ? "active" : ""}`}
-            title={`Repeat: ${playbackState.repeat_mode}`}
+            className={`player-icon-btn ${playbackState.repeat_mode === "one" ? "repeat-active" : ""}`}
+            title={playbackState.repeat_mode === "one" ? "Turn off song loop" : "Loop current song"}
             onClick={onToggleRepeat}
-            disabled={isOnline}
-            style={{ opacity: isOnline ? 0.3 : 1 }}
           >
             {playbackState.repeat_mode === "one" ? <Repeat1 size={16} /> : <Repeat size={16} />}
           </button>
@@ -334,6 +327,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             max={duration > 0 ? duration : 100}
             step={0.5}
             value={displayPos}
+            style={{ "--range-progress": `${seekProgress}%` } as React.CSSProperties}
             onMouseDown={() => setSeekingValue(position)}
             onTouchStart={() => setSeekingValue(position)}
             onChange={(e) => setSeekingValue(parseFloat(e.target.value))}
@@ -366,11 +360,11 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             title={isLyricsActive ? "Hide Lyrics" : "Show Lyrics"}
             onClick={onToggleLyrics}
             style={{
-              color: isLyricsActive ? "#10b981" : "var(--text-muted)",
+              color: isLyricsActive ? "var(--accent-secondary)" : "var(--text-muted)",
               transition: "all 0.15s ease",
             }}
           >
-            <Mic2 size={18} color={isLyricsActive ? "#10b981" : undefined} />
+            <Mic2 size={18} color={isLyricsActive ? "var(--accent-secondary)" : undefined} />
           </button>
         )}
 
@@ -380,7 +374,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         <input
           type="range"
           className="scrubber"
-          style={{ width: "90px" }}
+          style={{ width: "90px", "--range-progress": `${volumeProgress}%` } as React.CSSProperties}
           min={0}
           max={1}
           step={0.01}
@@ -394,7 +388,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             title={isFullscreen ? "Exit Full Screen" : "Full Screen"}
             onClick={onToggleFullscreen}
             style={{
-              color: isFullscreen ? "#ffffff" : "var(--text-muted)",
+              color: isFullscreen ? "#e8d8c9" : "var(--text-muted)",
               marginLeft: "4px",
             }}
           >

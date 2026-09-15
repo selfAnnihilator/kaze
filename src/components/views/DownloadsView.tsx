@@ -156,19 +156,19 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
     switch (status) {
       case "QUEUED":
         return (
-          <span style={{ ...baseStyle, backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+          <span style={{ ...baseStyle, backgroundColor: "rgba(243, 112, 30, 0.15)", color: "#f3701e", border: "1px solid rgba(243, 112, 30, 0.3)" }}>
             <Clock size={12} /> Queued
           </span>
         );
       case "DOWNLOADING":
         return (
-          <span style={{ ...baseStyle, backgroundColor: "rgba(139, 92, 246, 0.2)", color: "#a78bfa", border: "1px solid rgba(139, 92, 246, 0.4)" }}>
+          <span style={{ ...baseStyle, backgroundColor: "rgba(243, 112, 30, 0.2)", color: "var(--accent-light)", border: "1px solid rgba(243, 112, 30, 0.4)" }}>
             <DownloadCloud size={12} /> {isDirect ? "Direct Downloading" : "Transferring"}
           </span>
         );
       case "COMPLETED":
         return (
-          <span style={{ ...baseStyle, backgroundColor: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
+          <span style={{ ...baseStyle, backgroundColor: "rgba(139, 124, 246, 0.15)", color: "var(--accent-secondary)", border: "1px solid rgba(139, 124, 246, 0.3)" }}>
             <CheckCircle size={12} /> In Library
           </span>
         );
@@ -262,7 +262,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 fontSize: "0.75rem",
                 fontWeight: 700,
                 backgroundColor: activeDownloads.length > 0 ? "var(--accent)" : "var(--bg-sidebar)",
-                color: activeDownloads.length > 0 ? "#fff" : "var(--text-dim)",
+                color: activeDownloads.length > 0 ? "#e8d8c9" : "var(--text-dim)",
               }}
             >
               {activeDownloads.length > 0 ? `${activeDownloads.length} active` : downloads.length}
@@ -275,8 +275,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
       {feedbackBanner && (
         <div
           style={{
-            backgroundColor: "rgba(139, 92, 246, 0.12)",
-            border: "1px solid rgba(139, 92, 246, 0.4)",
+            backgroundColor: "rgba(243, 112, 30, 0.12)",
+            border: "1px solid rgba(243, 112, 30, 0.4)",
             borderRadius: "10px",
             padding: "14px 18px",
             display: "flex",
@@ -347,13 +347,13 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                     searching
                       ? "var(--accent)"
                       : searchStatus === "succeeded"
-                      ? "rgba(16, 185, 129, 0.4)"
+                      ? "rgba(139, 124, 246, 0.4)"
                       : "var(--border)"
                   }`,
                   backgroundColor: searching
-                    ? "rgba(139, 92, 246, 0.1)"
+                    ? "rgba(243, 112, 30, 0.1)"
                     : searchStatus === "succeeded"
-                    ? "rgba(16, 185, 129, 0.08)"
+                    ? "rgba(139, 124, 246, 0.08)"
                     : "var(--bg-sidebar)",
                   display: "flex",
                   alignItems: "center",
@@ -365,7 +365,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   {searching ? (
                     <RefreshCw size={18} color="var(--accent-light)" className="animate-spin" />
                   ) : searchStatus === "succeeded" ? (
-                    <Check size={18} color="#10b981" />
+                    <Check size={18} color="var(--accent-secondary)" />
                   ) : (
                     <Search size={18} color="var(--text-dim)" />
                   )}
@@ -390,10 +390,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   padding: "12px 14px",
                   borderRadius: "8px",
                   border: `1px solid ${
-                    searchResults.length > 0 ? "rgba(16, 185, 129, 0.4)" : "var(--border)"
+                    searchResults.length > 0 ? "rgba(139, 124, 246, 0.4)" : "var(--border)"
                   }`,
                   backgroundColor:
-                    searchResults.length > 0 ? "rgba(16, 185, 129, 0.08)" : "var(--bg-sidebar)",
+                    searchResults.length > 0 ? "rgba(139, 124, 246, 0.08)" : "var(--bg-sidebar)",
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
@@ -402,7 +402,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               >
                 <div style={{ flexShrink: 0 }}>
                   {searchResults.length > 0 ? (
-                    <Check size={18} color="#10b981" />
+                    <Check size={18} color="var(--accent-secondary)" />
                   ) : (
                     <Music size={18} color="var(--text-dim)" />
                   )}
@@ -426,14 +426,14 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                     activeDownloads.length > 0
                       ? "var(--accent)"
                       : downloads.some((t) => t.status === "COMPLETED")
-                      ? "rgba(16, 185, 129, 0.4)"
+                      ? "rgba(139, 124, 246, 0.4)"
                       : "var(--border)"
                   }`,
                   backgroundColor:
                     activeDownloads.length > 0
-                      ? "rgba(139, 92, 246, 0.12)"
+                      ? "rgba(243, 112, 30, 0.12)"
                       : downloads.some((t) => t.status === "COMPLETED")
-                      ? "rgba(16, 185, 129, 0.08)"
+                      ? "rgba(139, 124, 246, 0.08)"
                       : "var(--bg-sidebar)",
                   display: "flex",
                   alignItems: "center",
@@ -445,7 +445,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   {activeDownloads.length > 0 ? (
                     <DownloadCloud size={18} color="var(--accent-light)" />
                   ) : downloads.some((t) => t.status === "COMPLETED") ? (
-                    <Check size={18} color="#10b981" />
+                    <Check size={18} color="var(--accent-secondary)" />
                   ) : (
                     <Zap size={18} color="var(--text-dim)" />
                   )}
@@ -469,11 +469,11 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   borderRadius: "8px",
                   border: `1px solid ${
                     downloads.some((t) => t.status === "COMPLETED")
-                      ? "rgba(16, 185, 129, 0.4)"
+                      ? "rgba(139, 124, 246, 0.4)"
                       : "var(--border)"
                   }`,
                   backgroundColor: downloads.some((t) => t.status === "COMPLETED")
-                    ? "rgba(16, 185, 129, 0.08)"
+                    ? "rgba(139, 124, 246, 0.08)"
                     : "var(--bg-sidebar)",
                   display: "flex",
                   alignItems: "center",
@@ -483,7 +483,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               >
                 <div style={{ flexShrink: 0 }}>
                   {downloads.some((t) => t.status === "COMPLETED") ? (
-                    <Check size={18} color="#10b981" />
+                    <Check size={18} color="var(--accent-secondary)" />
                   ) : (
                     <CheckCircle size={18} color="var(--text-dim)" />
                   )}
@@ -631,8 +631,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
           {searchStatus === "searching" && (
             <div
               style={{
-                backgroundColor: "rgba(139, 92, 246, 0.1)",
-                border: "1px solid rgba(139, 92, 246, 0.3)",
+                backgroundColor: "rgba(243, 112, 30, 0.1)",
+                border: "1px solid rgba(243, 112, 30, 0.3)",
                 borderRadius: "10px",
                 padding: "16px 20px",
                 display: "flex",
@@ -655,8 +655,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
           {searchStatus === "succeeded" && (
             <div
               style={{
-                backgroundColor: "rgba(16, 185, 129, 0.1)",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
+                backgroundColor: "rgba(139, 124, 246, 0.1)",
+                border: "1px solid rgba(139, 124, 246, 0.3)",
                 borderRadius: "10px",
                 padding: "14px 20px",
                 display: "flex",
@@ -666,9 +666,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <CheckCircle size={18} color="#10b981" style={{ flexShrink: 0 }} />
+                <CheckCircle size={18} color="var(--accent-secondary)" style={{ flexShrink: 0 }} />
                 <div>
-                  <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#10b981" }}>
+                  <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--accent-secondary)" }}>
                     Search Succeeded!
                   </span>
                   <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "8px" }}>
@@ -680,8 +680,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 style={{
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  color: "#10b981",
-                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                  color: "var(--accent-secondary)",
+                  backgroundColor: "rgba(139, 124, 246, 0.15)",
                   padding: "4px 10px",
                   borderRadius: "9999px",
                   flexShrink: 0,
@@ -695,8 +695,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
           {searchStatus === "no_results" && (
             <div
               style={{
-                backgroundColor: "rgba(245, 158, 11, 0.1)",
-                border: "1px solid rgba(245, 158, 11, 0.3)",
+                backgroundColor: "rgba(243, 112, 30, 0.1)",
+                border: "1px solid rgba(243, 112, 30, 0.3)",
                 borderRadius: "10px",
                 padding: "16px 20px",
                 display: "flex",
@@ -706,9 +706,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <AlertCircle size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
+                <AlertCircle size={20} color="#f3701e" style={{ flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#f59e0b" }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#f3701e" }}>
                     No Direct Streams Found
                   </div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -900,8 +900,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                         onClick={() => setFormatFilter("FLAC")}
                         className={`subtab-btn ${formatFilter === "FLAC" ? "active" : ""}`}
                         style={{
-                          color: formatFilter === "FLAC" ? "#000" : "var(--accent-light)",
-                          borderColor: "rgba(139, 92, 246, 0.4)",
+                          color: formatFilter === "FLAC" ? "#1a1714" : "var(--accent-light)",
+                          borderColor: "rgba(243, 112, 30, 0.4)",
                         }}
                       >
                         FLAC Lossless ({flacCount})
@@ -913,8 +913,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                         onClick={() => setFormatFilter("MP3")}
                         className={`subtab-btn ${formatFilter === "MP3" ? "active" : ""}`}
                         style={{
-                          color: formatFilter === "MP3" ? "#000" : "#10b981",
-                          borderColor: "rgba(16, 185, 129, 0.4)",
+                          color: formatFilter === "MP3" ? "#1a1714" : "var(--accent-secondary)",
+                          borderColor: "rgba(139, 124, 246, 0.4)",
                         }}
                       >
                         MP3 320k ({mp3Count})
@@ -966,12 +966,12 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                   display: "flex",
                                   alignItems: "center",
                                   gap: "6px",
-                                  color: res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "#10b981",
+                                  color: res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "var(--accent-secondary)",
                                   fontWeight: 600,
                                   fontSize: "0.8rem",
                                 }}
                               >
-                                <Zap size={13} color={res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "#10b981"} />
+                                <Zap size={13} color={res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "var(--accent-secondary)"} />
                                 <span>{res.format.toLowerCase() === "flac" ? "Direct Lossless Studio" : "Direct High-Speed 320k"}</span>
                               </div>
                               <div
@@ -1012,7 +1012,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                   marginTop: "2px",
                                 }}
                               >
-                                <Zap size={11} color="#f59e0b" />
+                                <Zap size={11} color="#f3701e" />
                                 <span>{(res.speed_bps / 1024).toFixed(0)} KB/s</span>
                               </div>
                             </div>
@@ -1027,10 +1027,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                   fontSize: "0.68rem",
                                   fontWeight: 700,
                                   color: "var(--accent-light)",
-                                  backgroundColor: "rgba(139, 92, 246, 0.15)",
+                                  backgroundColor: "rgba(243, 112, 30, 0.15)",
                                   padding: "2px 6px",
                                   borderRadius: "4px",
-                                  border: "1px solid rgba(139, 92, 246, 0.3)",
+                                  border: "1px solid rgba(243, 112, 30, 0.3)",
                                 }}
                               >
                                 24-BIT LOSSLESS
@@ -1040,11 +1040,11 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 style={{
                                   fontSize: "0.68rem",
                                   fontWeight: 700,
-                                  color: "#10b981",
-                                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                                  color: "var(--accent-secondary)",
+                                  backgroundColor: "rgba(139, 124, 246, 0.15)",
                                   padding: "2px 6px",
                                   borderRadius: "4px",
-                                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                                  border: "1px solid rgba(139, 124, 246, 0.3)",
                                 }}
                               >
                                 320 KBPS
@@ -1112,9 +1112,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 gap: "6px",
                                 padding: "6px 12px",
                                 borderRadius: "8px",
-                                backgroundColor: "rgba(16, 185, 129, 0.15)",
-                                color: "#10b981",
-                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                backgroundColor: "rgba(139, 124, 246, 0.15)",
+                                color: "var(--accent-secondary)",
+                                border: "1px solid rgba(139, 124, 246, 0.3)",
                                 fontSize: "0.78rem",
                                 fontWeight: 600,
                               }}
@@ -1130,9 +1130,9 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 gap: "6px",
                                 padding: "6px 12px",
                                 borderRadius: "8px",
-                                backgroundColor: "rgba(245, 158, 11, 0.15)",
-                                color: "#f59e0b",
-                                border: "1px solid rgba(245, 158, 11, 0.3)",
+                                backgroundColor: "rgba(243, 112, 30, 0.15)",
+                                color: "#f3701e",
+                                border: "1px solid rgba(243, 112, 30, 0.3)",
                                 fontSize: "0.78rem",
                                 fontWeight: 600,
                               }}
@@ -1266,14 +1266,14 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 gap: "4px",
                                 fontSize: "0.7rem",
                                 fontWeight: 700,
-                                color: "#10b981",
-                                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                                color: "var(--accent-secondary)",
+                                backgroundColor: "rgba(139, 124, 246, 0.12)",
                                 padding: "2px 8px",
                                 borderRadius: "9999px",
-                                border: "1px solid rgba(16, 185, 129, 0.25)",
+                                border: "1px solid rgba(139, 124, 246, 0.25)",
                               }}
                             >
-                              <Zap size={10} color="#10b981" /> Direct In-App
+                              <Zap size={10} color="var(--accent-secondary)" /> Direct In-App
                             </span>
                           )}
                         </div>

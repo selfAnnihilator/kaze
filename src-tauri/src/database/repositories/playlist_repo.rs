@@ -38,6 +38,8 @@ pub trait PlaylistRepository: Send + Sync {
     async fn find_smart_mix(&self, mix_type: &str, name: &str) -> AppResult<Option<PlaylistRecord>>;
     async fn delete_duplicate_smart_mixes(&self, mix_type: &str, name: &str, keep_id: &str) -> AppResult<()>;
     async fn delete_playlist(&self, id: &str) -> AppResult<()>;
+    async fn rename_playlist(&self, id: &str, name: &str) -> AppResult<()>;
+    async fn ensure_liked_songs_playlist(&self, user_id: &str) -> AppResult<String>;
     async fn add_track(&self, playlist_id: &str, track_id: &str, position: Option<i64>) -> AppResult<()>;
     async fn remove_track(&self, playlist_id: &str, track_id: &str) -> AppResult<()>;
     async fn set_tracks(&self, playlist_id: &str, track_ids: &[String]) -> AppResult<()>;
@@ -222,6 +224,50 @@ impl PlaylistRepository for SqlitePlaylistRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn rename_playlist(&self, id: &str, name: &str) -> AppResult<()> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query("UPDATE playlists SET name = ?, updated_at = ? WHERE id = ?")
+            .bind(name)
+            .bind(now)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn ensure_liked_songs_playlist(&self, user_id: &str) -> AppResult<String> {
+        // Check if it already exists
+        let existing: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM playlists WHERE name = 'Liked Songs' AND is_smart_mix = 0 AND user_id = ? LIMIT 1"
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        if let Some(id) = existing {
+            return Ok(id);
+        }
+
+        // Create it
+        let now = chrono::Utc::now().timestamp();
+        let id = format!("pl_liked_{}", user_id);
+        sqlx::query(
+            "INSERT OR IGNORE INTO playlists (id, user_id, name, description, is_smart_mix, created_at, updated_at)
+             VALUES (?, ?, 'Liked Songs', 'Your liked tracks', 0, ?, ?)"
+        )
+        .bind(&id)
+        .bind(user_id)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(id)
     }
 
     async fn add_track(&self, playlist_id: &str, track_id: &str, position: Option<i64>) -> AppResult<()> {

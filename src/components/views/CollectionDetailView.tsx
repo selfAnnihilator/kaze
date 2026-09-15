@@ -12,6 +12,12 @@ import {
   BookmarkCheck,
   CheckCircle2,
   RefreshCw,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Heart,
+  ListPlus,
+  Check,
 } from "lucide-react";
 import { Track, DiscoveryRecommendation, DownloadTask } from "../../types";
 
@@ -61,7 +67,16 @@ interface CollectionDetailViewProps {
   downloads?: DownloadTask[];
   trackPlaylistMap?: Record<string, string[]>;
   onAddToPlaylist?: (track: CollectionTrackItem) => void;
+  /** IDs of user-created (non-smart-mix) playlists — used to filter bookmark state */
+  userPlaylistIds?: Set<string>;
+  onRenamePlaylist?: (playlistId: string, name: string) => Promise<void>;
+  onDeletePlaylist?: (playlistId: string) => Promise<void>;
+  likedTrackIds?: Set<string>;
+  onToggleLike?: (track: CollectionTrackItem, isLiked: boolean) => void;
+  queuedTrackIds?: Set<string>;
+  onEnqueueTrack?: (track: CollectionTrackItem) => void;
 }
+
 
 export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   collection,
@@ -80,10 +95,39 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   downloads = [],
   trackPlaylistMap,
   onAddToPlaylist,
+  userPlaylistIds,
+  onRenamePlaylist,
+  onDeletePlaylist,
+  likedTrackIds,
+  onToggleLike,
+  queuedTrackIds,
+  onEnqueueTrack,
 }) => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
-  const isInCollection = isSaved || collection.type === "playlist" || !!collection.playlistId;
+  const isInCollection = isSaved || collection.type === "playlist";
+  const isLikedSongs = collection.type === "playlist" && collection.title === "Liked Songs";
+
+  const handleRenamePlaylist = async () => {
+    if (!collection.playlistId || !onRenamePlaylist || isLikedSongs) return;
+    const name = window.prompt("Rename playlist", collection.title)?.trim();
+    if (!name || name === collection.title) return;
+    try {
+      await onRenamePlaylist(collection.playlistId, name);
+    } catch (err: any) {
+      alert(err?.message || "Could not rename the playlist.");
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!collection.playlistId || !onDeletePlaylist || isLikedSongs) return;
+    if (!window.confirm(`Delete "${collection.title}"? This cannot be undone.`)) return;
+    try {
+      await onDeletePlaylist(collection.playlistId);
+    } catch (err: any) {
+      alert(err?.message || "Could not delete the playlist.");
+    }
+  };
 
   const tracks = collection.tracks || [];
   const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
@@ -154,7 +198,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             backgroundColor: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(6px)",
             border: "1px solid rgba(255,255,255,0.15)",
-            color: "#fff",
+            color: "#e8d8c9",
             borderRadius: "20px",
             padding: "6px 14px",
             fontSize: "0.82rem",
@@ -195,7 +239,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             style={{
               fontSize: "clamp(2rem, 4vw, 3.2rem)",
               fontWeight: 900,
-              color: "#fff",
+              color: "#e8d8c9",
               lineHeight: 1.1,
               letterSpacing: "-0.5px",
               marginBottom: "12px",
@@ -228,7 +272,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontWeight: 700, color: "#fff" }}>SoundFlow</span>
+            <span style={{ fontWeight: 700, color: "#e8d8c9" }}>Kaze</span>
             <span>•</span>
             <span>{tracks.length} {tracks.length === 1 ? "song" : "songs"}</span>
             {totalDurationSecs > 0 && (
@@ -344,14 +388,14 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               width: "54px",
               height: "54px",
               borderRadius: "50%",
-              backgroundColor: "#10b981",
+              backgroundColor: "var(--accent-secondary)",
               border: "none",
-              color: "#fff",
+              color: "#e8d8c9",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              boxShadow: "0 6px 20px rgba(16, 185, 129, 0.4)",
+              boxShadow: "0 6px 20px rgba(139, 124, 246, 0.4)",
               transition: "transform 0.15s ease, background-color 0.15s ease",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
@@ -359,9 +403,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             title={isPlaying ? "Pause Collection" : "Play Collection"}
           >
             {isPlaying ? (
-              <Pause size={24} fill="#fff" />
+              <Pause size={24} fill="#e8d8c9" />
             ) : (
-              <Play size={24} fill="#fff" style={{ marginLeft: "3px" }} />
+              <Play size={24} fill="#e8d8c9" style={{ marginLeft: "3px" }} />
             )}
           </button>
 
@@ -371,12 +415,12 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               type="button"
               onClick={onShuffleAll}
               style={{
-                background: isShuffled ? "rgba(16, 185, 129, 0.15)" : "none",
-                border: isShuffled ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid transparent",
+                background: isShuffled ? "rgba(139, 124, 246, 0.15)" : "none",
+                border: isShuffled ? "1px solid rgba(139, 124, 246, 0.4)" : "1px solid transparent",
                 borderRadius: "50%",
                 width: "40px",
                 height: "40px",
-                color: isShuffled ? "#10b981" : "var(--text-muted)",
+                color: isShuffled ? "var(--accent-secondary)" : "var(--text-muted)",
                 cursor: "pointer",
                 padding: "8px",
                 display: "flex",
@@ -386,14 +430,14 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 position: "relative",
               }}
               onMouseEnter={(e) => {
-                if (!isShuffled) e.currentTarget.style.color = "#fff";
+                if (!isShuffled) e.currentTarget.style.color = "#e8d8c9";
               }}
               onMouseLeave={(e) => {
                 if (!isShuffled) e.currentTarget.style.color = "var(--text-muted)";
               }}
               title={isShuffled ? "Shuffle is active (Click to deactivate)" : "Shuffle collection"}
             >
-              <Shuffle size={20} color={isShuffled ? "#10b981" : undefined} />
+              <Shuffle size={20} color={isShuffled ? "var(--accent-secondary)" : undefined} />
               {isShuffled && (
                 <span
                   style={{
@@ -402,7 +446,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     width: "4px",
                     height: "4px",
                     borderRadius: "50%",
-                    backgroundColor: "#10b981",
+                    backgroundColor: "var(--accent-secondary)",
                   }}
                 />
               )}
@@ -413,12 +457,12 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           {isInCollection ? (
             <div
               style={{
-                border: "1px solid rgba(16, 185, 129, 0.45)",
-                backgroundColor: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(139, 124, 246, 0.45)",
+                backgroundColor: "rgba(139, 124, 246, 0.12)",
                 borderRadius: "50%",
                 width: "40px",
                 height: "40px",
-                color: "#10b981",
+                color: "var(--accent-secondary)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -451,6 +495,42 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               <Plus size={18} />
             </button>
           ) : null}
+
+          {collection.type === "playlist" && collection.playlistId && (
+            <details style={{ position: "relative" }}>
+              <summary
+                aria-label={`Playlist options for ${collection.title}`}
+                style={{
+                  listStyle: "none",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <MoreVertical size={20} />
+              </summary>
+              <div style={{ position: "absolute", top: "46px", left: 0, zIndex: 20, minWidth: "160px", padding: "6px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-sidebar)", boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
+                {isLikedSongs ? (
+                  <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: "0.78rem" }}>Default playlist</div>
+                ) : (
+                  <>
+                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0 }} onClick={handleRenamePlaylist}>
+                      <Pencil size={14} /> Rename
+                    </button>
+                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0, color: "var(--danger, #ef4444)" }} onClick={handleDeletePlaylist}>
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </details>
+          )}
         </div>
       </div>
 
@@ -481,7 +561,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "48px 1fr 1fr 70px 90px",
+              gridTemplateColumns: "48px 1fr 1fr 70px 150px",
               padding: "12px 18px",
               borderBottom: "1px solid var(--border)",
               fontSize: "0.78rem",
@@ -531,6 +611,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 : activeDownload?.status === "DOWNLOADING"
                 ? 50
                 : 0;
+            const effectiveTrackId = track.matched_local_track_id || track.id;
+            const isLiked = likedTrackIds?.has(effectiveTrackId) || isLikedSongs;
+            const isQueued = queuedTrackIds?.has(effectiveTrackId) || false;
 
             return (
               <div
@@ -540,13 +623,13 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 onClick={() => onPlayTrack(track)}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "48px 1fr 1fr 70px 90px",
+                  gridTemplateColumns: "48px 1fr 1fr 70px 150px",
                   padding: "10px 18px",
                   alignItems: "center",
                   fontSize: "0.88rem",
-                  color: isPlayingThis ? "#10b981" : "var(--text-main)",
+                  color: isPlayingThis ? "var(--accent-secondary)" : "var(--text-main)",
                   backgroundColor: isPlayingThis
-                    ? "rgba(16, 185, 129, 0.08)"
+                    ? "rgba(139, 124, 246, 0.08)"
                     : isHovered
                     ? "rgba(255, 255, 255, 0.04)"
                     : "transparent",
@@ -556,19 +639,19 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 }}
               >
                 {/* Index / Play icon */}
-                <div style={{ color: isPlayingThis ? "#10b981" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 500 }}>
+                <div style={{ color: isPlayingThis ? "var(--accent-secondary)" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 500 }}>
                   {isPlayingThis ? (
                     isHovered ? (
-                      <Pause size={15} fill="#10b981" />
+                      <Pause size={15} fill="var(--accent-secondary)" />
                     ) : (
                       <div className="discovery-eq-container" style={{ height: "13px" }}>
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "#10b981" }} />
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "#10b981" }} />
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "#10b981" }} />
+                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
+                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
+                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
                       </div>
                     )
                   ) : isHovered ? (
-                    <Play size={15} fill="#fff" />
+                    <Play size={15} fill="#e8d8c9" />
                   ) : (
                     idx + 1
                   )}
@@ -607,7 +690,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        color: isPlayingThis ? "#10b981" : "#fff",
+                        color: isPlayingThis ? "var(--accent-secondary)" : "#e8d8c9",
                       }}
                     >
                       {track.title}
@@ -657,7 +740,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isDownloaded ? (
-                    <span title="Downloaded in local library" style={{ color: "#10b981", display: "inline-flex" }}>
+                    <span title="Downloaded in local library" style={{ color: "var(--accent-secondary)", display: "inline-flex" }}>
                       <CheckCircle2 size={16} />
                     </span>
                   ) : isDownloading ? (
@@ -668,11 +751,11 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                         gap: "4px",
                         padding: "2px 7px",
                         borderRadius: "12px",
-                        background: "rgba(99, 102, 241, 0.15)",
-                        border: "1px solid rgba(99, 102, 241, 0.35)",
+                        background: "rgba(243, 112, 30, 0.15)",
+                        border: "1px solid rgba(243, 112, 30, 0.35)",
                         fontSize: "0.72rem",
                         fontWeight: 600,
-                        color: "#818cf8",
+                        color: "#8b7cf6",
                       }}
                       title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
                     >
@@ -697,9 +780,37 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     </button>
                   ) : null}
 
+                  <button
+                    type="button"
+                    onClick={() => onEnqueueTrack?.(track)}
+                    style={{ background: isQueued ? "rgba(139,124,246,0.16)" : "none", border: isQueued ? "1px solid rgba(139,124,246,0.4)" : "1px solid transparent", borderRadius: "50%", color: isQueued ? "var(--accent-secondary)" : "var(--text-dim)", cursor: "pointer", padding: "4px", display: "flex" }}
+                    title={isQueued ? "Already in queue" : "Add to queue"}
+                  >
+                    {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
+                  </button>
+
+                  {isLikedSongs ? (
+                    <span title="Liked song" style={{ color: "#ec4899", padding: "4px", display: "flex" }}>
+                      <Heart size={15} fill="#ec4899" />
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onToggleLike?.(track, !!isLiked)}
+                      style={{ background: "none", border: "none", color: isLiked ? "#ec4899" : "var(--text-dim)", cursor: "pointer", padding: "4px", display: "flex" }}
+                      title={isLiked ? "Unlike track" : "Like track"}
+                    >
+                      <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
+                    </button>
+                  )}
+
                   {(() => {
                     const trackId = track.matched_local_track_id || track.id;
-                    const playlistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
+                    const allPlaylistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
+                    // Only count user-created playlists (exclude smart mixes and the current collection itself)
+                    const playlistIds = userPlaylistIds
+                      ? allPlaylistIds.filter((pid) => userPlaylistIds.has(pid))
+                      : allPlaylistIds;
                     const isInPlaylist = playlistIds.length > 0;
 
                     return (
@@ -715,7 +826,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                         style={{
                           background: "none",
                           border: "none",
-                          color: isInPlaylist ? "#10b981" : "var(--text-dim)",
+                          color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
                           cursor: "pointer",
                           padding: "4px",
                           display: "flex",
@@ -723,7 +834,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                         title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
                       >
                         {isInPlaylist ? (
-                          <BookmarkCheck size={15} color="#10b981" />
+                          <BookmarkCheck size={15} color="var(--accent-secondary)" />
                         ) : (
                           <Bookmark size={15} />
                         )}

@@ -181,6 +181,14 @@ async fn test_playback_queue_and_navigation() {
         .await
         .expect("enqueue track2");
 
+    let duplicate = processor
+        .dispatch_command(Command::EnqueueTrack {
+            track_id: track2_id.clone(),
+            play_next: false,
+        })
+        .await;
+    assert!(duplicate.is_err(), "the same track must not appear twice in the upcoming queue");
+
     let state = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
         QueryResponse::PlaybackState(v) => v,
         _ => panic!("expected state"),
@@ -216,6 +224,112 @@ async fn test_playback_queue_and_navigation() {
 }
 
 #[tokio::test]
+async fn test_independent_playback_keeps_played_history_for_previous() {
+    let (processor, _backend, track1_id, track2_id) = setup_processor_with_tracks().await;
+
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: track1_id.clone(),
+            source: Some("library".into()),
+        })
+        .await
+        .expect("play first independent track");
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: track2_id.clone(),
+            source: Some("library".into()),
+        })
+        .await
+        .expect("play second independent track");
+
+    processor.dispatch_command(Command::PreviousTrack).await.expect("return to played track");
+    let previous = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(value) => value,
+        _ => panic!("expected playback state"),
+    };
+    assert_eq!(previous["current_track_id"].as_str(), Some(track1_id.as_str()));
+
+    processor.dispatch_command(Command::PreviousTrack).await.expect("restart first track");
+    let restarted = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(value) => value,
+        _ => panic!("expected playback state"),
+    };
+    assert_eq!(restarted["current_track_id"].as_str(), Some(track1_id.as_str()));
+    assert_eq!(restarted["current_queue_index"].as_u64(), Some(0));
+}
+
+#[tokio::test]
+async fn test_queue_refills_randomly_after_the_planned_tracks_finish() {
+    let (processor, _backend, track1_id, track2_id) = setup_processor_with_tracks().await;
+
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: track1_id.clone(),
+            source: Some("playlist".into()),
+        })
+        .await
+        .expect("play first track");
+    processor
+        .dispatch_command(Command::EnqueueTrack {
+            track_id: track2_id.clone(),
+            play_next: false,
+        })
+        .await
+        .expect("enqueue second track");
+
+    processor.dispatch_command(Command::NextTrack).await.expect("play planned second track");
+    processor.dispatch_command(Command::NextTrack).await.expect("refill continuous queue");
+
+    let state = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
+        QueryResponse::PlaybackState(value) => value,
+        _ => panic!("expected playback state"),
+    };
+    assert_eq!(state["current_track_id"].as_str(), Some(track1_id.as_str()));
+    assert_ne!(state["current_track_id"].as_str(), Some(track2_id.as_str()));
+}
+
+#[tokio::test]
+async fn test_online_tracks_can_be_queued_for_frontend_playback() {
+    let (processor, _backend, track1_id, _track2_id) = setup_processor_with_tracks().await;
+    let mut events = processor.event_bus().subscribe();
+
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: track1_id,
+            source: Some("library".into()),
+        })
+        .await
+        .expect("play local track");
+    processor
+        .dispatch_command(Command::EnqueueOnlineTrack {
+            track_id: "online:test-song".into(),
+            title: "Queued Stream".into(),
+            artist: "Queue Artist".into(),
+            album: Some("Queue Album".into()),
+            duration_secs: Some(180.0),
+            cover_art_url: None,
+            preview_url: Some("https://example.invalid/preview".into()),
+            play_next: false,
+        })
+        .await
+        .expect("enqueue online track");
+    processor.dispatch_command(Command::NextTrack).await.expect("advance to online track");
+
+    let mut saw_request = false;
+    for _ in 0..6 {
+        if let Ok(Ok(event)) = tokio::time::timeout(std::time::Duration::from_millis(100), events.recv()).await {
+            if let Event::OnlinePlaybackRequested { track_id, title, .. } = event {
+                assert_eq!(track_id, "online:test-song");
+                assert_eq!(title, "Queued Stream");
+                saw_request = true;
+                break;
+            }
+        }
+    }
+    assert!(saw_request, "advancing the shared queue must request browser playback for online tracks");
+}
+
+#[tokio::test]
 async fn test_repeat_modes() {
     let (processor, _backend, track1_id, track2_id) = setup_processor_with_tracks().await;
 
@@ -235,7 +349,7 @@ async fn test_repeat_modes() {
         .await
         .expect("enqueue");
 
-    // Test RepeatMode::One
+    // Repeat-one applies to natural completion, but an explicit Next still advances.
     processor
         .dispatch_command(Command::SetRepeatMode {
             mode: RepeatMode::One,
@@ -246,13 +360,13 @@ async fn test_repeat_modes() {
     processor
         .dispatch_command(Command::NextTrack)
         .await
-        .expect("next with repeat one");
+        .expect("manual next with repeat one");
 
     let state_rep_one = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
         QueryResponse::PlaybackState(v) => v,
         _ => panic!("state"),
     };
-    assert_eq!(state_rep_one["current_queue_index"].as_u64().unwrap(), 0);
+    assert_eq!(state_rep_one["current_queue_index"].as_u64().unwrap(), 1);
 
     // Test RepeatMode::All (wrap around)
     processor
@@ -262,9 +376,7 @@ async fn test_repeat_modes() {
         .await
         .expect("set repeat all");
 
-    // Move to track 2
-    processor.dispatch_command(Command::NextTrack).await.expect("next");
-    // Next from track 2 should wrap around to track 1!
+    // Next from track 2 should wrap around to track 1.
     processor.dispatch_command(Command::NextTrack).await.expect("wrap around next");
 
     let state_wrap = match processor.execute_query(Query::GetPlaybackState).await.unwrap() {
@@ -362,4 +474,3 @@ async fn test_queue_enqueue_dequeue_and_playback_state_enrichment() {
         .collect();
     assert!(queue_ids_cleared.is_empty());
 }
-

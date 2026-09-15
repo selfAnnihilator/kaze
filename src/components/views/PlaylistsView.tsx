@@ -10,6 +10,11 @@ import {
   Check,
   AlertCircle,
   X,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Heart,
+  ListPlus,
 } from "lucide-react";
 import { Playlist, Track, SpotifyPlaylistImport, UserProfile } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
@@ -30,8 +35,9 @@ interface PlaylistsViewProps {
   onPlayTrack: (trackId: string) => void;
   queuedTrackIds?: Set<string>;
   onEnqueueTrack: (trackId: string) => void;
-  onDequeueTrack?: (trackId: string) => void;
   onOpenCollection?: (collection: CollectionData) => void;
+  onRenamePlaylist: (playlistId: string, name: string) => Promise<void>;
+  onDeletePlaylist: (playlistId: string) => Promise<void>;
   currentUser?: UserProfile | null;
   onOpenAuthModal?: () => void;
 }
@@ -51,8 +57,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onPlayTrack,
   queuedTrackIds,
   onEnqueueTrack,
-  onDequeueTrack,
   onOpenCollection,
+  onRenamePlaylist,
+  onDeletePlaylist,
   currentUser,
   onOpenAuthModal,
 }) => {
@@ -155,6 +162,31 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
   };
 
+  const handleRename = async (pl: Playlist) => {
+    if (pl.name === "Liked Songs") return;
+    const nextName = window.prompt("Rename playlist", pl.name)?.trim();
+    if (!nextName || nextName === pl.name) return;
+    if (customPlaylists.some((candidate) => candidate.id !== pl.id && candidate.name === nextName)) {
+      alert(`A playlist named "${nextName}" already exists.`);
+      return;
+    }
+    try {
+      await onRenamePlaylist(pl.id, nextName);
+    } catch (err: any) {
+      alert(err?.message || "Could not rename the playlist.");
+    }
+  };
+
+  const handleDelete = async (pl: Playlist) => {
+    if (pl.name === "Liked Songs") return;
+    if (!window.confirm(`Delete "${pl.name}"? This cannot be undone.`)) return;
+    try {
+      await onDeletePlaylist(pl.id);
+    } catch (err: any) {
+      alert(err?.message || "Could not delete the playlist.");
+    }
+  };
+
   const handleInspectSpotify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!spotifyInput.trim()) return;
@@ -217,7 +249,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         {viewMode === "smart_mixes" ? (
           <div>
             <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Sparkles size={28} color="#c084fc" />
+              <Sparkles size={28} color="var(--accent-secondary)" />
               <span>Smart Mixes</span>
             </h1>
             <p style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginTop: "4px" }}>
@@ -243,7 +275,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               onClick={() => setShowSpotifyModal(true)}
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
-              <Share2 size={16} color="#10b981" />
+              <Share2 size={16} color="var(--accent-secondary)" />
               <span>Import from Spotify</span>
             </button>
 
@@ -331,7 +363,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             width: "48px",
                             height: "48px",
                             borderRadius: "10px",
-                            background: "linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(192, 132, 252, 0.15))",
+                            background: "linear-gradient(135deg, rgba(243, 112, 30, 0.35), rgba(139, 124, 246, 0.15))",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -339,20 +371,16 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             flexShrink: 0,
                           }}
                         >
-                          {mix.cover_art_url ? (
                             <img
-                              src={mix.cover_art_url}
+                              src={mix.cover_art_url || "/kaze-playlist-default.svg"}
                               alt={mix.name}
                               style={{ width: "100%", height: "100%", objectFit: "cover" }}
                             />
-                          ) : (
-                            <Sparkles size={24} color="#c084fc" />
-                          )}
                         </div>
                         <span className="badge badge-exact">Smart Mix</span>
                       </div>
 
-                      <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#fff", marginBottom: "6px" }}>
+                      <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#e8d8c9", marginBottom: "6px" }}>
                         {mix.name}
                       </div>
                       <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", lineHeight: 1.4, marginBottom: "16px" }}>
@@ -381,9 +409,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                           display: "flex",
                           alignItems: "center",
                           gap: "6px",
-                          backgroundColor: isSaved ? "rgba(16, 185, 129, 0.15)" : undefined,
-                          borderColor: isSaved ? "#10b981" : undefined,
-                          color: isSaved ? "#10b981" : undefined,
+                          backgroundColor: isSaved ? "rgba(139, 124, 246, 0.15)" : undefined,
+                          borderColor: isSaved ? "var(--accent-secondary)" : undefined,
+                          color: isSaved ? "var(--accent-secondary)" : undefined,
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -394,7 +422,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       >
                         {isSaved ? (
                           <>
-                            <Check size={14} color="#10b981" />
+                            <Check size={14} color="var(--accent-secondary)" />
                             <span>Saved</span>
                           </>
                         ) : (
@@ -475,7 +503,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <span>Create Playlist</span>
                 </button>
                 <button className="btn btn-secondary" onClick={() => setShowSpotifyModal(true)}>
-                  <Share2 size={16} color="#10b981" />
+                  <Share2 size={16} color="var(--accent-secondary)" />
                   <span>Import from Spotify</span>
                 </button>
               </div>
@@ -528,15 +556,68 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         overflow: "hidden",
                       }}
                     >
-                      {pl.cover_art_url ? (
-                        <img
-                          src={pl.cover_art_url}
-                          alt={pl.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <ListMusic size={42} color="#8b5cf6" />
-                      )}
+                      <details
+                        style={{ position: "absolute", top: "8px", right: "8px", zIndex: 4 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <summary
+                          className="player-icon-btn"
+                          aria-label={`Playlist options for ${pl.name}`}
+                          style={{
+                            listStyle: "none",
+                            width: "32px",
+                            height: "32px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "50%",
+                            background: "rgba(0, 0, 0, 0.68)",
+                            color: "#e8d8c9",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <MoreVertical size={18} />
+                        </summary>
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "38px",
+                            right: 0,
+                            minWidth: "150px",
+                            padding: "6px",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-sidebar)",
+                            boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+                          }}
+                        >
+                          {pl.name === "Liked Songs" ? (
+                            <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: "0.78rem" }}>
+                              Default playlist
+                            </div>
+                          ) : (
+                            <>
+                              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0 }} onClick={() => handleRename(pl)}>
+                                <Pencil size={14} /> Rename
+                              </button>
+                              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0, color: "var(--danger, #ef4444)" }} onClick={() => handleDelete(pl)}>
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </details>
+                        {pl.name === "Liked Songs" ? (
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(145deg, rgba(236,72,153,0.32), rgba(139,124,246,0.18))" }}>
+                            <Heart size={82} color="#f472b6" fill="#ec4899" strokeWidth={1.5} />
+                          </div>
+                        ) : (
+                          <img
+                            src={pl.cover_art_url || "/kaze-playlist-default.svg"}
+                            alt={pl.name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        )}
                     </div>
                     <div style={{ fontWeight: 600, fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pl.name}
@@ -665,16 +746,16 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    backgroundColor: savedMixIds.has(selectedPlaylist.id) ? "rgba(16, 185, 129, 0.15)" : undefined,
-                    borderColor: savedMixIds.has(selectedPlaylist.id) ? "#10b981" : undefined,
-                    color: savedMixIds.has(selectedPlaylist.id) ? "#10b981" : undefined,
+                    backgroundColor: savedMixIds.has(selectedPlaylist.id) ? "rgba(139, 124, 246, 0.15)" : undefined,
+                    borderColor: savedMixIds.has(selectedPlaylist.id) ? "var(--accent-secondary)" : undefined,
+                    color: savedMixIds.has(selectedPlaylist.id) ? "var(--accent-secondary)" : undefined,
                   }}
                   onClick={() => handleSaveMixToUserPlaylist(selectedPlaylist)}
                   disabled={savingMixId === selectedPlaylist.id}
                 >
                   {savedMixIds.has(selectedPlaylist.id) ? (
                     <>
-                      <Check size={14} color="#10b981" />
+                      <Check size={14} color="var(--accent-secondary)" />
                       <span>Saved to Playlists</span>
                     </>
                   ) : (
@@ -734,17 +815,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                               return (
                                 <button
                                   className="player-icon-btn"
-                                  title={isEnqueued ? "In queue (click to remove)" : "Enqueue Track"}
-                                  onClick={() => {
-                                    if (isEnqueued) {
-                                      if (onDequeueTrack) onDequeueTrack(tr.id);
-                                    } else {
-                                      onEnqueueTrack(tr.id);
-                                    }
-                                  }}
+                                  title={isEnqueued ? "Already in queue" : "Add to queue"}
+                                  onClick={() => onEnqueueTrack(tr.id)}
                                   style={{ color: isEnqueued ? "var(--success)" : "var(--text-muted)" }}
                                 >
-                                  {isEnqueued ? <Check size={14} /> : <Plus size={14} />}
+                                  {isEnqueued ? <Check size={14} /> : <ListPlus size={14} />}
                                 </button>
                               );
                             })()}
@@ -770,7 +845,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <Share2 size={24} color="#10b981" />
+                <Share2 size={24} color="var(--accent-secondary)" />
                 <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>Import Spotify Playlist</h3>
               </div>
               <button
@@ -782,7 +857,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
             </div>
 
             <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.5 }}>
-              Paste a public Spotify playlist URL or ID. SoundFlow will inspect the tracks, match them
+              Paste a public Spotify playlist URL or ID. Kaze will inspect the tracks, match them
               against your local library, and let you download missing tracks via SoulseekQt.
             </p>
 
@@ -844,13 +919,13 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#fff" }}>{spotifyResult.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#e8d8c9" }}>{spotifyResult.title}</div>
                     <div style={{ display: "flex", gap: "12px", marginTop: "6px", fontSize: "0.82rem" }}>
                       <span style={{ color: "var(--text-dim)" }}>Total: {spotifyResult.total_tracks} tracks</span>
                       <span style={{ color: "var(--success)", fontWeight: 600 }}>
                         ● {spotifyResult.matched_tracks} in Local Library
                       </span>
-                      <span style={{ color: "#f59e0b", fontWeight: 600 }}>
+                      <span style={{ color: "#f3701e", fontWeight: 600 }}>
                         ● {spotifyResult.missing_tracks} Missing
                       </span>
                     </div>
@@ -938,7 +1013,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             ) : (
                               <span
                                 className="badge"
-                                style={{ backgroundColor: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}
+                                style={{ backgroundColor: "rgba(243, 112, 30, 0.15)", color: "#f3701e" }}
                               >
                                 Missing
                               </span>

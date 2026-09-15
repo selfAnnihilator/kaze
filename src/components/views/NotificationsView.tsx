@@ -70,7 +70,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             style={{
               fontSize: "1.75rem",
               fontWeight: 800,
-              color: "#fff",
+              color: "#e8d8c9",
               display: "flex",
               alignItems: "center",
               gap: "10px",
@@ -179,11 +179,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             const isError = item.type === "error";
             const isSuccess = item.type === "success";
 
-            const borderLeft = isError
-              ? "4px solid #ef4444"
+            const stateBorder = isError
+              ? "1px solid rgba(239, 68, 68, 0.45)"
               : isSuccess
-              ? "4px solid #10b981"
-              : "4px solid #8b5cf6";
+              ? "1px solid rgba(139, 124, 246, 0.45)"
+              : "1px solid rgba(243, 112, 30, 0.45)";
 
             return (
               <div
@@ -196,8 +196,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                   alignItems: "flex-start",
                   justifyContent: "space-between",
                   gap: "14px",
-                  borderLeft,
-                  backgroundColor: item.read ? "var(--bg-card)" : "rgba(99, 102, 241, 0.05)",
+                  border: stateBorder,
+                  backgroundColor: item.read ? "var(--bg-card)" : "rgba(243, 112, 30, 0.05)",
                   cursor: "pointer",
                 }}
                 onClick={() => onMarkAsRead && onMarkAsRead(item.id)}
@@ -207,7 +207,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                     {isError ? (
                       <AlertTriangle size={20} color="#ef4444" />
                     ) : isSuccess ? (
-                      <CheckCircle2 size={20} color="#10b981" />
+                      <CheckCircle2 size={20} color="var(--accent-secondary)" />
                     ) : item.title.toLowerCase().includes("download") ? (
                       <DownloadCloud size={20} color="var(--accent-light)" />
                     ) : (
@@ -220,7 +220,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       style={{
                         fontSize: "0.95rem",
                         fontWeight: 700,
-                        color: "#fff",
+                        color: "#e8d8c9",
                         display: "flex",
                         alignItems: "center",
                         gap: "8px",

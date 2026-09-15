@@ -130,6 +130,7 @@ export interface OnlinePlayingTrack {
   artist: string;
   album?: string;
   cover_art_url?: string;
+  preview_url?: string;
   duration: number;
   currentTime: number;
   isPlaying: boolean;
@@ -212,6 +213,19 @@ export type Command =
   | { command: "SetRepeatMode"; payload: { mode: "off" | "one" | "all" } }
   | { command: "SetShuffle"; payload: { enabled: boolean } }
   | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean } }
+  | {
+      command: "EnqueueOnlineTrack";
+      payload: {
+        track_id: string;
+        title: string;
+        artist: string;
+        album?: string;
+        duration_secs?: number;
+        cover_art_url?: string;
+        preview_url?: string;
+        play_next: boolean;
+      };
+    }
   | { command: "DequeueTrack"; payload: { track_id: string } }
   | { command: "ClearQueue" }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
@@ -222,6 +236,8 @@ export type Command =
   | { command: "GenerateSmartMix"; payload: { mix_type: string } }
   | { command: "CreatePlaylist"; payload: { name: string; description?: string } }
   | { command: "DeletePlaylist"; payload: { playlist_id: string } }
+  | { command: "RenamePlaylist"; payload: { playlist_id: string; name: string } }
+  | { command: "EnsureLikedSongsPlaylist" }
   | {
       command: "AddTrackToPlaylist";
       payload: {

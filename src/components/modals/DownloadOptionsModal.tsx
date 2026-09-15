@@ -164,7 +164,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 width: "44px",
                 height: "44px",
                 borderRadius: "10px",
-                backgroundColor: "rgba(139, 92, 246, 0.15)",
+                backgroundColor: "rgba(243, 112, 30, 0.15)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -178,7 +178,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 style={{
                   fontSize: "1.15rem",
                   fontWeight: 800,
-                  color: "#fff",
+                  color: "#e8d8c9",
                   lineHeight: 1.2,
                   marginBottom: "3px",
                 }}
@@ -292,7 +292,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                         style={{
                           fontSize: "0.85rem",
                           fontWeight: 600,
-                          color: "#fff",
+                          color: "#e8d8c9",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -307,7 +307,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                         <span
                           className="badge"
                           style={{
-                            backgroundColor: "rgba(139, 92, 246, 0.15)",
+                            backgroundColor: "rgba(243, 112, 30, 0.15)",
                             color: "var(--accent-light)",
                             fontSize: "0.7rem",
                             padding: "2px 6px",
@@ -333,7 +333,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                         <span
                           style={{
                             fontSize: "0.72rem",
-                            color: res.slots_free ? "#10b981" : "#f59e0b",
+                            color: res.slots_free ? "var(--accent-secondary)" : "#f3701e",
                             fontWeight: 500,
                           }}
                         >
@@ -396,8 +396,8 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
           {onDirectAudioDownload && (
             <div
               style={{
-                backgroundColor: "rgba(16, 185, 129, 0.06)",
-                border: "1px solid rgba(16, 185, 129, 0.2)",
+                backgroundColor: "rgba(139, 124, 246, 0.06)",
+                border: "1px solid rgba(139, 124, 246, 0.2)",
                 borderRadius: "10px",
                 padding: "14px",
                 display: "flex",
@@ -412,17 +412,17 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                     width: "36px",
                     height: "36px",
                     borderRadius: "8px",
-                    backgroundColor: "rgba(16, 185, 129, 0.15)",
+                    backgroundColor: "rgba(139, 124, 246, 0.15)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
                   }}
                 >
-                  <Radio size={18} color="#10b981" />
+                  <Radio size={18} color="var(--accent-secondary)" />
                 </div>
                 <div>
-                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#fff" }}>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#e8d8c9" }}>
                     Direct Audio Stream Download
                   </div>
                   <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
@@ -439,8 +439,8 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 style={{
                   padding: "7px 14px",
                   fontSize: "0.82rem",
-                  borderColor: "rgba(16, 185, 129, 0.4)",
-                  color: "#10b981",
+                  borderColor: "rgba(139, 124, 246, 0.4)",
+                  color: "var(--accent-secondary)",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
@@ -475,7 +475,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                color: wishlistAdded ? "#10b981" : "var(--text-muted)",
+                color: wishlistAdded ? "var(--accent-secondary)" : "var(--text-muted)",
               }}
             >
               {wishlistAdded ? <Check size={14} /> : <Bookmark size={14} />}

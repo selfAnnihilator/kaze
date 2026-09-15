@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Lock, User, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
+import { X, Lock, User, AlertCircle, ArrowRight } from "lucide-react";
 import { UserProfile } from "../../types";
 
 interface AuthModalProps {
@@ -107,7 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           borderRadius: "16px",
           padding: "24px",
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
-          color: "#fff",
+          color: "#e8d8c9",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -126,13 +126,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 width: "36px",
                 height: "36px",
                 borderRadius: "10px",
-                background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
+                background: "linear-gradient(135deg, var(--accent), #866760)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={20} color="#fff" />
+              <img src="/kaze-icon.png" alt="Kaze" style={{ width: "36px", height: "36px", borderRadius: "10px" }} />
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
@@ -184,7 +184,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               flex: 1,
               padding: "8px",
               background: tab === "login" ? "#27272a" : "transparent",
-              color: tab === "login" ? "#fff" : "rgba(255, 255, 255, 0.5)",
+              color: tab === "login" ? "#e8d8c9" : "rgba(255, 255, 255, 0.5)",
               border: "none",
               borderRadius: "8px",
               fontSize: "13px",
@@ -205,7 +205,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               flex: 1,
               padding: "8px",
               background: tab === "signup" ? "#27272a" : "transparent",
-              color: tab === "signup" ? "#fff" : "rgba(255, 255, 255, 0.5)",
+              color: tab === "signup" ? "#e8d8c9" : "rgba(255, 255, 255, 0.5)",
               border: "none",
               borderRadius: "8px",
               fontSize: "13px",
@@ -278,7 +278,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   background: "transparent",
                   border: "none",
                   padding: "10px 0",
-                  color: "#fff",
+                  color: "#e8d8c9",
                   fontSize: "14px",
                   outline: "none",
                 }}
@@ -322,7 +322,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   background: "transparent",
                   border: "none",
                   padding: "10px 0",
-                  color: "#fff",
+                  color: "#e8d8c9",
                   fontSize: "14px",
                   outline: "none",
                 }}
@@ -367,7 +367,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     background: "transparent",
                     border: "none",
                     padding: "10px 0",
-                    color: "#fff",
+                    color: "#e8d8c9",
                     fontSize: "14px",
                     outline: "none",
                   }}
@@ -382,8 +382,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               marginTop: "8px",
               padding: "11px",
-              background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
-              color: "#fff",
+              background: "linear-gradient(135deg, var(--accent), #866760)",
+              color: "#e8d8c9",
               border: "none",
               borderRadius: "10px",
               fontSize: "14px",
@@ -394,7 +394,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               justifyContent: "center",
               gap: "8px",
               opacity: isLoading ? 0.7 : 1,
-              boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
+              boxShadow: "0 4px 12px rgba(243, 112, 30, 0.3)",
               transition: "transform 0.1s ease",
             }}
           >

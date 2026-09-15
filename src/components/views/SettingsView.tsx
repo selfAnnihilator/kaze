@@ -142,7 +142,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="content-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff" }}>Configured Music Folders</h3>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>Configured Music Folders</h3>
               <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
                 All child directories and subfolders are scanned recursively. Unapproved paths and outside symlinks are strictly rejected.
               </p>
@@ -162,9 +162,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => onRescanLibrary()}
                 disabled={isScanning}
                 className="btn btn-secondary"
+                title={isScanning ? "Scanning Library..." : "Rescan Library"}
               >
                 <RefreshCw size={15} className={isScanning ? "animate-spin" : ""} color={isScanning ? "var(--accent)" : "currentColor"} />
-                <span>{isScanning ? "Scanning Library..." : "Rescan Library"}</span>
               </button>
             </div>
           </div>
@@ -221,7 +221,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* SECTION: AUDIO */}
       {activeSection === "audio" && (
         <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
             Audio & Playback Parameters
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
@@ -267,7 +267,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* SECTION: METADATA */}
       {activeSection === "metadata" && (
         <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
             External Metadata Providers
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -299,11 +299,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* SECTION: SOULSEEK */}
       {activeSection === "soulseek" && (
         <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
             Soulseek & SoulseekQt Integration
           </h3>
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "20px" }}>
-            SoundFlow integrates directly with your system's SoulseekQt desktop installation and local download repository.
+            Kaze integrates directly with your system's SoulseekQt desktop installation and local download repository.
           </p>
 
           {/* SoulseekQt Native Integration Card */}
@@ -311,7 +311,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             style={{
               padding: "16px",
               borderRadius: "8px",
-              backgroundColor: "rgba(139, 92, 246, 0.08)",
+              backgroundColor: "rgba(243, 112, 30, 0.08)",
               border: "1px solid var(--accent-light)",
               marginBottom: "24px",
             }}
@@ -377,7 +377,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* SECTION: SYSTEM */}
       {activeSection === "system" && (
         <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
             System, Database & Cache
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -411,7 +411,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="content-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", display: "flex", alignItems: "center", gap: "8px" }}>
                 <Cloud size={20} color="#38bdf8" />
                 <span>Cloudflare Workers & D1 Synchronization</span>
               </h3>
@@ -430,8 +430,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   gap: "8px",
                   padding: "8px 16px",
                   borderRadius: "8px",
-                  backgroundColor: "#2563eb",
-                  color: "#fff",
+                  backgroundColor: "#4b607f",
+                  color: "#e8d8c9",
                   border: "none",
                   fontWeight: 600,
                   fontSize: "0.85rem",
@@ -460,7 +460,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <span>Authenticated & Connected</span>
                     </div>
                     <span style={{ color: "var(--text-dim)" }}>•</span>
-                    <span style={{ fontSize: "0.88rem", color: "#fff" }}>
+                    <span style={{ fontSize: "0.88rem", color: "#e8d8c9" }}>
                       User: <strong>{cloudSyncStatus.username || cloudSyncStatus.user_id}</strong>
                     </span>
                     {cloudSyncStatus.device_name && (
@@ -556,7 +556,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       borderRadius: "8px",
                       border: "1px solid rgba(255, 255, 255, 0.15)",
                       backgroundColor: "rgba(0, 0, 0, 0.2)",
-                      color: "#fff",
+                      color: "#e8d8c9",
                       fontSize: "0.88rem",
                       fontFamily: "monospace",
                     }}
@@ -568,7 +568,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       padding: "8px 16px",
                       borderRadius: "8px",
                       backgroundColor: "#3f3f46",
-                      color: "#fff",
+                      color: "#e8d8c9",
                       border: "none",
                       fontWeight: 500,
                       fontSize: "0.85rem",

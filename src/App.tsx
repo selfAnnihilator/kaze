@@ -66,8 +66,11 @@ export const App: React.FC = () => {
   const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeOnlinePlayIdRef = useRef<number>(0);
   const handleNextTrackRef = useRef<() => void>(() => {});
-  const handlePlayCollectionTrackRef = useRef<(track: CollectionTrackItem) => void>(() => {});
+  const handleQueuedOnlineTrackRef = useRef<(track: DiscoveryRecommendation) => void>(() => {});
+  const handleStopOnlineAudioRef = useRef<() => void>(() => {});
+  const onlineQueueMetadataRef = useRef<Map<string, DiscoveryRecommendation>>(new Map());
   const playingOnlineRecRef = useRef<DiscoveryRecommendation | null>(null);
+  const repeatModeRef = useRef<PlaybackState["repeat_mode"]>("off");
 
   // User Authentication & Profile
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -96,6 +99,8 @@ export const App: React.FC = () => {
   const [, setWishlist] = useState<WishlistItem[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([]);
+  const discoveryRecsRef = useRef<DiscoveryRecommendation[]>([]);
+  discoveryRecsRef.current = discoveryRecs;
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus | null>(null);
@@ -480,7 +485,7 @@ export const App: React.FC = () => {
     });
     if (res && res.status === "UserProfile" && res.data) {
       setCurrentUser(res.data);
-      addAppNotification("success", "Account Created", `Welcome to SoundFlow, ${res.data.username}!`);
+      addAppNotification("success", "Account Created", `Welcome to Kaze, ${res.data.username}!`);
       await fetchPlaylists();
       await fetchCloudSyncStatus();
       return res.data;
@@ -568,6 +573,7 @@ export const App: React.FC = () => {
 
       switch (event.event) {
         case "PlaybackStarted": {
+          handleStopOnlineAudioRef.current();
           const trackId = event.payload?.track_id;
           const found = tracksRef.current.find((t) => t.id === trackId);
           const track: Track = found || {
@@ -612,6 +618,26 @@ export const App: React.FC = () => {
             position_secs: 0,
           }));
           break;
+
+        case "OnlinePlaybackRequested": {
+          const trackId = event.payload?.track_id;
+          const known = onlineQueueMetadataRef.current.get(trackId) ||
+            discoveryRecsRef.current.find((rec) => rec.external_track_id === trackId);
+          const rec: DiscoveryRecommendation = known || {
+            external_track_id: trackId,
+            provider: "online",
+            provider_id: trackId,
+            title: event.payload?.title || "Unknown Track",
+            artist: event.payload?.artist || "Unknown Artist",
+            album: event.payload?.album,
+            duration_secs: event.payload?.duration_secs || 210,
+            match_status: "NOT_FOUND",
+            recommendation_reason: "Queued track",
+            in_wishlist: false,
+          };
+          handleQueuedOnlineTrackRef.current(rec);
+          break;
+        }
 
         case "PlaybackSeeked":
           setPlaybackState((prev) => ({
@@ -859,6 +885,9 @@ export const App: React.FC = () => {
     setOnlineTrack(null);
   }, []);
 
+  handleStopOnlineAudioRef.current = handleStopOnlineAudio;
+  repeatModeRef.current = playbackState.repeat_mode;
+
   const handleStopTrack = useCallback(
     async (rec?: DiscoveryRecommendation) => {
       activeOnlinePlayIdRef.current++;
@@ -892,6 +921,7 @@ export const App: React.FC = () => {
 
   const handlePlayTrack = useCallback(
     async (trackId: string) => {
+      const preservedQueue = Array.from(queuedTrackIds).filter((queuedId) => queuedId !== trackId);
       handleStopOnlineAudio();
       const found = tracks.find((t) => t.id === trackId);
       if (found) {
@@ -907,14 +937,28 @@ export const App: React.FC = () => {
         command: "PlayTrack",
         payload: { track_id: trackId },
       });
+      for (const queuedId of preservedQueue) {
+        try {
+          await dispatchCommand({
+            command: "EnqueueTrack",
+            payload: { track_id: queuedId, play_next: false },
+          });
+        } catch (err) {
+          console.warn("Could not restore queued track after direct playback:", err);
+        }
+      }
       // Immediately fetch updated track/state
       fetchPlaybackState();
     },
-    [tracks, handleStopOnlineAudio, fetchPlaybackState]
+    [tracks, queuedTrackIds, handleStopOnlineAudio, fetchPlaybackState]
   );
 
   const handlePlayOnlineTrack = useCallback(
-    async (rec: DiscoveryRecommendation) => {
+    async (
+      rec: DiscoveryRecommendation,
+      fromBackendQueue = false,
+      playbackSource: "online" | "collection" | "playlist" = "online"
+    ) => {
       const hasRealLocalMatch =
         !!rec.matched_local_track_id &&
         !rec.matched_local_track_id.startsWith("itunes:") &&
@@ -967,6 +1011,19 @@ export const App: React.FC = () => {
         return;
       }
 
+      if (!fromBackendQueue) {
+        onlineQueueMetadataRef.current.set(rec.external_track_id, rec);
+        try {
+          await dispatchCommand({
+            command: "PlayTrack",
+            payload: { track_id: rec.external_track_id, source: playbackSource },
+          });
+          return;
+        } catch (err) {
+          console.warn("Could not register online track with the shared queue; playing directly:", err);
+        }
+      }
+
       // 4. Stop local playback if active
       if (playbackState.is_playing) {
         await dispatchCommand({ command: "Pause" });
@@ -982,7 +1039,9 @@ export const App: React.FC = () => {
         id: rec.external_track_id,
         title: rec.title,
         artist: rec.artist,
+        album: rec.album,
         cover_art_url: rec.cover_art_url,
+        preview_url: rec.preview_url,
         duration: rec.duration_secs || 210,
         currentTime: 0,
         isPlaying: true,
@@ -1072,6 +1131,12 @@ export const App: React.FC = () => {
             source: "online",
           },
         }).catch(console.warn);
+        if (repeatModeRef.current === "one") {
+          audio.currentTime = 0;
+          audio.play().catch(console.warn);
+          return;
+        }
+
         playingOnlineRecRef.current = null;
 
         if (handleNextTrackRef.current) {
@@ -1113,6 +1178,11 @@ export const App: React.FC = () => {
           };
           fallback.onended = () => {
             if (activeOnlinePlayIdRef.current !== playId) return;
+            if (repeatModeRef.current === "one") {
+              fallback.currentTime = 0;
+              fallback.play().catch(console.warn);
+              return;
+            }
             if (handleNextTrackRef.current) {
               handleNextTrackRef.current();
             } else {
@@ -1133,6 +1203,10 @@ export const App: React.FC = () => {
     },
     [playbackState.is_playing, playbackState.current_track, playbackState.volume, playbackState.is_muted, onlineTrack, handleStopOnlineAudio, handlePlayTrack, addAppNotification]
   );
+
+  handleQueuedOnlineTrackRef.current = (rec) => {
+    void handlePlayOnlineTrack(rec, true);
+  };
 
   const handlePlayPause = async () => {
     if (playbackState.is_playing) {
@@ -1164,39 +1238,15 @@ export const App: React.FC = () => {
   };
 
   const handleNextTrack = async () => {
-    if (onlineTrack && activeCollection && activeCollection.tracks && activeCollection.tracks.length > 0) {
-      const currIdx = activeCollection.tracks.findIndex(
-        (t) => t.id === onlineTrack.id || (t.matched_local_track_id && t.matched_local_track_id === onlineTrack.id)
-      );
-      if (currIdx !== -1) {
-        let nextIdx = (currIdx + 1) % activeCollection.tracks.length;
-        if (playbackState.is_shuffled && activeCollection.tracks.length > 1) {
-          do {
-            nextIdx = Math.floor(Math.random() * activeCollection.tracks.length);
-          } while (nextIdx === currIdx && activeCollection.tracks.length > 1);
-        }
-        handlePlayCollectionTrackRef.current(activeCollection.tracks[nextIdx]);
-        return;
-      }
+    if (onlineAudioRef.current) {
+      handleStopOnlineAudio();
     }
     await dispatchCommand({ command: "NextTrack" });
   };
 
   const handlePreviousTrack = async () => {
-    if (onlineTrack && activeCollection && activeCollection.tracks && activeCollection.tracks.length > 0) {
-      const currIdx = activeCollection.tracks.findIndex(
-        (t) => t.id === onlineTrack.id || (t.matched_local_track_id && t.matched_local_track_id === onlineTrack.id)
-      );
-      if (currIdx !== -1) {
-        let prevIdx = (currIdx - 1 + activeCollection.tracks.length) % activeCollection.tracks.length;
-        if (playbackState.is_shuffled && activeCollection.tracks.length > 1) {
-          do {
-            prevIdx = Math.floor(Math.random() * activeCollection.tracks.length);
-          } while (prevIdx === currIdx && activeCollection.tracks.length > 1);
-        }
-        handlePlayCollectionTrackRef.current(activeCollection.tracks[prevIdx]);
-        return;
-      }
+    if (onlineAudioRef.current) {
+      handleStopOnlineAudio();
     }
     await dispatchCommand({ command: "PreviousTrack" });
   };
@@ -1240,12 +1290,7 @@ export const App: React.FC = () => {
   };
 
   const handleToggleRepeat = async () => {
-    const nextMode =
-      playbackState.repeat_mode === "off"
-        ? "all"
-        : playbackState.repeat_mode === "all"
-        ? "one"
-        : "off";
+    const nextMode = playbackState.repeat_mode === "one" ? "off" : "one";
 
     await dispatchCommand({
       command: "SetRepeatMode",
@@ -1276,21 +1321,7 @@ export const App: React.FC = () => {
       command: "LikeTrack",
       payload: { track_id: trackId },
     });
-  };
-
-  const handleDislike = async (trackId: string) => {
-    setTracks((prev) =>
-      prev.map((t) => (t.id === trackId ? { ...t, manual_like: -1 } : t))
-    );
-    setPlaybackState((prev) =>
-      prev.current_track?.id === trackId
-        ? { ...prev, current_track: { ...prev.current_track, manual_like: -1 } }
-        : prev
-    );
-    await dispatchCommand({
-      command: "DislikeTrack",
-      payload: { track_id: trackId },
-    });
+    await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
   };
 
   const handleRemoveFeedback = async (trackId: string) => {
@@ -1306,26 +1337,68 @@ export const App: React.FC = () => {
       command: "RemoveTrackFeedback",
       payload: { track_id: trackId },
     });
+    await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
   };
 
   const handleEnqueueTrack = async (trackId: string) => {
-    setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-    await dispatchCommand({
-      command: "EnqueueTrack",
-      payload: { track_id: trackId, play_next: false },
-    });
+    if (queuedTrackIds.has(trackId)) {
+      addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+      return;
+    }
+    try {
+      await dispatchCommand({
+        command: "EnqueueTrack",
+        payload: { track_id: trackId, play_next: false },
+      });
+      setQueuedTrackIds((prev) => new Set(prev).add(trackId));
+    } catch (err: any) {
+      if (String(err?.message || err).toLowerCase().includes("already in the queue")) {
+        setQueuedTrackIds((prev) => new Set(prev).add(trackId));
+        addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+        return;
+      }
+      addAppNotification("error", "Queue Failed", err?.message || "Could not add this song to the queue.");
+    }
   };
 
-  const handleDequeueTrack = async (trackId: string) => {
-    setQueuedTrackIds((prev) => {
-      const next = new Set(prev);
-      next.delete(trackId);
-      return next;
-    });
-    await dispatchCommand({
-      command: "DequeueTrack",
-      payload: { track_id: trackId },
-    });
+  const handleEnqueueRecommendation = async (rec: DiscoveryRecommendation) => {
+    const hasLocalMatch =
+      !!rec.matched_local_track_id &&
+      !rec.matched_local_track_id.startsWith("online:") &&
+      !rec.matched_local_track_id.startsWith("itunes:");
+    const trackId = hasLocalMatch ? rec.matched_local_track_id! : rec.external_track_id;
+    if (!hasLocalMatch) {
+      onlineQueueMetadataRef.current.set(trackId, rec);
+      if (queuedTrackIds.has(trackId)) {
+        addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+        return;
+      }
+      try {
+        await dispatchCommand({
+          command: "EnqueueOnlineTrack",
+          payload: {
+            track_id: trackId,
+            title: rec.title,
+            artist: rec.artist,
+            album: rec.album,
+            duration_secs: rec.duration_secs,
+            cover_art_url: rec.cover_art_url,
+            preview_url: rec.preview_url,
+            play_next: false,
+          },
+        });
+        setQueuedTrackIds((prev) => new Set(prev).add(trackId));
+      } catch (err: any) {
+        if (String(err?.message || err).toLowerCase().includes("already in the queue")) {
+          setQueuedTrackIds((prev) => new Set(prev).add(trackId));
+          addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+        } else {
+          addAppNotification("error", "Queue Failed", err?.message || "Could not add this song to the queue.");
+        }
+      }
+      return;
+    }
+    await handleEnqueueTrack(trackId);
   };
 
   const handleSearchLibrary = async (queryText: string) => {
@@ -1403,6 +1476,79 @@ export const App: React.FC = () => {
   };
 
   // Playlists & Smart Mixes
+  const handleRenamePlaylist = async (playlistId: string, name: string) => {
+    await dispatchCommand({ command: "RenamePlaylist", payload: { playlist_id: playlistId, name } });
+    setActiveCollection((current) =>
+      current && (current.playlistId === playlistId || current.id === playlistId)
+        ? { ...current, title: name.trim() }
+        : current
+    );
+    await fetchPlaylists();
+  };
+
+  const handleDeletePlaylist = async (playlistId: string) => {
+    await dispatchCommand({ command: "DeletePlaylist", payload: { playlist_id: playlistId } });
+    await fetchPlaylists();
+    if (activeCollection?.playlistId === playlistId || activeCollection?.id === playlistId) {
+      setActiveCollection(null);
+    }
+  };
+
+  // Online likes are represented by membership in the account's Liked Songs playlist.
+  const handleLikeOnline = async (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => {
+    const res = await dispatchCommand({ command: "EnsureLikedSongsPlaylist" });
+    const likedId = (res as any)?.data;
+    if (likedId) {
+      const isLiked = (trackPlaylistMap[track.id] || []).includes(likedId);
+      if (isLiked) {
+        await dispatchCommand({
+          command: "RemoveTrackFromPlaylist",
+          payload: { playlist_id: likedId, track_id: track.id },
+        });
+      } else {
+        await dispatchCommand({
+          command: "AddTrackToPlaylist",
+          payload: {
+            playlist_id: likedId,
+            track_id: track.id,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            duration_secs: track.duration_secs,
+            cover_art_url: track.cover_art_url,
+            preview_url: track.preview_url,
+          },
+        });
+      }
+      await fetchPlaylists();
+      await fetchTrackPlaylistMemberships();
+    }
+  };
+
+  const handleToggleCollectionLike = async (track: CollectionTrackItem, isLiked: boolean) => {
+    const hasLocalTrack =
+      !!track.matched_local_track_id &&
+      !track.matched_local_track_id.startsWith("online:") &&
+      !track.matched_local_track_id.startsWith("itunes:");
+    if (hasLocalTrack) {
+      if (isLiked) {
+        await handleRemoveFeedback(track.matched_local_track_id!);
+      } else {
+        await handleLike(track.matched_local_track_id!);
+      }
+      return;
+    }
+    await handleLikeOnline({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      cover_art_url: track.cover_art_url,
+      preview_url: track.preview_url,
+      duration_secs: track.duration_secs,
+    });
+  };
+
   const handleCreatePlaylist = async (name: string, description?: string): Promise<string | null> => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
@@ -1499,6 +1645,8 @@ export const App: React.FC = () => {
       });
       const plTracks: Track[] = (res.data as any) || [];
       if (plTracks.length > 0) {
+        const playlistTrackIds = new Set(plTracks.map((track) => track.id));
+        const preservedQueue = Array.from(queuedTrackIds).filter((trackId) => !playlistTrackIds.has(trackId));
         const first = plTracks[0];
         const isOnline =
           first.format === "online" ||
@@ -1530,10 +1678,32 @@ export const App: React.FC = () => {
             recommendation_reason: "",
             in_wishlist: false,
           };
-          await handlePlayOnlineTrack(rec);
+          await handlePlayOnlineTrack(rec, false, "playlist");
+          for (let i = 1; i < plTracks.length; i++) {
+            const nextTrack = plTracks[i];
+            if (nextTrack.format === "online" || nextTrack.file_path?.startsWith("online://")) {
+              onlineQueueMetadataRef.current.set(nextTrack.id, {
+                external_track_id: nextTrack.id,
+                provider: "online",
+                provider_id: nextTrack.id,
+                title: nextTrack.title,
+                artist: nextTrack.artist_name || "Unknown Artist",
+                album: nextTrack.album_title,
+                duration_secs: nextTrack.duration_secs,
+                cover_art_url: nextTrack.cover_art_url,
+                preview_url: nextTrack.preview_url,
+                match_status: "NOT_FOUND",
+                recommendation_reason: "From playlist",
+                in_wishlist: false,
+              });
+            }
+            await dispatchCommand({
+              command: "EnqueueTrack",
+              payload: { track_id: nextTrack.id, play_next: false },
+            });
+          }
         } else {
           handleStopOnlineAudio();
-          await dispatchCommand({ command: "ClearQueue" });
           await dispatchCommand({
             command: "PlayTrack",
             payload: { track_id: first.id, source: "playlist" },
@@ -1545,14 +1715,38 @@ export const App: React.FC = () => {
               nextTrack.file_path?.startsWith("online://") ||
               nextTrack.id.startsWith("itunes:") ||
               nextTrack.id.startsWith("online:");
-            if (!nextIsOnline) {
-              await dispatchCommand({
-                command: "EnqueueTrack",
-                payload: { track_id: nextTrack.id, play_next: false },
+            if (nextIsOnline) {
+              onlineQueueMetadataRef.current.set(nextTrack.id, {
+                external_track_id: nextTrack.id,
+                provider: "online",
+                provider_id: nextTrack.id,
+                title: nextTrack.title,
+                artist: nextTrack.artist_name || "Unknown Artist",
+                album: nextTrack.album_title,
+                duration_secs: nextTrack.duration_secs,
+                cover_art_url: nextTrack.cover_art_url,
+                preview_url: nextTrack.preview_url,
+                match_status: "NOT_FOUND",
+                recommendation_reason: "From playlist",
+                in_wishlist: false,
               });
             }
+            await dispatchCommand({
+              command: "EnqueueTrack",
+              payload: { track_id: nextTrack.id, play_next: false },
+            });
           }
           fetchPlaybackState();
+        }
+        for (const queuedId of preservedQueue) {
+          try {
+            await dispatchCommand({
+              command: "EnqueueTrack",
+              payload: { track_id: queuedId, play_next: false },
+            });
+          } catch (err) {
+            console.warn("Could not preserve queued track after playlist:", err);
+          }
         }
       }
     } catch (err) {
@@ -1718,34 +1912,56 @@ export const App: React.FC = () => {
         return;
       }
 
+      const enqueueCollectionRemainder = async () => {
+        const collectionTracks = activeCollection?.tracks || [];
+        const itemIdx = collectionTracks.findIndex((track) => track.id === item.id);
+        const collectionIds = new Set(collectionTracks.map((track) => track.matched_local_track_id || track.id));
+        for (let i = itemIdx + 1; i < collectionTracks.length; i++) {
+          const queuedTrack = collectionTracks[i];
+          const queuedId = queuedTrack.matched_local_track_id || queuedTrack.id;
+          const isOnlineQueued =
+            !queuedTrack.matched_local_track_id ||
+            queuedTrack.matched_local_track_id.startsWith("online:") ||
+            queuedTrack.matched_local_track_id.startsWith("itunes:");
+          if (isOnlineQueued) {
+            onlineQueueMetadataRef.current.set(queuedId, queuedTrack.rawRecommendation || {
+              external_track_id: queuedId,
+              provider: "online",
+              provider_id: queuedId,
+              title: queuedTrack.title,
+              artist: queuedTrack.artist,
+              album: queuedTrack.album,
+              duration_secs: queuedTrack.duration_secs,
+              cover_art_url: queuedTrack.cover_art_url,
+              preview_url: queuedTrack.preview_url,
+              match_status: "NOT_FOUND",
+              recommendation_reason: "From collection",
+              in_wishlist: false,
+            });
+          }
+          try {
+            await dispatchCommand({ command: "EnqueueTrack", payload: { track_id: queuedId, play_next: false } });
+          } catch (err) {
+            console.warn("Could not enqueue collection track:", err);
+          }
+        }
+        for (const queuedId of queuedTrackIds) {
+          if (collectionIds.has(queuedId)) continue;
+          try {
+            await dispatchCommand({ command: "EnqueueTrack", payload: { track_id: queuedId, play_next: false } });
+          } catch (err) {
+            console.warn("Could not preserve queued track after collection:", err);
+          }
+        }
+      };
+
       if (hasRealLocalMatch) {
         handleStopOnlineAudio();
-        await dispatchCommand({ command: "ClearQueue" });
         await dispatchCommand({
           command: "PlayTrack",
           payload: { track_id: item.matched_local_track_id!, source: "collection" },
         });
-        if (activeCollection && activeCollection.tracks) {
-          const itemIdx = activeCollection.tracks.findIndex((t) => t.id === item.id);
-          for (let i = itemIdx + 1; i < activeCollection.tracks.length; i++) {
-            const tid = activeCollection.tracks[i].matched_local_track_id;
-            if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
-              await dispatchCommand({
-                command: "EnqueueTrack",
-                payload: { track_id: tid, play_next: false },
-              });
-            }
-          }
-          for (let i = 0; i < itemIdx; i++) {
-            const tid = activeCollection.tracks[i].matched_local_track_id;
-            if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
-              await dispatchCommand({
-                command: "EnqueueTrack",
-                payload: { track_id: tid, play_next: false },
-              });
-            }
-          }
-        }
+        await enqueueCollectionRemainder();
         fetchPlaybackState();
         return;
       }
@@ -1761,7 +1977,8 @@ export const App: React.FC = () => {
       }
 
       if (item.rawRecommendation) {
-        await handlePlayOnlineTrack(item.rawRecommendation);
+        await handlePlayOnlineTrack(item.rawRecommendation, false, "collection");
+        await enqueueCollectionRemainder();
         return;
       }
 
@@ -1780,12 +1997,11 @@ export const App: React.FC = () => {
         recommendation_reason: "From collection",
         in_wishlist: false,
       };
-      await handlePlayOnlineTrack(rec);
+      await handlePlayOnlineTrack(rec, false, "collection");
+      await enqueueCollectionRemainder();
     },
-    [playbackState.is_playing, playbackState.current_track, onlineTrack, activeCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification]
+    [playbackState.is_playing, playbackState.current_track, onlineTrack, activeCollection, queuedTrackIds, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification]
   );
-
-  handlePlayCollectionTrackRef.current = handlePlayCollectionTrack;
 
   const isPlayingThisCollection = useMemo(() => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -1825,42 +2041,8 @@ export const App: React.FC = () => {
       return;
     }
 
-    const tracks = activeCollection.tracks;
-    const first = tracks[0];
-    const firstHasLocal =
-      first.matched_local_track_id &&
-      !first.matched_local_track_id.startsWith("online:") &&
-      !first.matched_local_track_id.startsWith("itunes:");
-
-    if (firstHasLocal) {
-      handleStopOnlineAudio();
-      await dispatchCommand({ command: "ClearQueue" });
-      await dispatchCommand({
-        command: "PlayTrack",
-        payload: { track_id: first.matched_local_track_id!, source: "collection" },
-      });
-      for (let i = 1; i < tracks.length; i++) {
-        const tid = tracks[i].matched_local_track_id;
-        if (tid && !tid.startsWith("online:") && !tid.startsWith("itunes:")) {
-          await dispatchCommand({
-            command: "EnqueueTrack",
-            payload: { track_id: tid, play_next: false },
-          });
-        }
-      }
-      fetchPlaybackState();
-    } else {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        addAppNotification(
-          "warning",
-          "No Internet Connection",
-          `Cannot play "${first.title}". Connect to the internet to stream online songs.`
-        );
-        return;
-      }
-      handlePlayCollectionTrack(first);
-    }
-  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handleStopOnlineAudio, handlePlayCollectionTrack, fetchPlaybackState, addAppNotification]);
+    await handlePlayCollectionTrack(activeCollection.tracks[0]);
+  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handlePlayCollectionTrack]);
 
   const handleShuffleCollection = useCallback(async () => {
     if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
@@ -2305,22 +2487,49 @@ export const App: React.FC = () => {
     albums,
   ]);
 
+  const likedPlaylistId = playlists.find((playlist) => playlist.name === "Liked Songs")?.id;
+  const likedTrackIds = useMemo(() => {
+    if (!likedPlaylistId) return new Set<string>();
+    return new Set(
+      Object.entries(trackPlaylistMap)
+        .filter(([, playlistIds]) => playlistIds.includes(likedPlaylistId))
+        .map(([trackId]) => trackId)
+    );
+  }, [trackPlaylistMap, likedPlaylistId]);
+
+  const regularPlaylistIds = useMemo(
+    () => new Set(
+      playlists
+        .filter((playlist) => playlist.is_smart_mix !== 1 && playlist.name !== "Liked Songs")
+        .map((playlist) => playlist.id)
+    ),
+    [playlists]
+  );
+
+  const regularTrackPlaylistMap = useMemo(() => {
+    const filtered: Record<string, string[]> = {};
+    for (const [trackId, playlistIds] of Object.entries(trackPlaylistMap)) {
+      filtered[trackId] = playlistIds.filter((playlistId) => regularPlaylistIds.has(playlistId));
+    }
+    return filtered;
+  }, [trackPlaylistMap, regularPlaylistIds]);
+
   const isCurrentTrackInPlaylist = useMemo(() => {
     if (isPlayingOnline && onlineTrack) {
       const id1 = onlineTrack.id;
       const id2 = `online:${onlineTrack.artist}-${onlineTrack.title}`;
       return (
-        (id1 && trackPlaylistMap[id1] && trackPlaylistMap[id1].length > 0) ||
-        (id2 && trackPlaylistMap[id2] && trackPlaylistMap[id2].length > 0) ||
+        (id1 && regularTrackPlaylistMap[id1] && regularTrackPlaylistMap[id1].length > 0) ||
+        (id2 && regularTrackPlaylistMap[id2] && regularTrackPlaylistMap[id2].length > 0) ||
         false
       );
     }
     if (playbackState.current_track) {
       const tid = playbackState.current_track.id;
-      return (trackPlaylistMap[tid] && trackPlaylistMap[tid].length > 0) || false;
+      return (regularTrackPlaylistMap[tid] && regularTrackPlaylistMap[tid].length > 0) || false;
     }
     return false;
-  }, [isPlayingOnline, onlineTrack, playbackState.current_track, trackPlaylistMap]);
+  }, [isPlayingOnline, onlineTrack, playbackState.current_track, regularTrackPlaylistMap]);
 
   return (
     <div className="app-container">
@@ -2337,6 +2546,21 @@ export const App: React.FC = () => {
             setCurrentView(view);
           }}
           unreadNotificationsCount={unreadNotificationsCount}
+          playlists={playlists}
+          activePlaylistId={activeCollection?.type === "playlist" ? (activeCollection.playlistId || activeCollection.id) : null}
+          onSelectPlaylist={(playlist) => {
+            setCurrentView("playlists");
+            setIsLyricsActive(false);
+            handleOpenCollection({
+              id: playlist.id,
+              type: playlist.is_smart_mix === 1 ? "mix" : "playlist",
+              title: playlist.name,
+              subtitle: playlist.description || (playlist.is_smart_mix === 1 ? "Custom algorithmic smart mix" : "User Playlist"),
+              tag: playlist.is_smart_mix === 1 ? "SMART MIX" : "PUBLIC PLAYLIST",
+              playlistId: playlist.id,
+              cover_art_url: playlist.cover_art_url,
+            });
+          }}
         />
 
         {/* Main Content Area */}
@@ -2389,7 +2613,8 @@ export const App: React.FC = () => {
               isSaved={isCollectionSaved}
               isShuffled={playbackState.is_shuffled}
               downloads={downloads}
-              trackPlaylistMap={trackPlaylistMap}
+              trackPlaylistMap={regularTrackPlaylistMap}
+              userPlaylistIds={regularPlaylistIds}
               onAddToPlaylist={(track) =>
                 handleOpenAddToPlaylistModal({
                   id:
@@ -2404,6 +2629,26 @@ export const App: React.FC = () => {
                   cover_art_url: track.cover_art_url,
                 })
               }
+              onRenamePlaylist={handleRenamePlaylist}
+              onDeletePlaylist={handleDeletePlaylist}
+              likedTrackIds={likedTrackIds}
+              onToggleLike={handleToggleCollectionLike}
+              queuedTrackIds={queuedTrackIds}
+              onEnqueueTrack={(track) => handleEnqueueRecommendation(track.rawRecommendation || {
+                external_track_id: track.id,
+                provider: track.matched_local_track_id ? "library" : "online",
+                provider_id: track.id,
+                title: track.title,
+                artist: track.artist,
+                album: track.album,
+                duration_secs: track.duration_secs,
+                cover_art_url: track.cover_art_url,
+                preview_url: track.preview_url,
+                matched_local_track_id: track.matched_local_track_id,
+                match_status: track.matched_local_track_id ? "EXACT_MATCH" : "NOT_FOUND",
+                recommendation_reason: "From collection",
+                in_wishlist: false,
+              })}
             />
           ) : (
             <>
@@ -2413,13 +2658,11 @@ export const App: React.FC = () => {
                   queuedTrackIds={queuedTrackIds}
                   onPlayTrack={handlePlayTrack}
                   onEnqueueTrack={handleEnqueueTrack}
-                  onDequeueTrack={handleDequeueTrack}
                   onLikeTrack={handleLike}
-                  onDislikeTrack={handleDislike}
                   onRemoveFeedback={handleRemoveFeedback}
                   onRescan={handleRescanLibrary}
                   onSearch={handleSearchLibrary}
-                  trackPlaylistMap={trackPlaylistMap}
+                  trackPlaylistMap={regularTrackPlaylistMap}
                   onOpenAddToPlaylistModal={(t) =>
                     handleOpenAddToPlaylistModal({
                       id: t.id,
@@ -2457,8 +2700,9 @@ export const App: React.FC = () => {
                   onPlayTrack={handlePlayTrack}
                   queuedTrackIds={queuedTrackIds}
                   onEnqueueTrack={handleEnqueueTrack}
-                  onDequeueTrack={handleDequeueTrack}
                   onOpenCollection={handleOpenCollection}
+                  onRenamePlaylist={handleRenamePlaylist}
+                  onDeletePlaylist={handleDeletePlaylist}
                 />
               )}
 
@@ -2481,8 +2725,9 @@ export const App: React.FC = () => {
                   onPlayTrack={handlePlayTrack}
                   queuedTrackIds={queuedTrackIds}
                   onEnqueueTrack={handleEnqueueTrack}
-                  onDequeueTrack={handleDequeueTrack}
                   onOpenCollection={handleOpenCollection}
+                  onRenamePlaylist={handleRenamePlaylist}
+                  onDeletePlaylist={handleDeletePlaylist}
                 />
               )}
 
@@ -2514,7 +2759,7 @@ export const App: React.FC = () => {
                   isSearchingOnline={isGlobalSearching}
                   onSearchOnline={handleGlobalOnlineSearch}
                   onClearSearch={handleGlobalClearSearch}
-                  trackPlaylistMap={trackPlaylistMap}
+                  trackPlaylistMap={regularTrackPlaylistMap}
                   onAddToPlaylist={(rec) =>
                     handleOpenAddToPlaylistModal({
                       id:
@@ -2530,6 +2775,9 @@ export const App: React.FC = () => {
                     })
                   }
                   onGoToLibrary={() => setCurrentView("library")}
+                  queuedTrackIds={queuedTrackIds}
+                  onEnqueueTrack={handleEnqueueRecommendation}
+                  likedTrackIds={likedTrackIds}
                 />
               )}
 
@@ -2593,7 +2841,8 @@ export const App: React.FC = () => {
         onToggleRepeat={handleToggleRepeat}
         onToggleShuffle={handleToggleShuffle}
         onLike={handleLike}
-        onDislike={handleDislike}
+        onLikeOnline={handleLikeOnline}
+        isOnlineLiked={!!onlineTrack && !!playlists.find((p) => p.name === "Liked Songs" && (trackPlaylistMap[onlineTrack.id] || []).includes(p.id))}
         onRemoveFeedback={handleRemoveFeedback}
         onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
         isInPlaylist={isCurrentTrackInPlaylist}
@@ -2635,7 +2884,8 @@ export const App: React.FC = () => {
           onToggleRepeat={handleToggleRepeat}
           onToggleShuffle={handleToggleShuffle}
           onLike={handleLike}
-          onDislike={handleDislike}
+          onLikeOnline={handleLikeOnline}
+          isOnlineLiked={!!onlineTrack && !!playlists.find((p) => p.name === "Liked Songs" && (trackPlaylistMap[onlineTrack.id] || []).includes(p.id))}
           onRemoveFeedback={handleRemoveFeedback}
           onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
           onOpenOrigin={
@@ -2665,10 +2915,10 @@ export const App: React.FC = () => {
           setPlaylistModalTrack(null);
         }}
         track={playlistModalTrack}
-        playlists={playlists.filter((p) => p.is_smart_mix === 0)}
+        playlists={playlists.filter((p) => p.is_smart_mix === 0 && p.name !== "Liked Songs")}
         trackPlaylistIds={
-          playlistModalTrack && trackPlaylistMap[playlistModalTrack.id]
-            ? trackPlaylistMap[playlistModalTrack.id]
+          playlistModalTrack && regularTrackPlaylistMap[playlistModalTrack.id]
+            ? regularTrackPlaylistMap[playlistModalTrack.id]
             : []
         }
         onTogglePlaylist={handleToggleTrackInPlaylist}

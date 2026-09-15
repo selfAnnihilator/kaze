@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, X, Globe, RefreshCw } from "lucide-react";
+import { Search, X, RefreshCw } from "lucide-react";
 
 interface GlobalTopSearchBarProps {
   searchQuery: string;
@@ -9,19 +9,6 @@ interface GlobalTopSearchBarProps {
   isSearching?: boolean;
   isRefreshing?: boolean;
 }
-
-const SUGGESTIONS = [
-  "Top 50 Global",
-  "Top 50 India",
-  "Malayalam Hits",
-  "Pavizha Mazha",
-  "Eminem",
-  "Arijit Singh",
-  "Coldplay",
-  "Hip-Hop",
-  "EDM",
-  "Taylor Swift",
-];
 
 export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
   searchQuery,
@@ -33,7 +20,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
 }) => {
   return (
     <div
-      className="content-card"
+      className="content-card global-search"
       style={{
         marginBottom: "24px",
         padding: "16px 20px",
@@ -66,7 +53,6 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
             transition: "border-color 0.15s ease",
           }}
         >
-          <Search size={18} color="var(--text-muted)" />
           <input
             type="text"
             placeholder="Search any music online (artist, song title, album, or genre)..."
@@ -76,7 +62,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
               background: "transparent",
               border: "none",
               outline: "none",
-              color: "#fff",
+              color: "#e8d8c9",
               fontSize: "0.95rem",
               width: "100%",
             }}
@@ -108,62 +94,23 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
           type="submit"
           className="btn btn-primary"
           disabled={isSearching}
+          title="Search Online"
           style={{
-            padding: "9px 18px",
-            fontSize: "0.9rem",
+            padding: "9px 12px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            justifyContent: "center",
             flexShrink: 0,
           }}
         >
           {isSearching ? (
             <RefreshCw size={16} className="animate-spin" />
           ) : (
-            <Globe size={16} />
+            <Search size={16} />
           )}
-          <span>Search Online</span>
         </button>
       </form>
 
-      {/* Quick Suggestion Chips */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "0.78rem", color: "var(--text-dim)", fontWeight: 500 }}>
-          Try:
-        </span>
-        {SUGGESTIONS.map((suggestion) => (
-          <button
-            key={suggestion}
-            type="button"
-            onClick={() => {
-              setSearchQuery(suggestion);
-              onSearch(suggestion);
-            }}
-            style={{
-              fontSize: "0.75rem",
-              padding: "3px 10px",
-              borderRadius: "14px",
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(139, 92, 246, 0.15)";
-              e.currentTarget.style.borderColor = "var(--accent-light)";
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
-              e.currentTarget.style.color = "var(--text-muted)";
-            }}
-          >
-            {suggestion}
-          </button>
-        ))}
-      </div>
     </div>
   );
 };

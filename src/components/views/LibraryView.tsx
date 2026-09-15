@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, Search, RotateCw, Heart, ThumbsDown, Plus, Check, Bookmark, BookmarkCheck } from "lucide-react";
+import { Play, Search, RotateCw, Heart, Check, Bookmark, BookmarkCheck, ListPlus } from "lucide-react";
 import { Track } from "../../types";
 
 interface LibraryViewProps {
@@ -7,9 +7,7 @@ interface LibraryViewProps {
   queuedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
   onEnqueueTrack: (trackId: string) => void;
-  onDequeueTrack?: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
-  onDislikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
   onRescan: () => void;
   onSearch: (query: string) => void;
@@ -28,9 +26,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   queuedTrackIds,
   onPlayTrack,
   onEnqueueTrack,
-  onDequeueTrack,
   onLikeTrack,
-  onDislikeTrack,
   onRemoveFeedback,
   onRescan,
   onSearch,
@@ -43,14 +39,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     const val = e.target.value;
     setSearchTerm(val);
     onSearch(val);
-  };
-
-  const handleQueueToggle = (trackId: string, isEnqueued: boolean) => {
-    if (isEnqueued) {
-      if (onDequeueTrack) onDequeueTrack(trackId);
-    } else {
-      onEnqueueTrack(trackId);
-    }
   };
 
   return (
@@ -86,16 +74,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 background: "none",
                 border: "none",
                 outline: "none",
-                color: "#fff",
+                color: "#e8d8c9",
                 fontSize: "0.88rem",
                 width: "100%",
               }}
             />
           </div>
 
-          <button className="btn btn-secondary" onClick={onRescan} title="Scan library for new files">
+          <button className="btn btn-secondary" onClick={onRescan} title="Rescan library for new files">
             <RotateCw size={16} />
-            <span>Rescan</span>
           </button>
         </div>
       </div>
@@ -121,7 +108,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           <tbody>
             {tracks.map((track, idx) => {
               const isLiked = track.manual_like === 1;
-              const isDisliked = track.manual_like === -1;
               const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
               const playlistIds = trackPlaylistMap?.[track.id] || [];
               const isInPlaylist = playlistIds.length > 0;
@@ -155,21 +141,21 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         className="player-icon-btn"
                         title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
                         onClick={() => onOpenAddToPlaylistModal && onOpenAddToPlaylistModal(track)}
-                        style={{ color: isInPlaylist ? "#10b981" : "var(--text-muted)" }}
+                        style={{ color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-muted)" }}
                       >
                         {isInPlaylist ? (
-                          <BookmarkCheck size={16} color="#10b981" />
+                          <BookmarkCheck size={16} color="var(--accent-secondary)" />
                         ) : (
                           <Bookmark size={16} />
                         )}
                       </button>
                       <button
                         className="player-icon-btn"
-                        title={isEnqueued ? "In queue (click to remove)" : "Add to queue"}
-                        onClick={() => handleQueueToggle(track.id, isEnqueued)}
+                        title={isEnqueued ? "Already in queue" : "Add to queue"}
+                        onClick={() => onEnqueueTrack(track.id)}
                         style={{ color: isEnqueued ? "var(--success)" : "var(--text-muted)" }}
                       >
-                        {isEnqueued ? <Check size={16} /> : <Plus size={16} />}
+                        {isEnqueued ? <Check size={16} /> : <ListPlus size={16} />}
                       </button>
                       <button
                         className="player-icon-btn"
@@ -178,14 +164,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         style={{ color: isLiked ? "#ef4444" : "var(--text-muted)" }}
                       >
                         <Heart size={16} fill={isLiked ? "#ef4444" : "none"} />
-                      </button>
-                      <button
-                        className="player-icon-btn"
-                        title={isDisliked ? "Remove dislike" : "Dislike track"}
-                        onClick={() => (isDisliked ? onRemoveFeedback(track.id) : onDislikeTrack(track.id))}
-                        style={{ color: isDisliked ? "#f59e0b" : "var(--text-muted)" }}
-                      >
-                        <ThumbsDown size={16} fill={isDisliked ? "#f59e0b" : "none"} />
                       </button>
                     </div>
                   </td>
