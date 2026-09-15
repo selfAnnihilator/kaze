@@ -1,0 +1,94 @@
+name: Release Kaze
+
+# Triggers on every version tag like v0.1.0, v1.2.3, etc.
+on:
+  push:
+    tags:
+      - 'v*'
+  # Also allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  build-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds
+          - platform: ubuntu-22.04
+            args: '--target x86_64-unknown-linux-gnu'
+            label: 'linux-x86_64'
+          # Windows builds
+          - platform: windows-latest
+            args: '--target x86_64-pc-windows-msvc'
+            label: 'windows-x86_64'
+
+    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.label }})
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Rust toolchain ──────────────────────────────────────────────────
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'ubuntu-22.04' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # ── Node.js / npm ───────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      # ── Linux system dependencies ───────────────────────────────────────
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libasound2-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      # ── Build and bundle ─────────────────────────────────────────────────
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Kaze ${{ github.ref_name }}'
+          releaseBody: |
+            ## What's new in Kaze ${{ github.ref_name }}
+
+            Download the installer for your platform below:
+
+            | Platform | File | Notes |
+            |---|---|---|
+            | 🐧 Linux (Debian/Ubuntu) | `.deb` | Recommended for Ubuntu, Mint, Pop!_OS |
+            | 🐧 Linux (AppImage) | `.AppImage` | Works on any Linux distro |
+            | 🐧 Linux (RPM) | `.rpm` | For Fedora, openSUSE, RHEL |
+            | 🪟 Windows | `.exe` | NSIS installer, double-click to install |
+            | 🪟 Windows (MSI) | `.msi` | Alternative Windows installer |
+
+            ---
+            > **First time installing?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md) for step-by-step instructions.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
