@@ -27,6 +27,7 @@ import { NotificationsView } from "./components/views/NotificationsView";
 import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
+import { UpdateBanner } from "./components/UpdateBanner";
 import {
   DownloadOptionsModal,
   DownloadModalTrack,
@@ -3044,6 +3045,9 @@ export const App: React.FC = () => {
 
       {/* Top-Right Floating Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Auto-update notification banner */}
+      <UpdateBanner />
 
       {/* Center Modal Popup for Playlist Management */}
       <AddToPlaylistModal

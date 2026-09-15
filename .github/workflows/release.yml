@@ -1,6 +1,6 @@
 name: Release Kaze
 
-# Triggers on every version tag like v0.1.0, v1.2.3, etc.
+# Triggers on every version tag like v1.0.0, v1.2.3, etc.
 on:
   push:
     tags:
@@ -66,16 +66,19 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      # ── Build and bundle ─────────────────────────────────────────────────
+      # ── Build, sign, and publish ─────────────────────────────────────────
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing key for update packages — stored as a GitHub repo secret
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Kaze ${{ github.ref_name }}'
           releaseBody: |
-            ## What's new in Kaze ${{ github.ref_name }}
+            ## Kaze ${{ github.ref_name }}
 
             Download the installer for your platform below:
 
@@ -84,11 +87,14 @@ jobs:
             | 🐧 Linux (Debian/Ubuntu) | `.deb` | Recommended for Ubuntu, Mint, Pop!_OS |
             | 🐧 Linux (AppImage) | `.AppImage` | Works on any Linux distro |
             | 🐧 Linux (RPM) | `.rpm` | For Fedora, openSUSE, RHEL |
-            | 🪟 Windows | `.exe` | NSIS installer, double-click to install |
-            | 🪟 Windows (MSI) | `.msi` | Alternative Windows installer |
+            | 🪟 Windows | `_x64-setup.exe` | NSIS installer, double-click to install |
+            | 🪟 Windows (MSI) | `_x64_en-US.msi` | Alternative Windows installer |
 
-            ---
-            > **First time installing?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md) for step-by-step instructions.
+            > **Already installed?** Just keep the app open — it checks for updates automatically and will restart with the new version.
+
+            > **First time?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md) for step-by-step instructions.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+          # Upload the updater JSON manifest so in-app updates work
+          includeUpdaterJson: true

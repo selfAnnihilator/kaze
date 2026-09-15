@@ -72,6 +72,7 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let handle = app.handle().clone();
 
@@ -107,6 +108,28 @@ pub fn run() {
                 });
 
                 handle.manage(processor);
+
+                // Silent background update check — fires 5s after startup
+                let update_handle = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    if let Ok(updater) = update_handle.updater() {
+                        match updater.check().await {
+                            Ok(Some(update)) => {
+                                let version = update.version.clone();
+                                tracing::info!("Update available: v{}", version);
+                                // Notify frontend so it can show a banner
+                                let _ = update_handle.emit("update-available", serde_json::json!({ "version": version }));
+                                // Download and install; app will restart automatically
+                                if let Err(e) = update.download_and_install(|_, _| {}, || {}).await {
+                                    tracing::error!("Update install failed: {}", e);
+                                }
+                            }
+                            Ok(None) => tracing::info!("Kaze is up to date"),
+                            Err(e) => tracing::warn!("Update check failed: {}", e),
+                        }
+                    }
+                });
             });
 
             Ok(())
