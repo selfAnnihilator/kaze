@@ -22,7 +22,35 @@ Kaze is a free, open-source desktop music player. Choose the installer for your 
 
 ---
 
-### Option 2: Debian/Ubuntu (`.deb` — for Ubuntu, Mint, Pop!_OS, Debian)
+### Option 2: Arch Linux / CachyOS / Manjaro (System & Terminal Integration)
+
+To make `kaze` executable from any terminal and register the desktop entry in your application launcher:
+
+```bash
+# 1. Download Kaze_*.AppImage and make executable
+chmod +x Kaze_*.AppImage
+
+# 2. Install to your local user binary directory
+mkdir -p ~/.local/bin
+cp Kaze_*.AppImage ~/.local/bin/kaze
+
+# 3. Extract desktop entry and icon for system app launcher
+~/.local/bin/kaze --appimage-extract "*.desktop"
+~/.local/bin/kaze --appimage-extract "*.png"
+mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
+cp squashfs-root/*.desktop ~/.local/share/applications/kaze.desktop 2>/dev/null || true
+sed -i 's|^Exec=.*|Exec='$HOME'/.local/bin/kaze|' ~/.local/share/applications/kaze.desktop 2>/dev/null || true
+cp squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png 2>/dev/null || true
+rm -rf squashfs-root
+```
+
+After running this once:
+- Type `kaze` in your terminal to start the player anytime.
+- Search "Kaze" in your app menu (Rofi, Wofi, GNOME, KDE) to launch it.
+
+---
+
+### Option 3: Debian/Ubuntu (`.deb` — for Ubuntu, Mint, Pop!_OS, Debian)
 
 1. Download the `.deb` file from the [latest release](../../releases/latest).
 2. Install it:
@@ -34,7 +62,7 @@ Kaze is a free, open-source desktop music player. Choose the installer for your 
 
 ---
 
-### Option 3: Fedora / openSUSE / RHEL (`.rpm`)
+### Option 4: Fedora / openSUSE / RHEL (`.rpm`)
 
 1. Download the `.rpm` file from the [latest release](../../releases/latest).
 2. Install it:

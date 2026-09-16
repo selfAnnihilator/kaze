@@ -49,12 +49,32 @@ See **[INSTALL.md](INSTALL.md)** for full per-platform instructions.
 
 | Platform | File to download |
 |---|---|
-| 🐧 Linux (Ubuntu/Debian) | `.deb` |
-| 🐧 Linux (any distro) | `.AppImage` |
-| 🐧 Linux (Fedora/RPM) | `.rpm` |
+| 🐧 Linux (Arch / CachyOS / Manjaro) | `.AppImage` (install via terminal script below) |
+| 🐧 Linux (Ubuntu / Debian / Mint) | `.deb` |
+| 🐧 Linux (Fedora / openSUSE / RHEL) | `.rpm` |
+| 🐧 Linux (Generic / Portable) | `.AppImage` |
 | 🪟 Windows | `_x64-setup.exe` |
 
 All downloads are on the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest).
+
+### Arch Linux / CachyOS quick setup
+Download the `.AppImage` and integrate it as a native desktop application with `kaze` terminal command:
+
+```bash
+chmod +x Kaze_*.AppImage
+mkdir -p ~/.local/bin
+cp Kaze_*.AppImage ~/.local/bin/kaze
+
+# Extract desktop entry & icon so it appears in application launchers
+~/.local/bin/kaze --appimage-extract "*.desktop"
+~/.local/bin/kaze --appimage-extract "*.png"
+mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
+cp squashfs-root/*.desktop ~/.local/share/applications/kaze.desktop 2>/dev/null || true
+sed -i 's|^Exec=.*|Exec='$HOME'/.local/bin/kaze|' ~/.local/share/applications/kaze.desktop 2>/dev/null || true
+cp squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png 2>/dev/null || true
+rm -rf squashfs-root
+```
+Now typing `kaze` in any terminal runs it, and it will show up when searching your desktop apps.
 
 ---
 
