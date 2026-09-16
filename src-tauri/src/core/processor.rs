@@ -2048,11 +2048,14 @@ impl CoreProcessor {
                                 continue;
                             }
                             seen_keys.insert(key.clone());
+                            let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&title)
+                                || FuzzyTrackMatcher::is_lofi_indicator(&artist);
 
                             let match_res = FuzzyTrackMatcher::find_best_match(
                                 &title,
                                 &artist,
                                 None,
+                                is_lofi,
                                 candidate_local_tuples.iter().copied(),
                             );
                             let in_wishlist = wishlist_keys.contains(&key);
@@ -2710,7 +2713,7 @@ impl CoreProcessor {
             if item.status == "want" {
                 let match_res = self
                     .discovery_coordinator
-                    .match_against_library(&item.title, &item.artist, None)
+                    .match_against_library(&item.title, &item.artist, None, false)
                     .await?;
                 if match_res.status == crate::discovery::MatchStatus::ExactMatch
                     || match_res.status == crate::discovery::MatchStatus::LikelyMatch
@@ -2811,6 +2814,17 @@ impl CoreProcessor {
             .unwrap_or("Imported Spotify Playlist")
             .to_string();
 
+        let is_playlist_lofi = {
+            let lower = playlist_title.to_lowercase();
+            lower.contains("lofi")
+                || lower.contains("lo-fi")
+                || lower.contains("sleep")
+                || lower.contains("chill")
+                || lower.contains("relax")
+                || lower.contains("study")
+                || lower.contains("beats")
+        };
+
         let cover_url = entity["coverArt"]["sources"][0]["url"]
             .as_str()
             .or_else(|| entity["visualIdentity"]["image"][2]["url"].as_str())
@@ -2835,9 +2849,13 @@ impl CoreProcessor {
                 continue;
             }
 
+            let is_lofi = is_playlist_lofi
+                || FuzzyTrackMatcher::is_lofi_indicator(&title)
+                || FuzzyTrackMatcher::is_lofi_indicator(&artist);
+
             let match_res = self
                 .discovery_coordinator
-                .match_against_library(&title, &artist, duration_secs)
+                .match_against_library(&title, &artist, duration_secs, is_lofi)
                 .await?;
 
             let in_library = match_res.status == crate::discovery::MatchStatus::ExactMatch

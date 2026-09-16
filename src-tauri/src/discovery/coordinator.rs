@@ -1,4 +1,4 @@
-use super::matcher::{FuzzyTrackMatcher, MatchResult, MatchStatus};
+use super::matcher::{FuzzyTrackMatcher, LocalTrackCandidate, MatchResult, MatchStatus};
 use crate::core::error::AppResult;
 use crate::database::models::ExternalTrackRecord;
 use crate::database::repositories::{TrackRepository, WishlistRepository};
@@ -121,25 +121,53 @@ impl DiscoveryCoordinator {
         ext_title: &str,
         ext_artist: &str,
         ext_duration: Option<f64>,
+        is_lofi_context: bool,
     ) -> AppResult<MatchResult> {
         let local_tracks = self.track_repo.list_tracks(0, 50000, None, true).await?;
 
         let candidates = local_tracks
             .iter()
-            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
+            .filter(|t| {
+                t.format != "online"
+                    && !t.file_path.starts_with("online://")
+                    && !t.id.starts_with("itunes:")
+                    && !t.id.starts_with("online:")
+            })
             .map(|t| {
-                (
-                    t.id.as_str(),
-                    t.title.as_str(),
-                    t.artist_name.as_deref().unwrap_or(""),
-                    t.duration_secs,
-                )
+                let fp = t.file_path.to_lowercase();
+                let genre = t.genre_name.as_deref().unwrap_or("").to_lowercase();
+                let album = t.album_title.as_deref().unwrap_or("").to_lowercase();
+                let title = t.title.to_lowercase();
+                let artist = t.artist_name.as_deref().unwrap_or("").to_lowercase();
+
+                let is_lofi = fp.contains("/lofi/")
+                    || fp.contains("/lo-fi/")
+                    || fp.contains("lofi")
+                    || fp.contains("lo-fi")
+                    || genre.contains("lofi")
+                    || genre.contains("lo-fi")
+                    || genre.contains("chillhop")
+                    || album.contains("lofi")
+                    || album.contains("lo-fi")
+                    || title.contains("lofi")
+                    || title.contains("lo-fi")
+                    || artist.contains("lofi")
+                    || artist.contains("lo-fi");
+
+                LocalTrackCandidate {
+                    id: t.id.as_str(),
+                    title: t.title.as_str(),
+                    artist: t.artist_name.as_deref().unwrap_or(""),
+                    duration_secs: t.duration_secs,
+                    is_lofi,
+                }
             });
 
         Ok(FuzzyTrackMatcher::find_best_match(
             ext_title,
             ext_artist,
             ext_duration,
+            is_lofi_context,
             candidates,
         ))
     }
@@ -150,8 +178,10 @@ impl DiscoveryCoordinator {
         &self,
         mut track: ExternalTrackRecord,
     ) -> AppResult<MatchResult> {
+        let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&track.title)
+            || FuzzyTrackMatcher::is_lofi_indicator(&track.artist);
         let match_result = self
-            .match_against_library(&track.title, &track.artist, track.duration_secs)
+            .match_against_library(&track.title, &track.artist, track.duration_secs, is_lofi)
             .await?;
 
         track.match_status = match_result.status.as_str().to_string();
@@ -618,12 +648,13 @@ impl DiscoveryCoordinator {
         let now_millis = chrono::Utc::now().timestamp_millis();
 
         for mut track in ext_tracks {
-            // Dynamically match against current local library so newly downloaded tracks
-            // immediately transition to EXACT_MATCH / "In Library"!
+            let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&track.title)
+                || FuzzyTrackMatcher::is_lofi_indicator(&track.artist);
             let match_res = FuzzyTrackMatcher::find_best_match(
                 &track.title,
                 &track.artist,
                 track.duration_secs,
+                is_lofi,
                 candidate_local_tuples.iter().copied(),
             );
 
@@ -936,12 +967,15 @@ impl DiscoveryCoordinator {
                 .or(Some(30.0));
 
             let ext_id = format!("itunes:{}", if itunes_track_id.is_empty() { format!("{}:{}", artist, title) } else { itunes_track_id.clone() });
+            let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(title)
+                || FuzzyTrackMatcher::is_lofi_indicator(artist);
 
             // Dynamic library matching
             let match_res = FuzzyTrackMatcher::find_best_match(
                 title,
                 artist,
                 duration_secs,
+                is_lofi,
                 candidate_local_tuples.iter().copied(),
             );
 

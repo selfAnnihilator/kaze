@@ -109,10 +109,45 @@ async fn test_fuzzy_track_matcher_classifications() {
         "Hey Jude (Remastered 2015)",
         "The Beatles feat. Orchestra",
         Some(430.0),
+        false,
         candidates.into_iter(),
     );
     assert_eq!(best.status, MatchStatus::ExactMatch);
     assert_eq!(best.matched_track_id, Some("t2".to_string()));
+
+    // 6. Regular song: if artist does not match, it must return NotFound (no closest match)
+    let regular_candidates = vec![
+        ("reg_1", "Unravel", "Ado", 240.0),
+    ];
+    let reg_match = FuzzyTrackMatcher::find_best_match(
+        "Unravel",
+        "TK from Ling tosite sigure",
+        Some(238.0),
+        false,
+        regular_candidates.into_iter(),
+    );
+    assert_eq!(reg_match.status, MatchStatus::NotFound);
+
+    // 7. Lofi song: if artist does not match, match lofi track with same name
+    use music_player_backend::discovery::matcher::LocalTrackCandidate;
+    let lofi_candidates = vec![
+        LocalTrackCandidate {
+            id: "lofi_1",
+            title: "Unravel",
+            artist: "Kato",
+            duration_secs: 116.0,
+            is_lofi: true,
+        },
+    ];
+    let lofi_match = FuzzyTrackMatcher::find_best_match(
+        "Unravel",
+        "TK from Ling tosite sigure",
+        None,
+        true, // is_lofi_context
+        lofi_candidates.into_iter(),
+    );
+    assert_eq!(lofi_match.status, MatchStatus::LikelyMatch);
+    assert_eq!(lofi_match.matched_track_id, Some("lofi_1".to_string()));
 }
 
 #[tokio::test]

@@ -53,27 +53,51 @@ export const rankResultMatch = (
 
   let score = 0;
 
-  // Full title match
+  const isLofi =
+    cleanTitle.includes("lofi") ||
+    cleanTitle.includes("lo fi") ||
+    cleanArtist.includes("lofi") ||
+    cleanArtist.includes("lo fi") ||
+    cleanFilename.includes("lofi") ||
+    cleanFilename.includes("lo fi") ||
+    cleanFilename.includes("chillhop");
+
+  // Full or word title match
   if (cleanFilename.includes(cleanTitle)) {
     score += 60;
-  } else {
-    // Word-by-word title match
-    if (titleWords.length > 0) {
-      const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
-      score += (matches / titleWords.length) * 40;
+  } else if (titleWords.length > 0) {
+    const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
+    if (matches === titleWords.length) {
+      score += 50;
+    } else {
+      score += (matches / titleWords.length) * 30 - 25;
     }
   }
 
   // Artist match
-  if (
+  const artistMatches =
     cleanFilename.includes(cleanArtist) ||
-    (result.username && norm(result.username).includes(cleanArtist))
-  ) {
-    score += 30;
+    (result.username && norm(result.username).includes(cleanArtist));
+
+  if (artistMatches) {
+    score += 35;
+  } else if (isLofi) {
+    // For lofi songs: if artist doesn't match, accept lofi version of the same song
+    if (
+      cleanFilename.includes("lofi") ||
+      cleanFilename.includes("lo fi") ||
+      cleanFilename.includes("chill") ||
+      cleanFilename.includes("sleep")
+    ) {
+      score += 20;
+    }
+  } else {
+    // Regular song: if exact match is unavailable, do not pick closest match from wrong artist
+    score -= 45;
   }
 
   // Heavy penalty for extraneous noise words in filename (e.g. "pingu", "goes", "to", "theme park", "vlog")
-  const commonMusicNoise = new Set(["lofi", "remix", "ost", "edit", "audio", "flac", "mp3", "track", "official", "theme", "original"]);
+  const commonMusicNoise = new Set(["lofi", "remix", "ost", "edit", "audio", "flac", "mp3", "track", "official", "theme", "original", "cover"]);
   const extraWords = filenameWords.filter(
     (w) =>
       !titleWords.includes(w) &&
