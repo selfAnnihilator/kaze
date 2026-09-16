@@ -2805,6 +2805,9 @@ impl CoreProcessor {
 
         let cover_url = entity["coverArt"]["sources"][0]["url"]
             .as_str()
+            .or_else(|| entity["visualIdentity"]["image"][2]["url"].as_str())
+            .or_else(|| entity["visualIdentity"]["image"][1]["url"].as_str())
+            .or_else(|| entity["visualIdentity"]["image"][0]["url"].as_str())
             .map(|s| s.to_string());
 
         let raw_tracks = entity["trackList"].as_array().cloned().unwrap_or_default();

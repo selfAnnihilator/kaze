@@ -27,7 +27,19 @@ interface PlaylistsViewProps {
   onPlayPlaylist: (playlistId: string) => void;
   onCreatePlaylist: (name: string, description?: string) => void;
   onInspectSpotifyPlaylist: (urlOrId: string) => Promise<SpotifyPlaylistImport | null>;
-  onSaveImportedPlaylist: (name: string, trackIds: string[]) => Promise<void>;
+  onSaveImportedPlaylist: (
+    name: string,
+    trackIds: string[],
+    tracksInfo?: Array<{
+      id: string;
+      title?: string;
+      artist?: string;
+      album?: string;
+      duration_secs?: number;
+      cover_art_url?: string;
+      preview_url?: string;
+    }>
+  ) => Promise<void>;
   onAddMissingToWishlist: (tracks: any[]) => Promise<void>;
   onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onSearchDirect?: (artist: string, title: string, album?: string) => void;
@@ -207,18 +219,40 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
   };
 
-  const handleSaveSpotifyPlaylist = async () => {
+  const handleSaveSpotifyPlaylist = async (importAll: boolean = true) => {
     if (!spotifyResult) return;
-    const localIds = spotifyResult.tracks
-      .filter((t) => t.in_library && t.matched_local_track_id)
-      .map((t) => t.matched_local_track_id as string);
-
-    if (localIds.length === 0) {
-      alert("No matched tracks from this playlist exist in your local library yet.");
+    if (!currentUser && onOpenAuthModal) {
+      onOpenAuthModal();
       return;
     }
 
-    await onSaveImportedPlaylist(spotifyResult.title, localIds);
+    // Determine tracks to import
+    const targetTracks = importAll
+      ? spotifyResult.tracks
+      : spotifyResult.tracks.filter((t) => t.in_library && t.matched_local_track_id);
+
+    if (targetTracks.length === 0) {
+      alert("No tracks to import.");
+      return;
+    }
+
+    const trackIds = targetTracks.map((t) =>
+      t.matched_local_track_id &&
+      !t.matched_local_track_id.startsWith("online:") &&
+      !t.matched_local_track_id.startsWith("itunes:")
+        ? t.matched_local_track_id
+        : `online:${t.spotify_id || Math.random().toString(36).substring(2, 9)}`
+    );
+
+    const tracksInfo = targetTracks.map((t, idx) => ({
+      id: trackIds[idx],
+      title: t.title,
+      artist: t.artist,
+      duration_secs: t.duration_secs,
+      cover_art_url: spotifyResult.cover_url,
+    }));
+
+    await onSaveImportedPlaylist(spotifyResult.title, trackIds, tracksInfo);
     setShowSpotifyModal(false);
     setSpotifyResult(null);
   };
@@ -932,10 +966,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   </div>
 
                   <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    {spotifyResult.matched_tracks > 0 && (
-                      <button className="btn btn-primary" onClick={handleSaveSpotifyPlaylist}>
+                    <button className="btn btn-primary" onClick={() => handleSaveSpotifyPlaylist(true)} title="Import this playlist with all its songs into Kaze">
+                      <Check size={15} />
+                      <span>Import Playlist ({spotifyResult.total_tracks} tracks)</span>
+                    </button>
+
+                    {spotifyResult.matched_tracks > 0 && spotifyResult.missing_tracks > 0 && (
+                      <button className="btn btn-secondary" onClick={() => handleSaveSpotifyPlaylist(false)} title="Import only the songs currently in your local library">
                         <Check size={15} />
-                        <span>Save Matched ({spotifyResult.matched_tracks})</span>
+                        <span>Import Matched Only ({spotifyResult.matched_tracks})</span>
                       </button>
                     )}
 
