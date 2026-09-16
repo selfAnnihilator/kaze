@@ -69,14 +69,27 @@ impl DownloadService {
         Ok(results)
     }
 
+    pub async fn search_track(&self, artist: &str, title: &str) -> AppResult<Vec<DownloadSearchResult>> {
+        let results = self.provider.search_track(artist, title).await?;
+        let mut cache = self.search_cache.write().await;
+        for result in &results {
+            cache.insert(result.id.clone(), result.clone());
+        }
+        Ok(results)
+    }
+
     /// Resolves a playable direct stream URL and duration for full-song previewing.
     pub async fn resolve_full_track_audio(
         &self,
         artist: &str,
         title: &str,
-    ) -> AppResult<Option<(String, f64)>> {
+    ) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
         let query = format!("{} {}", artist, title);
-        self.provider.resolve_stream_url(&query).await
+        let resolved = self.provider.resolve_stream_url(&query).await?;
+        if let Some((_, _, Some(result))) = &resolved {
+            self.search_cache.write().await.insert(result.id.clone(), result.clone());
+        }
+        Ok(resolved)
     }
 
     /// Searches the network for a specific wishlist item.
@@ -87,8 +100,7 @@ impl DownloadService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Wishlist item {} not found", wishlist_id)))?;
 
-        let query = format!("{} {}", item.artist, item.title);
-        self.search(&query).await
+        self.search_track(&item.artist, &item.title).await
     }
 
     /// Enqueues a download task based on a cached search result.
@@ -130,7 +142,7 @@ impl DownloadService {
 
         let task = DownloadTaskRecord {
             id: task_id.clone(),
-            provider: self.provider.name().to_string(),
+            provider: result.provider.clone(),
             provider_task_id: Some(provider_task_id),
             title,
             artist,

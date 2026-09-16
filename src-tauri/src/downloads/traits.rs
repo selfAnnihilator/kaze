@@ -15,6 +15,14 @@ pub trait DownloadProvider: Send + Sync {
     /// Searches the provider network for matching audio files.
     async fn search(&self, query: &str) -> AppResult<Vec<DownloadSearchResult>>;
 
+    async fn search_track(
+        &self,
+        artist: &str,
+        title: &str,
+    ) -> AppResult<Vec<DownloadSearchResult>> {
+        self.search(&format!("{} {}", artist, title)).await
+    }
+
     /// Enqueues a download for a specific search result to the local destination directory.
     /// Returns the provider's task/transfer ID.
     async fn start_download(
@@ -30,7 +38,7 @@ pub trait DownloadProvider: Send + Sync {
     async fn cancel(&self, provider_task_id: &str) -> AppResult<()>;
 
     /// Resolves direct streamable audio URL and duration for full-song previewing.
-    async fn resolve_stream_url(&self, _query: &str) -> AppResult<Option<(String, f64)>> {
+    async fn resolve_stream_url(&self, _query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
         Ok(None)
     }
 }

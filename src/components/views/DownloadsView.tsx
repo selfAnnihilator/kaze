@@ -672,7 +672,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                     Search Succeeded!
                   </span>
                   <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "8px" }}>
-                    Found {searchResults.length} direct high-speed audio stream(s) for \"{lastQuery}\". Click Download below.
+                    Found {searchResults.length} possible download source(s) for \"{lastQuery}\". Check the title before choosing one.
                   </span>
                 </div>
               </div>
@@ -687,7 +687,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   flexShrink: 0,
                 }}
               >
-                Direct In-App
+                In-App Download
               </span>
             </div>
           )}
@@ -709,10 +709,10 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                 <AlertCircle size={20} color="#f3701e" style={{ flexShrink: 0 }} />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#f3701e" }}>
-                    No Direct Streams Found
+                    No download sources found
                   </div>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                    Could not find direct streams for \"{lastQuery}\". Check your search terms or try SoulseekQt.
+                    No provider returned files for \"{lastQuery}\". Try another query or SoulseekQt.
                   </div>
                 </div>
               </div>
@@ -941,6 +941,8 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                   {displayedResults.map((res) => {
                     const isStarting = downloadingIds.has(res.id);
                     const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
+                    const isArchive = res.provider === "internet-archive";
+                    const isAudius = res.provider === "audius";
                     const task = findTaskForResult(res);
 
                     return (
@@ -959,7 +961,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                           </div>
                         </td>
                         <td>
-                          {isDirect ? (
+                          {isDirect || isArchive || isAudius ? (
                             <div>
                               <div
                                 style={{
@@ -972,7 +974,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 }}
                               >
                                 <Zap size={13} color={res.format.toLowerCase() === "flac" ? "var(--accent-light)" : "var(--accent-secondary)"} />
-                                <span>{res.format.toLowerCase() === "flac" ? "Direct Lossless Studio" : "Direct High-Speed 320k"}</span>
+                                <span>{isArchive ? "Internet Archive" : isAudius ? "Audius" : res.id.startsWith("ytdlp_stream_mp3_") ? "Stream Source · verify title" : res.format.toLowerCase() === "flac" ? "Direct Audio FLAC" : "Direct Audio MP3"}</span>
                               </div>
                               <div
                                 style={{
@@ -1229,7 +1231,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
               {filteredTasks.map((task) => {
                 const total = task.file_size || 0;
                 const progress = total > 0 ? Math.min(100, (task.bytes_downloaded / total) * 100) : 0;
-                const isDirect = task.provider === "yt-dlp" || task.provider === "composite";
+                const isDirect = task.provider === "yt-dlp" || task.provider === "internet-archive" || task.provider === "audius" || task.provider === "composite";
 
                 return (
                   <div
@@ -1273,7 +1275,7 @@ export const DownloadsView: React.FC<DownloadsViewProps> = ({
                                 border: "1px solid rgba(139, 124, 246, 0.25)",
                               }}
                             >
-                              <Zap size={10} color="var(--accent-secondary)" /> Direct In-App
+                              <Zap size={10} color="var(--accent-secondary)" /> {task.provider === "internet-archive" ? "Internet Archive" : task.provider === "audius" ? "Audius" : "Direct In-App"}
                             </span>
                           )}
                         </div>

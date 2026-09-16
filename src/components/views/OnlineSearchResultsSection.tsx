@@ -12,6 +12,7 @@ import {
   ListMusic,
 } from "lucide-react";
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
+import { sameSongMetadata } from "../../localTrackMatch";
 
 interface OnlineSearchResultsSectionProps {
   searchQuery: string;
@@ -28,6 +29,7 @@ interface OnlineSearchResultsSectionProps {
   onAddToWishlist?: (rec: DiscoveryRecommendation) => void;
   onSearchDirect?: (artist: string, title: string) => void;
   downloads?: DownloadTask[];
+  downloadTargets?: Record<string, { title: string; artist: string }>;
   trackPlaylistMap?: Record<string, string[]>;
   playlists?: Playlist[];
   onSelectArtist?: (artist: string) => void;
@@ -50,6 +52,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   onAddToWishlist: _onAddToWishlist,
   onSearchDirect,
   downloads,
+  downloadTargets,
   trackPlaylistMap,
   playlists = [],
   onSelectArtist,
@@ -92,23 +95,21 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   };
 
   const getDownloadStatus = (rec: DiscoveryRecommendation) => {
+    const inLibrary = !!rec.matched_local_track_id &&
+      rec.match_status === "EXACT_MATCH" &&
+      !rec.matched_local_track_id.startsWith("itunes:") &&
+      !rec.matched_local_track_id.startsWith("online:");
     const activeDownload = downloads?.find((d) => {
       if (d.status === "FAILED" || d.status === "CANCELLED") return false;
-      const titleMatch =
-        d.title.toLowerCase().trim() === rec.title.toLowerCase().trim() ||
-        d.filename.toLowerCase().includes(rec.title.toLowerCase().trim());
-      const artistMatch =
-        !d.artist ||
-        d.artist.toLowerCase().trim() === rec.artist.toLowerCase().trim() ||
-        rec.artist.toLowerCase().includes(d.artist.toLowerCase().trim()) ||
-        d.filename.toLowerCase().includes(rec.artist.toLowerCase().trim());
-      return titleMatch && artistMatch;
+      const target = downloadTargets?.[d.id];
+      if (target) return sameSongMetadata(target.title, target.artist, rec.title, rec.artist);
+      return sameSongMetadata(d.title, d.artist, rec.title, rec.artist);
     });
 
     const isDownloading =
       activeDownload &&
       (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
-    const isCompleted = activeDownload?.status === "COMPLETED";
+    const isCompleted = inLibrary || activeDownload?.status === "COMPLETED";
 
     return { isDownloading, isCompleted };
   };
@@ -514,6 +515,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           {onSearchDirect && (
                             <button
                               type="button"
+                              disabled={!!getDownloadStatus(topResult).isCompleted || !!getDownloadStatus(topResult).isDownloading}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSearchDirect(topResult.artist, topResult.title);
@@ -782,6 +784,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           {onSearchDirect && (
                             <button
                               type="button"
+                              disabled={!!getDownloadStatus(rec).isCompleted || !!getDownloadStatus(rec).isDownloading}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSearchDirect(rec.artist, rec.title);
@@ -1127,6 +1130,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     {onSearchDirect && (
                       <button
                         type="button"
+                        disabled={!!getDownloadStatus(rec).isCompleted || !!getDownloadStatus(rec).isDownloading}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSearchDirect(rec.artist, rec.title);
@@ -1134,13 +1138,13 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           background: "none",
                           border: "none",
-                          color: "var(--text-dim)",
-                          cursor: "pointer",
+                          color: getDownloadStatus(rec).isCompleted ? "var(--accent-secondary)" : "var(--text-dim)",
+                          cursor: getDownloadStatus(rec).isCompleted ? "default" : "pointer",
                           padding: "6px",
                         }}
-                        title="Download track"
+                        title={getDownloadStatus(rec).isCompleted ? "In your library" : getDownloadStatus(rec).isDownloading ? "Downloading..." : "Download track"}
                       >
-                        <DownloadCloud size={16} />
+                        {getDownloadStatus(rec).isCompleted ? <Check size={16} /> : <DownloadCloud size={16} />}
                       </button>
                     )}
 

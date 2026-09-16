@@ -31,8 +31,9 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import {
   DownloadOptionsModal,
   DownloadModalTrack,
-  rankResultMatch,
 } from "./components/modals/DownloadOptionsModal";
+import { filterAndRankDownloadResults, rankResultMatch } from "./downloadMatch";
+import { attachLocalSearchMatches } from "./localTrackMatch";
 import {
   AddToPlaylistModal,
   AddToPlaylistModalTrack,
@@ -153,6 +154,7 @@ export const App: React.FC = () => {
   const handleStopOnlineAudioRef = useRef<() => void>(() => {});
   const onlineQueueMetadataRef = useRef<Map<string, DiscoveryRecommendation>>(new Map());
   const playingOnlineRecRef = useRef<DiscoveryRecommendation | null>(null);
+  const playingDownloadSourceRef = useRef<{ trackId: string; result: DownloadSearchResult } | null>(null);
   const repeatModeRef = useRef<PlaybackState["repeat_mode"]>("off");
 
   // User Authentication & Profile
@@ -201,6 +203,11 @@ export const App: React.FC = () => {
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const [globalSearchResults, setGlobalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+  const [downloadTargets, setDownloadTargets] = useState<Record<string, { title: string; artist: string }>>({});
+  const currentSearchResults = useMemo(
+    () => attachLocalSearchMatches(globalSearchResults, tracks),
+    [globalSearchResults, tracks]
+  );
 
   // Online / Offline Connectivity State
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -959,6 +966,7 @@ export const App: React.FC = () => {
 
   const handleStopOnlineAudio = useCallback(() => {
     activeOnlinePlayIdRef.current++;
+    playingDownloadSourceRef.current = null;
     if (onlineAudioRef.current) {
       const listened = onlineAudioRef.current.currentTime;
       const rec = playingOnlineRecRef.current;
@@ -1155,6 +1163,7 @@ export const App: React.FC = () => {
       // 6. Resolve full song stream via backend
       let streamUrl = rec.preview_url || "";
       let duration = rec.duration_secs || 210;
+      let resolvedDownloadResult: DownloadSearchResult | null = null;
 
       try {
         const res = await executeQuery({
@@ -1164,6 +1173,7 @@ export const App: React.FC = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
         if (res && res.type === "FullTrackAudio" && res.data && res.data.stream_url) {
           streamUrl = res.data.stream_url;
+          resolvedDownloadResult = res.data.download_result || null;
           if (res.data.duration_secs) {
             duration = res.data.duration_secs;
           }
@@ -1202,6 +1212,9 @@ export const App: React.FC = () => {
 
       audio.onplay = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
+        playingDownloadSourceRef.current = resolvedDownloadResult
+          ? { trackId: rec.external_track_id, result: resolvedDownloadResult }
+          : null;
         setOnlineTrack((prev) =>
           prev && prev.id === rec.external_track_id
             ? { ...prev, isPlaying: true, isLoading: false }
@@ -1252,6 +1265,7 @@ export const App: React.FC = () => {
 
       audio.onerror = () => {
         if (activeOnlinePlayIdRef.current !== playId) return;
+        playingDownloadSourceRef.current = null;
         if (rec.preview_url && streamUrl !== rec.preview_url) {
           const fallback = new Audio(rec.preview_url);
           fallback.volume = playbackState.is_muted ? 0 : playbackState.volume;
@@ -2529,23 +2543,33 @@ export const App: React.FC = () => {
     });
     const results = (res as any)?.data || (res as any)?.results;
     if (Array.isArray(results)) {
-      return results;
+      return filterAndRankDownloadResults(results, artist, title);
     }
     return [];
   };
 
   // Navigation shortcut to search & download directly via centered modal popup
   const handleInitiateDirectDownloadSearch = (artist: string, title: string, album?: string) => {
-    setDownloadModalTrack({ artist, title, album });
+    const source = playingDownloadSourceRef.current;
+    const sameTrack = !!source && !!onlineTrack && onlineTrack.id === source.trackId &&
+      onlineTrack.artist.trim().toLowerCase() === artist.trim().toLowerCase() &&
+      onlineTrack.title.trim().toLowerCase() === title.trim().toLowerCase();
+    setDownloadModalTrack({ artist, title, album, playingSource: sameTrack ? source?.result : undefined });
   };
 
   const handleModalStartDownload = async (searchResultId: string, track: DownloadModalTrack) => {
-    await dispatchCommand({
+    const response = await dispatchCommand({
       command: "StartDownload",
       payload: {
         search_result_id: searchResultId,
       },
     });
+    if (response?.data?.task_id) {
+      setDownloadTargets((previous) => ({
+        ...previous,
+        [response.data.task_id]: { title: track.title, artist: track.artist },
+      }));
+    }
     addAppNotification(
       "info",
       "Download Queued",
@@ -2571,21 +2595,23 @@ export const App: React.FC = () => {
         return;
       }
 
-      // Rank results according to match quality
-      const sorted = [...searchResults].sort(
-        (a, b) => rankResultMatch(b, track.artist, track.title) - rankResultMatch(a, track.artist, track.title)
-      );
-
-      // Prefer a high-confidence direct stream (score >= 40)
-      const goodDirect = sorted.find(
+      const goodDirect = searchResults.find(
         (r) =>
           (r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) &&
+          !r.id.startsWith("ytdlp_stream_mp3_") &&
           rankResultMatch(r, track.artist, track.title) >= 40
       );
+      const chosen = goodDirect || searchResults.find((r) =>
+        !r.id.startsWith("ytdlp_stream_mp3_") &&
+        rankResultMatch(r, track.artist, track.title) >= 30
+      );
 
-      const chosen = goodDirect || sorted[0];
+      if (!chosen && searchResults.some((r) => r.id.startsWith("ytdlp_stream_mp3_"))) {
+        setDownloadModalTrack(track);
+        return;
+      }
 
-      if (chosen && rankResultMatch(chosen, track.artist, track.title) > 0) {
+      if (chosen) {
         await handleModalStartDownload(chosen.id, track);
       } else {
         addAppNotification(
@@ -2860,6 +2886,7 @@ export const App: React.FC = () => {
             </div>
           ) : activeCollection ? (
             <CollectionDetailView
+              key={`${activeCollection.type}:${activeCollection.id}`}
               collection={activeCollection}
               isLoadingTracks={isLoadingCollectionTracks}
               onBack={() => setActiveCollection(null)}
@@ -3024,7 +3051,8 @@ export const App: React.FC = () => {
                   downloads={downloads}
                   searchQuery={globalSearchQuery}
                   setSearchQuery={setGlobalSearchQuery}
-                  searchResults={globalSearchResults}
+                  searchResults={currentSearchResults}
+                  downloadTargets={downloadTargets}
                   setSearchResults={setGlobalSearchResults}
                   isSearchingOnline={isGlobalSearching}
                   onSearchOnline={handleGlobalOnlineSearch}

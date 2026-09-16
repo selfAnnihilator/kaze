@@ -68,20 +68,28 @@ impl DownloadProvider for YtDlpProvider {
             return Ok(Vec::new());
         }
 
-        let yt_query = format!("ytsearch8:{}", clean_query);
+        // The first few hits for niche titles are often videos mentioning the song's words.
+        // Give the client-side song matcher a wider pool of actual track uploads.
+        let yt_query = format!("ytsearch30:{}", clean_query);
         info!(query = %yt_query, "Executing yt-dlp search");
 
-        let output = tokio::process::Command::new(&self.binary_path)
-            .args([
-                &yt_query,
-                "--dump-json",
-                "--flat-playlist",
-                "--no-warnings",
-                "--no-playlist",
-            ])
-            .output()
-            .await
-            .map_err(|e| AppError::Internal(format!("Failed to run yt-dlp search: {}", e)))?;
+        let mut command = tokio::process::Command::new(&self.binary_path);
+        command.args([
+            &yt_query,
+            "--dump-json",
+            "--flat-playlist",
+            "--no-warnings",
+            "--no-playlist",
+        ]);
+        command.kill_on_drop(true);
+        let output = match tokio::time::timeout(std::time::Duration::from_secs(20), command.output()).await {
+            Ok(output) => output
+                .map_err(|e| AppError::Internal(format!("Failed to run yt-dlp search: {}", e)))?,
+            Err(_) => {
+                warn!(query = %yt_query, "yt-dlp search timed out");
+                return Ok(Vec::new());
+            }
+        };
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -178,7 +186,9 @@ impl DownloadProvider for YtDlpProvider {
         destination_dir: &Path,
     ) -> AppResult<String> {
         let is_flac = result.id.starts_with("ytdlp_flac_") || result.format.to_lowercase() == "flac";
-        let video_id = if let Some(vid) = result.id.strip_prefix("ytdlp_flac_") {
+        let video_id = if let Some(vid) = result.id.strip_prefix("ytdlp_stream_mp3_") {
+            vid.to_string()
+        } else if let Some(vid) = result.id.strip_prefix("ytdlp_flac_") {
             vid.to_string()
         } else if let Some(vid) = result.id.strip_prefix("ytdlp_mp3_") {
             vid.to_string()
@@ -312,7 +322,7 @@ impl DownloadProvider for YtDlpProvider {
         Ok(())
     }
 
-    async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64)>> {
+    async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
         let clean = query.trim();
         if clean.is_empty() {
             return Ok(None);
@@ -327,6 +337,12 @@ impl DownloadProvider for YtDlpProvider {
                 "%(url)s",
                 "--print",
                 "%(duration)s",
+                "--print",
+                "%(id)s",
+                "--print",
+                "%(title)s",
+                "--print",
+                "%(uploader)s",
                 "-f",
                 "bestaudio[ext=m4a]/bestaudio/best",
                 "--no-warnings",
@@ -360,8 +376,33 @@ impl DownloadProvider for YtDlpProvider {
             240.0
         };
 
-        Ok(Some((stream_url, duration)))
+        let download_result = playback_download_result(&lines, duration);
+        Ok(Some((stream_url, duration, download_result)))
     }
+}
+
+fn playback_download_result(lines: &[&str], duration: f64) -> Option<DownloadSearchResult> {
+    let id = *lines.get(2)?;
+    if id.len() != 11 || !id.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_') {
+        return None;
+    }
+    let title = lines.get(3)?.trim();
+    let uploader = lines.get(4)?.trim();
+    if title.is_empty() || uploader.is_empty() || title == "NA" || uploader == "NA" {
+        return None;
+    }
+    Some(DownloadSearchResult {
+        id: format!("ytdlp_stream_mp3_{id}"),
+        provider: "yt-dlp".to_string(),
+        username: uploader.to_string(),
+        filename: sanitize_filename(&format!("{uploader} - {title}.mp3")),
+        file_size: (duration.clamp(0.0, 7200.0) * 40_000.0) as i64,
+        bitrate: None,
+        sample_rate: None,
+        format: "mp3".to_string(),
+        slots_free: true,
+        speed_bps: 0,
+    })
 }
 
 /// Helper parsing percentage float from yt-dlp stdout line: "[download]  42.4% of ..."
@@ -379,4 +420,20 @@ fn sanitize_filename(name: &str) -> String {
             _ => c,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod playback_source_tests {
+    use super::playback_download_result;
+
+    #[test]
+    fn resolved_video_keeps_its_real_title_and_stable_id() {
+        let lines = ["https://audio.example/stream", "180", "aB0_-123456", "Littleroot Town (Piano)", "Kato"];
+        let result = playback_download_result(&lines, 180.0).expect("video metadata");
+        assert_eq!(result.id, "ytdlp_stream_mp3_aB0_-123456");
+        assert_eq!(result.filename, "Kato - Littleroot Town (Piano).mp3");
+        assert!(playback_download_result(&lines[..2], 180.0).is_none());
+        let invalid = [lines[0], lines[1], "../bad-id", lines[3], lines[4]];
+        assert!(playback_download_result(&invalid, 180.0).is_none());
+    }
 }

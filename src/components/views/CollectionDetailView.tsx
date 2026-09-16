@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { Track, DiscoveryRecommendation, DownloadTask } from "../../types";
+import { filterPlaylistEntries } from "../../playlistSearch";
 
 export interface CollectionTrackItem {
   id: string;
@@ -132,16 +133,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   };
 
   const rawTracks = collection.tracks || [];
-  const tracks = useMemo(() => {
-    if (!searchQuery.trim()) return rawTracks;
-    const q = searchQuery.toLowerCase().trim();
-    return rawTracks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.artist.toLowerCase().includes(q) ||
-        (t.album && t.album.toLowerCase().includes(q))
-    );
-  }, [rawTracks, searchQuery]);
+  const visibleTrackEntries = useMemo(() => filterPlaylistEntries(rawTracks, searchQuery), [rawTracks, searchQuery]);
+  const tracks = visibleTrackEntries.map(({ track }) => track);
 
   const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
 
@@ -603,13 +596,14 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
       {/* 3. Track Table */}
       {isLoadingTracks ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-dim)" }}>
+        <div key="collection-search-loading" style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-dim)" }}>
           <RefreshCw size={36} className="animate-spin" color="var(--accent-light)" style={{ margin: "0 auto 12px" }} />
           <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-main)" }}>Loading collection songs...</p>
         </div>
       ) : tracks.length === 0 ? (
         rawTracks.length > 0 ? (
           <div
+            key="collection-search-empty"
             className="content-card"
             style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
           >
@@ -631,6 +625,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           </div>
         ) : (
           <div
+            key="collection-empty"
             className="content-card"
             style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
           >
@@ -642,6 +637,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
         )
       ) : (
         <div
+          key="collection-search-results"
           style={{
             backgroundColor: "var(--bg-card)",
             borderRadius: "12px",
@@ -709,7 +705,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
             return (
               <div
-                key={track.id || idx}
+                key={visibleTrackEntries[idx].rowKey}
                 onMouseEnter={() => setHoveredRowId(track.id)}
                 onMouseLeave={() => setHoveredRowId(null)}
                 onClick={() => onPlayTrack(track)}

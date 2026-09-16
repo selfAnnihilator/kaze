@@ -8,12 +8,14 @@ import {
   FileAudio,
 } from "lucide-react";
 import { DownloadSearchResult } from "../../types";
+import { filterAndRankDownloadResults, rankResultMatch } from "../../downloadMatch";
 
 export interface DownloadModalTrack {
   title: string;
   artist: string;
   album?: string;
   externalTrackId?: string;
+  playingSource?: DownloadSearchResult;
 }
 
 interface DownloadOptionsModalProps {
@@ -29,101 +31,6 @@ interface DownloadOptionsModalProps {
   onDirectAudioDownload?: (track: DownloadModalTrack) => Promise<void>;
 }
 
-export const rankResultMatch = (
-  result: DownloadSearchResult,
-  targetArtist: string,
-  targetTitle: string
-): number => {
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const cleanFilename = norm(result.filename);
-  const cleanArtist = norm(targetArtist);
-  const cleanTitle = norm(targetTitle);
-
-  const titleWords = cleanTitle.split(" ").filter((w) => w.length > 1);
-  const artistWords = cleanArtist.split(" ").filter((w) => w.length > 1);
-  const filenameWords = cleanFilename.split(" ").filter((w) => w.length > 1);
-
-  let score = 0;
-
-  const isLofi =
-    cleanTitle.includes("lofi") ||
-    cleanTitle.includes("lo fi") ||
-    cleanArtist.includes("lofi") ||
-    cleanArtist.includes("lo fi") ||
-    cleanFilename.includes("lofi") ||
-    cleanFilename.includes("lo fi") ||
-    cleanFilename.includes("chillhop");
-
-  // Full or word title match
-  if (cleanFilename.includes(cleanTitle)) {
-    score += 60;
-  } else if (titleWords.length > 0) {
-    const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
-    if (matches === titleWords.length) {
-      score += 50;
-    } else {
-      score += (matches / titleWords.length) * 30 - 25;
-    }
-  }
-
-  // Artist match
-  const artistMatches =
-    cleanFilename.includes(cleanArtist) ||
-    (result.username && norm(result.username).includes(cleanArtist));
-
-  if (artistMatches) {
-    score += 35;
-  } else if (isLofi) {
-    // For lofi songs: if artist doesn't match, accept lofi version of the same song
-    if (
-      cleanFilename.includes("lofi") ||
-      cleanFilename.includes("lo fi") ||
-      cleanFilename.includes("chill") ||
-      cleanFilename.includes("sleep")
-    ) {
-      score += 20;
-    }
-  } else {
-    // Regular song: if exact match is unavailable, do not pick closest match from wrong artist
-    score -= 45;
-  }
-
-  // Heavy penalty for extraneous noise words in filename (e.g. "pingu", "goes", "to", "theme park", "vlog")
-  const commonMusicNoise = new Set(["lofi", "remix", "ost", "edit", "audio", "flac", "mp3", "track", "official", "theme", "original", "cover"]);
-  const extraWords = filenameWords.filter(
-    (w) =>
-      !titleWords.includes(w) &&
-      !artistWords.includes(w) &&
-      !commonMusicNoise.has(w) &&
-      !/^\d+$/.test(w)
-  );
-  if (extraWords.length > 2) {
-    score -= (extraWords.length - 2) * 18;
-  }
-
-  // Prefer lossless or 320k high bitrate
-  if (result.format.toLowerCase() === "flac") {
-    score += 10;
-  } else if (result.bitrate && result.bitrate >= 320) {
-    score += 6;
-  }
-
-  // Prefer slot free
-  if (result.slots_free) {
-    score += 5;
-  }
-
-  return score;
-};
-
 export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   isOpen,
   track,
@@ -137,7 +44,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isStartingDownload, setIsStartingDownload] = useState(false);
-  const [providerFilter, setProviderFilter] = useState<"all" | "direct" | "soulseek">("all");
+  const [providerFilter, setProviderFilter] = useState<"all" | "direct" | "archive" | "audius" | "soulseek">("all");
 
   useEffect(() => {
     if (isOpen && track) {
@@ -154,12 +61,13 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
     setIsSearching(true);
     try {
       const res = await onSearchSoulseek(tr.artist, tr.title, tr.album);
-      const list = Array.isArray(res) ? [...res] : [];
-      list.sort((a, b) => rankResultMatch(b, tr.artist, tr.title) - rankResultMatch(a, tr.artist, tr.title));
-      setResults(list);
+      const ranked = filterAndRankDownloadResults(Array.isArray(res) ? res : [], tr.artist, tr.title);
+      setResults(tr.playingSource && !ranked.some((item) => item.id === tr.playingSource?.id)
+        ? [tr.playingSource, ...ranked]
+        : ranked);
     } catch (err) {
       console.error("Download search failed:", err);
-      setResults([]);
+      setResults(tr.playingSource ? [tr.playingSource] : []);
     } finally {
       setIsSearching(false);
       setHasSearched(true);
@@ -180,13 +88,26 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   const directResults = results.filter(
     (r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")
   );
+  const archiveResults = results.filter((r) => r.provider === "internet-archive");
+  const audiusResults = results.filter((r) => r.provider === "audius");
   const soulseekResults = results.filter(
-    (r) => r.provider !== "yt-dlp" && !r.id.startsWith("ytdlp_")
+    (r) => r.provider !== "yt-dlp" && r.provider !== "internet-archive" && r.provider !== "audius" && !r.id.startsWith("ytdlp_")
+  );
+  const automaticCandidate = directResults.find((result) =>
+    !result.id.startsWith("ytdlp_stream_mp3_") &&
+    rankResultMatch(result, track.artist, track.title) >= 40
+  ) || results.find((result) =>
+    !result.id.startsWith("ytdlp_stream_mp3_") &&
+    rankResultMatch(result, track.artist, track.title) >= 30
   );
 
   const displayedResults =
     providerFilter === "direct"
       ? directResults
+      : providerFilter === "archive"
+      ? archiveResults
+      : providerFilter === "audius"
+      ? audiusResults
       : providerFilter === "soulseek"
       ? soulseekResults
       : results;
@@ -204,22 +125,8 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   };
 
   const handleSelectDirectOption = async () => {
-    // Check if we have a confident direct stream result (score >= 40)
-    const directRes = results.filter(
-      (r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")
-    );
-    const goodDirect = directRes.find(
-      (r) => rankResultMatch(r, track.artist, track.title) >= 40
-    );
-
-    if (goodDirect) {
-      await handleSelectOption(goodDirect);
-      return;
-    }
-
-    // If direct match was poor or missing, check if we have an excellent match in results
-    if (results.length > 0 && rankResultMatch(results[0], track.artist, track.title) >= 30) {
-      await handleSelectOption(results[0]);
+    if (automaticCandidate) {
+      await handleSelectOption(automaticCandidate);
       return;
     }
 
@@ -353,7 +260,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 Searching Download Providers...
               </div>
               <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", maxWidth: "420px", margin: "0 auto" }}>
-                Querying Direct Audio streams and Soulseek P2P network for optimal audio quality and speeds
+                Checking direct streams, Internet Archive, and Soulseek for this track
               </p>
             </div>
           ) : results.length > 0 ? (
@@ -411,6 +318,44 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                     </button>
                   )}
 
+                  {archiveResults.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setProviderFilter("archive")}
+                      style={{
+                        background: providerFilter === "archive" ? "rgba(139, 92, 246, 0.2)" : "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        padding: "4px 9px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: providerFilter === "archive" ? "#c4b5fd" : "var(--text-muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Internet Archive ({archiveResults.length})
+                    </button>
+                  )}
+
+                  {audiusResults.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setProviderFilter("audius")}
+                      style={{
+                        background: providerFilter === "audius" ? "rgba(139, 92, 246, 0.2)" : "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        padding: "4px 9px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: providerFilter === "audius" ? "#c4b5fd" : "var(--text-muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Audius ({audiusResults.length})
+                    </button>
+                  )}
+
                   {soulseekResults.length > 0 && (
                     <button
                       type="button"
@@ -451,10 +396,18 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 </button>
               </div>
 
+              <p style={{ fontSize: "0.76rem", color: "var(--text-muted)", margin: 0 }}>
+                Possible sources are ranked by relevance. Check the title and uploader before downloading.
+              </p>
+
               {/* Items List */}
               {displayedResults.map((res) => {
                 const isSelected = selectedId === res.id && isStartingDownload;
                 const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
+                const isArchive = res.provider === "internet-archive";
+                const isAudius = res.provider === "audius";
+                const isPlayingSource = track.playingSource?.id === res.id;
+                const isStreamSource = res.id.startsWith("ytdlp_stream_mp3_");
 
                 return (
                   <div
@@ -486,6 +439,11 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                       >
                         {res.filename}
                       </div>
+                      {isStreamSource && (
+                        <div style={{ fontSize: "0.73rem", color: "var(--text-muted)", marginBottom: "6px" }}>
+                          {isPlayingSource ? "This source played online." : "This is the online stream source."} Check its title before downloading.
+                        </div>
+                      )}
 
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                         {/* Provider Source Tag */}
@@ -506,7 +464,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                             }}
                           >
                             <Zap size={10} />
-                            Direct Stream
+                            {isPlayingSource ? "Playing Source" : isStreamSource ? "Stream Source" : "Direct Stream"}
                           </span>
                         ) : (
                           <span
@@ -524,7 +482,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                               textTransform: "uppercase",
                             }}
                           >
-                            Soulseek P2P
+                            {isArchive ? "Internet Archive" : isAudius ? "Audius" : "Soulseek P2P"}
                           </span>
                         )}
 
@@ -565,7 +523,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                             fontWeight: 500,
                           }}
                         >
-                          {isDirect
+                          {isDirect || isArchive || isAudius
                             ? "Instant Start"
                             : res.slots_free
                             ? "Slot Free"
@@ -616,16 +574,16 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
             >
               <FileAudio size={32} color="var(--text-dim)" style={{ margin: "0 auto 10px" }} />
               <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "var(--text-main)", marginBottom: "4px" }}>
-                No search results found right now
+                No download sources found
               </div>
               <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", maxWidth: "380px", margin: "0 auto 16px" }}>
-                No matching tracks found across Direct Audio or Soulseek networks. You can try re-scanning or use Direct Audio Stream Download below.
+                The available providers returned no files. Try re-scanning or searching with a different title.
               </p>
             </div>
           ) : null}
 
           {/* Direct Stream Option Box */}
-          {onDirectAudioDownload && (
+          {onDirectAudioDownload && automaticCandidate && (
             <div
               style={{
                 backgroundColor: "rgba(139, 124, 246, 0.06)",
@@ -658,7 +616,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                     Direct Audio Stream Download
                   </div>
                   <div style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>
-                    High-quality web audio capture directly to library (instant start)
+                    Download a likely audio source directly to your library
                   </div>
                 </div>
               </div>

@@ -151,6 +151,7 @@ pub enum QueryResponse {
     FullTrackAudio {
         stream_url: String,
         duration_secs: f64,
+        download_result: Option<crate::downloads::types::DownloadSearchResult>,
     },
     CoverArt(Option<String>),
     TrackPlaylistMemberships(serde_json::Value),

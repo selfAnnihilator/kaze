@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Playlist, Track, SpotifyPlaylistImport, UserProfile } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
+import { matchesPlaylistSearch } from "../../playlistSearch";
 
 interface PlaylistsViewProps {
   viewMode?: "playlists" | "smart_mixes" | "all";
@@ -299,12 +300,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const displayedSpotifyTracks = useMemo(() => {
     if (!spotifyResult) return [];
     if (!spotifyFilterQuery.trim()) return spotifyResult.tracks;
-    const q = spotifyFilterQuery.toLowerCase().trim();
-    return spotifyResult.tracks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.artist.toLowerCase().includes(q)
-    );
+    return spotifyResult.tracks.filter((track) => matchesPlaylistSearch(track, spotifyFilterQuery));
   }, [spotifyResult, spotifyFilterQuery]);
 
   const handleSearchMissingInSoulseek = async (trackTitle: string, artistName: string) => {

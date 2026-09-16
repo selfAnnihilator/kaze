@@ -33,7 +33,7 @@ pub async fn init_db_pool<P: AsRef<Path>>(db_path: P) -> AppResult<SqlitePool> {
         .await
         .map_err(|e| AppError::Database(format!("Failed to connect to SQLite: {}", e)))?;
 
-    info!("Running pending database migrations");
+    info!("Running pending database migrations, including playlist uniqueness");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await

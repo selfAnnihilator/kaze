@@ -767,6 +767,7 @@ interface DiscoveryViewProps {
   onOpenCollection?: (collection: CollectionData) => void;
   onPlayCollection?: (collection: CollectionData) => Promise<void>;
   downloads?: DownloadTask[];
+  downloadTargets?: Record<string, { title: string; artist: string }>;
   searchQuery?: string;
   setSearchQuery?: (q: string) => void;
   searchResults?: DiscoveryRecommendation[] | null;
@@ -799,6 +800,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onOpenCollection,
   onPlayCollection,
   downloads = [],
+  downloadTargets,
   searchQuery: propSearchQuery,
   setSearchQuery: propSetSearchQuery,
   searchResults: propSearchResults,
@@ -1313,6 +1315,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           onAddToWishlist={onAddToWishlist}
           onSearchDirect={onSearchDirect}
           downloads={downloads}
+          downloadTargets={downloadTargets}
           trackPlaylistMap={trackPlaylistMap}
           playlists={playlists}
           onSelectArtist={(artist) => {

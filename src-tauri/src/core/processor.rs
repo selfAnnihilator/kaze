@@ -1017,8 +1017,7 @@ impl CoreProcessor {
 
             // --- Soulseek & Downloads ---
             Command::SearchSoulseek { artist, title, album: _ } => {
-                let query = format!("{} {}", artist, title);
-                let results = match self.download_service.search(&query).await {
+                let results = match self.download_service.search_track(&artist, &title).await {
                     Ok(res) => res,
                     Err(e) => {
                         tracing::warn!(error = %e, "Slskd daemon not responding, returning empty search results");
@@ -1984,10 +1983,11 @@ impl CoreProcessor {
                     .download_service
                     .resolve_full_track_audio(&artist, &title)
                     .await?;
-                if let Some((stream_url, duration_secs)) = res {
+                if let Some((stream_url, duration_secs, download_result)) = res {
                     Ok(QueryResponse::FullTrackAudio {
                         stream_url,
                         duration_secs,
+                        download_result,
                     })
                 } else {
                     Err(crate::core::error::AppError::NotFound(

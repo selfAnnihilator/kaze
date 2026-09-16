@@ -10,7 +10,9 @@ A **free, open-source desktop music player** for people who own their music. No 
 
 Kaze scans the music folders you point it at and gives you a clean, fast interface to browse, search, and play everything in your library. The longer you use it, the better it understands your taste — surfacing forgotten albums, building smart mixes, and recommending things you haven't played in a while.
 
-Everything runs locally on your machine. No internet required for playback or search.
+Your local library works without an internet connection. Online streaming and download-source search require access to external providers.
+
+Kaze is mainly for playing music you already have locally, with online streaming as an extra option. Download search shows possible sources for you to review, but a result may be a different recording, and downloads are not guaranteed for niche songs. Importing your own audio files is the most reliable way to add those songs.
 
 ---
 
@@ -39,7 +41,8 @@ Everything runs locally on your machine. No internet required for playback or se
 
 **Wishlist & Downloads** *(optional)*
 - Mark tracks you want to find
-- Connect a local [Slskd](https://github.com/slskd/slskd) daemon to search Soulseek and download directly into your library
+- Search available download sources, including direct streams, Internet Archive, and Audius
+- Optionally connect a local [Slskd](https://github.com/slskd/slskd) daemon to search Soulseek and download into your library
 
 ---
 
