@@ -99,7 +99,6 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
   const duration = isOnline
     ? onlineTrack.duration
     : playbackState.duration_secs || currentTrack?.duration_secs || 0;
-  const position = isOnline ? onlineTrack.currentTime : playbackState.position_secs || 0;
 
   return (
     <div
@@ -222,7 +221,6 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
               artist={activeArtist}
               title={activeTitle}
               durationSecs={duration}
-              currentTime={position}
               onSeek={onSeek}
               isFullScreen={true}
             />
@@ -323,8 +321,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
       <div
         style={{
           borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          backgroundColor: "rgba(15, 12, 10, 0.95)",
-          backdropFilter: "blur(20px)",
+          backgroundColor: "rgba(15, 12, 10, 0.98)",
         }}
       >
         <NowPlayingBar

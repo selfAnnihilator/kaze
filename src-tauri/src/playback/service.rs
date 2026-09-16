@@ -87,9 +87,11 @@ impl PlaybackService {
 
             if !is_paused && !is_finished && duration > 0.0 {
                 was_playing = true;
-                let q_guard = self.queue.read().await;
-                if let Some(item) = q_guard.current() {
-                    current_track_id_cache = Some(item.track_id.clone());
+                if current_track_id_cache.is_none() {
+                    let q_guard = self.queue.read().await;
+                    if let Some(item) = q_guard.current() {
+                        current_track_id_cache = Some(item.track_id.clone());
+                    }
                 }
 
                 let _ = self.event_bus.publish(Event::PlaybackPositionChanged {
@@ -99,10 +101,11 @@ impl PlaybackService {
             } else if was_playing && is_finished && duration > 0.0 {
                 // Track finished!
                 was_playing = false;
-                if let Some(ref track_id) = current_track_id_cache {
+                let track_id_finished = current_track_id_cache.take();
+                if let Some(track_id) = track_id_finished {
                     info!(%track_id, "Track finished playing to end of stream");
                     let _ = self.event_bus.publish(Event::TrackFinished {
-                        track_id: track_id.clone(),
+                        track_id,
                         seconds_listened: duration,
                         completed: true,
                     });

@@ -20,6 +20,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { OnlinePlayingTrack, PlaybackState, Track } from "../types";
+import { usePlaybackProgress } from "../services/playbackProgress";
 
 interface NowPlayingBarProps {
   playbackState: PlaybackState;
@@ -62,7 +63,54 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 };
 
-export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
+const NowPlayingProgressBar: React.FC<{
+  duration: number;
+  onSeek: (seconds: number) => void;
+}> = React.memo(({ duration: propDuration, onSeek }) => {
+  const { position, duration: progressDuration } = usePlaybackProgress(propDuration);
+  const [seekingValue, setSeekingValue] = useState<number | null>(null);
+
+  const duration = propDuration > 0 ? propDuration : progressDuration;
+  const displayPos = seekingValue !== null ? seekingValue : position;
+  const seekProgress = duration > 0 ? Math.min(100, Math.max(0, (displayPos / duration) * 100)) : 0;
+
+  return (
+    <div className="progress-container">
+      <span className="time-label">{formatTime(displayPos)}</span>
+      <input
+        type="range"
+        className="scrubber"
+        min={0}
+        max={duration > 0 ? duration : 100}
+        step={0.5}
+        value={displayPos}
+        style={{ "--range-progress": `${seekProgress}%` } as React.CSSProperties}
+        onMouseDown={() => setSeekingValue(position)}
+        onTouchStart={() => setSeekingValue(position)}
+        onChange={(e) => setSeekingValue(parseFloat(e.target.value))}
+        onMouseUp={(e) => {
+          const val = parseFloat((e.target as HTMLInputElement).value);
+          onSeek(val);
+          setSeekingValue(null);
+        }}
+        onTouchEnd={() => {
+          if (seekingValue !== null) {
+            onSeek(seekingValue);
+            setSeekingValue(null);
+          }
+        }}
+        onKeyUp={(e) => {
+          const val = parseFloat((e.target as HTMLInputElement).value);
+          onSeek(val);
+          setSeekingValue(null);
+        }}
+      />
+      <span className="time-label">{formatTime(duration)}</span>
+    </div>
+  );
+});
+
+export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
   playbackState,
   currentTrack,
   onlineTrack,
@@ -89,8 +137,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
-  const [seekingValue, setSeekingValue] = useState<number | null>(null);
-
   const isOnline = !!onlineTrack && !playbackState.is_playing;
   const activeTitle = isOnline ? onlineTrack.title : currentTrack?.title || "No Track Selected";
   const activeArtist = isOnline
@@ -101,9 +147,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   const duration = isOnline
     ? onlineTrack.duration
     : playbackState.duration_secs || currentTrack?.duration_secs || 0;
-  const position = isOnline ? onlineTrack.currentTime : playbackState.position_secs || 0;
-  const displayPos = seekingValue !== null ? seekingValue : position;
-  const seekProgress = duration > 0 ? Math.min(100, Math.max(0, (displayPos / duration) * 100)) : 0;
   const volumeProgress = playbackState.is_muted
     ? 0
     : Math.min(100, Math.max(0, playbackState.volume * 100));
@@ -318,38 +361,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         </div>
 
 
-        <div className="progress-container">
-          <span className="time-label">{formatTime(displayPos)}</span>
-          <input
-            type="range"
-            className="scrubber"
-            min={0}
-            max={duration > 0 ? duration : 100}
-            step={0.5}
-            value={displayPos}
-            style={{ "--range-progress": `${seekProgress}%` } as React.CSSProperties}
-            onMouseDown={() => setSeekingValue(position)}
-            onTouchStart={() => setSeekingValue(position)}
-            onChange={(e) => setSeekingValue(parseFloat(e.target.value))}
-            onMouseUp={(e) => {
-              const val = parseFloat((e.target as HTMLInputElement).value);
-              onSeek(val);
-              setSeekingValue(null);
-            }}
-            onTouchEnd={() => {
-              if (seekingValue !== null) {
-                onSeek(seekingValue);
-                setSeekingValue(null);
-              }
-            }}
-            onKeyUp={(e) => {
-              const val = parseFloat((e.target as HTMLInputElement).value);
-              onSeek(val);
-              setSeekingValue(null);
-            }}
-          />
-          <span className="time-label">{formatTime(duration)}</span>
-        </div>
+        <NowPlayingProgressBar duration={duration} onSeek={onSeek} />
       </div>
 
       {/* Right: Lyrics, Volume, and Full Screen Controls */}
@@ -398,4 +410,4 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
       </div>
     </footer>
   );
-};
+});

@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Mic2, RefreshCw, Radio } from "lucide-react";
 import { executeQuery } from "../../services/api";
 import { LyricLine, TrackLyricsData } from "../../types";
+import { usePlaybackProgress } from "../../services/playbackProgress";
 
 interface LyricsViewProps {
   trackId?: string;
   artist: string;
   title: string;
   durationSecs?: number;
-  currentTime: number;
+  currentTime?: number;
   onSeek: (timeSecs: number) => void;
   isFullScreen?: boolean;
 }
@@ -49,6 +50,8 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
   onSeek,
   isFullScreen = false,
 }) => {
+  const liveProgress = usePlaybackProgress(durationSecs);
+  const effectiveCurrentTime = currentTime !== undefined ? currentTime : liveProgress.position;
   const [lyricsData, setLyricsData] = useState<TrackLyricsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +115,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
   // Determine active lyric line index (advancing by +0.18s to eliminate the 0.1-0.2s audio delay)
   const activeLineIndex = useMemo(() => {
     if (parsedLines.length === 0) return -1;
-    const effectiveTime = currentTime + 0.18;
+    const effectiveTime = effectiveCurrentTime + 0.18;
     let activeIdx = -1;
     for (let i = 0; i < parsedLines.length; i++) {
       if (effectiveTime >= parsedLines[i].timeSecs) {
@@ -122,7 +125,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
       }
     }
     return activeIdx;
-  }, [parsedLines, currentTime]);
+  }, [parsedLines, effectiveCurrentTime]);
 
   // Auto-scroll active line to vertical center of container
   useEffect(() => {

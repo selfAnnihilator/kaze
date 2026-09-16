@@ -197,8 +197,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               position: "absolute",
               top: "7px",
               right: "7px",
-              backgroundColor: "rgba(0, 0, 0, 0.8)",
-              backdropFilter: "blur(4px)",
+              backgroundColor: "rgba(0, 0, 0, 0.88)",
               borderRadius: "50%",
               padding: "3px",
               display: "flex",
@@ -220,8 +219,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               position: "absolute",
               top: "7px",
               left: "7px",
-              backgroundColor: "rgba(139, 124, 246, 0.92)",
-              backdropFilter: "blur(4px)",
+              backgroundColor: "rgba(139, 124, 246, 0.95)",
               borderRadius: "20px",
               padding: "2px 8px",
               display: "flex",
@@ -659,8 +657,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
       >
         <div
           style={{
-            backgroundColor: "rgba(0,0,0,0.38)",
-            backdropFilter: "blur(4px)",
+            backgroundColor: "rgba(0,0,0,0.6)",
             padding: "3px 8px",
             borderRadius: "6px",
             fontSize: "0.68rem",

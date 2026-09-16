@@ -136,6 +136,19 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   const visibleTrackEntries = useMemo(() => filterPlaylistEntries(rawTracks, searchQuery), [rawTracks, searchQuery]);
   const tracks = visibleTrackEntries.map(({ track }) => track);
 
+  const activeDownloadMap = useMemo(() => {
+    const map = new Map<string, DownloadTask>();
+    if (!downloads || downloads.length === 0) return map;
+    for (const d of downloads) {
+      if (d.status === "FAILED" || d.status === "CANCELLED") continue;
+      const t = d.title.toLowerCase().trim();
+      const a = (d.artist || "").toLowerCase().trim();
+      map.set(`${a}:::${t}`, d);
+      map.set(`t:::${t}`, d);
+    }
+    return map;
+  }, [downloads]);
+
   const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
 
   const formatTotalDuration = (totalSecs: number) => {
@@ -201,8 +214,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             display: "inline-flex",
             alignItems: "center",
             gap: "6px",
-            backgroundColor: "rgba(0,0,0,0.45)",
-            backdropFilter: "blur(6px)",
+            backgroundColor: "rgba(0,0,0,0.65)",
             border: "1px solid rgba(255,255,255,0.15)",
             color: "#e8d8c9",
             borderRadius: "20px",
@@ -676,18 +688,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               (currentPlayingTrackId === track.id ||
                 currentPlayingTrackId === track.matched_local_track_id);
 
-            const activeDownload = downloads?.find((d) => {
-              if (d.status === "FAILED" || d.status === "CANCELLED") return false;
-              const titleMatch =
-                d.title.toLowerCase().trim() === track.title.toLowerCase().trim() ||
-                d.filename.toLowerCase().includes(track.title.toLowerCase().trim());
-              const artistMatch =
-                !d.artist ||
-                d.artist.toLowerCase().trim() === track.artist.toLowerCase().trim() ||
-                track.artist.toLowerCase().includes(d.artist.toLowerCase().trim()) ||
-                d.filename.toLowerCase().includes(track.artist.toLowerCase().trim());
-              return titleMatch && artistMatch;
-            });
+            const activeDownload =
+              activeDownloadMap.get(`${(track.artist || "").toLowerCase().trim()}:::${track.title.toLowerCase().trim()}`) ||
+              activeDownloadMap.get(`t:::${track.title.toLowerCase().trim()}`);
 
             const isDownloaded = track.is_downloaded || activeDownload?.status === "COMPLETED";
             const isDownloading =

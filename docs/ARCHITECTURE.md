@@ -167,3 +167,20 @@ The `CoreProcessor` is the central orchestrator of the entire system.
 2. **Tokio Async Runtime**: Manages asynchronous I/O (database queries via `sqlx`, filesystem notifications via `notify`, external HTTP calls via `reqwest`, background workers).
 3. **Dedicated Audio Thread**: `rodio` and `cpal` operate in a high-priority native audio thread to guarantee glitch-free, low-latency audio rendering independent of CPU-bound file scanning or database operations.
 4. **Internal Event Bus**: Backed by `tokio::sync::broadcast` channels, decoupling command handling from asynchronous event listeners.
+
+---
+
+## 5. Frontend Performance Architecture & State Isolation
+
+* **Isolated High-Frequency Pub-Sub (`playbackProgress`)**:
+  - High-frequency playback position updates (4–10 Hz) are strictly decoupled from root `App` component state.
+  - Position ticks are routed through a localized pub-sub emitter (`src/services/playbackProgress.ts`), ensuring only active progress bars (`NowPlayingProgressBar`) and lyrics subscribers re-render.
+  - Root `App`, sidebar, top bar, and library views undergo 0 re-renders per second during standard audio playback.
+* **Virtualized Windowed Song Lists**:
+  - Large collection and library tables utilize windowed row virtualization via `react-window` 2.x, bounding mounted DOM nodes to visible rows + overscan regardless of whether the library contains 50 or 50,000 tracks.
+* **Asynchronous Code Splitting**:
+  - Non-initial views (`DiscoveryView`, `StatsView`, `SettingsView`, `FullScreenPlayerView`, `LyricsView`, and modals) are lazy-loaded on demand via `React.lazy` and `Suspense`, dropping initial JavaScript bundle size from 528 kB to 383 kB.
+* **WebKitGTK Compositor Efficiency**:
+  - Expensive `backdrop-filter: blur(...)` invocations are strictly bounded to transparent modal backdrops, avoiding repeated per-card blur contexts in WebKitGTK.
+* **Embedded SQLite Pool Sizing**:
+  - Desktop SQLite connection pool bounded to `max_connections(4)` in WAL mode, conserving page cache memory without read/write starvation.

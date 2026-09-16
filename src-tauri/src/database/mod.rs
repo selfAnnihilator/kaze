@@ -28,7 +28,7 @@ pub async fn init_db_pool<P: AsRef<Path>>(db_path: P) -> AppResult<SqlitePool> {
         .busy_timeout(std::time::Duration::from_secs(5));
 
     let pool = SqlitePoolOptions::new()
-        .max_connections(10)
+        .max_connections(4)
         .connect_with(options)
         .await
         .map_err(|e| AppError::Database(format!("Failed to connect to SQLite: {}", e)))?;

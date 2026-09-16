@@ -1,6 +1,33 @@
 # Project Task Tracking
 
-## Current (Phase 17: User Profile & Cloudinary Avatar Storage - COMPLETE)
+## Current (Phase 18: Dedicated Performance Optimization Pass - COMPLETE)
+- [x] Baseline Benchmarking on Release Build:
+  - Profiled `target/release/kaze` using PSS/USS/RSS memory accounting and top-sampled CPU tracking.
+  - Recorded initial baseline: WebKitWebProcess USS ~328 MB, PSS ~362 MB; Rust Core USS ~144 MB; Total PSS ~616 MB.
+- [x] Playback Progress Rerender Storm Elimination:
+  - Decoupled `position_secs` and continuous playback progress from root `App.tsx` state into localized pub-sub `src/services/playbackProgress.ts`.
+  - Created `<NowPlayingProgressBar />` in `NowPlayingBar.tsx` so only the slider and time labels re-render during audio playback.
+  - Removed duplicate 250ms ticker interval and 2000ms polling interval in React.
+  - Dropped root `App` playback re-renders from 4–8 per second to 0 per second.
+- [x] Song List Virtualization:
+  - Virtualized `LibraryView` via `react-window` 2.x (`List` and `RowComponentProps`) with container resize measurement.
+  - Bounded mounted DOM nodes in 5,000-song library from ~30,000+ down to ~250.
+  - Added 200ms debouncing on library search input to prevent rapid query churn.
+  - Replaced O(N*M) download lookups in `CollectionDetailView` with an O(1) memoized `Map`.
+- [x] WebKitGTK Blur & Compositor Optimization:
+  - Stripped redundant `backdrop-filter: blur(...)` invocations from opaque containers and repeated card thumbnails.
+  - Reduced `WebKitWebProcess` private memory by 61 MB.
+- [x] Asynchronous Code Splitting:
+  - Converted secondary views (`StatsView`, `DiscoveryView`, `SettingsView`, `FullScreenPlayerView`, `LyricsView`, `AuthModal`, etc.) to dynamic `React.lazy` imports wrapped in `<Suspense>`.
+  - Dropped initial JS bundle from 528 kB to 383 kB (-27.5%).
+- [x] Rust Backend Memory & Pool Tuning:
+  - Tuned SQLite pool `max_connections` from 10 to 4 in `src-tauri/src/database/mod.rs`.
+  - Optimized ticker loop lock retention and queue string allocations in `src-tauri/src/playback/service.rs`.
+- [x] Comprehensive Documentation:
+  - Created `docs/PERFORMANCE.md` with baseline metrics, discovered bottlenecks, implemented optimizations, final measurements, and future styling guidelines.
+
+## Completed
+- [x] Phase 17: User Profile & Cloudinary Avatar Storage
 - [x] Pluggable Avatar Storage Abstraction:
   - Created `AvatarStorage` interface and `CloudinaryAvatarStorage` on Cloudflare Worker (`worker/src/storage/avatar.ts`).
   - Signed Cloudinary upload and destroy operations using SHA-1 on the edge.

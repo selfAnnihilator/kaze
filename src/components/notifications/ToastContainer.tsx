@@ -35,8 +35,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     <div
       style={{
         pointerEvents: "auto",
-        backgroundColor: "rgba(22, 24, 34, 0.95)",
-        backdropFilter: "blur(12px)",
+        backgroundColor: "rgba(22, 24, 34, 0.98)",
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${accentColor}`,
         borderRadius: "10px",

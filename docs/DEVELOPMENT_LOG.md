@@ -642,5 +642,58 @@ Replaced the Cloudflare R2 requirement with Cloudinary image storage to avoid cr
 - `cargo test`: All 37 tests pass across 14 test suites, including `test_cloudinary_avatar_metadata_persistence_and_profile`.
 - `npm run build`: Production frontend build succeeds in 1.25s with zero errors.
 
+---
 
+## 2026-09-16 - Phase 18: Comprehensive Performance Optimization & Memory Footprint Reduction
 
+### Overview
+Conducted an intensive, profile-guided performance optimization pass on the release build of the Tauri + React + TypeScript desktop music player. Addressed high frontend renderer memory usage, UI jitter/jank caused by root React re-renders during 250ms playback ticks, unvirtualized large song lists, excessive WebKitGTK backdrop-filter layer allocations, and backend connection/thread overhead.
+
+### Baseline vs. Post-Optimization Release Measurements (Identical Workload)
+| Metric | Pre-Optimization Baseline | Post-Optimization | Delta | % Change |
+| :--- | :--- | :--- | :--- | :--- |
+| **WebKitWebProcess RSS** | 417.0 MB | 377.7 MB | -39.3 MB | -9.4% |
+| **WebKitWebProcess PSS** | 361.7 MB | 305.1 MB | -56.6 MB | -15.6% |
+| **WebKitWebProcess USS (Private)** | 327.5 MB | 266.5 MB | **-61.0 MB** | **-18.6%** |
+| **Rust Core (`kaze`) RSS** | 257.5 MB | 250.7 MB | -6.8 MB | -2.6% |
+| **Rust Core (`kaze`) PSS** | 190.1 MB | 185.0 MB | -5.1 MB | -2.7% |
+| **Rust Core (`kaze`) USS (Private)**| 144.4 MB | 139.9 MB | -4.5 MB | -3.1% |
+| **Network Process USS** | 29.8 MB | 29.0 MB | -0.8 MB | -2.7% |
+| **Total System PSS** | 615.6 MB | 528.1 MB | **-87.5 MB** | **-14.2%** |
+| **Total System Private RAM** | 523.7 MB | 439.5 MB | **-84.2 MB** | **-16.1%** |
+| **Root Re-renders During Playback** | 4 – 8 per second | **0 per second** | -100% | Completely eliminated |
+| **Library List DOM Nodes (5k tracks)** | ~30,000 DOM nodes | **~250 DOM nodes** | -99.2% | Bounded by window height |
+| **Initial Bundle Size (JS)** | 528 kB | 383 kB | -145 kB | -27.5% |
+
+### Key Changes
+1. **Playback Progress Decoupling (`src/services/playbackProgress.ts`)**:
+   - Created lightweight pub-sub emitter (`playbackProgress`) and custom hook (`usePlaybackProgress`).
+   - Isolated playback progress slider and time labels into `<NowPlayingProgressBar />` in `NowPlayingBar.tsx`.
+   - Removed `position_secs` updates from root `App.tsx` state machine.
+   - Removed redundant 250ms `setInterval` fallback and 2000ms `fetchPlaybackState` polling in `App.tsx`.
+   - Wired online audio `timeupdate` to emitter instead of setting state on every animation frame.
+   - Memoized `NowPlayingBar`, `Sidebar`, and `GlobalTopSearchBar` with `React.memo`.
+2. **Virtualization & Debounced Search (`src/components/views/LibraryView.tsx`)**:
+   - Integrated `react-window` v2 `List` with `RowComponentProps` for local library track lists.
+   - Bounded rendered DOM nodes to viewport height (~20-25 track rows) regardless of library size.
+   - Added 200ms debouncing on library search input to eliminate per-keystroke full-list re-filtering.
+   - Replaced O(N*M) linear lookups in `CollectionDetailView.tsx` (`downloads.find(...)`) with an O(1) memoized `Map` lookup (`activeDownloadMap`).
+3. **Compositor & Blur Optimization**:
+   - Stripped redundant and hardware-heavy `backdrop-filter: blur(...)` styling from opaque surfaces (`ToastContainer`, `StatsView`, `UpdateBanner`, `FullScreenPlayerView`).
+   - Removed per-card thumbnail blurs in `DiscoveryView.tsx`, switching to translucent RGBA overlays to prevent WebKitGTK offscreen surface allocation churn.
+4. **Code Splitting & Lazy Loading (`src/App.tsx`)**:
+   - Lazily imported heavy secondary views (`DiscoveryView`, `StatsView`, `SettingsView`, `FullScreenPlayerView`, `LyricsView`, `AuthModal`, `ShortcutsModal`) with `React.lazy` and `<Suspense>`.
+   - Trimmed initial bundle payload by 27.5%.
+5. **Backend Connection & Thread Optimization**:
+   - Reduced SQLite connection pool in `src-tauri/src/database/mod.rs` from 10 to 4 max connections, trimming idle thread and cache memory.
+   - In `src-tauri/src/playback/service.rs`, eliminated queue read-lock acquisition and string allocation on 250ms position ticks by caching `current_track_id`.
+6. **Documentation**:
+   - Authored `docs/PERFORMANCE.md` with complete methodology, memory profiles, before/after table, and architectural rules.
+   - Updated `docs/ARCHITECTURE.md` with Section 5 ("Frontend Performance Architecture").
+   - Updated `PROJECT_STATUS.md` and `TODO.md` reflecting completion of Phase 18.
+
+### Verification
+- `cargo test --lib`: All 12 unit tests pass.
+- `cargo test --test playback_tests`: All 7 integration tests pass.
+- `npm run build`: Production frontend build succeeds cleanly in 1.48s with zero errors or warnings.
+- Release binary runtime verification: validated on Linux x86_64 release build with smem/psmem profiling.

@@ -199,7 +199,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
           flexWrap: "wrap",
           gap: "20px",
           boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.5)",
-          backdropFilter: "blur(12px)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>

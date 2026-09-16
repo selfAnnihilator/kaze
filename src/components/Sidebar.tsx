@@ -31,7 +31,7 @@ interface SidebarProps {
   activePlaylistId?: string | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar: React.FC<SidebarProps> = React.memo(({
   currentView,
   onSelectView,
   unreadNotificationsCount = 0,
@@ -196,4 +196,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </aside>
   );
-};
+});

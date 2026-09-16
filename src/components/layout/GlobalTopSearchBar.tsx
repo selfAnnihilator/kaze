@@ -10,7 +10,7 @@ interface GlobalTopSearchBarProps {
   isRefreshing?: boolean;
 }
 
-export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
+export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(({
   searchQuery,
   setSearchQuery,
   onSearch,
@@ -113,4 +113,4 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = ({
 
     </div>
   );
-};
+});

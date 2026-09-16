@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from "react";
 import {
   Track,
   Album,
@@ -16,39 +16,38 @@ import {
   CloudSyncStatus,
 } from "./types";
 import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
+import { playbackProgress } from "./services/playbackProgress";
 import { Sidebar, ViewType } from "./components/Sidebar";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { LibraryView } from "./components/views/LibraryView";
 import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
-import { DiscoveryView } from "./components/views/DiscoveryView";
-import { NotificationsView } from "./components/views/NotificationsView";
-import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
-import {
-  DownloadOptionsModal,
-  DownloadModalTrack,
-} from "./components/modals/DownloadOptionsModal";
 import { filterAndRankDownloadResults, rankResultMatch } from "./downloadMatch";
 import { attachLocalSearchMatches } from "./localTrackMatch";
-import {
-  AddToPlaylistModal,
-  AddToPlaylistModalTrack,
-} from "./components/modals/AddToPlaylistModal";
+import { DownloadModalTrack } from "./components/modals/DownloadOptionsModal";
+import { AddToPlaylistModalTrack } from "./components/modals/AddToPlaylistModal";
 import {
   CollectionDetailView,
   CollectionData,
   CollectionTrackItem,
 } from "./components/views/CollectionDetailView";
-import { LyricsView } from "./components/views/LyricsView";
-import { FullScreenPlayerView } from "./components/views/FullScreenPlayerView";
-import { StatsView } from "./components/views/StatsView";
-import { AuthModal } from "./components/modals/AuthModal";
 import { StatsOverview, UserProfile } from "./types";
 import { X, Sparkles } from "lucide-react";
+
+// Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
+const DiscoveryView = lazy(() => import("./components/views/DiscoveryView").then(m => ({ default: m.DiscoveryView })));
+const NotificationsView = lazy(() => import("./components/views/NotificationsView").then(m => ({ default: m.NotificationsView })));
+const SettingsView = lazy(() => import("./components/views/SettingsView").then(m => ({ default: m.SettingsView })));
+const StatsView = lazy(() => import("./components/views/StatsView").then(m => ({ default: m.StatsView })));
+const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then(m => ({ default: m.FullScreenPlayerView })));
+const LyricsView = lazy(() => import("./components/views/LyricsView").then(m => ({ default: m.LyricsView })));
+const AuthModal = lazy(() => import("./components/modals/AuthModal").then(m => ({ default: m.AuthModal })));
+const DownloadOptionsModal = lazy(() => import("./components/modals/DownloadOptionsModal").then(m => ({ default: m.DownloadOptionsModal })));
+const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistModal").then(m => ({ default: m.AddToPlaylistModal })));
 
 interface PromptModalProps {
   title: string;
@@ -754,20 +753,18 @@ export const App: React.FC = () => {
           break;
         }
 
-        case "PlaybackSeeked":
-          setPlaybackState((prev) => ({
-            ...prev,
-            position_secs: event.payload?.position_secs ?? prev.position_secs,
-          }));
+        case "PlaybackSeeked": {
+          const pos = event.payload?.position_secs ?? 0;
+          playbackProgress.update(pos, playbackProgress.getDuration());
           break;
+        }
 
-        case "PlaybackPositionChanged":
-          setPlaybackState((prev) => ({
-            ...prev,
-            position_secs: event.payload?.position_secs ?? prev.position_secs,
-            duration_secs: event.payload?.duration_secs ?? prev.duration_secs,
-          }));
+        case "PlaybackPositionChanged": {
+          const pos = event.payload?.position_secs ?? 0;
+          const dur = event.payload?.duration_secs ?? 0;
+          playbackProgress.update(pos, dur);
           break;
+        }
 
         case "PlaybackVolumeChanged":
         case "VolumeChanged":
@@ -935,36 +932,6 @@ export const App: React.FC = () => {
     };
   }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification, fetchPlaylists, fetchTrackPlaylistMemberships, fetchCloudSyncStatus]);
 
-  // Smooth local playback progression ticker while playing
-  useEffect(() => {
-    if (!playbackState.is_playing) return;
-
-    const interval = setInterval(() => {
-      setPlaybackState((prev) => {
-        if (!prev.is_playing) return prev;
-        const maxDur = prev.duration_secs || prev.current_track?.duration_secs || 0;
-        const nextPos = prev.position_secs + 0.25;
-        if (maxDur > 0 && nextPos >= maxDur) {
-          fetchPlaybackState();
-          return { ...prev, position_secs: maxDur };
-        }
-        return { ...prev, position_secs: nextPos };
-      });
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [playbackState.is_playing, fetchPlaybackState]);
-
-  // Periodic state reconciliation with backend while playing
-  useEffect(() => {
-    if (!playbackState.is_playing) return;
-
-    const interval = setInterval(() => {
-      fetchPlaybackState();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [playbackState.is_playing, fetchPlaybackState]);
 
   // --- Actions & Commands ---
 
@@ -1207,11 +1174,7 @@ export const App: React.FC = () => {
           audio.duration && !isNaN(audio.duration) && audio.duration > 0
             ? audio.duration
             : duration;
-        setOnlineTrack((prev) =>
-          prev && prev.id === rec.external_track_id
-            ? { ...prev, currentTime: audio.currentTime, duration: dur, isLoading: false }
-            : prev
-        );
+        playbackProgress.update(audio.currentTime, dur);
       };
 
       audio.onplay = () => {
@@ -1276,11 +1239,7 @@ export const App: React.FC = () => {
           onlineAudioRef.current = fallback;
           fallback.ontimeupdate = () => {
             if (activeOnlinePlayIdRef.current !== playId) return;
-            setOnlineTrack((prev) =>
-              prev && prev.id === rec.external_track_id
-                ? { ...prev, currentTime: fallback.currentTime, duration: 30, isLoading: false }
-                : prev
-            );
+            playbackProgress.update(fallback.currentTime, 30);
           };
           fallback.onplay = () => {
             if (activeOnlinePlayIdRef.current !== playId) return;
@@ -1376,17 +1335,17 @@ export const App: React.FC = () => {
   handleNextTrackRef.current = handleNextTrack;
 
   const handleSeek = async (position_secs: number) => {
+    playbackProgress.update(position_secs, playbackProgress.getDuration());
     await dispatchCommand({
       command: "Seek",
       payload: { position_secs },
     });
-    setPlaybackState((prev) => ({ ...prev, position_secs }));
   };
 
   const handleUnifiedSeek = async (position_secs: number) => {
     if (onlineTrack && onlineAudioRef.current) {
       onlineAudioRef.current.currentTime = position_secs;
-      setOnlineTrack((prev) => (prev ? { ...prev, currentTime: position_secs } : null));
+      playbackProgress.update(position_secs, onlineAudioRef.current.duration || 0);
       return;
     }
     handleSeek(position_secs);
@@ -2716,9 +2675,6 @@ export const App: React.FC = () => {
   const activePlayingDuration = isPlayingOnline
     ? onlineTrack.duration
     : playbackState.duration_secs || playbackState.current_track?.duration_secs || 0;
-  const activePlayingCurrentTime = isPlayingOnline
-    ? onlineTrack.currentTime
-    : playbackState.position_secs || 0;
   const activePlayingArtwork = useMemo(() => {
     if (isPlayingOnline && onlineTrack?.cover_art_url) {
       return onlineTrack.cover_art_url;
@@ -2876,6 +2832,7 @@ export const App: React.FC = () => {
             />
           )}
 
+          <Suspense fallback={null}>
           {isLyricsActive ? (
             <div style={{ flex: 1, minHeight: 0, height: "100%", width: "100%", position: "relative" }}>
               <LyricsView
@@ -2883,7 +2840,6 @@ export const App: React.FC = () => {
                 artist={activePlayingArtist}
                 title={activePlayingTitle}
                 durationSecs={activePlayingDuration}
-                currentTime={activePlayingCurrentTime}
                 onSeek={handleUnifiedSeek}
                 isFullScreen={false}
               />
@@ -3126,6 +3082,7 @@ export const App: React.FC = () => {
               )}
             </>
           )}
+          </Suspense>
         </main>
       </div>
 
@@ -3167,6 +3124,7 @@ export const App: React.FC = () => {
       />
 
       {/* Full Screen Player View (matching user uploaded images) */}
+      <Suspense fallback={null}>
       {isFullscreen && (
         <FullScreenPlayerView
           playbackState={playbackState}
@@ -3250,6 +3208,7 @@ export const App: React.FC = () => {
         onStartDownload={handleModalStartDownload}
         onDirectAudioDownload={handleDirectAudioDownload}
       />
+      </Suspense>
 
       {/* Onboarding Modal */}
       {showOnboarding && onboardingStatus && (
