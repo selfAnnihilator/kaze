@@ -95,7 +95,9 @@ jobs:
 
             > **Already installed?** Just keep the app open — it checks for updates automatically and will restart with the new version.
 
-            > **First time?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md) for step-by-step instructions.
+            > **First time?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/prod/INSTALL.md) for step-by-step instructions.
+
+            > *(Note: `.sig` files and `latest.json` are cryptographic verification files used internally by the auto-updater; you do not need to download them manually.)*
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
