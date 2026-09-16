@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Music Player Contributors"]
 description = "Backend-First Intelligent Local Music Player"
 license = "MIT OR Apache-2.0"
-default-run = "music-player-app"
+default-run = "kaze"
 
 [lib]
 name = "music_player_backend"
@@ -16,7 +16,7 @@ name = "music-player-cli"
 path = "src/main.rs"
 
 [[bin]]
-name = "music-player-app"
+name = "kaze"
 path = "src/app.rs"
 
 [dependencies]
