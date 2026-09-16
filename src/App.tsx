@@ -2467,7 +2467,7 @@ export const App: React.FC = () => {
           await handleSaveImportedPlaylist(targetName, trackIds, allTracks);
         } else {
           await handleCreatePlaylist(targetName, collection.subtitle);
-          alert(`Playlist "${targetName}" created.`);
+          addAppNotification("info", "Playlist Created", `Playlist "${targetName}" created.`);
         }
       } catch (err) {
         console.error("Failed to save collection to playlists:", err);
@@ -2555,19 +2555,32 @@ export const App: React.FC = () => {
 
   const handleDirectAudioDownload = async (track: DownloadModalTrack) => {
     try {
-      await handleAddToWishlist(track.title, track.artist, track.album);
       addAppNotification(
         "info",
-        "Saved to Wishlist",
-        `"${track.title}" by ${track.artist} added to wishlist for automated background download.`
+        "Direct Download",
+        `Locating audio stream for "${track.title}" by ${track.artist}...`
       );
-      fetchWishlist();
+      const searchResults = await handleSearchSoulseek(track.artist, track.title, track.album);
+      const directResult =
+        searchResults.find((r) => r.id.startsWith("ytdlp_flac_")) ||
+        searchResults.find((r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) ||
+        searchResults[0];
+
+      if (directResult) {
+        await handleModalStartDownload(directResult.id, track);
+      } else {
+        addAppNotification(
+          "error",
+          "Download Error",
+          `No streamable audio found for "${track.title}".`
+        );
+      }
     } catch (err: any) {
-      console.warn("Direct download fallback to wishlist:", err);
+      console.warn("Direct download failed:", err);
       addAppNotification(
         "error",
-        "Wishlist Error",
-        `Could not queue "${track.title}" to wishlist.`
+        "Download Error",
+        `Could not start direct stream download for "${track.title}".`
       );
     }
   };
@@ -3184,7 +3197,6 @@ export const App: React.FC = () => {
         onSearchSoulseek={handleSearchSoulseek}
         onStartDownload={handleModalStartDownload}
         onDirectAudioDownload={handleDirectAudioDownload}
-        onAddToWishlist={(title, artist, album) => handleAddToWishlist(title, artist, album)}
       />
 
       {/* Onboarding Modal */}

@@ -3,8 +3,7 @@ import {
   DownloadCloud,
   X,
   RefreshCw,
-  Check,
-  Bookmark,
+  Zap,
   Radio,
   FileAudio,
 } from "lucide-react";
@@ -28,7 +27,6 @@ interface DownloadOptionsModalProps {
   ) => Promise<DownloadSearchResult[]>;
   onStartDownload: (searchResultId: string, track: DownloadModalTrack) => Promise<void>;
   onDirectAudioDownload?: (track: DownloadModalTrack) => Promise<void>;
-  onAddToWishlist?: (title: string, artist: string, album?: string) => void;
 }
 
 export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
@@ -38,14 +36,13 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   onSearchSoulseek,
   onStartDownload,
   onDirectAudioDownload,
-  onAddToWishlist,
 }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<DownloadSearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isStartingDownload, setIsStartingDownload] = useState(false);
-  const [wishlistAdded, setWishlistAdded] = useState(false);
+  const [providerFilter, setProviderFilter] = useState<"all" | "direct" | "soulseek">("all");
 
   useEffect(() => {
     if (isOpen && track) {
@@ -53,7 +50,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
       setHasSearched(false);
       setSelectedId(null);
       setIsStartingDownload(false);
-      setWishlistAdded(false);
+      setProviderFilter("all");
       performSearch(track);
     }
   }, [isOpen, track]);
@@ -64,7 +61,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
       const res = await onSearchSoulseek(tr.artist, tr.title, tr.album);
       setResults(res || []);
     } catch (err) {
-      console.error("Soulseek search failed:", err);
+      console.error("Download search failed:", err);
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -83,7 +80,21 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
     return `${mb.toFixed(1)} MB`;
   };
 
-  const handleSelectSoulseekOption = async (result: DownloadSearchResult) => {
+  const directResults = results.filter(
+    (r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")
+  );
+  const soulseekResults = results.filter(
+    (r) => r.provider !== "yt-dlp" && !r.id.startsWith("ytdlp_")
+  );
+
+  const displayedResults =
+    providerFilter === "direct"
+      ? directResults
+      : providerFilter === "soulseek"
+      ? soulseekResults
+      : results;
+
+  const handleSelectOption = async (result: DownloadSearchResult) => {
     setSelectedId(result.id);
     setIsStartingDownload(true);
     try {
@@ -96,6 +107,16 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   };
 
   const handleSelectDirectOption = async () => {
+    // If search results already contain a direct stream result, start it immediately
+    const directRes =
+      results.find((r) => r.id.startsWith("ytdlp_flac_")) ||
+      results.find((r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_"));
+
+    if (directRes) {
+      await handleSelectOption(directRes);
+      return;
+    }
+
     if (!onDirectAudioDownload) return;
     setIsStartingDownload(true);
     try {
@@ -104,13 +125,6 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
     } catch (err) {
       console.error("Failed to start direct download:", err);
       setIsStartingDownload(false);
-    }
-  };
-
-  const handleWishlistClick = () => {
-    if (onAddToWishlist && track) {
-      onAddToWishlist(track.title, track.artist, track.album);
-      setWishlistAdded(true);
     }
   };
 
@@ -138,7 +152,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
           borderRadius: "16px",
           padding: "24px",
           width: "100%",
-          maxWidth: "580px",
+          maxWidth: "600px",
           maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
@@ -230,27 +244,88 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 style={{ margin: "0 auto 14px" }}
               />
               <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-main)", marginBottom: "4px" }}>
-                Searching P2P Soulseek Network...
+                Searching Download Providers...
               </div>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", maxWidth: "360px", margin: "0 auto" }}>
-                Querying peers for optimal bitrates, audio formats, and open transfer slots
+              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", maxWidth: "420px", margin: "0 auto" }}>
+                Querying Direct Audio streams and Soulseek P2P network for optimal audio quality and speeds
               </p>
             </div>
           ) : results.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Provider Filter Bar & Controls */}
               <div
                 style={{
-                  fontSize: "0.78rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.8px",
-                  textTransform: "uppercase",
-                  color: "var(--text-dim)",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "8px",
                 }}
               >
-                <span>Available Soulseek Files ({results.length})</span>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setProviderFilter("all")}
+                    style={{
+                      background: providerFilter === "all" ? "var(--bg-active, #2a2826)" : "transparent",
+                      border: "1px solid",
+                      borderColor: providerFilter === "all" ? "var(--border-active, #555)" : "var(--border)",
+                      borderRadius: "6px",
+                      padding: "4px 9px",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      color: providerFilter === "all" ? "#f3701e" : "var(--text-muted)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    All ({results.length})
+                  </button>
+
+                  {directResults.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setProviderFilter("direct")}
+                      style={{
+                        background: providerFilter === "direct" ? "rgba(139, 92, 246, 0.2)" : "transparent",
+                        border: "1px solid",
+                        borderColor: providerFilter === "direct" ? "rgba(139, 92, 246, 0.5)" : "var(--border)",
+                        borderRadius: "6px",
+                        padding: "4px 9px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: providerFilter === "direct" ? "#c4b5fd" : "var(--text-muted)",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Zap size={11} />
+                      Direct Stream ({directResults.length})
+                    </button>
+                  )}
+
+                  {soulseekResults.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setProviderFilter("soulseek")}
+                      style={{
+                        background: providerFilter === "soulseek" ? "rgba(243, 112, 30, 0.2)" : "transparent",
+                        border: "1px solid",
+                        borderColor: providerFilter === "soulseek" ? "rgba(243, 112, 30, 0.5)" : "var(--border)",
+                        borderRadius: "6px",
+                        padding: "4px 9px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: providerFilter === "soulseek" ? "var(--accent-light)" : "var(--text-muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Soulseek ({soulseekResults.length})
+                    </button>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => performSearch(track)}
@@ -270,8 +345,11 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                 </button>
               </div>
 
-              {results.map((res) => {
+              {/* Items List */}
+              {displayedResults.map((res) => {
                 const isSelected = selectedId === res.id && isStartingDownload;
+                const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
+
                 return (
                   <div
                     key={res.id}
@@ -304,11 +382,51 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        {/* Provider Source Tag */}
+                        {isDirect ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                              backgroundColor: "rgba(139, 92, 246, 0.16)",
+                              color: "#c4b5fd",
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: "4px",
+                              letterSpacing: "0.4px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            <Zap size={10} />
+                            Direct Stream
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                              backgroundColor: "rgba(243, 112, 30, 0.16)",
+                              color: "var(--accent-light)",
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: "4px",
+                              letterSpacing: "0.4px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Soulseek P2P
+                          </span>
+                        )}
+
                         <span
                           className="badge"
                           style={{
-                            backgroundColor: "rgba(243, 112, 30, 0.15)",
-                            color: "var(--accent-light)",
+                            backgroundColor: "rgba(255, 255, 255, 0.08)",
+                            color: "var(--text-main)",
                             fontSize: "0.7rem",
                             padding: "2px 6px",
                           }}
@@ -333,11 +451,19 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                         <span
                           style={{
                             fontSize: "0.72rem",
-                            color: res.slots_free ? "var(--accent-secondary)" : "#f3701e",
+                            color: isDirect
+                              ? "var(--accent-secondary)"
+                              : res.slots_free
+                              ? "var(--accent-secondary)"
+                              : "#f3701e",
                             fontWeight: 500,
                           }}
                         >
-                          {res.slots_free ? "Slot Free" : "Queued Slot"}
+                          {isDirect
+                            ? "Instant Start"
+                            : res.slots_free
+                            ? "Slot Free"
+                            : "Queued Slot"}
                         </span>
                       </div>
                     </div>
@@ -346,7 +472,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                       type="button"
                       className="btn btn-primary"
                       disabled={isStartingDownload}
-                      onClick={() => handleSelectSoulseekOption(res)}
+                      onClick={() => handleSelectOption(res)}
                       style={{
                         padding: "7px 14px",
                         fontSize: "0.82rem",
@@ -384,15 +510,15 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
             >
               <FileAudio size={32} color="var(--text-dim)" style={{ margin: "0 auto 10px" }} />
               <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "var(--text-main)", marginBottom: "4px" }}>
-                No Soulseek peer results found right now
+                No search results found right now
               </div>
               <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", maxWidth: "380px", margin: "0 auto 16px" }}>
-                Peers might be offline or using different naming. You can download the high-quality web audio stream directly or add this song to your wishlist.
+                No matching tracks found across Direct Audio or Soulseek networks. You can try re-scanning or use Direct Audio Stream Download below.
               </p>
             </div>
           ) : null}
 
-          {/* Fallback Direct Stream Option */}
+          {/* Direct Stream Option Box */}
           {onDirectAudioDownload && (
             <div
               style={{
@@ -447,7 +573,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                   flexShrink: 0,
                 }}
               >
-                <DownloadCloud size={14} />
+                <Zap size={14} />
                 <span>Download Direct</span>
               </button>
             </div>
@@ -461,33 +587,14 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
             paddingTop: "14px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
           }}
         >
-          {onAddToWishlist && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleWishlistClick}
-              disabled={wishlistAdded}
-              style={{
-                fontSize: "0.8rem",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                color: wishlistAdded ? "var(--accent-secondary)" : "var(--text-muted)",
-              }}
-            >
-              {wishlistAdded ? <Check size={14} /> : <Bookmark size={14} />}
-              <span>{wishlistAdded ? "Added to Wishlist" : "Save to Wishlist"}</span>
-            </button>
-          )}
-
           <button
             type="button"
             className="btn btn-secondary"
             onClick={onClose}
-            style={{ fontSize: "0.82rem", marginLeft: "auto" }}
+            style={{ fontSize: "0.82rem" }}
           >
             Cancel
           </button>
