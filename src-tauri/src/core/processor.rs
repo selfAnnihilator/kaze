@@ -2796,6 +2796,14 @@ impl CoreProcessor {
                 message: format!("Failed to parse JSON: {}", e),
             })?;
 
+        let status_code = root["props"]["pageProps"]["status"].as_i64().unwrap_or(200);
+        if status_code == 404 || !root["props"]["pageProps"]["state"]["data"].is_object() {
+            return Err(AppError::ExternalApi {
+                provider: "spotify".into(),
+                message: "This playlist is private on Spotify. In the Spotify app, click the '...' menu on the playlist and select 'Make Public' so Kaze can read the tracks.".into(),
+            });
+        }
+
         let entity = &root["props"]["pageProps"]["state"]["data"]["entity"];
         let playlist_title = entity["title"]
             .as_str()

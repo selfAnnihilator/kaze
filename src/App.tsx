@@ -2263,16 +2263,11 @@ export const App: React.FC = () => {
   ]);
 
   const handleInspectSpotifyPlaylist = async (urlOrId: string): Promise<SpotifyPlaylistImport | null> => {
-    try {
-      const res = await executeQuery({
-        query: "ImportSpotifyPlaylist",
-        payload: { url_or_id: urlOrId },
-      });
-      return (res.data as SpotifyPlaylistImport) || null;
-    } catch (err) {
-      console.error("Failed to inspect Spotify playlist:", err);
-      return null;
-    }
+    const res = await executeQuery({
+      query: "ImportSpotifyPlaylist",
+      payload: { url_or_id: urlOrId },
+    });
+    return (res.data as SpotifyPlaylistImport) || null;
   };
 
   const handleSaveImportedPlaylist = useCallback(
