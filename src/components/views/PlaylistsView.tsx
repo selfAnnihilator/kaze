@@ -92,6 +92,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [spotifyMessage, setSpotifyMessage] = useState<string | null>(null);
   const [wishlistAdded, setWishlistAdded] = useState(false);
 
+  // Custom themed dialog states for Delete and Rename
+  const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [playlistToRename, setPlaylistToRename] = useState<Playlist | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+
   // Permanent saving state for mixes
   const [savingMixId, setSavingMixId] = useState<string | null>(null);
   const [savedMixIds, setSavedMixIds] = useState<Set<string>>(new Set());
@@ -174,28 +183,55 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
   };
 
-  const handleRename = async (pl: Playlist) => {
+  const handleOpenRenameModal = (pl: Playlist) => {
     if (pl.name === "Liked Songs") return;
-    const nextName = window.prompt("Rename playlist", pl.name)?.trim();
-    if (!nextName || nextName === pl.name) return;
-    if (customPlaylists.some((candidate) => candidate.id !== pl.id && candidate.name === nextName)) {
-      alert(`A playlist named "${nextName}" already exists.`);
+    setPlaylistToRename(pl);
+    setRenameValue(pl.name);
+    setRenameError(null);
+  };
+
+  const handleConfirmRename = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!playlistToRename) return;
+    const nextName = renameValue.trim();
+    if (!nextName) {
+      setRenameError("Playlist name cannot be empty.");
       return;
     }
+    if (nextName === playlistToRename.name) {
+      setPlaylistToRename(null);
+      return;
+    }
+    if (customPlaylists.some((candidate) => candidate.id !== playlistToRename.id && candidate.name.toLowerCase() === nextName.toLowerCase())) {
+      setRenameError(`A playlist named "${nextName}" already exists.`);
+      return;
+    }
+    setIsRenaming(true);
     try {
-      await onRenamePlaylist(pl.id, nextName);
+      await onRenamePlaylist(playlistToRename.id, nextName);
+      setPlaylistToRename(null);
     } catch (err: any) {
-      alert(err?.message || "Could not rename the playlist.");
+      setRenameError(err?.message || "Could not rename the playlist.");
+    } finally {
+      setIsRenaming(false);
     }
   };
 
-  const handleDelete = async (pl: Playlist) => {
+  const handleOpenDeleteModal = (pl: Playlist) => {
     if (pl.name === "Liked Songs") return;
-    if (!window.confirm(`Delete "${pl.name}"? This cannot be undone.`)) return;
+    setPlaylistToDelete(pl);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!playlistToDelete) return;
+    setIsDeleting(true);
     try {
-      await onDeletePlaylist(pl.id);
+      await onDeletePlaylist(playlistToDelete.id);
+      setPlaylistToDelete(null);
     } catch (err: any) {
       alert(err?.message || "Could not delete the playlist.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -631,10 +667,26 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                             </div>
                           ) : (
                             <>
-                              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0 }} onClick={() => handleRename(pl)}>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ width: "100%", justifyContent: "flex-start", border: 0 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  (e.currentTarget.closest("details") as HTMLDetailsElement)?.removeAttribute("open");
+                                  handleOpenRenameModal(pl);
+                                }}
+                              >
                                 <Pencil size={14} /> Rename
                               </button>
-                              <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0, color: "var(--danger, #ef4444)" }} onClick={() => handleDelete(pl)}>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ width: "100%", justifyContent: "flex-start", border: 0, color: "var(--danger, #ef4444)" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  (e.currentTarget.closest("details") as HTMLDetailsElement)?.removeAttribute("open");
+                                  handleOpenDeleteModal(pl);
+                                }}
+                              >
                                 <Trash2 size={14} /> Delete
                               </button>
                             </>
@@ -1091,6 +1143,147 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: THEMED RENAME PLAYLIST MODAL */}
+      {playlistToRename && (
+        <div className="modal-overlay" onClick={() => !isRenaming && setPlaylistToRename(null)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: "440px", width: "90%", padding: "24px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Pencil size={20} color="var(--accent-light, #e8d8c9)" />
+                <h3 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>Rename Playlist</h3>
+              </div>
+              <button
+                onClick={() => setPlaylistToRename(null)}
+                disabled={isRenaming}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmRename}>
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", color: "var(--text-dim)", marginBottom: "8px" }}>
+                  Playlist Name
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={renameValue}
+                  onChange={(e) => {
+                    setRenameValue(e.target.value);
+                    setRenameError(null);
+                  }}
+                  className="input-field"
+                  style={{ width: "100%", fontSize: "0.95rem" }}
+                  placeholder="Enter playlist name"
+                />
+                {renameError && (
+                  <p style={{ color: "var(--danger, #ef4444)", fontSize: "0.8rem", marginTop: "6px" }}>
+                    {renameError}
+                  </p>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPlaylistToRename(null)}
+                  disabled={isRenaming}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isRenaming || !renameValue.trim()}
+                >
+                  {isRenaming ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: THEMED DELETE CONFIRMATION MODAL */}
+      {playlistToDelete && (
+        <div className="modal-overlay" onClick={() => !isDeleting && setPlaylistToDelete(null)}>
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: "420px",
+              width: "90%",
+              padding: "24px",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "16px" }}>
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "10px",
+                  backgroundColor: "rgba(239, 68, 68, 0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  color: "var(--danger, #ef4444)",
+                }}
+              >
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 6px 0", color: "#fca5a5" }}>
+                  Delete Playlist
+                </h3>
+                <p style={{ fontSize: "0.88rem", color: "var(--text-dim)", margin: 0, lineHeight: 1.5 }}>
+                  Are you sure you want to delete <strong style={{ color: "#fff" }}>"{playlistToDelete.name}"</strong>?
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setPlaylistToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  backgroundColor: "var(--danger, #ef4444)",
+                  color: "#fff",
+                  fontWeight: 600,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 size={15} />
+                <span>{isDeleting ? "Deleting..." : "Delete Playlist"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
