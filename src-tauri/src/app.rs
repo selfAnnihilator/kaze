@@ -6,6 +6,7 @@ use music_player_backend::database::init_db_pool;
 use music_player_backend::logging::init_logging;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 use tracing::info;
 
 #[cfg(target_os = "linux")]
