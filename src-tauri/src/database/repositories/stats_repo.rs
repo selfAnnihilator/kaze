@@ -91,11 +91,31 @@ pub trait StatsRepository: Send + Sync {
         skipped: bool,
     ) -> AppResult<()>;
 
+    async fn update_track_playback_stats_scoped(
+        &self,
+        user_id: &str,
+        track_id: &str,
+        listened_secs: f64,
+        is_meaningful: bool,
+        completed: bool,
+        skipped: bool,
+    ) -> AppResult<()>;
+
     async fn set_track_like(&self, track_id: &str, like_status: i64) -> AppResult<()>;
+    async fn set_track_like_scoped(&self, user_id: &str, track_id: &str, like_status: i64) -> AppResult<()>;
     async fn get_track_stats(&self, track_id: &str) -> AppResult<Option<TrackStatisticsRecord>>;
+    async fn get_track_stats_scoped(&self, user_id: &str, track_id: &str) -> AppResult<Option<TrackStatisticsRecord>>;
 
     async fn get_ranked_tracks(
         &self,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedTrackItem>>;
+
+    async fn get_ranked_tracks_for_user(
+        &self,
+        user_id: Option<&str>,
         window_start: Option<i64>,
         weights: &RankingWeightsConfig,
         limit: u32,
@@ -108,6 +128,14 @@ pub trait StatsRepository: Send + Sync {
         limit: u32,
     ) -> AppResult<Vec<RankedArtistItem>>;
 
+    async fn get_ranked_artists_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedArtistItem>>;
+
     async fn get_ranked_albums(
         &self,
         window_start: Option<i64>,
@@ -115,8 +143,24 @@ pub trait StatsRepository: Send + Sync {
         limit: u32,
     ) -> AppResult<Vec<RankedAlbumItem>>;
 
+    async fn get_ranked_albums_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedAlbumItem>>;
+
     async fn get_ranked_genres(
         &self,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedGenreItem>>;
+
+    async fn get_ranked_genres_for_user(
+        &self,
+        user_id: Option<&str>,
         window_start: Option<i64>,
         weights: &RankingWeightsConfig,
         limit: u32,
@@ -178,23 +222,36 @@ impl StatsRepository for SqliteStatsRepository {
         completed: bool,
         skipped: bool,
     ) -> AppResult<()> {
+        self.update_track_playback_stats_scoped("default", track_id, listened_secs, is_meaningful, completed, skipped).await
+    }
+
+    async fn update_track_playback_stats_scoped(
+        &self,
+        user_id: &str,
+        track_id: &str,
+        listened_secs: f64,
+        is_meaningful: bool,
+        completed: bool,
+        skipped: bool,
+    ) -> AppResult<()> {
         let now = Utc::now().timestamp();
         let play_inc: i64 = if is_meaningful { 1 } else { 0 };
         let comp_inc: i64 = if completed { 1 } else { 0 };
         let skip_inc: i64 = if skipped { 1 } else { 0 };
 
-        // 1. Update track statistics
+        // 1. Update track statistics for this user
         sqlx::query(
             "INSERT INTO track_statistics (
-                track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(track_id) DO UPDATE SET
+                user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, track_id) DO UPDATE SET
                 play_count = play_count + excluded.play_count,
                 total_time_listened = total_time_listened + excluded.total_time_listened,
                 completion_count = completion_count + excluded.completion_count,
                 skip_count = skip_count + excluded.skip_count,
                 last_played_at = excluded.last_played_at"
         )
+        .bind(user_id)
         .bind(track_id)
         .bind(play_inc)
         .bind(listened_secs)
@@ -218,14 +275,15 @@ impl StatsRepository for SqliteStatsRepository {
 
             if let Some((Some(artist_id), genre_id)) = track_info {
                 let _ = sqlx::query(
-                    "INSERT INTO artist_statistics (artist_id, play_count, total_time_listened, last_played_at, affinity_score)
-                     VALUES (?, 1, ?, ?, 1.0)
-                     ON CONFLICT(artist_id) DO UPDATE SET
+                    "INSERT INTO artist_statistics (user_id, artist_id, play_count, total_time_listened, last_played_at, affinity_score)
+                     VALUES (?, ?, 1, ?, ?, 1.0)
+                     ON CONFLICT(user_id, artist_id) DO UPDATE SET
                         play_count = play_count + 1,
                         total_time_listened = total_time_listened + excluded.total_time_listened,
                         last_played_at = excluded.last_played_at,
                         affinity_score = affinity_score + 1.0"
                 )
+                .bind(user_id)
                 .bind(&artist_id)
                 .bind(listened_secs)
                 .bind(now)
@@ -234,14 +292,15 @@ impl StatsRepository for SqliteStatsRepository {
 
                 if let Some(gid) = genre_id {
                     let _ = sqlx::query(
-                        "INSERT INTO genre_statistics (genre_id, play_count, total_time_listened, last_played_at, affinity_score)
-                         VALUES (?, 1, ?, ?, 1.0)
-                         ON CONFLICT(genre_id) DO UPDATE SET
+                        "INSERT INTO genre_statistics (user_id, genre_id, play_count, total_time_listened, last_played_at, affinity_score)
+                         VALUES (?, ?, 1, ?, ?, 1.0)
+                         ON CONFLICT(user_id, genre_id) DO UPDATE SET
                             play_count = play_count + 1,
                             total_time_listened = total_time_listened + excluded.total_time_listened,
                             last_played_at = excluded.last_played_at,
                             affinity_score = affinity_score + 1.0"
                     )
+                    .bind(user_id)
                     .bind(&gid)
                     .bind(listened_secs)
                     .bind(now)
@@ -255,10 +314,15 @@ impl StatsRepository for SqliteStatsRepository {
     }
 
     async fn set_track_like(&self, track_id: &str, like_status: i64) -> AppResult<()> {
+        self.set_track_like_scoped("default", track_id, like_status).await
+    }
+
+    async fn set_track_like_scoped(&self, user_id: &str, track_id: &str, like_status: i64) -> AppResult<()> {
         sqlx::query(
-            "INSERT INTO track_statistics (track_id, manual_like) VALUES (?, ?)
-             ON CONFLICT(track_id) DO UPDATE SET manual_like = excluded.manual_like"
+            "INSERT INTO track_statistics (user_id, track_id, manual_like) VALUES (?, ?, ?)
+             ON CONFLICT(user_id, track_id) DO UPDATE SET manual_like = excluded.manual_like"
         )
+        .bind(user_id)
         .bind(track_id)
         .bind(like_status)
         .execute(&self.pool)
@@ -269,11 +333,16 @@ impl StatsRepository for SqliteStatsRepository {
     }
 
     async fn get_track_stats(&self, track_id: &str) -> AppResult<Option<TrackStatisticsRecord>> {
+        self.get_track_stats_scoped("default", track_id).await
+    }
+
+    async fn get_track_stats_scoped(&self, user_id: &str, track_id: &str) -> AppResult<Option<TrackStatisticsRecord>> {
         let stats = sqlx::query_as::<_, TrackStatisticsRecord>(
-            "SELECT track_id, play_count, total_time_listened, completion_count, skip_count,
+            "SELECT user_id, track_id, play_count, total_time_listened, completion_count, skip_count,
                     last_played_at, manual_like, playlist_addition_count
-             FROM track_statistics WHERE track_id = ?"
+             FROM track_statistics WHERE user_id = ? AND track_id = ?"
         )
+        .bind(user_id)
         .bind(track_id)
         .fetch_optional(&self.pool)
         .await
@@ -288,6 +357,17 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedTrackItem>> {
+        self.get_ranked_tracks_for_user(None, window_start, weights, limit).await
+    }
+
+    async fn get_ranked_tracks_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedTrackItem>> {
+        let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
         // Compute aggregated metrics from playback_history within the window, joined with track metadata
@@ -311,8 +391,8 @@ impl StatsRepository for SqliteStatsRepository {
             FROM tracks t
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN albums al ON t.album_id = al.id
-            LEFT JOIN track_statistics ts ON ts.track_id = t.id
-            LEFT JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ?
+            LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
+            LEFT JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY t.id
             HAVING score > 0 OR play_count > 0
             ORDER BY score DESC, play_count DESC
@@ -325,7 +405,9 @@ impl StatsRepository for SqliteStatsRepository {
             .bind(weights.completion_weight)
             .bind(weights.user_preference_weight)
             .bind(weights.skip_penalty)
+            .bind(uid)
             .bind(start_filter)
+            .bind(uid)
             .bind(limit)
             .fetch_all(&self.pool)
             .await
@@ -340,6 +422,17 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedArtistItem>> {
+        self.get_ranked_artists_for_user(None, window_start, weights, limit).await
+    }
+
+    async fn get_ranked_artists_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedArtistItem>> {
+        let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
         let sql = format!("
@@ -355,7 +448,7 @@ impl StatsRepository for SqliteStatsRepository {
                 ) as score
             FROM artists a
             JOIN tracks t ON t.artist_id = a.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ?
+            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY a.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -366,6 +459,7 @@ impl StatsRepository for SqliteStatsRepository {
             .bind(weights.listening_duration_weight)
             .bind(weights.skip_penalty)
             .bind(start_filter)
+            .bind(uid)
             .bind(limit)
             .fetch_all(&self.pool)
             .await
@@ -380,6 +474,17 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedAlbumItem>> {
+        self.get_ranked_albums_for_user(None, window_start, weights, limit).await
+    }
+
+    async fn get_ranked_albums_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedAlbumItem>> {
+        let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
         let sql = format!("
@@ -397,7 +502,7 @@ impl StatsRepository for SqliteStatsRepository {
             FROM albums al
             LEFT JOIN artists a ON al.artist_id = a.id
             JOIN tracks t ON t.album_id = al.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ?
+            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY al.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -408,6 +513,7 @@ impl StatsRepository for SqliteStatsRepository {
             .bind(weights.listening_duration_weight)
             .bind(weights.skip_penalty)
             .bind(start_filter)
+            .bind(uid)
             .bind(limit)
             .fetch_all(&self.pool)
             .await
@@ -422,6 +528,17 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedGenreItem>> {
+        self.get_ranked_genres_for_user(None, window_start, weights, limit).await
+    }
+
+    async fn get_ranked_genres_for_user(
+        &self,
+        user_id: Option<&str>,
+        window_start: Option<i64>,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedGenreItem>> {
+        let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
         let sql = format!("
@@ -437,7 +554,7 @@ impl StatsRepository for SqliteStatsRepository {
                 ) as score
             FROM genres g
             JOIN tracks t ON t.genre_id = g.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ?
+            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY g.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -448,6 +565,7 @@ impl StatsRepository for SqliteStatsRepository {
             .bind(weights.listening_duration_weight)
             .bind(weights.skip_penalty)
             .bind(start_filter)
+            .bind(uid)
             .bind(limit)
             .fetch_all(&self.pool)
             .await
@@ -480,11 +598,11 @@ impl StatsRepository for SqliteStatsRepository {
         let year_rows: Vec<(Option<i32>,)> = sqlx::query_as(
             "SELECT DISTINCT CAST(strftime('%Y', datetime(started_at, 'unixepoch', 'localtime')) AS INTEGER) as yr
              FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default')
+             WHERE user_id = ?
              UNION
              SELECT DISTINCT year as yr
              FROM yearly_stats_archive
-             WHERE (user_id = ? OR user_id = 'default')
+             WHERE user_id = ?
              ORDER BY yr DESC"
         )
         .bind(user_id)
@@ -530,7 +648,7 @@ impl StatsRepository for SqliteStatsRepository {
                 strftime('%Y-%m-%d', datetime(started_at, 'unixepoch', 'localtime')) as day_date,
                 COALESCE(SUM(seconds_listened), 0.0) as total_seconds
              FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default') AND started_at >= ? AND started_at <= ?
+             WHERE user_id = ? AND started_at >= ? AND started_at <= ?
              GROUP BY day_date"
         )
         .bind(user_id)
@@ -562,7 +680,7 @@ impl StatsRepository for SqliteStatsRepository {
         if target_year < current_year {
             let archive: Option<(f64, String, String)> = sqlx::query_as(
                 "SELECT total_seconds, top_songs_json, top_artists_json FROM yearly_stats_archive
-                 WHERE (user_id = ? OR user_id = 'default') AND year = ?"
+                 WHERE user_id = ? AND year = ?"
             )
             .bind(user_id)
             .bind(target_year)
@@ -609,7 +727,7 @@ impl StatsRepository for SqliteStatsRepository {
 
             let total_seconds: f64 = sqlx::query_scalar(
                 "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-                 WHERE (user_id = ? OR user_id = 'default') AND started_at >= ? AND started_at <= ?"
+                 WHERE user_id = ? AND started_at >= ? AND started_at <= ?"
             )
             .bind(user_id)
             .bind(start_of_yr)
@@ -674,7 +792,7 @@ impl StatsRepository for SqliteStatsRepository {
 
         let daily_seconds: f64 = sqlx::query_scalar(
             "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default') AND started_at >= ?"
+             WHERE user_id = ? AND started_at >= ?"
         )
         .bind(user_id)
         .bind(start_of_day)
@@ -684,7 +802,7 @@ impl StatsRepository for SqliteStatsRepository {
 
         let weekly_seconds: f64 = sqlx::query_scalar(
             "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default') AND started_at >= ?"
+             WHERE user_id = ? AND started_at >= ?"
         )
         .bind(user_id)
         .bind(start_of_week)
@@ -694,7 +812,7 @@ impl StatsRepository for SqliteStatsRepository {
 
         let total_year_seconds: f64 = sqlx::query_scalar(
             "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default') AND started_at >= ?"
+             WHERE user_id = ? AND started_at >= ?"
         )
         .bind(user_id)
         .bind(start_of_year)
@@ -732,7 +850,7 @@ impl StatsRepository for SqliteStatsRepository {
                 strftime('%w', datetime(started_at, 'unixepoch', 'localtime')) as day_of_week,
                 COALESCE(SUM(seconds_listened), 0.0) as total_seconds
              FROM playback_history
-             WHERE (user_id = ? OR user_id = 'default')
+             WHERE user_id = ?
              GROUP BY day_date
              HAVING total_seconds > 0
              ORDER BY total_seconds DESC
@@ -803,8 +921,8 @@ impl StatsRepository for SqliteStatsRepository {
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN albums al ON t.album_id = al.id
             LEFT JOIN external_tracks et ON h.track_id = et.id
-            LEFT JOIN track_statistics ts ON ts.track_id = t.id
-            WHERE (h.user_id = ? OR h.user_id = 'default')
+            LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
+            WHERE h.user_id = ?
               AND h.started_at >= ?
               AND h.started_at <= ?
             GROUP BY h.track_id
@@ -819,6 +937,7 @@ impl StatsRepository for SqliteStatsRepository {
             .bind(weights.completion_weight)
             .bind(weights.user_preference_weight)
             .bind(weights.skip_penalty)
+            .bind(uid)
             .bind(uid)
             .bind(start_filter)
             .bind(end_filter)
@@ -857,11 +976,11 @@ impl StatsRepository for SqliteStatsRepository {
             LEFT JOIN tracks t ON h.track_id = t.id
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN external_tracks et ON h.track_id = et.id
-            WHERE (h.user_id = ? OR h.user_id = 'default')
+            WHERE h.user_id = ?
               AND h.started_at >= ?
               AND h.started_at <= ?
-            GROUP BY COALESCE(a.id, a.name, et.artist)
-            HAVING total_seconds > 0 OR play_count > 0
+            GROUP BY artist_id
+            HAVING score > 0 OR play_count > 0 OR total_seconds > 0
             ORDER BY score DESC, total_seconds DESC, play_count DESC
             LIMIT ?
         ");

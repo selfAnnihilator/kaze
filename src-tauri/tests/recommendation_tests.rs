@@ -4,6 +4,7 @@ use music_player_backend::core::processor::CoreProcessor;
 use music_player_backend::core::query::{Query, QueryResponse};
 use music_player_backend::database::create_in_memory_pool;
 use music_player_backend::database::models::PlaybackHistoryRecord;
+use music_player_backend::database::repositories::user_repo::UserProfile;
 use music_player_backend::database::repositories::{HistoryRepository, ScannedMetadata};
 use music_player_backend::playback::backend::MockAudioBackend;
 use music_player_backend::recommendations::scoring::{CandidateTrack, ScoringEngine};
@@ -393,4 +394,181 @@ fn test_scoring_repetition_penalty_and_discovery_bonus() {
     assert!(score_discovery.is_discovery, "Unplayed high-affinity candidate should be marked as discovery");
     let has_discovery_reason = score_discovery.reasons.iter().any(|r| r.factor == "exploration_pick");
     assert!(has_discovery_reason, "Discovery pick explanation must be present in reasons");
+}
+
+#[tokio::test]
+async fn test_multi_user_taste_and_stats_isolation() {
+    let pool = create_in_memory_pool().await.expect("create in-memory pool");
+    let backend = Box::new(MockAudioBackend::new());
+    let processor = CoreProcessor::new_with_backend(pool.clone(), AppConfig::default_with_dirs(), backend);
+
+    let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
+    let pf_track = &pink_floyd_ids[0];
+    let dp_track = &other_ids[0];
+
+    let user_a = UserProfile::new("user_a".to_string(), "alice".to_string(), 1700000000);
+    let user_b = UserProfile::new("user_b".to_string(), "bob".to_string(), 1700000000);
+
+    // 1. User A logs in, plays Pink Floyd, likes Pink Floyd
+    *processor.current_user.write().await = Some(user_a.clone());
+
+    processor
+        .dispatch_command(Command::RecordPlaybackSession {
+            track_id: pf_track.clone(),
+            title: "Comfortably Numb Pt 1".to_string(),
+            artist: Some("Pink Floyd".to_string()),
+            album: Some("The Wall".to_string()),
+            duration_secs: 360.0,
+            seconds_listened: 360.0,
+            completed: true,
+            skipped: false,
+            source: "library".to_string(),
+        })
+        .await
+        .expect("record playback for user A");
+
+    processor
+        .dispatch_command(Command::LikeTrack {
+            track_id: pf_track.clone(),
+        })
+        .await
+        .expect("like track for user A");
+
+    // 2. User B logs in, plays Daft Punk, likes Daft Punk
+    *processor.current_user.write().await = Some(user_b.clone());
+
+    processor
+        .dispatch_command(Command::RecordPlaybackSession {
+            track_id: dp_track.clone(),
+            title: "One More Time 1".to_string(),
+            artist: Some("Daft Punk".to_string()),
+            album: Some("Discovery".to_string()),
+            duration_secs: 300.0,
+            seconds_listened: 300.0,
+            completed: true,
+            skipped: false,
+            source: "library".to_string(),
+        })
+        .await
+        .expect("record playback for user B");
+
+    processor
+        .dispatch_command(Command::LikeTrack {
+            track_id: dp_track.clone(),
+        })
+        .await
+        .expect("like track for user B");
+
+    // 3. Verify User A isolation
+    *processor.current_user.write().await = Some(user_a.clone());
+
+    // User A's taste profile
+    let taste_a_res = processor.execute_query(Query::GetTasteProfile).await.expect("query taste A");
+    if let QueryResponse::TasteProfile(val) = taste_a_res {
+        let profile: TasteProfile = serde_json::from_value(val).expect("deserialize taste profile A");
+        assert!(profile.genre_affinities.contains_key("Rock"), "User A must have Rock affinity");
+        assert!(!profile.genre_affinities.contains_key("Electronic"), "User A must NOT have Electronic affinity");
+    } else {
+        panic!("expected TasteProfile response");
+    }
+
+    // User A's track view (Pink Floyd liked = 1, Daft Punk liked = 0)
+    let tracks_a_res = processor.execute_query(Query::GetTracks {
+        offset: 0,
+        limit: 100,
+        sort_by: None,
+        ascending: true,
+    }).await.expect("query tracks A");
+    if let QueryResponse::Tracks(tracks) = tracks_a_res {
+        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
+        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
+        assert_eq!(pf["manual_like"], 1, "Pink Floyd must be liked for User A");
+        assert_eq!(dp["manual_like"], 0, "Daft Punk must not be liked for User A");
+    } else {
+        panic!("expected Tracks response");
+    }
+
+    // 4. Verify User B isolation
+    *processor.current_user.write().await = Some(user_b.clone());
+
+    // User B's taste profile
+    let taste_b_res = processor.execute_query(Query::GetTasteProfile).await.expect("query taste B");
+    if let QueryResponse::TasteProfile(val) = taste_b_res {
+        let profile: TasteProfile = serde_json::from_value(val).expect("deserialize taste profile B");
+        assert!(profile.genre_affinities.contains_key("Electronic"), "User B must have Electronic affinity");
+        assert!(!profile.genre_affinities.contains_key("Rock"), "User B must NOT have Rock affinity");
+    } else {
+        panic!("expected TasteProfile response");
+    }
+
+    // User B's track view (Pink Floyd liked = 0, Daft Punk liked = 1)
+    let tracks_b_res = processor.execute_query(Query::GetTracks {
+        offset: 0,
+        limit: 100,
+        sort_by: None,
+        ascending: true,
+    }).await.expect("query tracks B");
+    if let QueryResponse::Tracks(tracks) = tracks_b_res {
+        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
+        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
+        assert_eq!(pf["manual_like"], 0, "Pink Floyd must not be liked for User B");
+        assert_eq!(dp["manual_like"], 1, "Daft Punk must be liked for User B");
+    } else {
+        panic!("expected Tracks response");
+    }
+
+    // 5. Verify Guest isolation
+    *processor.current_user.write().await = None;
+
+    let tracks_guest_res = processor.execute_query(Query::GetTracks {
+        offset: 0,
+        limit: 100,
+        sort_by: None,
+        ascending: true,
+    }).await.expect("query tracks guest");
+    if let QueryResponse::Tracks(tracks) = tracks_guest_res {
+        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
+        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
+        assert_eq!(pf["manual_like"], 0, "Pink Floyd must not be liked for Guest");
+        assert_eq!(dp["manual_like"], 0, "Daft Punk must not be liked for Guest");
+    } else {
+        panic!("expected Tracks response");
+    }
+
+    // 6. Verify Smart Mix Isolation
+    *processor.current_user.write().await = Some(user_a.clone());
+    let mix_a_res = processor.dispatch_command(Command::GenerateSmartMix {
+        mix_type: SmartMixType::Daily,
+    }).await.expect("generate mix for User A");
+    let mix_a_id = match mix_a_res {
+        CommandResponse::MixGenerated { playlist_id, .. } => playlist_id,
+        _ => panic!("expected MixGenerated"),
+    };
+
+    *processor.current_user.write().await = Some(user_b.clone());
+    let mix_b_res = processor.dispatch_command(Command::GenerateSmartMix {
+        mix_type: SmartMixType::Daily,
+    }).await.expect("generate mix for User B");
+    let mix_b_id = match mix_b_res {
+        CommandResponse::MixGenerated { playlist_id, .. } => playlist_id,
+        _ => panic!("expected MixGenerated"),
+    };
+
+    assert_ne!(mix_a_id, mix_b_id, "User A and User B daily mixes must have distinct IDs");
+
+    // Check that User A's playlists contain mix_a_id and NOT mix_b_id
+    *processor.current_user.write().await = Some(user_a.clone());
+    let playlists_a = processor.execute_query(Query::GetPlaylists).await.expect("get playlists user A");
+    if let QueryResponse::Playlists(list) = playlists_a {
+        assert!(list.iter().any(|p| p["id"] == mix_a_id), "User A playlists must contain User A's mix");
+        assert!(!list.iter().any(|p| p["id"] == mix_b_id), "User A playlists must NOT contain User B's mix");
+    }
+
+    // Check that User B's playlists contain mix_b_id and NOT mix_a_id
+    *processor.current_user.write().await = Some(user_b.clone());
+    let playlists_b = processor.execute_query(Query::GetPlaylists).await.expect("get playlists user B");
+    if let QueryResponse::Playlists(list) = playlists_b {
+        assert!(list.iter().any(|p| p["id"] == mix_b_id), "User B playlists must contain User B's mix");
+        assert!(!list.iter().any(|p| p["id"] == mix_a_id), "User B playlists must NOT contain User A's mix");
+    }
 }

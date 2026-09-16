@@ -5,6 +5,7 @@ use sqlx::{FromRow, SqlitePool};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct UserPreferenceRecord {
+    pub user_id: String,
     pub entity_type: String,
     pub entity_id: String,
     pub short_term_affinity: f64,
@@ -37,20 +38,31 @@ pub struct NewRecommendation {
 pub trait RecommendationRepository: Send + Sync {
     async fn record_session(
         &self,
+        user_id: &str,
         session_id: &str,
         session_type: &str,
         recommendations: &[NewRecommendation],
     ) -> AppResult<()>;
 
-    async fn get_latest_recommendations(&self, session_type: &str, limit: u32) -> AppResult<Vec<RecommendationRecord>>;
+    async fn get_latest_recommendations(
+        &self,
+        user_id: &str,
+        session_type: &str,
+        limit: u32,
+    ) -> AppResult<Vec<RecommendationRecord>>;
     async fn upsert_preference(
         &self,
+        user_id: &str,
         entity_type: &str,
         entity_id: &str,
         short_term: f64,
         long_term: f64,
     ) -> AppResult<()>;
-    async fn get_preferences_by_type(&self, entity_type: &str) -> AppResult<Vec<UserPreferenceRecord>>;
+    async fn get_preferences_by_type(
+        &self,
+        user_id: &str,
+        entity_type: &str,
+    ) -> AppResult<Vec<UserPreferenceRecord>>;
 }
 
 #[derive(Clone)]
@@ -68,6 +80,7 @@ impl SqliteRecommendationRepository {
 impl RecommendationRepository for SqliteRecommendationRepository {
     async fn record_session(
         &self,
+        user_id: &str,
         session_id: &str,
         session_type: &str,
         recommendations: &[NewRecommendation],
@@ -76,12 +89,13 @@ impl RecommendationRepository for SqliteRecommendationRepository {
         let now = chrono::Utc::now().timestamp();
 
         sqlx::query(
-            "INSERT INTO recommendation_sessions (id, generated_at, session_type)
-             VALUES (?, ?, ?)"
+            "INSERT INTO recommendation_sessions (id, generated_at, session_type, user_id)
+             VALUES (?, ?, ?, ?)"
         )
         .bind(session_id)
         .bind(now)
         .bind(session_type)
+        .bind(user_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -108,16 +122,22 @@ impl RecommendationRepository for SqliteRecommendationRepository {
         Ok(())
     }
 
-    async fn get_latest_recommendations(&self, session_type: &str, limit: u32) -> AppResult<Vec<RecommendationRecord>> {
+    async fn get_latest_recommendations(
+        &self,
+        user_id: &str,
+        session_type: &str,
+        limit: u32,
+    ) -> AppResult<Vec<RecommendationRecord>> {
         let records = sqlx::query_as::<_, RecommendationRecord>(
             "SELECT r.id, r.session_id, r.track_id, r.external_track_id, r.score, r.reasons_json, r.is_discovery
              FROM recommendations r
              JOIN recommendation_sessions s ON s.id = r.session_id
-             WHERE s.session_type = ?
+             WHERE s.session_type = ? AND s.user_id = ?
              ORDER BY s.generated_at DESC, r.score DESC
              LIMIT ?"
         )
         .bind(session_type)
+        .bind(user_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
         .await
@@ -128,6 +148,7 @@ impl RecommendationRepository for SqliteRecommendationRepository {
 
     async fn upsert_preference(
         &self,
+        user_id: &str,
         entity_type: &str,
         entity_id: &str,
         short_term: f64,
@@ -135,13 +156,14 @@ impl RecommendationRepository for SqliteRecommendationRepository {
     ) -> AppResult<()> {
         let now = chrono::Utc::now().timestamp();
         sqlx::query(
-            "INSERT INTO user_preferences (entity_type, entity_id, short_term_affinity, long_term_affinity, updated_at)
-             VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(entity_type, entity_id) DO UPDATE SET
+            "INSERT INTO user_preferences (user_id, entity_type, entity_id, short_term_affinity, long_term_affinity, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
                 short_term_affinity = excluded.short_term_affinity,
                 long_term_affinity = excluded.long_term_affinity,
                 updated_at = excluded.updated_at"
         )
+        .bind(user_id)
         .bind(entity_type)
         .bind(entity_id)
         .bind(short_term)
@@ -154,13 +176,18 @@ impl RecommendationRepository for SqliteRecommendationRepository {
         Ok(())
     }
 
-    async fn get_preferences_by_type(&self, entity_type: &str) -> AppResult<Vec<UserPreferenceRecord>> {
+    async fn get_preferences_by_type(
+        &self,
+        user_id: &str,
+        entity_type: &str,
+    ) -> AppResult<Vec<UserPreferenceRecord>> {
         let prefs = sqlx::query_as::<_, UserPreferenceRecord>(
-            "SELECT entity_type, entity_id, short_term_affinity, long_term_affinity, updated_at
+            "SELECT user_id, entity_type, entity_id, short_term_affinity, long_term_affinity, updated_at
              FROM user_preferences
-             WHERE entity_type = ?
+             WHERE user_id = ? AND entity_type = ?
              ORDER BY (short_term_affinity * 0.6 + long_term_affinity * 0.4) DESC"
         )
+        .bind(user_id)
         .bind(entity_type)
         .fetch_all(&self.pool)
         .await

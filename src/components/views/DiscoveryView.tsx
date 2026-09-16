@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import {
   DownloadCloud,
   Sparkles,
@@ -24,6 +24,7 @@ import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../ty
 import { executeQuery } from "../../services/api";
 import { CollectionData } from "./CollectionDetailView";
 import { OnlineSearchResultsSection } from "./OnlineSearchResultsSection";
+import { splitDiscoveryRecommendations } from "../../forYouRecommendations";
 
 interface DiscoveryTrackCardProps {
   rec: DiscoveryRecommendation;
@@ -752,6 +753,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
+  localTracks: Track[];
   playlists?: Playlist[];
   onPlayPlaylist?: (id: string) => void;
   onAddToWishlist: (rec: DiscoveryRecommendation) => void;
@@ -785,6 +787,7 @@ interface DiscoveryViewProps {
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   recommendations,
+  localTracks,
   playlists = [],
   onPlayPlaylist,
   onAddToWishlist,
@@ -838,7 +841,22 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     }
   };
 
-  const filteredTrendingRecs = recommendations.filter((rec) => {
+  const playlistTrackIds = useMemo(
+    () => new Set(Object.entries(trackPlaylistMap || {})
+      .filter(([, playlistIds]) => playlistIds.length > 0)
+      .map(([trackId]) => trackId)),
+    [trackPlaylistMap]
+  );
+  const { forYou, trending } = useMemo(() => splitDiscoveryRecommendations({
+    recommendations,
+    playlistTrackIds,
+    likedTrackIds: likedTrackIds || new Set<string>(),
+    downloads,
+    downloadTargets,
+    localTracks,
+  }), [recommendations, playlistTrackIds, likedTrackIds, downloads, downloadTargets, localTracks]);
+
+  const filteredTrendingRecs = trending.filter((rec) => {
     if (filter === "ALL") return true;
     const r = rec.recommendation_reason.toLowerCase();
     if (filter === "TRENDING") return r.includes("trending") || r.includes("chart");
@@ -944,22 +962,23 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setSearchResults(null);
   };
 
-  const trendingCount = recommendations.filter((r) => {
+  const trendingCount = trending.filter((r) => {
     const s = r.recommendation_reason.toLowerCase();
     return s.includes("trending") || s.includes("chart");
   }).length;
 
-  const genreCount = recommendations.filter((r) => {
+  const genreCount = trending.filter((r) => {
     const s = r.recommendation_reason.toLowerCase();
     return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
   }).length;
 
-  const similarCount = recommendations.filter((r) => {
+  const similarCount = trending.filter((r) => {
     const s = r.recommendation_reason.toLowerCase();
     return s.includes("similar") || s.includes("listening") || s.includes("library artist");
   }).length;
 
   const songsScrollRef = useRef<HTMLDivElement>(null);
+  const forYouScrollRef = useRef<HTMLDivElement>(null);
   const mixesScrollRef = useRef<HTMLDivElement>(null);
   const chartsScrollRef = useRef<HTMLDivElement>(null);
   const discoveryRef = useRef<HTMLDivElement>(null);
@@ -1211,6 +1230,47 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     handleSearchOnline(chart.searchQuery);
   };
 
+  const renderSongCard = (rec: DiscoveryRecommendation) => {
+    const hasRealLocalMatch = !!rec.matched_local_track_id &&
+      !rec.matched_local_track_id.startsWith("itunes:") &&
+      !rec.matched_local_track_id.startsWith("online:");
+    const isPlayingLocal = isLocalPlaying && !!currentLocalTrack &&
+      currentLocalTrack.format !== "online" &&
+      !currentLocalTrack.file_path.startsWith("online://") &&
+      ((hasRealLocalMatch && rec.matched_local_track_id === currentLocalTrack.id) ||
+        rec.external_track_id === currentLocalTrack.id ||
+        (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
+          !!currentLocalTrack.artist_name &&
+          rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
+    const isPlayingOnline = activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
+    const isPlaying = isPlayingLocal || isPlayingOnline;
+
+    return (
+      <div key={rec.external_track_id} style={{ flex: "0 0 174px", width: "174px" }}>
+        <DiscoveryTrackCard
+          rec={rec}
+          isPlaying={isPlaying}
+          isLoading={activeOnlineTrackId === rec.external_track_id && isOnlineLoading}
+          isSelected={isPlaying || activeOnlineTrackId === rec.external_track_id}
+          onPlay={onPlayOnlineTrack}
+          onStop={onStopTrack || onPlayOnlineTrack}
+          onArtistClick={(artist) => {
+            setSearchQuery(artist);
+            handleSearchOnline(artist);
+          }}
+          onAddToWishlist={onAddToWishlist}
+          onDownload={onSearchDirect}
+          downloads={downloads}
+          trackPlaylistMap={trackPlaylistMap}
+          onAddToPlaylist={onAddToPlaylist}
+          isQueued={queuedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
+          onEnqueue={onEnqueueTrack}
+          isLiked={likedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
+        />
+      </div>
+    );
+  };
+
   if (!isOnline) {
     return (
       <div
@@ -1334,7 +1394,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             <div className="hero-signature" aria-hidden="true"><span lang="ja">音で、呼吸する。</span></div>
           </section>
           <div className="discovery-scroll-content">
-          {/* SECTION 1: Trending & Recommended Songs */}
+          {/* SECTION 1: Trending Songs */}
       <div>
         <div
           style={{
@@ -1359,7 +1419,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               <span>Trending Songs</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Top recommended songs tailored to your taste
+              Popular songs from the charts
             </p>
           </div>
 
@@ -1406,13 +1466,13 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
 
         {/* Curated Filter Words (Below Trending Songs title) */}
-        {recommendations.length > 0 && (
+        {trending.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
             <button
               onClick={() => handleFilterChange("ALL")}
               className={`subtab-btn ${filter === "ALL" ? "active" : ""}`}
             >
-              All For You ({recommendations.length})
+              All Songs ({trending.length})
             </button>
             {genreCount > 0 && (
               <button
@@ -1466,61 +1526,49 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             className="horizontal-scroll-row"
             onScroll={handleSongsScroll}
           >
-            {filteredTrendingRecs.slice(0, visibleCount).map((rec) => {
-              const hasRealLocalMatch =
-                !!rec.matched_local_track_id &&
-                !rec.matched_local_track_id.startsWith("itunes:") &&
-                !rec.matched_local_track_id.startsWith("online:");
-
-              const isPlayingLocal =
-                isLocalPlaying &&
-                !!currentLocalTrack &&
-                currentLocalTrack.format !== "online" &&
-                !currentLocalTrack.file_path.startsWith("online://") &&
-                ((hasRealLocalMatch && rec.matched_local_track_id === currentLocalTrack.id) ||
-                  rec.external_track_id === currentLocalTrack.id ||
-                  (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
-                    currentLocalTrack.artist_name &&
-                    rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
-
-              const isPlayingOnline =
-                activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
-
-              const isPlayingThis = isPlayingLocal || isPlayingOnline;
-              const isSelected = isPlayingThis || activeOnlineTrackId === rec.external_track_id;
-              const isResolvingThis =
-                activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
-
-              return (
-                <div key={rec.external_track_id} style={{ flex: "0 0 174px", width: "174px" }}>
-                  <DiscoveryTrackCard
-                    rec={rec}
-                    isPlaying={isPlayingThis}
-                    isLoading={isResolvingThis}
-                    isSelected={isSelected}
-                    onPlay={onPlayOnlineTrack}
-                    onStop={onStopTrack || onPlayOnlineTrack}
-                    onArtistClick={(artist) => {
-                      setSearchQuery(artist);
-                      handleSearchOnline(artist);
-                    }}
-                    onAddToWishlist={onAddToWishlist}
-                    onDownload={onSearchDirect}
-                    downloads={downloads}
-                    trackPlaylistMap={trackPlaylistMap}
-                    onAddToPlaylist={onAddToPlaylist}
-                    isQueued={queuedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
-                    onEnqueue={onEnqueueTrack}
-                    isLiked={likedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
-                  />
-                </div>
-              );
-            })}
+            {filteredTrendingRecs.slice(0, visibleCount).map(renderSongCard)}
           </div>
         )}
       </div>
 
-      {/* SECTION 2: Mixes For You (Horizontal Scroll) */}
+      {/* SECTION 2: For You (new songs based on listening taste) */}
+      <section aria-labelledby="for-you-heading">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+          <div>
+            <h2
+              id="for-you-heading"
+              style={{ fontSize: "1.18rem", fontWeight: 700, color: "#e8d8c9", display: "flex", alignItems: "center", gap: "8px" }}
+            >
+              <Sparkles size={18} color="var(--accent-secondary)" />
+              <span>For You</span>
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              Songs picked from your taste that you have not saved or downloaded
+            </p>
+          </div>
+          {forYou.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button type="button" className="scroll-arrow-btn" onClick={() => handleScroll(forYouScrollRef, "left")} title="Scroll For You left" aria-label="Scroll For You left">
+                <ChevronLeft size={16} />
+              </button>
+              <button type="button" className="scroll-arrow-btn" onClick={() => handleScroll(forYouScrollRef, "right")} title="Scroll For You right" aria-label="Scroll For You right">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+        {forYou.length > 0 ? (
+          <div ref={forYouScrollRef} className="horizontal-scroll-row">
+            {forYou.map(renderSongCard)}
+          </div>
+        ) : (
+          <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed" }}>
+            Play or add more music to your library to shape new recommendations.
+          </div>
+        )}
+      </section>
+
+      {/* SECTION 3: Mixes For You (Horizontal Scroll) */}
       <div>
         <div
           style={{

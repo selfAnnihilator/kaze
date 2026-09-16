@@ -54,12 +54,12 @@ impl LocalRecommender {
 
     /// Fetches all candidates, evaluates scores against user's taste profile,
     /// enforces diversity (max 2 tracks per artist), and logs the session.
-    pub async fn recommend(&self, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
-        let profile = self.taste_engine.compute_taste_profile().await?;
-        self.recommend_with_profile(&profile, limit).await
+    pub async fn recommend(&self, user_id: &str, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        self.recommend_with_profile(user_id, &profile, limit).await
     }
 
-    pub async fn recommend_with_profile(&self, profile: &TasteProfile, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
+    pub async fn recommend_with_profile(&self, user_id: &str, profile: &TasteProfile, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
         let candidates = sqlx::query_as::<_, CandidateRow>(
             "SELECT t.id, t.title, t.artist_id, a.name as artist_name, al.title as album_title,
                     g.name as genre_name, t.year, t.duration_secs,
@@ -69,8 +69,9 @@ impl LocalRecommender {
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN albums al ON al.id = t.album_id
              LEFT JOIN genres g ON g.id = t.genre_id
-             LEFT JOIN track_statistics ts ON ts.track_id = t.id"
+             LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?"
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -155,7 +156,7 @@ impl LocalRecommender {
         }
 
         // Record session
-        let _ = self.rec_repo.record_session(&session_id, "local_mix", &new_recs).await;
+        let _ = self.rec_repo.record_session(user_id, &session_id, "local_mix", &new_recs).await;
 
         Ok(result)
     }

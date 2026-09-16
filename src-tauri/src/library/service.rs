@@ -177,7 +177,11 @@ impl LibraryService {
 
     /// Search across tracks via FTS5.
     pub async fn search(&self, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>> {
-        self.track_repo.search_tracks(query, limit).await
+        self.search_scoped(None, query, limit).await
+    }
+
+    pub async fn search_scoped(&self, user_id: Option<&str>, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>> {
+        self.track_repo.search_tracks_scoped(user_id, query, limit).await
     }
 
     pub fn event_bus(&self) -> Arc<EventBus> {

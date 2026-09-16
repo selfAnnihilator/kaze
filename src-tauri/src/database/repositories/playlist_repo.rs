@@ -34,9 +34,12 @@ pub trait PlaylistRepository: Send + Sync {
     async fn find_by_name(&self, name: &str) -> AppResult<Option<PlaylistRecord>>;
     async fn get_all_playlists(&self) -> AppResult<Vec<PlaylistRecord>>;
     async fn get_smart_mixes(&self) -> AppResult<Vec<PlaylistRecord>>;
+    async fn get_smart_mixes_for_user(&self, user_id: &str) -> AppResult<Vec<PlaylistRecord>>;
     async fn get_smart_mix_by_type(&self, mix_type: &str) -> AppResult<Option<PlaylistRecord>>;
     async fn find_smart_mix(&self, mix_type: &str, name: &str) -> AppResult<Option<PlaylistRecord>>;
+    async fn find_smart_mix_for_user(&self, user_id: &str, mix_type: &str, name: &str) -> AppResult<Option<PlaylistRecord>>;
     async fn delete_duplicate_smart_mixes(&self, mix_type: &str, name: &str, keep_id: &str) -> AppResult<()>;
+    async fn delete_duplicate_smart_mixes_for_user(&self, user_id: &str, mix_type: &str, name: &str, keep_id: &str) -> AppResult<()>;
     async fn delete_playlist(&self, id: &str) -> AppResult<()>;
     async fn rename_playlist(&self, id: &str, name: &str) -> AppResult<()>;
     async fn ensure_liked_songs_playlist(&self, user_id: &str) -> AppResult<String>;
@@ -141,13 +144,18 @@ impl PlaylistRepository for SqlitePlaylistRepository {
     }
 
     async fn get_smart_mixes(&self) -> AppResult<Vec<PlaylistRecord>> {
+        self.get_smart_mixes_for_user("default").await
+    }
+
+    async fn get_smart_mixes_for_user(&self, user_id: &str) -> AppResult<Vec<PlaylistRecord>> {
         let mixes = sqlx::query_as::<_, PlaylistRecord>(
             "SELECT id, name, description, is_smart_mix, mix_type,
                     generation_reason, expires_at, created_at, updated_at
              FROM playlists
-             WHERE is_smart_mix = 1
+             WHERE is_smart_mix = 1 AND user_id = ?
              ORDER BY updated_at DESC"
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -173,14 +181,19 @@ impl PlaylistRepository for SqlitePlaylistRepository {
     }
 
     async fn find_smart_mix(&self, mix_type: &str, name: &str) -> AppResult<Option<PlaylistRecord>> {
+        self.find_smart_mix_for_user("default", mix_type, name).await
+    }
+
+    async fn find_smart_mix_for_user(&self, user_id: &str, mix_type: &str, name: &str) -> AppResult<Option<PlaylistRecord>> {
         let mix = sqlx::query_as::<_, PlaylistRecord>(
             "SELECT id, name, description, is_smart_mix, mix_type,
                     generation_reason, expires_at, created_at, updated_at
              FROM playlists
-             WHERE is_smart_mix = 1 AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE)
+             WHERE is_smart_mix = 1 AND user_id = ? AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE)
              ORDER BY updated_at DESC
              LIMIT 1"
         )
+        .bind(user_id)
         .bind(mix_type)
         .bind(name)
         .fetch_optional(&self.pool)
@@ -191,12 +204,17 @@ impl PlaylistRepository for SqlitePlaylistRepository {
     }
 
     async fn delete_duplicate_smart_mixes(&self, mix_type: &str, name: &str, keep_id: &str) -> AppResult<()> {
+        self.delete_duplicate_smart_mixes_for_user("default", mix_type, name, keep_id).await
+    }
+
+    async fn delete_duplicate_smart_mixes_for_user(&self, user_id: &str, mix_type: &str, name: &str, keep_id: &str) -> AppResult<()> {
         let _ = sqlx::query(
             "DELETE FROM playlist_tracks WHERE playlist_id IN (
                 SELECT id FROM playlists
-                WHERE is_smart_mix = 1 AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) AND id != ?
+                WHERE is_smart_mix = 1 AND user_id = ? AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) AND id != ?
             )"
         )
+        .bind(user_id)
         .bind(mix_type)
         .bind(name)
         .bind(keep_id)
@@ -205,8 +223,9 @@ impl PlaylistRepository for SqlitePlaylistRepository {
 
         let _ = sqlx::query(
             "DELETE FROM playlists
-             WHERE is_smart_mix = 1 AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) AND id != ?"
+             WHERE is_smart_mix = 1 AND user_id = ? AND (mix_type = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) AND id != ?"
         )
+        .bind(user_id)
         .bind(mix_type)
         .bind(name)
         .bind(keep_id)
@@ -441,7 +460,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
             "SELECT id, name, description, is_smart_mix, mix_type,
                     generation_reason, expires_at, created_at, updated_at
              FROM playlists
-             WHERE is_smart_mix = 1 OR user_id = ? OR user_id = 'default'
+             WHERE user_id = ?
              ORDER BY is_smart_mix DESC, updated_at DESC"
         )
         .bind(user_id)
@@ -457,7 +476,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
             "SELECT id, name, description, is_smart_mix, mix_type,
                     generation_reason, expires_at, created_at, updated_at
              FROM playlists
-             WHERE name = ? COLLATE BINARY AND is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')
+             WHERE name = ? COLLATE BINARY AND is_smart_mix = 0 AND user_id = ?
              LIMIT 1"
         )
         .bind(name)
@@ -474,7 +493,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
             "SELECT pt.track_id, pt.playlist_id
              FROM playlist_tracks pt
              JOIN playlists p ON p.id = pt.playlist_id
-             WHERE p.is_smart_mix = 0 AND (p.user_id = ? OR p.user_id = 'default')"
+             WHERE p.is_smart_mix = 0 AND p.user_id = ?"
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -493,7 +512,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
         if let Some(uid) = user_id {
             let _ = sqlx::query(
                 "DELETE FROM playlist_tracks WHERE playlist_id IN (
-                    SELECT id FROM playlists WHERE is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')
+                    SELECT id FROM playlists WHERE is_smart_mix = 0 AND user_id = ?
                 )"
             )
             .bind(uid)
@@ -501,7 +520,7 @@ impl PlaylistRepository for SqlitePlaylistRepository {
             .await;
 
             let _ = sqlx::query(
-                "DELETE FROM playlists WHERE is_smart_mix = 0 AND (user_id = ? OR user_id = 'default')"
+                "DELETE FROM playlists WHERE is_smart_mix = 0 AND user_id = ?"
             )
             .bind(uid)
             .execute(&self.pool)

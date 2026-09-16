@@ -470,6 +470,11 @@ impl CoreProcessor {
             .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string())
     }
 
+    pub async fn current_user_id(&self) -> String {
+        let current_user_guard = self.current_user.read().await;
+        current_user_guard.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+    }
+
     /// Trigger background push sync for the active user if authenticated.
     pub async fn trigger_background_sync(&self) {
         let user_id = {
@@ -618,7 +623,8 @@ impl CoreProcessor {
                     unchanged = total_unchanged,
                     "Library scan execution finished"
                 );
-                let _ = self.smart_mix_generator.ensure_default_mixes().await;
+                let user_id = self.current_user_id().await;
+                let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
                 Ok(CommandResponse::Ok)
             }
             Command::CancelScan => {
@@ -726,12 +732,9 @@ impl CoreProcessor {
 
             // --- User Feedback & Taste ---
             Command::LikeTrack { track_id } => {
-                self.history_service.set_track_like(&track_id, 1).await?;
+                let user_id = self.current_user_id().await;
+                self.history_service.set_track_like_scoped(&user_id, &track_id, 1).await?;
                 // Also add to Liked Songs playlist
-                let user_id = {
-                    let g = self.current_user.read().await;
-                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
-                };
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 // Only add if it's a local track (not an online: prefixed id); online tracks use AddTrackToPlaylist
                 if !track_id.starts_with("online:") && !track_id.starts_with("itunes:") {
@@ -751,34 +754,25 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::DislikeTrack { track_id } => {
-                self.history_service.set_track_like(&track_id, -1).await?;
+                let user_id = self.current_user_id().await;
+                self.history_service.set_track_like_scoped(&user_id, &track_id, -1).await?;
                 // Remove from Liked Songs if it's there
-                let user_id = {
-                    let g = self.current_user.read().await;
-                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
-                };
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::RemoveTrackFeedback { track_id } => {
-                self.history_service.set_track_like(&track_id, 0).await?;
+                let user_id = self.current_user_id().await;
+                self.history_service.set_track_like_scoped(&user_id, &track_id, 0).await?;
                 // Remove from Liked Songs
-                let user_id = {
-                    let g = self.current_user.read().await;
-                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
-                };
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
             Command::EnsureLikedSongsPlaylist => {
-                let user_id = {
-                    let g = self.current_user.read().await;
-                    g.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
-                };
+                let user_id = self.current_user_id().await;
                 let id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 Ok(CommandResponse::EntityId(id))
             }
@@ -786,7 +780,8 @@ impl CoreProcessor {
 
             // --- Playlists & Recommendations ---
             Command::GenerateSmartMix { mix_type } => {
-                let playlist = self.smart_mix_generator.generate_mix(&mix_type).await?;
+                let user_id = self.current_user_id().await;
+                let playlist = self.smart_mix_generator.generate_mix(&user_id, &mix_type).await?;
                 let tracks = self.playlist_repo.get_playlist_tracks(&playlist.id).await?;
                 let track_count = tracks.len();
                 let mix_type_name = playlist.mix_type.clone().unwrap_or_else(|| "custom".to_string());
@@ -1663,7 +1658,8 @@ impl CoreProcessor {
                 .map_err(|e| AppError::Database(format!("Failed to record playback history: {}", e)))?;
 
                 let is_meaningful = seconds_listened >= 30.0 || completed;
-                let _ = self.stats_repo.update_track_playback_stats(
+                let _ = self.stats_repo.update_track_playback_stats_scoped(
+                    user_id,
                     &track_id,
                     seconds_listened,
                     is_meaningful,
@@ -1686,7 +1682,8 @@ impl CoreProcessor {
                 let mut val = serde_json::to_value(&state)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 if let Some(track_id) = &state.current_track_id {
-                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id(track_id).await {
+                    let user_id = self.current_user_id().await;
+                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id_scoped(track_id, Some(&user_id)).await {
                         if let Ok(track_val) = serde_json::to_value(track) {
                             if let Some(obj) = val.as_object_mut() {
                                 obj.insert("current_track".to_string(), track_val);
@@ -1701,7 +1698,8 @@ impl CoreProcessor {
                 entity,
                 limit,
             } => {
-                let ranked = self.ranking_engine.get_rankings(window, entity, limit).await?;
+                let user_id = self.current_user_id().await;
+                let ranked = self.ranking_engine.get_rankings_for_user(Some(&user_id), window, entity, limit).await?;
                 let val = match ranked {
                     crate::ranking::RankedOutput::Tracks(items) => {
                         items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
@@ -1765,10 +1763,11 @@ impl CoreProcessor {
                 sort_by,
                 ascending,
             } => {
+                let user_id = self.current_user_id().await;
                 let tracks = self
                     .library_service
                     .track_repo()
-                    .list_tracks(offset, limit, sort_by.as_deref(), ascending)
+                    .list_tracks_scoped(Some(&user_id), offset, limit, sort_by.as_deref(), ascending)
                     .await?;
                 let val: Vec<serde_json::Value> = tracks
                     .into_iter()
@@ -1777,10 +1776,11 @@ impl CoreProcessor {
                 Ok(QueryResponse::Tracks(val))
             }
             Query::GetTrackById { track_id } => {
+                let user_id = self.current_user_id().await;
                 let track = self
                     .library_service
                     .track_repo()
-                    .find_by_id(&track_id)
+                    .find_by_id_scoped(&track_id, Some(&user_id))
                     .await?;
                 let val = track.and_then(|t| serde_json::to_value(t).ok());
                 Ok(QueryResponse::Track(val))
@@ -1810,7 +1810,8 @@ impl CoreProcessor {
                 Ok(QueryResponse::Albums(val))
             }
             Query::SearchLibrary { query_text, limit } => {
-                let results = self.library_service.search(&query_text, limit).await?;
+                let user_id = self.current_user_id().await;
+                let results = self.library_service.search_scoped(Some(&user_id), &query_text, limit).await?;
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
@@ -1818,13 +1819,15 @@ impl CoreProcessor {
                 Ok(QueryResponse::SearchResults(val))
             }
             Query::GetTasteProfile => {
-                let profile = self.taste_engine.compute_taste_profile().await?;
+                let user_id = self.current_user_id().await;
+                let profile = self.taste_engine.compute_taste_profile(&user_id).await?;
                 let val = serde_json::to_value(&profile)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::TasteProfile(val))
             }
             Query::GetLocalRecommendations { limit } => {
-                let recs = self.recommender.recommend(limit as usize).await?;
+                let user_id = self.current_user_id().await;
+                let recs = self.recommender.recommend(&user_id, limit as usize).await?;
                 let val: Vec<serde_json::Value> = recs
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
@@ -1832,7 +1835,8 @@ impl CoreProcessor {
                 Ok(QueryResponse::Recommendations(val))
             }
             Query::GetSmartMixes => {
-                let mixes = self.smart_mix_generator.ensure_default_mixes().await?;
+                let user_id = self.current_user_id().await;
+                let mixes = self.smart_mix_generator.ensure_default_mixes(&user_id).await?;
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for m in mixes {
                     let count = self.playlist_repo.get_track_count(&m.id).await.unwrap_or(0);
@@ -1846,13 +1850,14 @@ impl CoreProcessor {
                 Ok(QueryResponse::SmartMixes(val))
             }
             Query::GetPlaylists => {
-                let _ = self.smart_mix_generator.ensure_default_mixes().await;
+                let user_id = self.current_user_id().await;
+                let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
                 let current_user_guard = self.current_user.read().await;
                 let playlists = if let Some(ref u) = *current_user_guard {
                     self.playlist_repo.ensure_liked_songs_playlist(&u.id).await?;
                     self.playlist_repo.get_user_playlists(&u.id).await?
                 } else {
-                    self.playlist_repo.get_smart_mixes().await?
+                    self.playlist_repo.get_smart_mixes_for_user(&user_id).await?
                 };
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
@@ -1953,9 +1958,10 @@ impl CoreProcessor {
                 limit,
                 force_refresh,
             } => {
+                let user_id = self.current_user_id().await;
                 let recs = self
                     .discovery_coordinator
-                    .get_discovery_recommendations(limit as usize, force_refresh.unwrap_or(false))
+                    .get_discovery_recommendations(&user_id, limit as usize, force_refresh.unwrap_or(false))
                     .await?;
                 let val: Vec<serde_json::Value> = recs
                     .into_iter()

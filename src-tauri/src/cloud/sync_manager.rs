@@ -336,8 +336,9 @@ impl SyncManager {
 
         // Also collect song IDs that have user feedback (liked or disliked) or play statistics
         let rated_rows: Vec<(String,)> = sqlx::query_as(
-            "SELECT track_id FROM track_statistics WHERE manual_like != 0 OR play_count > 0",
+            "SELECT track_id FROM track_statistics WHERE user_id = ? AND (manual_like != 0 OR play_count > 0)",
         )
+        .bind(user_id)
         .fetch_all(pool)
         .await
         .unwrap_or_default();
@@ -412,8 +413,9 @@ impl SyncManager {
         if !song_ids.is_empty() {
             let stat_rows: Vec<(String, i64, f64, i64, i64, Option<i64>, i64)> = sqlx::query_as(
                 "SELECT track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like
-                 FROM track_statistics"
+                 FROM track_statistics WHERE user_id = ?"
             )
+            .bind(user_id)
             .fetch_all(pool)
             .await
             .unwrap_or_default();
@@ -650,10 +652,11 @@ impl SyncManager {
 
         // 4. Song stats (stores and syncs liked: 1, disliked: -1, and neutral: 0 across users)
         for ss in &payload.song_stats {
+            let stat_user_id = if ss.user_id.is_empty() { user_id } else { &ss.user_id };
             let _ = sqlx::query(
-                "INSERT INTO track_statistics (track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(track_id) DO UPDATE SET
+                "INSERT INTO track_statistics (user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(user_id, track_id) DO UPDATE SET
                      play_count = MAX(track_statistics.play_count, excluded.play_count),
                      total_time_listened = MAX(track_statistics.total_time_listened, excluded.total_time_listened),
                      completion_count = MAX(track_statistics.completion_count, excluded.completion_count),
@@ -661,6 +664,7 @@ impl SyncManager {
                      last_played_at = MAX(coalesce(track_statistics.last_played_at, 0), coalesce(excluded.last_played_at, 0)),
                      manual_like = excluded.manual_like"
             )
+            .bind(stat_user_id)
             .bind(&ss.song_id)
             .bind(ss.play_count)
             .bind(ss.total_time_listened)

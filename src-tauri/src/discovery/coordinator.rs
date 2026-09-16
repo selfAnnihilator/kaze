@@ -436,6 +436,7 @@ impl DiscoveryCoordinator {
     /// hits that match the user's taste (top genres, listened artists, library artists).
     pub async fn get_discovery_recommendations(
         &self,
+        user_id: &str,
         limit: usize,
         force_refresh: bool,
     ) -> AppResult<Vec<DiscoveryRecommendation>> {
@@ -453,7 +454,7 @@ impl DiscoveryCoordinator {
         // 2. Analyze user library & listening taste to rank genres and artists
         let local_tracks = self
             .track_repo
-            .list_tracks(0, 50000, None, true)
+            .list_tracks_scoped(Some(user_id), 0, 50000, None, true)
             .await
             .unwrap_or_default();
 
@@ -476,7 +477,7 @@ impl DiscoveryCoordinator {
         }
 
         let mut listened_artists: HashSet<String> = HashSet::new();
-        if let Ok(profile) = self.taste_engine.compute_taste_profile().await {
+        if let Ok(profile) = self.taste_engine.compute_taste_profile(user_id).await {
             for a in profile.top_artists {
                 listened_artists.insert(a.display_name.to_lowercase().trim().to_string());
             }

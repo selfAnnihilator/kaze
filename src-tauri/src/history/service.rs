@@ -195,6 +195,10 @@ impl HistoryService {
         self.stats_repo.set_track_like(track_id, like_status).await
     }
 
+    pub async fn set_track_like_scoped(&self, user_id: &str, track_id: &str, like_status: i64) -> AppResult<()> {
+        self.stats_repo.set_track_like_scoped(user_id, track_id, like_status).await
+    }
+
     pub fn stats_repo(&self) -> Arc<dyn StatsRepository> {
         self.stats_repo.clone()
     }

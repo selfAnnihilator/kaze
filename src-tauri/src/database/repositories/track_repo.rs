@@ -56,11 +56,14 @@ pub struct ScannedMetadata {
 pub trait TrackRepository: Send + Sync {
     async fn find_by_path(&self, file_path: &str) -> AppResult<Option<TrackRecord>>;
     async fn find_by_id(&self, track_id: &str) -> AppResult<Option<TrackDetail>>;
+    async fn find_by_id_scoped(&self, track_id: &str, user_id: Option<&str>) -> AppResult<Option<TrackDetail>>;
     async fn get_all_paths_in_folder_prefix(&self, folder_prefix: &str) -> AppResult<Vec<String>>;
     async fn save_scanned_track(&self, meta: ScannedMetadata) -> AppResult<String>;
     async fn delete_by_path(&self, file_path: &str) -> AppResult<()>;
     async fn list_tracks(&self, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
+    async fn list_tracks_scoped(&self, user_id: Option<&str>, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
     async fn search_tracks(&self, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
+    async fn search_tracks_scoped(&self, user_id: Option<&str>, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
     async fn get_track_count(&self) -> AppResult<i64>;
 }
 
@@ -188,6 +191,11 @@ impl TrackRepository for SqliteTrackRepository {
     }
 
     async fn find_by_id(&self, track_id: &str) -> AppResult<Option<TrackDetail>> {
+        self.find_by_id_scoped(track_id, None).await
+    }
+
+    async fn find_by_id_scoped(&self, track_id: &str, user_id: Option<&str>) -> AppResult<Option<TrackDetail>> {
+        let user_id = user_id.unwrap_or("default");
         let detail = sqlx::query_as::<_, TrackDetail>(
             "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
                     a.name as artist_name, al.title as album_title, g.name as genre_name,
@@ -198,9 +206,10 @@ impl TrackRepository for SqliteTrackRepository {
              LEFT JOIN artists a ON t.artist_id = a.id
              LEFT JOIN albums al ON t.album_id = al.id
              LEFT JOIN genres g ON t.genre_id = g.id
-             LEFT JOIN track_statistics ts ON t.id = ts.track_id
+             LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
              WHERE t.id = ?"
         )
+        .bind(user_id)
         .bind(track_id)
         .fetch_optional(&self.pool)
         .await
@@ -331,6 +340,11 @@ impl TrackRepository for SqliteTrackRepository {
     }
 
     async fn list_tracks(&self, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>> {
+        self.list_tracks_scoped(None, offset, limit, sort_by, ascending).await
+    }
+
+    async fn list_tracks_scoped(&self, user_id: Option<&str>, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>> {
+        let user_id = user_id.unwrap_or("default");
         let order = if ascending { "ASC" } else { "DESC" };
         let col = match sort_by {
             Some("artist") => "artist_name",
@@ -350,12 +364,13 @@ impl TrackRepository for SqliteTrackRepository {
              LEFT JOIN artists a ON t.artist_id = a.id
              LEFT JOIN albums al ON t.album_id = al.id
              LEFT JOIN genres g ON t.genre_id = g.id
-             LEFT JOIN track_statistics ts ON t.id = ts.track_id
+             LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
              ORDER BY {} {} LIMIT ? OFFSET ?",
             col, order
         );
 
         let records = sqlx::query_as::<_, TrackDetail>(&sql)
+            .bind(user_id)
             .bind(limit)
             .bind(offset)
             .fetch_all(&self.pool)
@@ -366,11 +381,16 @@ impl TrackRepository for SqliteTrackRepository {
     }
 
     async fn search_tracks(&self, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>> {
+        self.search_tracks_scoped(None, query, limit).await
+    }
+
+    async fn search_tracks_scoped(&self, user_id: Option<&str>, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>> {
         let cleaned = query.replace('\"', "").trim().to_string();
         if cleaned.is_empty() {
             return Ok(vec![]);
         }
 
+        let user_id = user_id.unwrap_or("default");
         let fts_query = format!("\"{}\"*", cleaned);
 
         let records = sqlx::query_as::<_, TrackDetail>(
@@ -384,10 +404,11 @@ impl TrackRepository for SqliteTrackRepository {
              LEFT JOIN artists a ON t.artist_id = a.id
              LEFT JOIN albums al ON t.album_id = al.id
              LEFT JOIN genres g ON t.genre_id = g.id
-             LEFT JOIN track_statistics ts ON t.id = ts.track_id
+             LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
              WHERE tracks_fts MATCH ?
              LIMIT ?"
         )
+        .bind(user_id)
         .bind(&fts_query)
         .bind(limit)
         .fetch_all(&self.pool)

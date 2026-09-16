@@ -54,9 +54,10 @@ impl RankingEngine {
         }
     }
 
-    /// Retrieves ranked entities according to multi-factor scoring formula.
-    pub async fn get_rankings(
+    /// Retrieves ranked entities according to multi-factor scoring formula for a specific user.
+    pub async fn get_rankings_for_user(
         &self,
+        user_id: Option<&str>,
         window: TimeWindow,
         entity: RankingEntity,
         limit: u32,
@@ -66,21 +67,31 @@ impl RankingEngine {
 
         match entity {
             RankingEntity::Tracks => {
-                let items = self.stats_repo.get_ranked_tracks(start, &weights, limit).await?;
+                let items = self.stats_repo.get_ranked_tracks_for_user(user_id, start, &weights, limit).await?;
                 Ok(RankedOutput::Tracks(items))
             }
             RankingEntity::Artists => {
-                let items = self.stats_repo.get_ranked_artists(start, &weights, limit).await?;
+                let items = self.stats_repo.get_ranked_artists_for_user(user_id, start, &weights, limit).await?;
                 Ok(RankedOutput::Artists(items))
             }
             RankingEntity::Albums => {
-                let items = self.stats_repo.get_ranked_albums(start, &weights, limit).await?;
+                let items = self.stats_repo.get_ranked_albums_for_user(user_id, start, &weights, limit).await?;
                 Ok(RankedOutput::Albums(items))
             }
             RankingEntity::Genres => {
-                let items = self.stats_repo.get_ranked_genres(start, &weights, limit).await?;
+                let items = self.stats_repo.get_ranked_genres_for_user(user_id, start, &weights, limit).await?;
                 Ok(RankedOutput::Genres(items))
             }
         }
+    }
+
+    /// Retrieves ranked entities according to multi-factor scoring formula (defaults to default user).
+    pub async fn get_rankings(
+        &self,
+        window: TimeWindow,
+        entity: RankingEntity,
+        limit: u32,
+    ) -> AppResult<RankedOutput> {
+        self.get_rankings_for_user(None, window, entity, limit).await
     }
 }

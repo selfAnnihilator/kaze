@@ -301,7 +301,7 @@ async fn test_discovery_coordinator_matching_and_recommendations() -> AppResult<
         .await?;
 
     // Query discovery recommendations
-    let recs = coordinator.get_discovery_recommendations(10, false).await?;
+    let recs = coordinator.get_discovery_recommendations("test-user", 10, false).await?;
     assert_eq!(recs.len(), 2);
 
     // Both missing (wishlisted) and owned tracks should be included in trending recommendations

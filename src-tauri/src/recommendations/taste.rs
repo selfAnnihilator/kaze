@@ -67,13 +67,13 @@ impl TasteProfileEngine {
         Self { pool, rec_repo }
     }
 
-    /// Computes the complete dual-window taste profile from playback history, stats, and feedback.
-    pub async fn compute_taste_profile(&self) -> AppResult<TasteProfile> {
+    /// Computes the complete dual-window taste profile from playback history, stats, and feedback for a user.
+    pub async fn compute_taste_profile(&self, user_id: &str) -> AppResult<TasteProfile> {
         let now = Utc::now().timestamp();
         let short_term_cutoff = now - (14 * 86400); // 14 days
         let long_term_cutoff = now - (90 * 86400);  // 90 days
 
-        // Query listening history joined with track, artist, and genre
+        // Query listening history joined with track, artist, and genre for this specific user
         let rows = sqlx::query_as::<_, HistorySessionRow>(
             "SELECT h.track_id, t.artist_id, a.name as artist_name, g.name as genre_name,
                     t.year, h.started_at, h.seconds_listened, h.percentage_listened,
@@ -82,23 +82,25 @@ impl TasteProfileEngine {
              JOIN tracks t ON t.id = h.track_id
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN genres g ON g.id = t.genre_id
-             WHERE h.started_at >= ?
+             WHERE h.user_id = ? AND h.started_at >= ?
              ORDER BY h.started_at ASC"
         )
+        .bind(user_id)
         .bind(long_term_cutoff)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // Query user explicit feedback (likes / dislikes) from track_statistics
+        // Query user explicit feedback (likes / dislikes) from track_statistics for this specific user
         let feedback_rows = sqlx::query_as::<_, FeedbackRow>(
             "SELECT ts.track_id, t.artist_id, a.name as artist_name, g.name as genre_name, ts.manual_like
              FROM track_statistics ts
              JOIN tracks t ON t.id = ts.track_id
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN genres g ON g.id = t.genre_id
-             WHERE ts.manual_like != 0"
+             WHERE ts.user_id = ? AND ts.manual_like != 0"
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -205,7 +207,7 @@ impl TasteProfileEngine {
             });
 
             // Persist to user_preferences table
-            let _ = self.rec_repo.upsert_preference("artist", &artist_id, short_norm, long_norm).await;
+            let _ = self.rec_repo.upsert_preference(user_id, "artist", &artist_id, short_norm, long_norm).await;
         }
 
         top_artists.sort_by(|a, b| b.affinity.partial_cmp(&a.affinity).unwrap_or(std::cmp::Ordering::Equal));
@@ -237,7 +239,7 @@ impl TasteProfileEngine {
             });
 
             // Persist to user_preferences table
-            let _ = self.rec_repo.upsert_preference("genre", &genre, short_norm, long_norm).await;
+            let _ = self.rec_repo.upsert_preference(user_id, "genre", &genre, short_norm, long_norm).await;
         }
 
         top_genres.sort_by(|a, b| b.affinity.partial_cmp(&a.affinity).unwrap_or(std::cmp::Ordering::Equal));
@@ -248,7 +250,7 @@ impl TasteProfileEngine {
         for (decade, score) in era_raw {
             let norm = (score / max_era).clamp(0.0, 1.0);
             era_affinities.insert(decade.clone(), norm);
-            let _ = self.rec_repo.upsert_preference("era", &decade, norm, norm).await;
+            let _ = self.rec_repo.upsert_preference(user_id, "era", &decade, norm, norm).await;
         }
 
         Ok(TasteProfile {

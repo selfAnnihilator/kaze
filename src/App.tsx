@@ -582,7 +582,9 @@ export const App: React.FC = () => {
     if (res && res.status === "UserProfile" && res.data) {
       setCurrentUser(res.data);
       addAppNotification("success", "Logged In", `Welcome back, ${res.data.username}!`);
+      await fetchTracks();
       await fetchPlaylists();
+      await fetchDiscovery(true);
       await fetchCloudSyncStatus();
       return res.data;
     }
@@ -597,7 +599,9 @@ export const App: React.FC = () => {
     if (res && res.status === "UserProfile" && res.data) {
       setCurrentUser(res.data);
       addAppNotification("success", "Account Created", `Welcome to Kaze, ${res.data.username}!`);
+      await fetchTracks();
       await fetchPlaylists();
+      await fetchDiscovery(true);
       await fetchCloudSyncStatus();
       return res.data;
     }
@@ -3030,6 +3034,7 @@ export const App: React.FC = () => {
               {currentView === "discovery" && (
                 <DiscoveryView
                   recommendations={discoveryRecs}
+                  localTracks={tracks}
                   playlists={playlists}
                   onPlayPlaylist={handlePlayPlaylist}
                   onAddToWishlist={(rec) =>

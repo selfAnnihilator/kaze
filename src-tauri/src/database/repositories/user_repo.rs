@@ -280,6 +280,27 @@ impl UserRepository for SqliteUserRepository {
         .execute(&self.pool)
         .await;
 
+        let _ = sqlx::query(
+            "UPDATE OR IGNORE track_statistics SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL"
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await;
+
+        let _ = sqlx::query(
+            "UPDATE OR IGNORE user_preferences SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL"
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await;
+
+        let _ = sqlx::query(
+            "UPDATE OR IGNORE recommendation_sessions SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL"
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await;
+
         Ok(())
     }
 }
