@@ -91,6 +91,7 @@ pub enum Command {
         track_id: String,
     },
     ClearQueue,
+    ClearRemoteAudioCache,
 
     // --- Library & Onboarding Management ---
     CompleteOnboarding {
@@ -251,4 +252,5 @@ pub enum CommandResponse {
     WishlistAdded { count: usize },
     UserProfile(serde_json::Value),
     CloudSyncCompleted { synced_at: i64 },
+    RemoteAudioCacheCleared { bytes_freed: u64, files_removed: usize },
 }

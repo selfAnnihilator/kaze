@@ -697,3 +697,34 @@ Conducted an intensive, profile-guided performance optimization pass on the rele
 - `cargo test --test playback_tests`: All 7 integration tests pass.
 - `npm run build`: Production frontend build succeeds cleanly in 1.48s with zero errors or warnings.
 - Release binary runtime verification: validated on Linux x86_64 release build with smem/psmem profiling.
+
+---
+
+## 2026-09-16 (Phase 19: Unified Remote Audio Streaming & Hardened Bounded Cache)
+
+### Worked On
+Hardening the remote audio playback disk cache in Kaze's unified Rust playback engine (`StreamPlaybackManager`). Implemented a self-cleaning, bounded, cancellation-safe LRU disk cache with IPC observability, startup maintenance, and protected active file handling.
+
+### Changes
+1. **Bounded Cache Configuration (`src-tauri/src/playback/stream.rs`)**:
+   - Established strict boundary in `<app-cache>/remote-audio/`.
+   - Set 1 GiB hard capacity (`DEFAULT_MAX_CACHE_BYTES`), 900 MiB eviction target (`DEFAULT_EVICTION_TARGET_BYTES`), 500 MiB single-file limit (`DEFAULT_MAX_SINGLE_FILE_BYTES`), and 24-hour threshold for stale `.part` files.
+   - Streamed downloads chunk-by-chunk directly to disk with `reqwest::Response::chunk()` preventing memory spikes.
+2. **True LRU Eviction & Hit Touching**:
+   - Updated file modification time (`mtime`) on every cache hit via `std::fs::File::set_times`.
+   - `enforce_cache_limits()` sorts cache entries by `mtime` ascending and evicts oldest files down to the 900 MiB target.
+   - Enforced safety invariant: strictly ignores and never evicts files outside `cache_dir`.
+3. **Cancellation Safety & Active File Protection**:
+   - Temporary download files named `<sha256>.audio.part` guarded by RAII `PartFileCleanupGuard` which removes partial files on drop if aborted or cancelled.
+   - Protected currently playing track (`active_playing_path`) and actively downloading files from eviction passes.
+   - Added startup orphan cleanup for `.part` files older than 24 hours.
+   - Migrated legacy `stream_cache/` entries into `remote-audio/` automatically on startup.
+   - Implemented in-flight download deduplication using `tokio::sync::Notify`.
+4. **IPC & Frontend Management (`src-tauri/src/core/`, `src/components/views/SettingsView.tsx`)**:
+   - Added `Command::ClearRemoteAudioCache` returning `bytes_freed` and `files_removed`.
+   - Added `Query::GetRemoteAudioCacheStats` returning total bytes, file count, max size, and partial count.
+   - Updated Settings UI under System & Cache to display live cache usage, directory, and a "Clear Cache" button.
+5. **Testing & Integration**:
+   - Authored `src-tauri/tests/cache_tests.rs` with 14 unit and integration tests covering key generation, naming, mtime touch, LRU eviction, active track protection, active download protection, drop guards, stale part cleanup, IPC commands, and boundary safety.
+   - All 71 tests passing across the entire workspace (`cargo test`).
+

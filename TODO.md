@@ -1,6 +1,28 @@
 # Project Task Tracking
 
-## Current (Phase 18: Dedicated Performance Optimization Pass - COMPLETE)
+## Current (Phase 19: Unified Remote Audio Streaming & Hardened Bounded Cache - COMPLETE)
+- [x] Unified Audio Playback Pipeline:
+  - Routed all audio streams (local tracks, downloaded files, remote audio, preview clips) into backend `PlaybackService`.
+  - Maintained single queue, single state machine, single history path, and single event stream.
+- [x] Hardened Bounded Remote Audio Disk Cache:
+  - Bounded storage strictly inside `<app-cache>/remote-audio/` with automatic migration from legacy `stream_cache`.
+  - Enforced 1 GiB cache limit (`DEFAULT_MAX_CACHE_BYTES`) with auto-eviction down to 900 MiB target (`DEFAULT_EVICTION_TARGET_BYTES`).
+  - True LRU eviction sorted by last-modified time (`mtime`), updating `mtime` on every cache hit via `std::fs::File::set_times`.
+  - 500 MiB single-file limit (`DEFAULT_MAX_SINGLE_FILE_BYTES`) with mid-stream aborts to prevent disk exhaustion.
+  - Chunk-by-chunk streaming directly to disk with `reqwest::Response::chunk()` eliminating large heap buffers.
+- [x] Cancellation Safety & Orphan Prevention:
+  - Implemented RAII drop guard (`PartFileCleanupGuard`) deleting `<sha256>.audio.part` files on task cancellation or error.
+  - Added startup orphan cleanup purging `.part` files older than 24 hours.
+  - Protected active playing tracks and in-flight downloads from eviction.
+  - Implemented in-flight download deduplication using `tokio::sync::Notify`.
+- [x] IPC Observability & Settings UI:
+  - Added `Command::ClearRemoteAudioCache` and `Query::GetRemoteAudioCacheStats`.
+  - Added remote cache directory display, live size/file counts, and "Clear Playback Cache" button in Settings.
+- [x] Automated Test Suite:
+  - Created `tests/cache_tests.rs` with 14 comprehensive unit/integration tests verifying bounds, LRU eviction, mtime touches, drop guards, orphan cleanup, and path safety.
+  - All 71 tests passing across the entire workspace (`cargo test`).
+
+## Completed (Phase 18: Dedicated Performance Optimization Pass)
 - [x] Baseline Benchmarking on Release Build:
   - Profiled `target/release/kaze` using PSS/USS/RSS memory accounting and top-sampled CPU tracking.
   - Recorded initial baseline: WebKitWebProcess USS ~328 MB, PSS ~362 MB; Rust Core USS ~144 MB; Total PSS ~616 MB.

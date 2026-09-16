@@ -40,7 +40,7 @@ pub struct PlaybackService {
     current_duration_secs: Arc<RwLock<f64>>,
     current_source: Arc<RwLock<String>>,
     volume: Arc<RwLock<f32>>,
-    stream_manager: Arc<RwLock<Option<Arc<StreamPlaybackManager>>>>,
+    stream_manager: Arc<std::sync::RwLock<Option<Arc<StreamPlaybackManager>>>>,
     pool: Option<SqlitePool>,
 }
 
@@ -59,7 +59,7 @@ impl PlaybackService {
             current_duration_secs: Arc::new(RwLock::new(0.0)),
             current_source: Arc::new(RwLock::new("library".to_string())),
             volume: Arc::new(RwLock::new(0.8)),
-            stream_manager: Arc::new(RwLock::new(None)),
+            stream_manager: Arc::new(std::sync::RwLock::new(None)),
             pool,
         });
 
@@ -72,8 +72,8 @@ impl PlaybackService {
         service
     }
 
-    pub async fn set_stream_manager(&self, stream_manager: Arc<StreamPlaybackManager>) {
-        *self.stream_manager.write().await = Some(stream_manager);
+    pub fn set_stream_manager(&self, stream_manager: Arc<StreamPlaybackManager>) {
+        *self.stream_manager.write().unwrap() = Some(stream_manager);
     }
 
     /// Background task monitoring playback position and track completion.
@@ -271,7 +271,7 @@ impl PlaybackService {
 
         let is_online = track.format == "online" || track.file_path.starts_with("online://");
         let (file_path_to_play, actual_duration) = if is_online {
-            let sm_opt = self.stream_manager.read().await.clone();
+            let sm_opt = self.stream_manager.read().unwrap().clone();
             if let Some(sm) = sm_opt {
                 let artist = track.artist_name.as_deref().unwrap_or("Unknown Artist");
                 let (cached_path, dur) = sm
@@ -294,6 +294,11 @@ impl PlaybackService {
 
         *self.current_duration_secs.write().await = actual_duration;
         self.load_and_play_file(&file_path_to_play).await?;
+
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        if let Some(sm) = sm_opt {
+            sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_play))).await;
+        }
 
         let src = self.current_source.read().await.clone();
         let _ = self.event_bus.publish(Event::PlaybackStarted {
@@ -352,6 +357,11 @@ impl PlaybackService {
         let mut backend = self.backend.lock().await;
         backend.stop()?;
         *self.current_duration_secs.write().await = 0.0;
+
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        if let Some(sm) = sm_opt {
+            sm.set_active_playing_path(None).await;
+        }
 
         let _ = self.event_bus.publish(Event::PlaybackStopped);
         Ok(())
@@ -622,5 +632,24 @@ impl PlaybackService {
             current_index: q_guard.current_index(),
             queue_track_ids,
         });
+    }
+
+    pub async fn clear_remote_audio_cache(&self) -> AppResult<(u64, usize)> {
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        if let Some(sm) = sm_opt {
+            let res = sm.clear_cache().await?;
+            Ok((res.bytes_freed, res.files_removed))
+        } else {
+            Ok((0, 0))
+        }
+    }
+
+    pub async fn get_remote_audio_cache_stats(&self) -> AppResult<crate::playback::stream::RemoteAudioCacheStats> {
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        if let Some(sm) = sm_opt {
+            sm.get_cache_stats().await
+        } else {
+            Ok(crate::playback::stream::RemoteAudioCacheStats::default())
+        }
     }
 }

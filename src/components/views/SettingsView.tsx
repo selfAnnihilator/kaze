@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { AppSettings, CloudSyncStatus } from "../../types";
+import { AppSettings, CloudSyncStatus, RemoteAudioCacheStats } from "../../types";
+import { dispatchCommand, executeQuery } from "../../services/api";
 import {
   Settings as SettingsIcon,
   FolderPlus,
@@ -57,6 +58,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
   const [savingUrl, setSavingUrl] = useState(false);
   const [activeSection, setActiveSection] = useState<"folders" | "audio" | "metadata" | "soulseek" | "system" | "cloud">("folders");
+  const [cacheStats, setCacheStats] = useState<RemoteAudioCacheStats | null>(null);
+  const [clearingCache, setClearingCache] = useState(false);
+  const [clearMessage, setClearMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSection === "system") {
+      executeQuery({ query: "GetRemoteAudioCacheStats" })
+        .then((res: any) => {
+          if (res && res.total_size_bytes !== undefined) {
+            setCacheStats(res);
+          } else if (res && res.data && res.data.total_size_bytes !== undefined) {
+            setCacheStats(res.data);
+          }
+        })
+        .catch((err) => console.error("Failed to load cache stats:", err));
+    }
+  }, [activeSection]);
+
+  const handleClearCache = async () => {
+    setClearingCache(true);
+    setClearMessage(null);
+    try {
+      const res = await dispatchCommand({ command: "ClearRemoteAudioCache" });
+      const bytes = res?.bytes_freed ?? 0;
+      const files = res?.files_removed ?? 0;
+      const mb = (bytes / (1024 * 1024)).toFixed(1);
+      setClearMessage(`Freed ${mb} MB (${files} files removed)`);
+      const updated = await executeQuery({ query: "GetRemoteAudioCacheStats" });
+      if (updated && (updated as any).total_size_bytes !== undefined) {
+        setCacheStats(updated as any);
+      } else if (updated && (updated as any).data && (updated as any).data.total_size_bytes !== undefined) {
+        setCacheStats((updated as any).data);
+      }
+    } catch {
+      setClearMessage("Failed to clear cache");
+    } finally {
+      setClearingCache(false);
+    }
+  };
 
   useEffect(() => {
     if (cloudSyncStatus?.worker_url) {
@@ -400,6 +440,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
                   {settings?.cache_dir || "Default user cache dir / artwork"}
                 </div>
+              </div>
+            </div>
+
+            <div className="folder-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ flex: 1, marginRight: "16px" }}>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                  Remote Audio Playback Cache (Bounded LRU)
+                </div>
+                <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
+                  {settings?.cache_dir ? `${settings.cache_dir}/remote-audio` : "Default user cache dir / remote-audio"}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  {cacheStats
+                    ? `${(cacheStats.total_size_bytes / (1024 * 1024)).toFixed(1)} MB used across ${cacheStats.file_count} cached tracks (Limit: ${(cacheStats.max_size_bytes / (1024 * 1024)).toFixed(0)} MB, auto-evicts to ~900 MB)`
+                    : "Max Limit: 1,024 MB (Auto-evicts oldest unplayed tracks to ~900 MB)"}
+                  {cacheStats && cacheStats.partial_file_count > 0 && ` • ${cacheStats.partial_file_count} active/partial download(s)`}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {clearMessage && (
+                  <span style={{ fontSize: "0.78rem", color: "#38bdf8" }}>{clearMessage}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClearCache}
+                  disabled={clearingCache}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                    color: "#f87171",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                    cursor: clearingCache ? "not-allowed" : "pointer",
+                    opacity: clearingCache ? 0.6 : 1,
+                  }}
+                >
+                  <Trash2 size={14} />
+                  <span>{clearingCache ? "Clearing..." : "Clear Cache"}</span>
+                </button>
               </div>
             </div>
           </div>

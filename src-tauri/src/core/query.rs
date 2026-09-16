@@ -120,6 +120,7 @@ pub enum Query {
         #[serde(default)]
         user_id: Option<String>,
     },
+    GetRemoteAudioCacheStats,
 }
 
 /// Query response wrapper.
@@ -163,5 +164,11 @@ pub enum QueryResponse {
     Sessions(Vec<serde_json::Value>),
     Profile(Option<serde_json::Value>),
     Avatar(Option<String>),
+    RemoteAudioCacheStats {
+        total_size_bytes: u64,
+        file_count: usize,
+        max_size_bytes: u64,
+        partial_file_count: usize,
+    },
     Empty,
 }

@@ -241,6 +241,7 @@ export type Command =
     }
   | { command: "DequeueTrack"; payload: { track_id: string } }
   | { command: "ClearQueue" }
+  | { command: "ClearRemoteAudioCache" }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
   | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
@@ -328,7 +329,15 @@ export type Query =
   | { query: "GetAvatar"; payload?: { user_id?: string } }
   | { query: "GetCloudSyncStatus" }
   | { query: "GetSessionState" }
-  | { query: "ListSessions" };
+  | { query: "ListSessions" }
+  | { query: "GetRemoteAudioCacheStats" };
+
+export interface RemoteAudioCacheStats {
+  total_size_bytes: number;
+  file_count: number;
+  max_size_bytes: number;
+  partial_file_count: number;
+}
 
 export type SessionExpiredReason = "idle_timeout" | "absolute_timeout" | "revoked" | "other";
 

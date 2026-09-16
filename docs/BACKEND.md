@@ -19,7 +19,8 @@ src-tauri/src/
 │   ├── mod.rs
 │   ├── service.rs           // PlaybackService orchestrating playback logic
 │   ├── backend.rs           // AudioBackend trait & RodioAudioBackend
-│   └── queue.rs             // Playback queue, shuffle, and repeat state
+│   ├── queue.rs             // Playback queue, shuffle, and repeat state
+│   └── stream.rs            // StreamPlaybackManager: bounded LRU cache & remote stream resolution
 │
 ├── library/
 │   ├── mod.rs

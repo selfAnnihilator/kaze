@@ -92,3 +92,7 @@ Because upcoming phases include frontend styling and theme refinements, develope
    - All text searches and filter inputs must be debounced by 150–250ms.
 6. **Keep Component Props Stable**:
    - Pass memoized callbacks (`useCallback`) and memoized objects (`useMemo`) to list items and child views to allow `React.memo` bailouts.
+7. **Maintain Disk Cache Bounds**:
+   - Remote audio cache must strictly respect the 1 GiB limit and 900 MiB eviction target.
+   - All network streaming to disk must use chunk-by-chunk I/O (`reqwest::Response::chunk()`) to avoid multi-megabyte heap spikes.
+   - All partial downloads must be protected with RAII drop guards (`PartFileCleanupGuard`) to avoid lingering disk leaks on cancelled skips.

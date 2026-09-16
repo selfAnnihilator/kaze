@@ -160,9 +160,10 @@ impl CoreProcessor {
             Some(db_pool.clone()),
             Some(download_service.clone()),
         ));
-        let ps_for_sm = playback_service.clone();
+        playback_service.set_stream_manager(stream_manager.clone());
+        let sm_maint = stream_manager.clone();
         tokio::spawn(async move {
-            ps_for_sm.set_stream_manager(stream_manager).await;
+            sm_maint.startup_maintenance().await;
         });
 
         let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
@@ -763,6 +764,13 @@ impl CoreProcessor {
             Command::ClearQueue => {
                 self.playback_service.clear_queue().await;
                 Ok(CommandResponse::Ok)
+            }
+            Command::ClearRemoteAudioCache => {
+                let (bytes_freed, files_removed) = self.playback_service.clear_remote_audio_cache().await?;
+                Ok(CommandResponse::RemoteAudioCacheCleared {
+                    bytes_freed,
+                    files_removed,
+                })
             }
 
             // --- User Feedback & Taste ---
@@ -2436,6 +2444,15 @@ impl CoreProcessor {
                     }
                 }
                 Ok(QueryResponse::Sessions(Vec::new()))
+            }
+            Query::GetRemoteAudioCacheStats => {
+                let stats = self.playback_service.get_remote_audio_cache_stats().await?;
+                Ok(QueryResponse::RemoteAudioCacheStats {
+                    total_size_bytes: stats.total_size_bytes,
+                    file_count: stats.file_count,
+                    max_size_bytes: stats.max_size_bytes,
+                    partial_file_count: stats.partial_file_count,
+                })
             }
             _ => {
                 warn!(?query, "Query handler routed to fallback");

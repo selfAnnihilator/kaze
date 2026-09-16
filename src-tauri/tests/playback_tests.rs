@@ -296,7 +296,7 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
     use sha2::Digest;
     // Pre-populate disk cache so network fetch is not attempted in unit tests
     let config = AppConfig::default_with_dirs();
-    let cache_dir = config.cache_dir.join("stream_cache");
+    let cache_dir = config.cache_dir.join("remote-audio");
     tokio::fs::create_dir_all(&cache_dir).await.unwrap();
     let cache_key = "online:test-song:queue artist:queued stream";
     let mut hasher = sha2::Sha256::new();
