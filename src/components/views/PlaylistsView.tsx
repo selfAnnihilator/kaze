@@ -5,7 +5,6 @@ import {
   Plus,
   Play,
   Share2,
-  ExternalLink,
   DownloadCloud,
   Check,
   AlertCircle,
@@ -62,7 +61,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onCreatePlaylist,
   onInspectSpotifyPlaylist,
   onSaveImportedPlaylist,
-  onAddMissingToWishlist,
+  onAddMissingToWishlist: _onAddMissingToWishlist,
   onLaunchSoulseek,
   onSearchDirect,
   onFetchPlaylistTracks,
@@ -90,7 +89,6 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [inspectingSpotify, setInspectingSpotify] = useState(false);
   const [spotifyResult, setSpotifyResult] = useState<SpotifyPlaylistImport | null>(null);
   const [spotifyMessage, setSpotifyMessage] = useState<string | null>(null);
-  const [wishlistAdded, setWishlistAdded] = useState(false);
 
   // Custom themed dialog states for Delete and Rename
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
@@ -240,7 +238,6 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     if (!spotifyInput.trim()) return;
     setInspectingSpotify(true);
     setSpotifyMessage(null);
-    setWishlistAdded(false);
     try {
       const res = await onInspectSpotifyPlaylist(spotifyInput.trim());
       if (res) {
@@ -291,14 +288,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     await onSaveImportedPlaylist(spotifyResult.title, trackIds, tracksInfo);
     setShowSpotifyModal(false);
     setSpotifyResult(null);
-  };
-
-  const handleAddSpotifyMissingToWishlist = async () => {
-    if (!spotifyResult) return;
-    const missing = spotifyResult.tracks.filter((t) => !t.in_library);
-    if (missing.length === 0) return;
-    await onAddMissingToWishlist(missing);
-    setWishlistAdded(true);
+    setSpotifyInput("");
+    setSpotifyMessage(null);
   };
 
   const handleSearchMissingInSoulseek = async (trackTitle: string, artistName: string) => {
@@ -923,7 +914,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
 
       {/* MODAL 3: SPOTIFY PLAYLIST IMPORT */}
       {showSpotifyModal && (
-        <div className="modal-overlay" onClick={() => setShowSpotifyModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowSpotifyModal(false);
+            setSpotifyResult(null);
+            setSpotifyInput("");
+            setSpotifyMessage(null);
+          }}
+        >
           <div
             className="modal-content"
             style={{ maxWidth: "800px", width: "95%", maxHeight: "88vh", display: "flex", flexDirection: "column" }}
@@ -935,7 +934,12 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>Import Spotify Playlist</h3>
               </div>
               <button
-                onClick={() => setShowSpotifyModal(false)}
+                onClick={() => {
+                  setShowSpotifyModal(false);
+                  setSpotifyResult(null);
+                  setSpotifyInput("");
+                  setSpotifyMessage(null);
+                }}
                 style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
               >
                 <X size={20} />
@@ -1009,74 +1013,24 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                     <div style={{ display: "flex", gap: "12px", marginTop: "6px", fontSize: "0.82rem" }}>
                       <span style={{ color: "var(--text-dim)" }}>Total: {spotifyResult.total_tracks} tracks</span>
                       <span style={{ color: "var(--success)", fontWeight: 600 }}>
-                        ● {spotifyResult.matched_tracks} in Local Library
+                        ● {spotifyResult.matched_tracks} Local
                       </span>
-                      <span style={{ color: "#f3701e", fontWeight: 600 }}>
-                        ● {spotifyResult.missing_tracks} Missing
+                      <span style={{ color: "var(--accent-secondary, #f3701e)", fontWeight: 600 }}>
+                        ● {spotifyResult.missing_tracks} Online
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <button className="btn btn-primary" onClick={() => handleSaveSpotifyPlaylist(true)} title="Import this playlist with all its songs into Kaze">
-                      <Check size={15} />
-                      <span>Import Playlist ({spotifyResult.total_tracks} tracks)</span>
+                  <div>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleSaveSpotifyPlaylist(true)}
+                      title="Import this entire playlist into Kaze"
+                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                    >
+                      <Check size={16} />
+                      <span>Add as Playlist</span>
                     </button>
-
-                    {spotifyResult.matched_tracks > 0 && spotifyResult.missing_tracks > 0 && (
-                      <button className="btn btn-secondary" onClick={() => handleSaveSpotifyPlaylist(false)} title="Import only the songs currently in your local library">
-                        <Check size={15} />
-                        <span>Import Matched Only ({spotifyResult.matched_tracks})</span>
-                      </button>
-                    )}
-
-                    {spotifyResult.missing_tracks > 0 && (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={handleAddSpotifyMissingToWishlist}
-                        disabled={wishlistAdded}
-                      >
-                        <Plus size={15} />
-                        <span>{wishlistAdded ? "Added to Wishlist!" : "Add Missing to Wishlist"}</span>
-                      </button>
-                    )}
-
-                    {spotifyResult.missing_tracks > 0 && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        {onSearchDirect && (
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                              const firstMissing = spotifyResult.tracks.find((t) => !t.in_library);
-                              if (firstMissing) {
-                                onSearchDirect(firstMissing.artist, firstMissing.title);
-                              }
-                            }}
-                            title="Directly search and download missing tracks in-app"
-                            style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                          >
-                            <DownloadCloud size={15} />
-                            <span>Download Missing Direct</span>
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            const firstMissing = spotifyResult.tracks.find((t) => !t.in_library);
-                            if (firstMissing) {
-                              handleSearchMissingInSoulseek(firstMissing.title, firstMissing.artist);
-                            } else {
-                              onLaunchSoulseek();
-                            }
-                          }}
-                          title="Optional: Launch SoulseekQt to search and download missing tracks"
-                          style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                        >
-                          <ExternalLink size={14} />
-                          <span>Open SoulseekQt</span>
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1088,8 +1042,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         <th style={{ width: "40px", textAlign: "center" }}>#</th>
                         <th>Track</th>
                         <th>Artist</th>
-                        <th style={{ width: "130px", textAlign: "center" }}>Status</th>
-                        <th style={{ width: "190px", textAlign: "center" }}>Download Action</th>
+                        <th style={{ width: "120px", textAlign: "center" }}>Status</th>
+                        <th style={{ width: "120px", textAlign: "center" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1100,39 +1054,40 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                           <td>{tr.artist}</td>
                           <td style={{ textAlign: "center" }}>
                             {tr.in_library ? (
-                              <span className="badge badge-exact">In Library</span>
+                              <span className="badge badge-exact">Local</span>
                             ) : (
                               <span
                                 className="badge"
-                                style={{ backgroundColor: "rgba(243, 112, 30, 0.15)", color: "#f3701e" }}
+                                style={{ backgroundColor: "rgba(243, 112, 30, 0.15)", color: "var(--accent-secondary, #f3701e)" }}
                               >
-                                Missing
+                                Online
                               </span>
                             )}
                           </td>
                           <td style={{ textAlign: "center" }}>
                             {!tr.in_library && (
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-                                {onSearchDirect && (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                {onSearchDirect ? (
                                   <button
-                                    className="btn btn-primary"
-                                    style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                    className="btn btn-secondary"
+                                    style={{ padding: "4px 10px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "5px" }}
                                     onClick={() => onSearchDirect(tr.artist, tr.title)}
-                                    title="Search & download directly in-app"
+                                    title="Download this track to your local library"
                                   >
-                                    <DownloadCloud size={12} />
-                                    <span>Direct</span>
+                                    <DownloadCloud size={13} />
+                                    <span>Download</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: "4px 10px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "5px" }}
+                                    onClick={() => handleSearchMissingInSoulseek(tr.title, tr.artist)}
+                                    title="Search and download track"
+                                  >
+                                    <DownloadCloud size={13} />
+                                    <span>Download</span>
                                   </button>
                                 )}
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                                  onClick={() => handleSearchMissingInSoulseek(tr.title, tr.artist)}
-                                  title="Search in SoulseekQt"
-                                >
-                                  <ExternalLink size={12} />
-                                  <span>Soulseek</span>
-                                </button>
                               </div>
                             )}
                           </td>
