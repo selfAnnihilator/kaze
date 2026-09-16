@@ -71,12 +71,10 @@ export const splitDiscoveryRecommendations = ({
     (isTasteBased(rec) ? personal : other).push(rec);
   }
 
-  // Leave at least half of a small feed for the Trending row.
-  const maxForYou = Math.min(limit, Math.floor(recommendations.length / 2));
-  const forYou = [...personal, ...other].slice(0, maxForYou);
-  const selectedSongs = new Set(forYou.map(songKey));
+  // Pure Trending Songs: authentic global and chart hits, unaffected by user taste
+  // For You: personalized recommendations shaped by listening history, library artists, and top genres
   return {
-    forYou,
-    trending: recommendations.filter((rec) => !selectedSongs.has(songKey(rec))),
+    forYou: personal.length > 0 ? personal : other.slice(0, limit),
+    trending: other.length > 0 ? other : recommendations,
   };
 };

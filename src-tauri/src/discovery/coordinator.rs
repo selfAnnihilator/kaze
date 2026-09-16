@@ -747,25 +747,35 @@ impl DiscoveryCoordinator {
             });
         }
 
-        // Sort candidates by score descending without demoting owned or playlist songs
-        scored_list.sort_by(|a, b| {
+        // Partition candidates into pure chart hits vs. personalized taste hits
+        let mut taste_candidates = Vec::new();
+        let mut chart_candidates = Vec::new();
+
+        for candidate in scored_list {
+            if candidate.reason.contains("Popular discovery across charts") {
+                chart_candidates.push(candidate);
+            } else {
+                taste_candidates.push(candidate);
+            }
+        }
+
+        taste_candidates.sort_by(|a, b| {
             b.score
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // 6. Enforce STRICT ARTIST DIVERSITY (maximum 2 tracks per artist)
+        chart_candidates.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // 6. Enforce balanced allocation and STRICT ARTIST DIVERSITY (maximum 2 tracks per artist)
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut recs = Vec::new();
 
-        for scored in scored_list {
-            let artist_key = scored.track.artist.to_lowercase().trim().to_string();
-            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
-            if *count >= 2 {
-                continue; // Never allow more than 2 tracks from the same artist!
-            }
-            *count += 1;
-
+        let to_recommendation = |scored: &ScoredCandidate| {
             let in_wishlist = (scored.track.provider_id.as_str() != ""
                 && wishlist_ext_ids.contains(&scored.track.id))
                 || wishlist_keys.contains(&format!(
@@ -781,25 +791,97 @@ impl DiscoveryCoordinator {
                 _ => MatchStatus::NotFound,
             };
 
-            recs.push(DiscoveryRecommendation {
-                external_track_id: scored.track.id,
-                provider: scored.track.provider,
-                provider_id: scored.track.provider_id,
-                title: scored.track.title,
-                artist: scored.track.artist,
-                album: scored.track.album,
+            DiscoveryRecommendation {
+                external_track_id: scored.track.id.clone(),
+                provider: scored.track.provider.clone(),
+                provider_id: scored.track.provider_id.clone(),
+                title: scored.track.title.clone(),
+                artist: scored.track.artist.clone(),
+                album: scored.track.album.clone(),
                 duration_secs: scored.track.duration_secs,
-                cover_art_url: scored.track.cover_art_url,
-                preview_url: scored.track.preview_url,
-                genre: scored.track.genre,
+                cover_art_url: scored.track.cover_art_url.clone(),
+                preview_url: scored.track.preview_url.clone(),
+                genre: scored.track.genre.clone(),
                 match_status: status,
-                matched_local_track_id: scored.track.matched_local_track_id,
-                recommendation_reason: scored.reason,
+                matched_local_track_id: scored.track.matched_local_track_id.clone(),
+                recommendation_reason: scored.reason.clone(),
                 in_wishlist,
-            });
+            }
+        };
 
-            if recs.len() >= limit {
+        // Dedicated quota for pure trending hits (unbiased by personal taste)
+        let half_quota = (limit / 2).max(1);
+        let mut selected_chart = 0;
+        let mut selected_taste = 0;
+
+        // First pass: take up to half from pure chart hits
+        for scored in &chart_candidates {
+            if selected_chart >= half_quota {
                 break;
+            }
+            let artist_key = scored.track.artist.to_lowercase().trim().to_string();
+            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
+            if *count >= 2 {
+                continue;
+            }
+            *count += 1;
+            selected_chart += 1;
+            recs.push(to_recommendation(scored));
+        }
+
+        // Second pass: take personalized taste hits
+        let remaining_for_taste = limit.saturating_sub(recs.len()).max(half_quota);
+        for scored in &taste_candidates {
+            if selected_taste >= remaining_for_taste || recs.len() >= limit {
+                break;
+            }
+            let artist_key = scored.track.artist.to_lowercase().trim().to_string();
+            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
+            if *count >= 2 {
+                continue;
+            }
+            *count += 1;
+            selected_taste += 1;
+            recs.push(to_recommendation(scored));
+        }
+
+        // Third pass: fill remaining capacity from chart candidates if any remain
+        if recs.len() < limit {
+            let already_included: HashSet<String> = recs.iter().map(|r| r.external_track_id.clone()).collect();
+            for scored in &chart_candidates {
+                if recs.len() >= limit {
+                    break;
+                }
+                if already_included.contains(&scored.track.id) {
+                    continue;
+                }
+                let artist_key = scored.track.artist.to_lowercase().trim().to_string();
+                let count = artist_counts.entry(artist_key.clone()).or_insert(0);
+                if *count >= 2 {
+                    continue;
+                }
+                *count += 1;
+                recs.push(to_recommendation(scored));
+            }
+        }
+
+        // Fourth pass: fill remaining capacity from taste candidates if any remain
+        if recs.len() < limit {
+            let already_included: HashSet<String> = recs.iter().map(|r| r.external_track_id.clone()).collect();
+            for scored in &taste_candidates {
+                if recs.len() >= limit {
+                    break;
+                }
+                if already_included.contains(&scored.track.id) {
+                    continue;
+                }
+                let artist_key = scored.track.artist.to_lowercase().trim().to_string();
+                let count = artist_counts.entry(artist_key.clone()).or_insert(0);
+                if *count >= 2 {
+                    continue;
+                }
+                *count += 1;
+                recs.push(to_recommendation(scored));
             }
         }
 

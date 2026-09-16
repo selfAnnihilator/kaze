@@ -7,7 +7,6 @@ import {
   WifiOff,
   Music,
   RefreshCw,
-  Flame,
   Radio,
   Music2,
   Play,
@@ -815,7 +814,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onEnqueueTrack,
   likedTrackIds,
 }) => {
-  const [filter, setFilter] = useState<"ALL" | "TRENDING" | "GENRE" | "SIMILAR">("ALL");
+  const [forYouFilter, setForYouFilter] = useState<"ALL" | "GENRE" | "SIMILAR">("ALL");
   const [visibleCount, setVisibleCount] = useState(15);
   const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
   const [isOnline, setIsOnline] = useState(
@@ -853,28 +852,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     localTracks,
   }), [recommendations, playlistTrackIds, likedTrackIds, downloads, downloadTargets, localTracks]);
 
-  const filteredTrendingRecs = trending.filter((rec) => {
-    if (filter === "ALL") return true;
-    const r = rec.recommendation_reason.toLowerCase();
-    if (filter === "TRENDING") return r.includes("trending") || r.includes("chart");
-    if (filter === "GENRE") return r.includes("genre") || r.includes("popular in") || r.includes("trending in");
-    if (filter === "SIMILAR") return r.includes("similar") || r.includes("listening") || r.includes("library artist");
-    return true;
-  });
-
-  const handleFilterChange = (newFilter: "ALL" | "TRENDING" | "GENRE" | "SIMILAR") => {
-    setFilter(newFilter);
-    setVisibleCount(15);
-    if (songsScrollRef.current) {
-      songsScrollRef.current.scrollLeft = 0;
-    }
-  };
-
   const handleSongsScroll = () => {
     const el = songsScrollRef.current;
     if (!el) return;
     if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 350) {
-      setVisibleCount((prev) => Math.min(prev + 10, filteredTrendingRecs.length));
+      setVisibleCount((prev) => Math.min(prev + 10, trending.length));
     }
   };
 
@@ -959,20 +941,46 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     setSearchResults(null);
   };
 
-  const trendingCount = trending.filter((r) => {
-    const s = r.recommendation_reason.toLowerCase();
-    return s.includes("trending") || s.includes("chart");
-  }).length;
+  const forYouGenreCount = useMemo(
+    () =>
+      forYou.filter((r) => {
+        const s = r.recommendation_reason.toLowerCase();
+        return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
+      }).length,
+    [forYou]
+  );
 
-  const genreCount = trending.filter((r) => {
-    const s = r.recommendation_reason.toLowerCase();
-    return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
-  }).length;
+  const forYouSimilarCount = useMemo(
+    () =>
+      forYou.filter((r) => {
+        const s = r.recommendation_reason.toLowerCase();
+        return s.includes("similar") || s.includes("listening") || s.includes("library artist");
+      }).length,
+    [forYou]
+  );
 
-  const similarCount = trending.filter((r) => {
-    const s = r.recommendation_reason.toLowerCase();
-    return s.includes("similar") || s.includes("listening") || s.includes("library artist");
-  }).length;
+  const filteredForYou = useMemo(() => {
+    if (forYouFilter === "GENRE") {
+      return forYou.filter((r) => {
+        const s = r.recommendation_reason.toLowerCase();
+        return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
+      });
+    }
+    if (forYouFilter === "SIMILAR") {
+      return forYou.filter((r) => {
+        const s = r.recommendation_reason.toLowerCase();
+        return s.includes("similar") || s.includes("listening") || s.includes("library artist");
+      });
+    }
+    return forYou;
+  }, [forYou, forYouFilter]);
+
+  const handleForYouFilterChange = (nextFilter: "ALL" | "GENRE" | "SIMILAR") => {
+    setForYouFilter(nextFilter);
+    if (forYouScrollRef.current) {
+      forYouScrollRef.current.scrollLeft = 0;
+    }
+  };
 
   const songsScrollRef = useRef<HTMLDivElement>(null);
   const forYouScrollRef = useRef<HTMLDivElement>(null);
@@ -1462,59 +1470,17 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           </div>
         </div>
 
-        {/* Curated Filter Words (Below Trending Songs title) */}
-        {trending.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-            <button
-              onClick={() => handleFilterChange("ALL")}
-              className={`subtab-btn ${filter === "ALL" ? "active" : ""}`}
-            >
-              All Songs ({trending.length})
-            </button>
-            {genreCount > 0 && (
-              <button
-                onClick={() => handleFilterChange("GENRE")}
-                className={`subtab-btn ${filter === "GENRE" ? "active" : ""}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-              >
-                <Radio size={12} color="var(--accent-light)" />
-                <span>Top Genres ({genreCount})</span>
-              </button>
-            )}
-            {similarCount > 0 && (
-              <button
-                onClick={() => handleFilterChange("SIMILAR")}
-                className={`subtab-btn ${filter === "SIMILAR" ? "active" : ""}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-              >
-                <Sparkles size={12} color="var(--accent-light)" />
-                <span>Similar Artists ({similarCount})</span>
-              </button>
-            )}
-            {trendingCount > 0 && (
-              <button
-                onClick={() => handleFilterChange("TRENDING")}
-                className={`subtab-btn ${filter === "TRENDING" ? "active" : ""}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-              >
-                <Flame size={12} color="#f3701e" />
-                <span>Trending Hits ({trendingCount})</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {filteredTrendingRecs.length === 0 ? (
+        {trending.length === 0 ? (
           <div
             className="content-card"
             style={{ textAlign: "center", padding: "45px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
           >
             <Sparkles size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
             <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
-              No recommendations found
+              No trending songs found
             </p>
             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
-              Click Refresh to discover fresh trending and genre tracks.
+              Click Refresh to discover fresh trending tracks.
             </p>
           </div>
         ) : (
@@ -1523,7 +1489,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             className="horizontal-scroll-row"
             onScroll={handleSongsScroll}
           >
-            {filteredTrendingRecs.slice(0, visibleCount).map(renderSongCard)}
+            {trending.slice(0, visibleCount).map(renderSongCard)}
           </div>
         )}
       </div>
@@ -1554,10 +1520,51 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
             </div>
           )}
         </div>
-        {forYou.length > 0 ? (
-          <div ref={forYouScrollRef} className="horizontal-scroll-row">
-            {forYou.map(renderSongCard)}
+
+        {forYou.length > 0 && (forYouGenreCount > 0 || forYouSimilarCount > 0) && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+            <button
+              type="button"
+              onClick={() => handleForYouFilterChange("ALL")}
+              className={`subtab-btn ${forYouFilter === "ALL" ? "active" : ""}`}
+            >
+              All For You ({forYou.length})
+            </button>
+            {forYouGenreCount > 0 && (
+              <button
+                type="button"
+                onClick={() => handleForYouFilterChange("GENRE")}
+                className={`subtab-btn ${forYouFilter === "GENRE" ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Radio size={12} color="var(--accent-light)" />
+                <span>Top Genres ({forYouGenreCount})</span>
+              </button>
+            )}
+            {forYouSimilarCount > 0 && (
+              <button
+                type="button"
+                onClick={() => handleForYouFilterChange("SIMILAR")}
+                className={`subtab-btn ${forYouFilter === "SIMILAR" ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Sparkles size={12} color="var(--accent-light)" />
+                <span>Similar Artists ({forYouSimilarCount})</span>
+              </button>
+            )}
           </div>
+        )}
+
+        {forYou.length > 0 ? (
+          filteredForYou.length === 0 ? (
+            <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed", textAlign: "center" }}>
+              No songs found matching this filter.
+            </div>
+          ) : (
+            <div ref={forYouScrollRef} className="horizontal-scroll-row">
+              {filteredForYou.map(renderSongCard)}
+            </div>
+          )
         ) : (
           <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed" }}>
             Play or add more music to your library to shape new recommendations.
