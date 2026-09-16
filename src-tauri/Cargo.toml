@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Music Player Contributors"]
 description = "Backend-First Intelligent Local Music Player"
 license = "MIT OR Apache-2.0"
+default-run = "music-player-app"
 
 [lib]
 name = "music_player_backend"
