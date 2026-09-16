@@ -12,20 +12,18 @@ import {
   Heart,
   Music,
   Download,
-  RefreshCw,
   Bookmark,
   BookmarkCheck,
   Mic2,
   Maximize2,
   Minimize2,
 } from "lucide-react";
-import { OnlinePlayingTrack, PlaybackState, Track } from "../types";
+import { PlaybackState, Track } from "../types";
 import { usePlaybackProgress } from "../services/playbackProgress";
 
 interface NowPlayingBarProps {
   playbackState: PlaybackState;
   currentTrack?: Track;
-  onlineTrack?: OnlinePlayingTrack | null;
   coverArtUrl?: string | null;
   onPlayPause: () => void;
   onNext: () => void;
@@ -113,7 +111,6 @@ const NowPlayingProgressBar: React.FC<{
 export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
   playbackState,
   currentTrack,
-  onlineTrack,
   coverArtUrl,
   onPlayPause,
   onNext,
@@ -137,16 +134,12 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
-  const isOnline = !!onlineTrack && !playbackState.is_playing;
-  const activeTitle = isOnline ? onlineTrack.title : currentTrack?.title || "No Track Selected";
-  const activeArtist = isOnline
-    ? onlineTrack.artist
-    : currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "Select a track to start playback");
-  const activeArtworkUrl = isOnline ? onlineTrack.cover_art_url : coverArtUrl || undefined;
-  const isPlaying = isOnline ? onlineTrack.isPlaying : playbackState.is_playing;
-  const duration = isOnline
-    ? onlineTrack.duration
-    : playbackState.duration_secs || currentTrack?.duration_secs || 0;
+  const isOnline = !!currentTrack && (currentTrack.format === "online" || currentTrack.file_path?.startsWith("online://"));
+  const activeTitle = currentTrack?.title || "No Track Selected";
+  const activeArtist = currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "Select a track to start playback");
+  const activeArtworkUrl = currentTrack?.cover_art_url || coverArtUrl || undefined;
+  const isPlaying = playbackState.is_playing;
+  const duration = playbackState.duration_secs || currentTrack?.duration_secs || 0;
   const volumeProgress = playbackState.is_muted
     ? 0
     : Math.min(100, Math.max(0, playbackState.volume * 100));
@@ -231,76 +224,57 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
             {activeArtist}
           </div>
         </div>
-        {/* Heart — works for both local and online tracks */}
-        {(currentTrack || (isOnline && onlineTrack)) && (
+        {/* Heart — works for all tracks */}
+        {currentTrack && (
           <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
-            {currentTrack && !isOnline ? (
-              <button
-                className="player-icon-btn"
-                title={currentTrack.manual_like === 1 ? "Unlike track" : "Like track"}
-                onClick={() =>
-                  currentTrack.manual_like === 1
-                    ? onRemoveFeedback(currentTrack.id)
-                    : onLike(currentTrack.id)
-                }
-                style={{ color: currentTrack.manual_like === 1 ? "#ef4444" : "var(--text-muted)" }}
-              >
-                <Heart size={16} fill={currentTrack.manual_like === 1 ? "#ef4444" : "none"} />
-              </button>
-            ) : isOnline && onlineTrack && onLikeOnline ? (
-              <button
-                className="player-icon-btn"
-                title={isOnlineLiked ? "Unlike track" : "Like track"}
-                onClick={() =>
+            <button
+              className="player-icon-btn"
+              title={currentTrack.manual_like === 1 || isOnlineLiked ? "Unlike track" : "Like track"}
+              onClick={() => {
+                if (currentTrack.manual_like === 1 || isOnlineLiked) {
+                  onRemoveFeedback(currentTrack.id);
+                } else if (isOnline && onLikeOnline) {
                   onLikeOnline({
-                    id: onlineTrack.id || `online:${onlineTrack.artist}-${onlineTrack.title}`,
-                    title: onlineTrack.title,
-                    artist: onlineTrack.artist,
-                    album: onlineTrack.album,
-                    cover_art_url: onlineTrack.cover_art_url,
-                    preview_url: onlineTrack.preview_url,
-                    duration_secs: onlineTrack.duration,
-                  })
+                    id: currentTrack.id,
+                    title: currentTrack.title,
+                    artist: currentTrack.artist_name || "Unknown Artist",
+                    album: currentTrack.album_title,
+                    cover_art_url: currentTrack.cover_art_url,
+                    preview_url: currentTrack.preview_url,
+                    duration_secs: currentTrack.duration_secs,
+                  });
+                } else {
+                  onLike(currentTrack.id);
                 }
-                style={{ color: isOnlineLiked ? "#ef4444" : "var(--text-muted)" }}
-              >
-                <Heart size={16} fill={isOnlineLiked ? "#ef4444" : "none"} />
-              </button>
-            ) : null}
+              }}
+              style={{ color: currentTrack.manual_like === 1 || isOnlineLiked ? "#ef4444" : "var(--text-muted)" }}
+            >
+              <Heart size={16} fill={currentTrack.manual_like === 1 || isOnlineLiked ? "#ef4444" : "none"} />
+            </button>
           </div>
         )}
-        {isOnline && onDownloadOnlineTrack && (
+        {isOnline && onDownloadOnlineTrack && currentTrack && (
           <button
             className="player-icon-btn"
             title="Download this online track to library"
-            onClick={() => onDownloadOnlineTrack(onlineTrack.artist, onlineTrack.title)}
+            onClick={() => onDownloadOnlineTrack(currentTrack.artist_name || "", currentTrack.title)}
             style={{ color: "var(--accent-light)", marginLeft: "4px" }}
           >
             <Download size={16} />
           </button>
         )}
-        {onOpenAddToPlaylist && activeTitle !== "No Track Selected" && (
+        {onOpenAddToPlaylist && currentTrack && (
           <button
             className="player-icon-btn"
             title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
             onClick={() => {
-              if (isOnline && onlineTrack) {
-                onOpenAddToPlaylist({
-                  id: onlineTrack.id || `online:${onlineTrack.artist}-${onlineTrack.title}`,
-                  title: onlineTrack.title,
-                  artist: onlineTrack.artist,
-                  album: onlineTrack.album,
-                  cover_art_url: activeArtworkUrl,
-                });
-              } else if (currentTrack) {
-                onOpenAddToPlaylist({
-                  id: currentTrack.id,
-                  title: currentTrack.title,
-                  artist: currentTrack.artist_name,
-                  album: currentTrack.album_title,
-                  cover_art_url: activeArtworkUrl,
-                });
-              }
+              onOpenAddToPlaylist({
+                id: currentTrack.id,
+                title: currentTrack.title,
+                artist: currentTrack.artist_name,
+                album: currentTrack.album_title,
+                cover_art_url: activeArtworkUrl,
+              });
             }}
             style={{
               color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-muted)",
@@ -319,8 +293,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
             className={`player-icon-btn ${playbackState.is_shuffled ? "active" : ""}`}
             title="Toggle Shuffle"
             onClick={onToggleShuffle}
-            disabled={isOnline}
-            style={{ opacity: isOnline ? 0.3 : 1 }}
           >
             <Shuffle size={16} />
           </button>
@@ -336,9 +308,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
             title={isPlaying ? "Pause" : "Play"}
             onClick={onPlayPause}
           >
-            {isOnline && onlineTrack?.isLoading ? (
-              <RefreshCw size={18} className="animate-spin" />
-            ) : isPlaying ? (
+            {isPlaying ? (
               <Pause size={18} />
             ) : (
               <Play size={18} />

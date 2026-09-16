@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Minimize2, Music } from "lucide-react";
-import { OnlinePlayingTrack, PlaybackState, Track } from "../../types";
+import { PlaybackState, Track } from "../../types";
 import { LyricsView } from "./LyricsView";
 import { NowPlayingBar } from "../NowPlayingBar";
 import { executeQuery } from "../../services/api";
@@ -8,7 +8,6 @@ import { executeQuery } from "../../services/api";
 interface FullScreenPlayerViewProps {
   playbackState: PlaybackState;
   currentTrack?: Track;
-  onlineTrack?: OnlinePlayingTrack | null;
   coverArtUrl?: string | null;
   isInPlaylist?: boolean;
   onOpenAddToPlaylist?: (track: {
@@ -41,7 +40,6 @@ interface FullScreenPlayerViewProps {
 export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
   playbackState,
   currentTrack,
-  onlineTrack,
   coverArtUrl,
   isInPlaylist = false,
   onOpenAddToPlaylist,
@@ -64,17 +62,14 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
   onOpenOrigin,
   originName,
 }) => {
-  const isOnline = !!onlineTrack && !playbackState.is_playing;
-  const activeTitle = isOnline ? onlineTrack.title : currentTrack?.title || "No Track Selected";
-  const activeArtist = isOnline
-    ? onlineTrack.artist
-    : currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "");
+  const activeTitle = currentTrack?.title || "No Track Selected";
+  const activeArtist = currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "");
 
   const [internalCover, setInternalCover] = useState<string | null>(null);
 
   // Proactively pull local thumbnail if not already present in props
   useEffect(() => {
-    if (isOnline || coverArtUrl || currentTrack?.cover_art_url || !currentTrack?.id) {
+    if (coverArtUrl || currentTrack?.cover_art_url || !currentTrack?.id) {
       return;
     }
     let isMounted = true;
@@ -91,14 +86,10 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isOnline, coverArtUrl, currentTrack?.cover_art_url, currentTrack?.id]);
+  }, [coverArtUrl, currentTrack?.cover_art_url, currentTrack?.id]);
 
-  const activeArtworkUrl = isOnline
-    ? onlineTrack.cover_art_url
-    : coverArtUrl || currentTrack?.cover_art_url || internalCover || undefined;
-  const duration = isOnline
-    ? onlineTrack.duration
-    : playbackState.duration_secs || currentTrack?.duration_secs || 0;
+  const activeArtworkUrl = coverArtUrl || currentTrack?.cover_art_url || internalCover || undefined;
+  const duration = playbackState.duration_secs || currentTrack?.duration_secs || 0;
 
   return (
     <div
@@ -217,7 +208,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
         {isLyricsActive ? (
           <div style={{ width: "100%", height: "100%", position: "relative" }}>
             <LyricsView
-              trackId={isOnline ? undefined : currentTrack?.id}
+              trackId={currentTrack?.id}
               artist={activeArtist}
               title={activeTitle}
               durationSecs={duration}
@@ -327,7 +318,6 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
         <NowPlayingBar
           playbackState={playbackState}
           currentTrack={currentTrack}
-          onlineTrack={onlineTrack}
           coverArtUrl={activeArtworkUrl}
           isInPlaylist={isInPlaylist}
           onOpenAddToPlaylist={onOpenAddToPlaylist}

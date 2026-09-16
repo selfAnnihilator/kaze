@@ -289,9 +289,21 @@ async fn test_queue_refills_randomly_after_the_planned_tracks_finish() {
 }
 
 #[tokio::test]
-async fn test_online_tracks_can_be_queued_for_frontend_playback() {
+async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
     let (processor, _backend, track1_id, _track2_id) = setup_processor_with_tracks().await;
     let mut events = processor.event_bus().subscribe();
+
+    use sha2::Digest;
+    // Pre-populate disk cache so network fetch is not attempted in unit tests
+    let config = AppConfig::default_with_dirs();
+    let cache_dir = config.cache_dir.join("stream_cache");
+    tokio::fs::create_dir_all(&cache_dir).await.unwrap();
+    let cache_key = "online:test-song:queue artist:queued stream";
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(cache_key.as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+    let cached_file = cache_dir.join(format!("{}.audio", hash));
+    tokio::fs::write(&cached_file, vec![0u8; 10000]).await.unwrap();
 
     processor
         .dispatch_command(Command::PlayTrack {
@@ -315,18 +327,19 @@ async fn test_online_tracks_can_be_queued_for_frontend_playback() {
         .expect("enqueue online track");
     processor.dispatch_command(Command::NextTrack).await.expect("advance to online track");
 
-    let mut saw_request = false;
-    for _ in 0..6 {
+    let mut saw_started = false;
+    for _ in 0..10 {
         if let Ok(Ok(event)) = tokio::time::timeout(std::time::Duration::from_millis(100), events.recv()).await {
-            if let Event::OnlinePlaybackRequested { track_id, title, .. } = event {
-                assert_eq!(track_id, "online:test-song");
-                assert_eq!(title, "Queued Stream");
-                saw_request = true;
-                break;
+            if let Event::PlaybackStarted { track_id, title, .. } = event {
+                if track_id == "online:test-song" {
+                    assert_eq!(title, "Queued Stream");
+                    saw_started = true;
+                    break;
+                }
             }
         }
     }
-    assert!(saw_request, "advancing the shared queue must request browser playback for online tracks");
+    assert!(saw_started, "advancing the shared queue must play online tracks through the unified audio backend");
 }
 
 #[tokio::test]

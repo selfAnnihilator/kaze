@@ -5,9 +5,11 @@ use crate::core::event_bus::EventBus;
 use crate::database::repositories::TrackRepository;
 use crate::playback::backend::AudioBackend;
 use crate::playback::queue::PlaybackQueue;
+use crate::playback::stream::StreamPlaybackManager;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,6 +40,8 @@ pub struct PlaybackService {
     current_duration_secs: Arc<RwLock<f64>>,
     current_source: Arc<RwLock<String>>,
     volume: Arc<RwLock<f32>>,
+    stream_manager: Arc<RwLock<Option<Arc<StreamPlaybackManager>>>>,
+    pool: Option<SqlitePool>,
 }
 
 impl PlaybackService {
@@ -45,6 +49,7 @@ impl PlaybackService {
         backend: Box<dyn AudioBackend>,
         track_repo: Arc<dyn TrackRepository>,
         event_bus: Arc<EventBus>,
+        pool: Option<SqlitePool>,
     ) -> Arc<Self> {
         let service = Arc::new(Self {
             backend: Arc::new(Mutex::new(backend)),
@@ -54,6 +59,8 @@ impl PlaybackService {
             current_duration_secs: Arc::new(RwLock::new(0.0)),
             current_source: Arc::new(RwLock::new("library".to_string())),
             volume: Arc::new(RwLock::new(0.8)),
+            stream_manager: Arc::new(RwLock::new(None)),
+            pool,
         });
 
         // Spawn periodic position monitor and track finish detector
@@ -63,6 +70,10 @@ impl PlaybackService {
         });
 
         service
+    }
+
+    pub async fn set_stream_manager(&self, stream_manager: Arc<StreamPlaybackManager>) {
+        *self.stream_manager.write().await = Some(stream_manager);
     }
 
     /// Background task monitoring playback position and track completion.
@@ -119,11 +130,41 @@ impl PlaybackService {
 
     /// Plays a track directly, clearing existing queue or adding to top.
     pub async fn play_track(&self, track_id: &str, source: Option<String>) -> AppResult<()> {
-        let track = self
-            .track_repo
-            .find_by_id(track_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", track_id)))?;
+        let track = match self.track_repo.find_by_id(track_id).await? {
+            Some(t) => t,
+            None => {
+                // If not in track_repo, check external_tracks for online / discovery track
+                if let Some(pool) = &self.pool {
+                    let ext: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                        "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
+                    )
+                    .bind(track_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None);
+
+                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) = ext {
+                        let _ = crate::recommendations::mixes::ensure_online_track(
+                            pool,
+                            track_id,
+                            &title,
+                            Some(&artist),
+                            album.as_deref(),
+                            duration_secs,
+                            cover_art_url.as_deref(),
+                            preview_url.as_deref(),
+                        ).await;
+                        self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {
+                            AppError::NotFound(format!("Track not found after registration: {}", track_id))
+                        })?
+                    } else {
+                        return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
+                    }
+                } else {
+                    return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
+                }
+            }
+        };
 
         let src = source.unwrap_or_else(|| "library".to_string());
         let previous_src = self.current_source.read().await.clone();
@@ -152,6 +193,62 @@ impl PlaybackService {
         self.play_item(&queue_item).await
     }
 
+    /// Plays an online or remote track, ensuring it is registered and streamed through the unified engine.
+    pub async fn play_online_track(
+        &self,
+        track_id: &str,
+        title: &str,
+        artist: &str,
+        album: Option<&str>,
+        duration_secs: Option<f64>,
+        cover_art_url: Option<&str>,
+        preview_url: Option<&str>,
+        source: Option<String>,
+    ) -> AppResult<()> {
+        if let Some(pool) = &self.pool {
+            let _ = crate::recommendations::mixes::ensure_online_track(
+                pool,
+                track_id,
+                title,
+                Some(artist),
+                album,
+                duration_secs,
+                cover_art_url,
+                preview_url,
+            ).await;
+        }
+
+        self.play_track(track_id, source).await
+    }
+
+    /// Enqueues an online or remote track, ensuring it is registered in the database.
+    pub async fn enqueue_online_track(
+        &self,
+        track_id: &str,
+        title: &str,
+        artist: &str,
+        album: Option<&str>,
+        duration_secs: Option<f64>,
+        cover_art_url: Option<&str>,
+        preview_url: Option<&str>,
+        play_next: bool,
+    ) -> AppResult<bool> {
+        if let Some(pool) = &self.pool {
+            let _ = crate::recommendations::mixes::ensure_online_track(
+                pool,
+                track_id,
+                title,
+                Some(artist),
+                album,
+                duration_secs,
+                cover_art_url,
+                preview_url,
+            ).await;
+        }
+
+        self.enqueue_track(track_id, play_next).await
+    }
+
     /// Plays an item from the current queue by index.
     pub async fn play_queue_index(&self, index: usize) -> AppResult<()> {
         let item = {
@@ -173,32 +270,37 @@ impl PlaybackService {
             .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", item.track_id)))?;
 
         let is_online = track.format == "online" || track.file_path.starts_with("online://");
-        if is_online {
-            {
-                let mut backend = self.backend.lock().await;
-                let _ = backend.stop();
+        let (file_path_to_play, actual_duration) = if is_online {
+            let sm_opt = self.stream_manager.read().await.clone();
+            if let Some(sm) = sm_opt {
+                let artist = track.artist_name.as_deref().unwrap_or("Unknown Artist");
+                let (cached_path, dur) = sm
+                    .resolve_and_prepare_audio(
+                        &track.id,
+                        &track.title,
+                        artist,
+                        track.preview_url.as_deref(),
+                    )
+                    .await?;
+                (cached_path.to_string_lossy().to_string(), dur)
+            } else {
+                return Err(AppError::Playback(
+                    "Stream manager not initialized for online audio playback".to_string(),
+                ));
             }
-            *self.current_duration_secs.write().await = 0.0;
-            let _ = self.event_bus.publish(Event::OnlinePlaybackRequested {
-                track_id: track.id,
-                title: track.title,
-                artist: track.artist_name.unwrap_or_else(|| "Unknown Artist".into()),
-                album: track.album_title,
-                duration_secs: track.duration_secs,
-            });
-            self.emit_queue_updated().await;
-            return Ok(());
-        }
+        } else {
+            (track.file_path.clone(), track.duration_secs)
+        };
 
-        *self.current_duration_secs.write().await = track.duration_secs;
-        self.load_and_play_file(&track.file_path).await?;
+        *self.current_duration_secs.write().await = actual_duration;
+        self.load_and_play_file(&file_path_to_play).await?;
 
         let src = self.current_source.read().await.clone();
         let _ = self.event_bus.publish(Event::PlaybackStarted {
             track_id: item.track_id.clone(),
             title: item.title.clone(),
             artist: item.artist.clone(),
-            duration_secs: item.duration_secs,
+            duration_secs: actual_duration,
             source: src,
         });
 
@@ -370,11 +472,40 @@ impl PlaybackService {
     }
 
     pub async fn enqueue_track(&self, track_id: &str, play_next: bool) -> AppResult<bool> {
-        let track = self
-            .track_repo
-            .find_by_id(track_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", track_id)))?;
+        let track = match self.track_repo.find_by_id(track_id).await? {
+            Some(t) => t,
+            None => {
+                if let Some(pool) = &self.pool {
+                    let ext: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                        "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
+                    )
+                    .bind(track_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None);
+
+                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) = ext {
+                        let _ = crate::recommendations::mixes::ensure_online_track(
+                            pool,
+                            track_id,
+                            &title,
+                            Some(&artist),
+                            album.as_deref(),
+                            duration_secs,
+                            cover_art_url.as_deref(),
+                            preview_url.as_deref(),
+                        ).await;
+                        self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {
+                            AppError::NotFound(format!("Track not found after registration: {}", track_id))
+                        })?
+                    } else {
+                        return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
+                    }
+                } else {
+                    return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
+                }
+            }
+        };
 
         let queue_item = QueueItem {
             queue_id: Uuid::new_v4().to_string(),

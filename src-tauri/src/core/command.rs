@@ -42,6 +42,16 @@ pub enum Command {
         track_id: String,
         source: Option<String>,
     },
+    PlayOnlineTrack {
+        track_id: String,
+        title: String,
+        artist: String,
+        album: Option<String>,
+        duration_secs: Option<f64>,
+        cover_art_url: Option<String>,
+        preview_url: Option<String>,
+        source: Option<String>,
+    },
     PlayQueueIndex {
         index: usize,
     },

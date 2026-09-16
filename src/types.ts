@@ -214,6 +214,19 @@ export type Command =
   | { command: "SetShuffle"; payload: { enabled: boolean } }
   | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean } }
   | {
+      command: "PlayOnlineTrack";
+      payload: {
+        track_id: string;
+        title: string;
+        artist: string;
+        album?: string;
+        duration_secs?: number;
+        cover_art_url?: string;
+        preview_url?: string;
+        source?: string;
+      };
+    }
+  | {
       command: "EnqueueOnlineTrack";
       payload: {
         track_id: string;

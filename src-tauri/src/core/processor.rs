@@ -91,6 +91,7 @@ impl CoreProcessor {
             backend,
             library_service.track_repo(),
             event_bus.clone(),
+            Some(db_pool.clone()),
         );
 
         let history_repo = Arc::new(SqliteHistoryRepository::new(db_pool.clone()));
@@ -153,6 +154,16 @@ impl CoreProcessor {
             download_dir,
             config.downloads.auto_import,
         ));
+
+        let stream_manager = Arc::new(crate::playback::stream::StreamPlaybackManager::new(
+            config.cache_dir.clone(),
+            Some(db_pool.clone()),
+            Some(download_service.clone()),
+        ));
+        let ps_for_sm = playback_service.clone();
+        tokio::spawn(async move {
+            ps_for_sm.set_stream_manager(stream_manager).await;
+        });
 
         let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
         let cloud_client = Arc::new(CloudClient::new());
@@ -636,6 +647,30 @@ impl CoreProcessor {
             // --- Playback Controls ---
             Command::PlayTrack { track_id, source } => {
                 self.playback_service.play_track(&track_id, source).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::PlayOnlineTrack {
+                track_id,
+                title,
+                artist,
+                album,
+                duration_secs,
+                cover_art_url,
+                preview_url,
+                source,
+            } => {
+                self.playback_service
+                    .play_online_track(
+                        &track_id,
+                        &title,
+                        &artist,
+                        album.as_deref(),
+                        duration_secs,
+                        cover_art_url.as_deref(),
+                        preview_url.as_deref(),
+                        source,
+                    )
+                    .await?;
                 Ok(CommandResponse::Ok)
             }
             Command::PlayQueueIndex { index } => {
