@@ -2856,7 +2856,7 @@ impl CoreProcessor {
                 "duration_secs": duration_secs,
                 "in_library": in_library,
                 "match_status": match_res.status.as_str(),
-                "matched_local_track_id": match_res.matched_track_id,
+                "matched_local_track_id": if in_library { match_res.matched_track_id } else { None },
             }));
         }
 

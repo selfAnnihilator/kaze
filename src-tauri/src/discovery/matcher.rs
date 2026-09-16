@@ -175,12 +175,29 @@ impl FuzzyTrackMatcher {
             }
         }
 
+        // Verify word-level divergence (e.g. "pokemon center" vs "pokemon theme"):
+        // Jaro-Winkler can artificially score >= 0.90 simply because of a common leading prefix.
+        let ext_words: Vec<&str> = norm_ext_title.split_whitespace().collect();
+        let local_words: Vec<&str> = norm_local_title.split_whitespace().collect();
+        if ext_words.len() > 1 && local_words.len() > 1 {
+            let common_words = ext_words.iter().filter(|w| local_words.contains(w)).count();
+            let overlap = common_words as f64 / ext_words.len().max(local_words.len()) as f64;
+            if overlap < 0.6 {
+                return MatchResult {
+                    status: MatchStatus::NotFound,
+                    confidence: 0.0,
+                    matched_track_id: None,
+                    explanation: "Divergent title words despite common prefix".to_string(),
+                };
+            }
+        }
+
         // 3. POSSIBLE_MATCH: reasonable similarity, candidate might be a live or alternate version
         if title_sim >= 0.75 && artist_sim >= 0.70 {
             return MatchResult {
                 status: MatchStatus::PossibleMatch,
                 confidence: (title_sim * 0.6 + artist_sim * 0.4).clamp(0.0, 1.0),
-                matched_track_id: Some(local_id.to_string()),
+                matched_track_id: None,
                 explanation: format!(
                     "Possible match (alternate cut/live): Title {:.0}%, Artist {:.0}%",
                     title_sim * 100.0,

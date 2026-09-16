@@ -29,6 +29,77 @@ interface DownloadOptionsModalProps {
   onDirectAudioDownload?: (track: DownloadModalTrack) => Promise<void>;
 }
 
+export const rankResultMatch = (
+  result: DownloadSearchResult,
+  targetArtist: string,
+  targetTitle: string
+): number => {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const cleanFilename = norm(result.filename);
+  const cleanArtist = norm(targetArtist);
+  const cleanTitle = norm(targetTitle);
+
+  const titleWords = cleanTitle.split(" ").filter((w) => w.length > 1);
+  const artistWords = cleanArtist.split(" ").filter((w) => w.length > 1);
+  const filenameWords = cleanFilename.split(" ").filter((w) => w.length > 1);
+
+  let score = 0;
+
+  // Full title match
+  if (cleanFilename.includes(cleanTitle)) {
+    score += 60;
+  } else {
+    // Word-by-word title match
+    if (titleWords.length > 0) {
+      const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
+      score += (matches / titleWords.length) * 40;
+    }
+  }
+
+  // Artist match
+  if (
+    cleanFilename.includes(cleanArtist) ||
+    (result.username && norm(result.username).includes(cleanArtist))
+  ) {
+    score += 30;
+  }
+
+  // Heavy penalty for extraneous noise words in filename (e.g. "pingu", "goes", "to", "theme park", "vlog")
+  const commonMusicNoise = new Set(["lofi", "remix", "ost", "edit", "audio", "flac", "mp3", "track", "official", "theme", "original"]);
+  const extraWords = filenameWords.filter(
+    (w) =>
+      !titleWords.includes(w) &&
+      !artistWords.includes(w) &&
+      !commonMusicNoise.has(w) &&
+      !/^\d+$/.test(w)
+  );
+  if (extraWords.length > 2) {
+    score -= (extraWords.length - 2) * 18;
+  }
+
+  // Prefer lossless or 320k high bitrate
+  if (result.format.toLowerCase() === "flac") {
+    score += 10;
+  } else if (result.bitrate && result.bitrate >= 320) {
+    score += 6;
+  }
+
+  // Prefer slot free
+  if (result.slots_free) {
+    score += 5;
+  }
+
+  return score;
+};
+
 export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   isOpen,
   track,
@@ -54,61 +125,6 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
       performSearch(track);
     }
   }, [isOpen, track]);
-
-  const rankResultMatch = (
-    result: DownloadSearchResult,
-    targetArtist: string,
-    targetTitle: string
-  ): number => {
-    const norm = (s: string) =>
-      s
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const cleanFilename = norm(result.filename);
-    const cleanArtist = norm(targetArtist);
-    const cleanTitle = norm(targetTitle);
-
-    let score = 0;
-
-    // Full title match
-    if (cleanFilename.includes(cleanTitle)) {
-      score += 60;
-    } else {
-      // Word-by-word title match
-      const titleWords = cleanTitle.split(" ").filter((w) => w.length > 2);
-      if (titleWords.length > 0) {
-        const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
-        score += (matches / titleWords.length) * 40;
-      }
-    }
-
-    // Artist match
-    if (
-      cleanFilename.includes(cleanArtist) ||
-      (result.username && norm(result.username).includes(cleanArtist))
-    ) {
-      score += 30;
-    }
-
-    // Prefer lossless or 320k high bitrate
-    if (result.format.toLowerCase() === "flac") {
-      score += 10;
-    } else if (result.bitrate && result.bitrate >= 320) {
-      score += 6;
-    }
-
-    // Prefer slot free
-    if (result.slots_free) {
-      score += 5;
-    }
-
-    return score;
-  };
 
   const performSearch = async (tr: DownloadModalTrack) => {
     setIsSearching(true);
@@ -164,13 +180,22 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
   };
 
   const handleSelectDirectOption = async () => {
-    // If search results already contain a direct stream result, start it immediately
-    const directRes =
-      results.find((r) => r.id.startsWith("ytdlp_flac_")) ||
-      results.find((r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_"));
+    // Check if we have a confident direct stream result (score >= 40)
+    const directRes = results.filter(
+      (r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")
+    );
+    const goodDirect = directRes.find(
+      (r) => rankResultMatch(r, track.artist, track.title) >= 40
+    );
 
-    if (directRes) {
-      await handleSelectOption(directRes);
+    if (goodDirect) {
+      await handleSelectOption(goodDirect);
+      return;
+    }
+
+    // If direct match was poor or missing, check if we have an excellent match in results
+    if (results.length > 0 && rankResultMatch(results[0], track.artist, track.title) >= 30) {
+      await handleSelectOption(results[0]);
       return;
     }
 

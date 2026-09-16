@@ -68,7 +68,7 @@ impl DownloadProvider for YtDlpProvider {
             return Ok(Vec::new());
         }
 
-        let yt_query = format!("ytsearch5:{}", clean_query);
+        let yt_query = format!("ytsearch8:{}", clean_query);
         info!(query = %yt_query, "Executing yt-dlp search");
 
         let output = tokio::process::Command::new(&self.binary_path)
@@ -116,6 +116,23 @@ impl DownloadProvider for YtDlpProvider {
                     .get("duration")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(180.0) as i64;
+
+                // Filter out non-song items (vlogs, walking tours, 1hr+ full albums, unboxings, short clips)
+                if duration_secs > 720 || duration_secs < 30 {
+                    continue;
+                }
+
+                let lower_title = raw_title.to_lowercase();
+                if lower_title.contains("tour")
+                    || lower_title.contains("vlog")
+                    || lower_title.contains("unboxing")
+                    || lower_title.contains("reaction")
+                    || lower_title.contains("podcast")
+                    || lower_title.contains("gameplay")
+                    || lower_title.contains("figure")
+                {
+                    continue;
+                }
 
                 // 1. Lossless FLAC stream option (Audiophile 24-bit/48kHz)
                 let flac_filename =

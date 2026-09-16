@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Play,
   Pause,
@@ -18,6 +18,8 @@ import {
   Heart,
   ListPlus,
   Check,
+  Search,
+  X,
 } from "lucide-react";
 import { Track, DiscoveryRecommendation, DownloadTask } from "../../types";
 
@@ -104,6 +106,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   onEnqueueTrack,
 }) => {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isInCollection = isSaved || collection.type === "playlist";
   const isLikedSongs = collection.type === "playlist" && collection.title === "Liked Songs";
@@ -115,21 +118,31 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     try {
       await onRenamePlaylist(collection.playlistId, name);
     } catch (err: any) {
-      alert(err?.message || "Could not rename the playlist.");
+      console.warn("Could not rename playlist:", err);
     }
   };
 
   const handleDeletePlaylist = async () => {
     if (!collection.playlistId || !onDeletePlaylist || isLikedSongs) return;
-    if (!window.confirm(`Delete "${collection.title}"? This cannot be undone.`)) return;
     try {
       await onDeletePlaylist(collection.playlistId);
     } catch (err: any) {
-      alert(err?.message || "Could not delete the playlist.");
+      console.warn("Could not delete playlist:", err);
     }
   };
 
-  const tracks = collection.tracks || [];
+  const rawTracks = collection.tracks || [];
+  const tracks = useMemo(() => {
+    if (!searchQuery.trim()) return rawTracks;
+    const q = searchQuery.toLowerCase().trim();
+    return rawTracks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.artist.toLowerCase().includes(q) ||
+        (t.album && t.album.toLowerCase().includes(q))
+    );
+  }, [rawTracks, searchQuery]);
+
   const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
 
   const formatTotalDuration = (totalSecs: number) => {
@@ -274,7 +287,11 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           >
             <span style={{ fontWeight: 700, color: "#e8d8c9" }}>Kaze</span>
             <span>•</span>
-            <span>{tracks.length} {tracks.length === 1 ? "song" : "songs"}</span>
+            <span>
+              {searchQuery.trim()
+                ? `${tracks.length} of ${rawTracks.length} ${rawTracks.length === 1 ? "song" : "songs"}`
+                : `${rawTracks.length} ${rawTracks.length === 1 ? "song" : "songs"}`}
+            </span>
             {totalDurationSecs > 0 && (
               <>
                 <span>•</span>
@@ -348,15 +365,15 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           {/* Center circle (Largest, on top) */}
           <div
             style={{
-              position: "absolute",
-              width: "170px",
-              height: "170px",
+              position: "relative",
+              width: "165px",
+              height: "165px",
               borderRadius: "50%",
               overflow: "hidden",
-              border: "4px solid rgba(255, 255, 255, 0.45)",
+              border: "4px solid rgba(255, 255, 255, 0.3)",
               boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
               backgroundColor: "rgba(0,0,0,0.4)",
-              zIndex: 3,
+              zIndex: 2,
             }}
           >
             {heroImage2 ? (
@@ -377,6 +394,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           alignItems: "center",
           justifyContent: "space-between",
           padding: "20px 8px 16px 8px",
+          flexWrap: "wrap",
+          gap: "14px",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
@@ -532,6 +551,54 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             </details>
           )}
         </div>
+
+        {/* Search inside Playlist */}
+        {rawTracks.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+            <Search
+              size={15}
+              color="var(--text-muted)"
+              style={{ position: "absolute", left: "12px", pointerEvents: "none" }}
+            />
+            <input
+              type="text"
+              placeholder="Search in playlist..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: "8px 30px 8px 34px",
+                borderRadius: "20px",
+                border: "1px solid var(--border)",
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                color: "#e8d8c9",
+                fontSize: "0.82rem",
+                outline: "none",
+                width: "220px",
+                transition: "all 0.2s ease",
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  padding: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3. Track Table */}
@@ -541,13 +608,38 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-main)" }}>Loading collection songs...</p>
         </div>
       ) : tracks.length === 0 ? (
-        <div
-          className="content-card"
-          style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
-        >
-          <Music2 size={36} color="var(--accent-light)" style={{ marginBottom: "12px" }} />
-          <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)" }}>No songs in this collection yet</p>
-        </div>
+        rawTracks.length > 0 ? (
+          <div
+            className="content-card"
+            style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
+          >
+            <Search size={36} color="var(--accent-light)" style={{ margin: "0 auto 12px" }} />
+            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+              No songs found matching "{searchQuery}"
+            </p>
+            <p style={{ fontSize: "0.84rem", color: "var(--text-muted)", marginBottom: "16px" }}>
+              Check your spelling or try searching for a different track title or artist.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setSearchQuery("")}
+              style={{ fontSize: "0.82rem" }}
+            >
+              Clear Search
+            </button>
+          </div>
+        ) : (
+          <div
+            className="content-card"
+            style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
+          >
+            <Music2 size={36} color="var(--accent-light)" style={{ marginBottom: "12px" }} />
+            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+              No songs in this collection yet
+            </p>
+          </div>
+        )
       ) : (
         <div
           style={{

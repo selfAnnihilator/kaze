@@ -31,6 +31,7 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import {
   DownloadOptionsModal,
   DownloadModalTrack,
+  rankResultMatch,
 } from "./components/modals/DownloadOptionsModal";
 import {
   AddToPlaylistModal,
@@ -2561,18 +2562,36 @@ export const App: React.FC = () => {
         `Locating audio stream for "${track.title}" by ${track.artist}...`
       );
       const searchResults = await handleSearchSoulseek(track.artist, track.title, track.album);
-      const directResult =
-        searchResults.find((r) => r.id.startsWith("ytdlp_flac_")) ||
-        searchResults.find((r) => r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) ||
-        searchResults[0];
-
-      if (directResult) {
-        await handleModalStartDownload(directResult.id, track);
-      } else {
+      if (!searchResults || searchResults.length === 0) {
         addAppNotification(
           "error",
           "Download Error",
           `No streamable audio found for "${track.title}".`
+        );
+        return;
+      }
+
+      // Rank results according to match quality
+      const sorted = [...searchResults].sort(
+        (a, b) => rankResultMatch(b, track.artist, track.title) - rankResultMatch(a, track.artist, track.title)
+      );
+
+      // Prefer a high-confidence direct stream (score >= 40)
+      const goodDirect = sorted.find(
+        (r) =>
+          (r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) &&
+          rankResultMatch(r, track.artist, track.title) >= 40
+      );
+
+      const chosen = goodDirect || sorted[0];
+
+      if (chosen && rankResultMatch(chosen, track.artist, track.title) > 0) {
+        await handleModalStartDownload(chosen.id, track);
+      } else {
+        addAppNotification(
+          "error",
+          "Download Error",
+          `No confident audio match found for "${track.title}".`
         );
       }
     } catch (err: any) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ListMusic,
   Sparkles,
@@ -14,6 +14,7 @@ import {
   Trash2,
   Heart,
   ListPlus,
+  Search,
 } from "lucide-react";
 import { Playlist, Track, SpotifyPlaylistImport, UserProfile } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
@@ -89,6 +90,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [inspectingSpotify, setInspectingSpotify] = useState(false);
   const [spotifyResult, setSpotifyResult] = useState<SpotifyPlaylistImport | null>(null);
   const [spotifyMessage, setSpotifyMessage] = useState<string | null>(null);
+  const [spotifyFilterQuery, setSpotifyFilterQuery] = useState("");
 
   // Custom themed dialog states for Delete and Rename
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
@@ -270,6 +272,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
 
     const trackIds = targetTracks.map((t) =>
+      t.in_library &&
       t.matched_local_track_id &&
       !t.matched_local_track_id.startsWith("online:") &&
       !t.matched_local_track_id.startsWith("itunes:")
@@ -290,7 +293,19 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     setSpotifyResult(null);
     setSpotifyInput("");
     setSpotifyMessage(null);
+    setSpotifyFilterQuery("");
   };
+
+  const displayedSpotifyTracks = useMemo(() => {
+    if (!spotifyResult) return [];
+    if (!spotifyFilterQuery.trim()) return spotifyResult.tracks;
+    const q = spotifyFilterQuery.toLowerCase().trim();
+    return spotifyResult.tracks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.artist.toLowerCase().includes(q)
+    );
+  }, [spotifyResult, spotifyFilterQuery]);
 
   const handleSearchMissingInSoulseek = async (trackTitle: string, artistName: string) => {
     await onLaunchSoulseek(trackTitle, artistName);
@@ -1034,6 +1049,53 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   </div>
                 </div>
 
+                {/* Track Search Bar in Spotify Inspection Modal */}
+                <div style={{ position: "relative", marginBottom: "12px" }}>
+                  <Search
+                    size={14}
+                    color="var(--text-muted)"
+                    style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search songs or artists in this playlist..."
+                    value={spotifyFilterQuery}
+                    onChange={(e) => setSpotifyFilterQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 32px 8px 34px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "rgba(0, 0, 0, 0.25)",
+                      color: "#e8d8c9",
+                      fontSize: "0.82rem",
+                      outline: "none",
+                    }}
+                  />
+                  {spotifyFilterQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSpotifyFilterQuery("")}
+                      style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        padding: "2px",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                      title="Clear search"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
                 {/* Track inspection table */}
                 <div style={{ overflowY: "auto", flex: 1 }}>
                   <table className="track-table" style={{ width: "100%" }}>
@@ -1047,7 +1109,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {spotifyResult.tracks.map((tr, idx) => (
+                      {displayedSpotifyTracks.map((tr, idx) => (
                         <tr key={tr.spotify_id || idx} className="track-row">
                           <td style={{ textAlign: "center", color: "var(--text-dim)" }}>{idx + 1}</td>
                           <td className="primary">{tr.title}</td>
