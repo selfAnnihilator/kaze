@@ -55,11 +55,68 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
     }
   }, [isOpen, track]);
 
+  const rankResultMatch = (
+    result: DownloadSearchResult,
+    targetArtist: string,
+    targetTitle: string
+  ): number => {
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const cleanFilename = norm(result.filename);
+    const cleanArtist = norm(targetArtist);
+    const cleanTitle = norm(targetTitle);
+
+    let score = 0;
+
+    // Full title match
+    if (cleanFilename.includes(cleanTitle)) {
+      score += 60;
+    } else {
+      // Word-by-word title match
+      const titleWords = cleanTitle.split(" ").filter((w) => w.length > 2);
+      if (titleWords.length > 0) {
+        const matches = titleWords.filter((w) => cleanFilename.includes(w)).length;
+        score += (matches / titleWords.length) * 40;
+      }
+    }
+
+    // Artist match
+    if (
+      cleanFilename.includes(cleanArtist) ||
+      (result.username && norm(result.username).includes(cleanArtist))
+    ) {
+      score += 30;
+    }
+
+    // Prefer lossless or 320k high bitrate
+    if (result.format.toLowerCase() === "flac") {
+      score += 10;
+    } else if (result.bitrate && result.bitrate >= 320) {
+      score += 6;
+    }
+
+    // Prefer slot free
+    if (result.slots_free) {
+      score += 5;
+    }
+
+    return score;
+  };
+
   const performSearch = async (tr: DownloadModalTrack) => {
     setIsSearching(true);
     try {
       const res = await onSearchSoulseek(tr.artist, tr.title, tr.album);
-      setResults(res || []);
+      const list = Array.isArray(res) ? [...res] : [];
+      list.sort((a, b) => rankResultMatch(b, tr.artist, tr.title) - rankResultMatch(a, tr.artist, tr.title));
+      setResults(list);
     } catch (err) {
       console.error("Download search failed:", err);
       setResults([]);
