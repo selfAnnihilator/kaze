@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { isTauri } from "../../services/api";
+import { isTauri } from "../services/api";
 
 interface UpdateBannerProps {}
 
