@@ -35,13 +35,14 @@ mkdir -p ~/.local/bin
 cp Kaze_*.AppImage ~/.local/bin/kaze
 
 # 3. Extract desktop entry and icon for system app launcher
-~/.local/bin/kaze --appimage-extract "*.desktop"
-~/.local/bin/kaze --appimage-extract "*.png"
 mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
-cp squashfs-root/*.desktop ~/.local/share/applications/kaze.desktop 2>/dev/null || true
-sed -i 's|^Exec=.*|Exec='$HOME'/.local/bin/kaze|' ~/.local/share/applications/kaze.desktop 2>/dev/null || true
-cp squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png 2>/dev/null || true
+~/.local/bin/kaze --appimage-extract "usr/share/applications/Kaze.desktop"
+~/.local/bin/kaze --appimage-extract "usr/share/icons/hicolor/512x512/apps/kaze.png"
+cp squashfs-root/usr/share/applications/Kaze.desktop ~/.local/share/applications/kaze.desktop
+cp squashfs-root/usr/share/icons/hicolor/512x512/apps/kaze.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png
+sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/kaze|" ~/.local/share/applications/kaze.desktop
 rm -rf squashfs-root
+update-desktop-database ~/.local/share/applications 2>/dev/null || true
 ```
 
 After running this once:
