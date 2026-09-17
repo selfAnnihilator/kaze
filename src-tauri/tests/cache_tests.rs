@@ -408,3 +408,35 @@ async fn test_eviction_when_cache_below_limit_does_nothing() {
     assert!(f1.exists());
 }
 
+#[tokio::test]
+async fn test_stream_playback_manager_downloads_preview_stream() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        if let Ok((mut socket, _)) = listener.accept().await {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let mut buf = [0u8; 1024];
+            let _ = socket.read(&mut buf).await;
+            let response = "HTTP/1.1 200 OK\r\nContent-Length: 100\r\nContent-Type: audio/aac\r\n\r\n";
+            let _ = socket.write_all(response.as_bytes()).await;
+            let _ = socket.write_all(&vec![42u8; 100]).await;
+            let _ = socket.flush().await;
+        }
+    });
+
+    let dir = tempdir().unwrap();
+    let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
+    let url = format!("http://{}/test.aac", addr);
+
+    let (path, dur) = manager
+        .resolve_and_prepare_audio("test-preview-id", "Test Song", "Test Artist", Some(&url))
+        .await
+        .unwrap();
+
+    assert_eq!(dur, 30.0);
+    assert!(path.exists());
+    let metadata = std::fs::metadata(&path).unwrap();
+    assert_eq!(metadata.len(), 100);
+}
+

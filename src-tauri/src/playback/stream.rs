@@ -130,8 +130,8 @@ impl StreamPlaybackManager {
         let stream_cache_dir = base_cache_dir.join("remote-audio");
         let legacy_cache_dir = base_cache_dir.join("stream_cache");
         let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(20))
-            .connect_timeout(std::time::Duration::from_secs(8))
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .read_timeout(std::time::Duration::from_secs(30))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -386,31 +386,37 @@ impl StreamPlaybackManager {
         };
 
         // 4. Resolve stream URL
-        let mut target_stream_url: Option<String> = None;
-        let mut target_duration: f64 = 210.0;
+        // If a direct preview_url is provided (e.g. from iTunes/Discovery recommendations),
+        // prioritize it for instant, pristine 256kbps preview playback (~300ms download).
+        let direct_preview = preview_url.filter(|p| !p.trim().is_empty()).map(|p| p.to_string());
+        let mut candidates: Vec<(String, f64)> = Vec::new();
 
-        if let Some(ref dl) = self.download_service {
-            match dl.resolve_full_track_audio(artist, title).await {
-                Ok(Some((stream_url, dur, _))) => {
-                    info!(%stream_url, dur, "Resolved full track stream URL");
-                    target_stream_url = Some(stream_url);
-                    target_duration = dur;
-                }
-                Ok(None) => {
-                    debug!("Full track stream not resolved by provider, falling back");
-                }
-                Err(e) => {
-                    warn!(error = %e, "Error resolving full track stream from download service");
+        if let Some(ref prev) = direct_preview {
+            candidates.push((prev.clone(), 30.0));
+        }
+
+        // Secondary / alternative: resolve full track audio via download service if available
+        // If no preview was provided, this becomes the primary choice.
+        if candidates.is_empty() {
+            if let Some(ref dl) = self.download_service {
+                match dl.resolve_full_track_audio(artist, title).await {
+                    Ok(Some((stream_url, dur, _))) => {
+                        info!(%stream_url, dur, "Resolved full track stream URL");
+                        candidates.push((stream_url, dur));
+                    }
+                    Ok(None) => {
+                        debug!("Full track stream not resolved by provider, falling back");
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Error resolving full track stream from download service");
+                    }
                 }
             }
         }
 
-        // Fallback to preview_url if full audio stream wasn't resolved
-        if target_stream_url.is_none() {
-            if let Some(prev) = preview_url.filter(|p| !p.trim().is_empty()) {
-                target_stream_url = Some(prev.to_string());
-                target_duration = 30.0;
-            } else if let Some(pool) = &self.pool {
+        // Also check DB for cached preview URL if still empty
+        if candidates.is_empty() {
+            if let Some(pool) = &self.pool {
                 let db_prev: Option<(Option<String>, Option<f64>)> = sqlx::query_as(
                     "SELECT preview_url, duration_secs FROM external_tracks WHERE id = ?",
                 )
@@ -421,23 +427,41 @@ impl StreamPlaybackManager {
 
                 if let Some((Some(p), dur)) = db_prev {
                     if !p.trim().is_empty() {
-                        target_stream_url = Some(p);
-                        target_duration = dur.unwrap_or(30.0);
+                        candidates.push((p, dur.unwrap_or(30.0)));
                     }
                 }
             }
         }
 
-        let stream_url = target_stream_url.ok_or_else(|| {
-            AppError::Playback(format!(
+        if candidates.is_empty() {
+            return Err(AppError::Playback(format!(
                 "No streamable audio source available for \"{}\" by \"{}\"",
                 title, artist
-            ))
-        })?;
+            )));
+        }
 
-        // 5. Download and cache the stream (Cache Miss)
-        info!(url = %stream_url, target = %cache_path.display(), "Cache miss: downloading remote audio stream to cache");
-        self.download_and_cache(&stream_url, &cache_path).await?;
+        // 5. Download and cache the stream (Cache Miss with fallback across candidates)
+        let mut last_error = None;
+        let mut successful_duration = 210.0;
+
+        for (stream_url, dur) in candidates {
+            info!(url = %stream_url, target = %cache_path.display(), "Attempting to download remote audio stream to cache");
+            match self.download_and_cache(&stream_url, &cache_path).await {
+                Ok(()) => {
+                    successful_duration = dur;
+                    last_error = None;
+                    break;
+                }
+                Err(err) => {
+                    warn!(url = %stream_url, error = %err, "Failed to download stream candidate, checking for alternative candidate");
+                    last_error = Some(err);
+                }
+            }
+        }
+
+        if let Some(err) = last_error {
+            return Err(err);
+        }
 
         // Trigger asynchronous background eviction if needed (never blocks playback startup)
         let manager_clone = self.clone_for_bg();
@@ -445,7 +469,7 @@ impl StreamPlaybackManager {
             let _ = manager_clone.enforce_cache_limits().await;
         });
 
-        Ok((cache_path, target_duration))
+        Ok((cache_path, successful_duration))
     }
 
     /// Downloads the remote audio stream to a `.part` file, verifies size, and atomically renames it.
@@ -457,21 +481,29 @@ impl StreamPlaybackManager {
         let part_path = Self::get_part_path(target_path);
         let mut guard = PartFileCleanupGuard::new(part_path.clone());
 
-        let response = self
+        let mut request = self
             .http_client
             .get(url)
             .header(
                 reqwest::header::USER_AGENT,
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            )
+            );
+
+        // If streaming from googlevideo/youtube, send Range: bytes=0- to bypass Google CDN throttling
+        if url.contains("googlevideo.com") || url.contains("youtube.com") {
+            request = request.header(reqwest::header::RANGE, "bytes=0-");
+        }
+
+        let response = request
             .send()
             .await
             .map_err(|e| AppError::Playback(format!("Failed to connect to audio stream: {}", e)))?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
             return Err(AppError::Playback(format!(
                 "Audio stream returned HTTP {}",
-                response.status()
+                status
             )));
         }
 
@@ -491,11 +523,17 @@ impl StreamPlaybackManager {
 
         let mut downloaded_bytes: u64 = 0;
         let mut mut_resp = response;
-        while let Some(chunk) = mut_resp
-            .chunk()
-            .await
-            .map_err(|e| AppError::Playback(format!("Stream read error: {}", e)))?
-        {
+        loop {
+            let chunk_opt = tokio::time::timeout(std::time::Duration::from_secs(25), mut_resp.chunk())
+                .await
+                .map_err(|_| AppError::Playback("Audio stream download timed out (no data received for 25s)".to_string()))?
+                .map_err(|e| AppError::Playback(format!("Stream read error: {}", e)))?;
+
+            let chunk = match chunk_opt {
+                Some(c) => c,
+                None => break,
+            };
+
             downloaded_bytes += chunk.len() as u64;
             if downloaded_bytes > config.max_single_file_bytes {
                 return Err(AppError::Playback(format!(
