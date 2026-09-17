@@ -2012,6 +2012,16 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::DiscoveryRecommendations(val))
             }
+            Query::GetWorldTrending { limit, force_refresh } => {
+                let recs = self.discovery_coordinator.get_world_trending(limit as usize, force_refresh.unwrap_or(false)).await?;
+                let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
+                Ok(QueryResponse::DiscoveryRecommendations(val))
+            }
+            Query::GetChartSongs { chart_id, limit } => {
+                let recs = self.discovery_coordinator.get_chart_songs(&chart_id, limit as usize).await?;
+                let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
+                Ok(QueryResponse::DiscoveryRecommendations(val))
+            }
             Query::GetDownloads { status_filter, limit } => {
                 let tasks = self
                     .download_service

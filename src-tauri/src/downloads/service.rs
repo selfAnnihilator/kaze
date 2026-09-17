@@ -92,6 +92,22 @@ impl DownloadService {
         Ok(resolved)
     }
 
+    pub async fn resolve_full_track_audio_candidates(
+        &self,
+        artist: &str,
+        title: &str,
+    ) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
+        let query = format!("{} {}", artist, title);
+        let resolved = self.provider.resolve_stream_urls(&query).await?;
+        let mut cache = self.search_cache.write().await;
+        for (_, _, result) in &resolved {
+            if let Some(result) = result {
+                cache.insert(result.id.clone(), result.clone());
+            }
+        }
+        Ok(resolved)
+    }
+
     /// Searches the network for a specific wishlist item.
     pub async fn search_wishlist_item(&self, wishlist_id: &str) -> AppResult<Vec<DownloadSearchResult>> {
         let item = self

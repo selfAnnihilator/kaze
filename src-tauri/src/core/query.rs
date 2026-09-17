@@ -74,6 +74,15 @@ pub enum Query {
         #[serde(default)]
         force_refresh: Option<bool>,
     },
+    GetWorldTrending {
+        limit: u32,
+        #[serde(default)]
+        force_refresh: Option<bool>,
+    },
+    GetChartSongs {
+        chart_id: String,
+        limit: u32,
+    },
     GetWishlist,
     GetDownloads {
         status_filter: Option<String>,

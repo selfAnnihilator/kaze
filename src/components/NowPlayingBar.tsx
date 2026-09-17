@@ -17,12 +17,14 @@ import {
   Mic2,
   Maximize2,
   Minimize2,
+  RefreshCw,
 } from "lucide-react";
 import { PlaybackState, Track } from "../types";
 import { usePlaybackProgress } from "../services/playbackProgress";
 
 interface NowPlayingBarProps {
   playbackState: PlaybackState;
+  isLoading?: boolean;
   currentTrack?: Track;
   coverArtUrl?: string | null;
   onPlayPause: () => void;
@@ -110,6 +112,7 @@ const NowPlayingProgressBar: React.FC<{
 
 export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
   playbackState,
+  isLoading = false,
   currentTrack,
   coverArtUrl,
   onPlayPause,
@@ -305,10 +308,14 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
           </button>
           <button
             className="play-pause-btn"
-            title={isPlaying ? "Pause" : "Play"}
+            title={isLoading ? "Loading song" : isPlaying ? "Pause" : "Play"}
+            aria-label={isLoading ? "Loading song" : isPlaying ? "Pause" : "Play"}
+            disabled={isLoading}
             onClick={onPlayPause}
           >
-            {isPlaying ? (
+            {isLoading ? (
+              <RefreshCw size={18} className="spin-animation" />
+            ) : isPlaying ? (
               <Pause size={18} />
             ) : (
               <Play size={18} />

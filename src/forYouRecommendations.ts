@@ -26,7 +26,7 @@ const isTasteBased = (rec: DiscoveryRecommendation): boolean =>
   /listening habit|library artist|library favorites|top genre|similar|your taste/i
     .test(rec.recommendation_reason);
 
-/** Partition the existing taste-ranked feed into fresh personal picks and chart rows. */
+/** Keep only fresh recommendations supported by the user's taste signals. */
 export const splitDiscoveryRecommendations = ({
   recommendations,
   playlistTrackIds,
@@ -35,15 +35,12 @@ export const splitDiscoveryRecommendations = ({
   downloadTargets = {},
   localTracks,
   limit = 12,
-}: DiscoverySectionsInput): {
-  forYou: DiscoveryRecommendation[];
-  trending: DiscoveryRecommendation[];
-} => {
+}: DiscoverySectionsInput): { forYou: DiscoveryRecommendation[] } => {
   const seenSongs = new Set<string>();
   const personal: DiscoveryRecommendation[] = [];
-  const other: DiscoveryRecommendation[] = [];
 
   for (const rec of recommendations) {
+    if (!isTasteBased(rec)) continue;
     const localId = rec.matched_local_track_id;
     if (rec.provider === "library" ||
       (rec.match_status === "EXACT_MATCH" && localId && !localId.startsWith("online:") && !localId.startsWith("itunes:")) ||
@@ -68,13 +65,8 @@ export const splitDiscoveryRecommendations = ({
     const key = songKey(rec);
     if (seenSongs.has(key)) continue;
     seenSongs.add(key);
-    (isTasteBased(rec) ? personal : other).push(rec);
+    personal.push(rec);
   }
 
-  // Pure Trending Songs: authentic global and chart hits, unaffected by user taste
-  // For You: personalized recommendations shaped by listening history, library artists, and top genres
-  return {
-    forYou: personal.length > 0 ? personal : other.slice(0, limit),
-    trending: other.length > 0 ? other : recommendations,
-  };
+  return { forYou: personal.slice(0, limit) };
 };

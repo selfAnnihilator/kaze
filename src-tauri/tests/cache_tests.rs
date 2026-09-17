@@ -16,6 +16,25 @@ fn create_test_manager(temp_path: std::path::PathBuf, config: RemoteAudioCacheCo
     StreamPlaybackManager::with_config(temp_path, None, None, config)
 }
 
+fn wav_test_audio() -> Vec<u8> {
+    let samples = vec![0u8; 16_000]; // 1 second, 8 kHz, mono, 16-bit PCM.
+    let mut bytes = Vec::with_capacity(44 + samples.len());
+    bytes.extend_from_slice(b"RIFF");
+    bytes.extend_from_slice(&(36u32 + samples.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(b"WAVEfmt ");
+    bytes.extend_from_slice(&16u32.to_le_bytes());
+    bytes.extend_from_slice(&1u16.to_le_bytes());
+    bytes.extend_from_slice(&1u16.to_le_bytes());
+    bytes.extend_from_slice(&8000u32.to_le_bytes());
+    bytes.extend_from_slice(&16000u32.to_le_bytes());
+    bytes.extend_from_slice(&2u16.to_le_bytes());
+    bytes.extend_from_slice(&16u16.to_le_bytes());
+    bytes.extend_from_slice(b"data");
+    bytes.extend_from_slice(&(samples.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&samples);
+    bytes
+}
+
 #[tokio::test]
 async fn test_cache_key_generation() {
     let key1 = StreamPlaybackManager::compute_cache_key("online:song-1", " The Beatles ", "HEY JUDE ");
@@ -409,35 +428,49 @@ async fn test_eviction_when_cache_below_limit_does_nothing() {
 }
 
 #[tokio::test]
-async fn test_stream_playback_manager_downloads_preview_stream() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-
-    tokio::spawn(async move {
-        if let Ok((mut socket, _)) = listener.accept().await {
-            use tokio::io::{AsyncReadExt, AsyncWriteExt};
-            let mut buf = [0u8; 1024];
-            let _ = socket.read(&mut buf).await;
-            let response = "HTTP/1.1 200 OK\r\nContent-Length: 100\r\nContent-Type: audio/aac\r\n\r\n";
-            let _ = socket.write_all(response.as_bytes()).await;
-            let _ = socket.write_all(&vec![42u8; 100]).await;
-            let _ = socket.flush().await;
-        }
-    });
-
+async fn old_preview_cache_cannot_masquerade_as_a_full_song() {
     let dir = tempdir().unwrap();
     let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
-    let url = format!("http://{}/test.aac", addr);
+    tokio::fs::create_dir_all(manager.cache_dir()).await.unwrap();
+    let old_key = StreamPlaybackManager::compute_cache_key("itunes:1", "Artist", "Song");
+    let old_path = manager.get_cache_path(&old_key);
+    tokio::fs::write(&old_path, vec![1u8; 10_000]).await.unwrap();
 
-    let (path, dur) = manager
-        .resolve_and_prepare_audio("test-preview-id", "Test Song", "Test Artist", Some(&url))
-        .await
-        .unwrap();
+    let result = manager.resolve_and_prepare_audio("itunes:1", "Song", "Artist").await;
+    assert!(result.is_err(), "legacy preview cache must not satisfy full playback");
+    assert!(old_path.exists(), "old cache is left for ordinary cache cleanup");
+}
 
-    assert_eq!(dur, 30.0);
-    assert!(path.exists());
-    let metadata = std::fs::metadata(&path).unwrap();
-    assert_eq!(metadata.len(), 100);
+#[tokio::test]
+async fn full_song_cache_ignores_a_cached_preview() {
+    let dir = tempdir().unwrap();
+    let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
+    tokio::fs::create_dir_all(manager.cache_dir()).await.unwrap();
+    let identity = StreamPlaybackManager::compute_cache_key("itunes:2", "Artist", "Song");
+    let full_path = manager.get_cache_path(&format!("full:v2:{identity}"));
+    let preview_path = manager.get_cache_path(&format!("preview:v1:{identity}"));
+    tokio::fs::write(&full_path, wav_test_audio()).await.unwrap();
+    tokio::fs::write(&preview_path, vec![2u8; 10_000]).await.unwrap();
+
+    let (selected, duration) = manager.resolve_and_prepare_audio(
+        "itunes:2", "Song", "Artist"
+    ).await.unwrap();
+    assert_eq!(selected, full_path);
+    assert!(duration > 30.0);
+}
+
+#[tokio::test]
+async fn preview_cache_never_enables_playback() {
+    let dir = tempdir().unwrap();
+    let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
+    tokio::fs::create_dir_all(manager.cache_dir()).await.unwrap();
+    let identity = StreamPlaybackManager::compute_cache_key("itunes:3", "Artist", "Song");
+    let preview_path = manager.get_cache_path(&format!("preview:v1:{identity}"));
+    tokio::fs::write(&preview_path, vec![2u8; 10_000]).await.unwrap();
+
+    let result = manager.resolve_and_prepare_audio("itunes:3", "Song", "Artist").await;
+    assert!(result.is_err(), "a cached preview is not a full-song source");
+    assert!(preview_path.exists());
 }
 
 #[test]
@@ -455,4 +488,3 @@ fn test_symphonia_source_decodes_cached_audio() {
     assert!(source.sample_rate() > 0);
     assert!(source.next().is_some());
 }
-

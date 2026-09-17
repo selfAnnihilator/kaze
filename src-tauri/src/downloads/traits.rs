@@ -41,4 +41,9 @@ pub trait DownloadProvider: Send + Sync {
     async fn resolve_stream_url(&self, _query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
         Ok(None)
     }
+
+    /// Returns several independent full-track candidates in preferred order.
+    async fn resolve_stream_urls(&self, query: &str) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
+        Ok(self.resolve_stream_url(query).await?.into_iter().collect())
+    }
 }

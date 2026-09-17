@@ -313,6 +313,8 @@ export type Query =
   | { query: "GetTasteProfile" }
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
   | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean } }
+  | { query: "GetWorldTrending"; payload: { limit: number; force_refresh?: boolean } }
+  | { query: "GetChartSongs"; payload: { chart_id: string; limit: number } }
   | { query: "GetWishlist" }
   | { query: "GetDownloads"; payload: { status_filter?: string; limit: number } }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }

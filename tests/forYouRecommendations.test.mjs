@@ -38,7 +38,7 @@ test("For You favors taste signals and avoids saved, local, and downloading song
     { id: "in-progress", title: "Different provider filename", artist: "Uploader", status: "DOWNLOADING" },
     { id: "failed", title: "Other One", artist: "Artist", status: "FAILED" },
   ];
-  const { forYou, trending } = splitDiscoveryRecommendations({
+  const { forYou } = splitDiscoveryRecommendations({
     recommendations: recs,
     playlistTrackIds: new Set(["playlist"]),
     likedTrackIds: new Set(["liked"]),
@@ -48,16 +48,24 @@ test("For You favors taste signals and avoids saved, local, and downloading song
   });
 
   assert.deepEqual(forYou.map((rec) => rec.external_track_id), [
-    "personal", "genre", "generic", "other1", "other2", "other3",
+    "personal", "genre",
   ]);
-  assert.equal(new Set(trending.map((rec) => rec.external_track_id)).size, trending.length);
-  assert.equal(forYou.every((rec) => !trending.some((other) => other.title === rec.title && other.artist === rec.artist)), true);
+  assert.equal(forYou.every((rec) => /listening habit|top genre/i.test(rec.recommendation_reason)), true);
 });
 
-test("a small feed keeps songs in Trending and does not invent personal picks", () => {
+test("a chart-only feed does not invent personal picks", () => {
   const one = recommendation("one", "One");
   assert.deepEqual(splitDiscoveryRecommendations({
     recommendations: [one], playlistTrackIds: new Set(), likedTrackIds: new Set(),
     downloads: [], localTracks: [],
-  }), { forYou: [], trending: [one] });
+  }), { forYou: [] });
+});
+
+test("a generic chart copy cannot hide a taste-matched song", () => {
+  const generic = recommendation("chart", "Song");
+  const personal = recommendation("personal", "Song", "Similar to your listening habit");
+  assert.deepEqual(splitDiscoveryRecommendations({
+    recommendations: [generic, personal], playlistTrackIds: new Set(), likedTrackIds: new Set(),
+    downloads: [], localTracks: [],
+  }).forYou.map((rec) => rec.external_track_id), ["personal"]);
 });

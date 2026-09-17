@@ -8,6 +8,7 @@ import { executeQuery } from "../../services/api";
 interface FullScreenPlayerViewProps {
   playbackState: PlaybackState;
   currentTrack?: Track;
+  isLoading?: boolean;
   coverArtUrl?: string | null;
   isInPlaylist?: boolean;
   onOpenAddToPlaylist?: (track: {
@@ -40,6 +41,7 @@ interface FullScreenPlayerViewProps {
 export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
   playbackState,
   currentTrack,
+  isLoading = false,
   coverArtUrl,
   isInPlaylist = false,
   onOpenAddToPlaylist,
@@ -317,6 +319,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
       >
         <NowPlayingBar
           playbackState={playbackState}
+          isLoading={isLoading}
           currentTrack={currentTrack}
           coverArtUrl={activeArtworkUrl}
           isInPlaylist={isInPlaylist}

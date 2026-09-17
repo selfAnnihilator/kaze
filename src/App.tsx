@@ -158,6 +158,16 @@ export const App: React.FC = () => {
     repeat_mode: "off",
     is_shuffled: false,
   });
+  const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
+  const playbackRequestId = useRef(0);
+  const beginPlaybackLoading = useCallback((trackId: string) => {
+    const requestId = ++playbackRequestId.current;
+    setLoadingTrackId(trackId);
+    return requestId;
+  }, []);
+  const endPlaybackLoading = useCallback((requestId: number) => {
+    if (playbackRequestId.current === requestId) setLoadingTrackId(null);
+  }, []);
 
   // Library & Content Data
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -170,6 +180,7 @@ export const App: React.FC = () => {
   const [, setWishlist] = useState<WishlistItem[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([]);
+  const [worldTrending, setWorldTrending] = useState<DiscoveryRecommendation[]>([]);
   const discoveryRecsRef = useRef<DiscoveryRecommendation[]>([]);
   discoveryRecsRef.current = discoveryRecs;
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -217,7 +228,7 @@ export const App: React.FC = () => {
 
   // Playing Origin state: identifies where the current track is playing from
   const [playingOrigin, setPlayingOrigin] = useState<{
-    type: "playlist" | "mix" | "album" | "discovery";
+    type: "playlist" | "mix" | "chart" | "album" | "discovery";
     id?: string;
     name?: string;
     collectionData?: CollectionData;
@@ -486,17 +497,23 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const fetchDiscovery = useCallback(async (forceRefresh: boolean = false) => {
-    try {
-      const res = await executeQuery({
+  const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
+    const [discovery, charts] = await Promise.allSettled([
+      executeQuery({
         query: "GetDiscoveryRecommendations",
         payload: { limit: 100, force_refresh: forceRefresh },
-      });
-      if (Array.isArray(res.data)) {
-        setDiscoveryRecs(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch discovery recommendations:", err);
+      }).then((res) => {
+        if (Array.isArray(res.data)) setDiscoveryRecs(res.data);
+      }),
+      executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts } }).then((res) => {
+        if (Array.isArray(res.data)) setWorldTrending(res.data);
+      }),
+    ]);
+    if (discovery.status === "rejected") {
+      console.error("Failed to fetch discovery recommendations:", discovery.reason);
+    }
+    if (charts.status === "rejected") {
+      console.error("Failed to fetch world charts:", charts.reason);
     }
   }, []);
 
@@ -923,34 +940,42 @@ export const App: React.FC = () => {
 
   const handlePlayTrack = useCallback(
     async (trackId: string) => {
-      const preservedQueue = Array.from(queuedTrackIds).filter((queuedId) => queuedId !== trackId);
-      const found = tracks.find((t) => t.id === trackId);
-      if (found) {
-        setPlaybackState((prev) => ({
-          ...prev,
-          current_track: found,
-          is_playing: true,
-          position_secs: 0,
-          duration_secs: found.duration_secs || prev.duration_secs,
-        }));
-      }
-      await dispatchCommand({
-        command: "PlayTrack",
-        payload: { track_id: trackId },
-      });
-      for (const queuedId of preservedQueue) {
-        try {
-          await dispatchCommand({
-            command: "EnqueueTrack",
-            payload: { track_id: queuedId, play_next: false },
-          });
-        } catch (err) {
-          console.warn("Could not restore queued track after direct playback:", err);
+      const requestId = beginPlaybackLoading(trackId);
+      try {
+        const preservedQueue = Array.from(queuedTrackIds).filter((queuedId) => queuedId !== trackId);
+        const found = tracks.find((t) => t.id === trackId);
+        if (found) {
+          setPlaybackState((prev) => ({
+            ...prev,
+            current_track: found,
+            is_playing: true,
+            position_secs: 0,
+            duration_secs: found.duration_secs || prev.duration_secs,
+          }));
         }
+        await dispatchCommand({
+          command: "PlayTrack",
+          payload: { track_id: trackId },
+        });
+        for (const queuedId of preservedQueue) {
+          try {
+            await dispatchCommand({
+              command: "EnqueueTrack",
+              payload: { track_id: queuedId, play_next: false },
+            });
+          } catch (err) {
+            console.warn("Could not restore queued track after direct playback:", err);
+          }
+        }
+        await fetchPlaybackState();
+      } catch (err) {
+        await fetchPlaybackState();
+        throw err;
+      } finally {
+        endPlaybackLoading(requestId);
       }
-      fetchPlaybackState();
     },
-    [tracks, queuedTrackIds, fetchPlaybackState]
+    [tracks, queuedTrackIds, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
   );
 
   const handlePlayOnlineTrack = useCallback(
@@ -997,6 +1022,7 @@ export const App: React.FC = () => {
       }
 
       // 4. Dispatch PlayOnlineTrack to unified Rust PlaybackService
+      const requestId = beginPlaybackLoading(rec.external_track_id);
       try {
         await dispatchCommand({
           command: "PlayOnlineTrack",
@@ -1011,7 +1037,7 @@ export const App: React.FC = () => {
             source: playbackSource,
           },
         });
-        fetchPlaybackState();
+        await fetchPlaybackState();
       } catch (err) {
         console.error("Failed to play online track via Rust engine:", err);
         addAppNotification(
@@ -1019,9 +1045,11 @@ export const App: React.FC = () => {
           "Playback Failed",
           `Could not stream "${rec.title}": ${String(err)}`
         );
+      } finally {
+        endPlaybackLoading(requestId);
       }
     },
-    [playbackState.is_playing, playbackState.current_track, handlePlayTrack, addAppNotification, fetchPlaybackState]
+    [playbackState.is_playing, playbackState.current_track, handlePlayTrack, addAppNotification, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
   );
 
   const handlePlayPause = async () => {
@@ -1599,11 +1627,10 @@ export const App: React.FC = () => {
         setActiveCollection((prev) =>
           prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
         );
-      } else if (collection.searchQuery) {
-        const res = await executeQuery({
-          query: "SearchOnlineMusic",
-          payload: { query: collection.searchQuery, limit: 50 },
-        });
+      } else if (collection.type === "chart" || collection.searchQuery) {
+        const res = await executeQuery(collection.type === "chart"
+          ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
+          : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
         const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
         const items: CollectionTrackItem[] = onlineRecs.map((r) => {
           const validLocalId =
@@ -1637,7 +1664,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handlePlayDiscoveredCollection = useCallback(async (collection: CollectionData) => {
-    if (!collection.searchQuery) return;
+    if (collection.type !== "chart" && !collection.searchQuery) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       addAppNotification(
         "warning",
@@ -1648,10 +1675,9 @@ export const App: React.FC = () => {
     }
 
     try {
-      const response = await executeQuery({
-        query: "SearchOnlineMusic",
-        payload: { query: collection.searchQuery, limit: 50 },
-      });
+      const response = await executeQuery(collection.type === "chart"
+        ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
+        : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
       const results = ((response?.data as DiscoveryRecommendation[]) || []).filter(
         (track, index, all) =>
           all.findIndex((candidate) => candidate.external_track_id === track.external_track_id) === index
@@ -1673,7 +1699,7 @@ export const App: React.FC = () => {
       const firstId = resolvedId(first);
 
       setPlayingOrigin({
-        type: "mix",
+        type: collection.type === "chart" ? "chart" : "mix",
         id: collection.id,
         name: collection.title,
         collectionData: {
@@ -1797,7 +1823,7 @@ export const App: React.FC = () => {
     async (item: CollectionTrackItem) => {
       if (activeCollection) {
         setPlayingOrigin({
-          type: activeCollection.type === "playlist" ? "playlist" : "mix",
+          type: activeCollection.type,
           id: activeCollection.id,
           name: activeCollection.title,
           collectionData: activeCollection,
@@ -1868,12 +1894,17 @@ export const App: React.FC = () => {
       };
 
       if (hasRealLocalMatch) {
-        await dispatchCommand({
-          command: "PlayTrack",
-          payload: { track_id: item.matched_local_track_id!, source: "collection" },
-        });
+        const requestId = beginPlaybackLoading(item.matched_local_track_id!);
+        try {
+          await dispatchCommand({
+            command: "PlayTrack",
+            payload: { track_id: item.matched_local_track_id!, source: "collection" },
+          });
+          await fetchPlaybackState();
+        } finally {
+          endPlaybackLoading(requestId);
+        }
         await enqueueCollectionRemainder();
-        fetchPlaybackState();
         return;
       }
 
@@ -1911,7 +1942,7 @@ export const App: React.FC = () => {
       await handlePlayOnlineTrack(rec, false, "collection");
       await enqueueCollectionRemainder();
     },
-    [playbackState.is_playing, playbackState.current_track, activeCollection, queuedTrackIds, handleUnifiedPlayPause, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification]
+    [playbackState.is_playing, playbackState.current_track, activeCollection, queuedTrackIds, handleUnifiedPlayPause, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification, beginPlaybackLoading, endPlaybackLoading]
   );
 
   const isPlayingThisCollection = useMemo(() => {
@@ -2523,6 +2554,7 @@ export const App: React.FC = () => {
               key={`${activeCollection.type}:${activeCollection.id}`}
               collection={activeCollection}
               isLoadingTracks={isLoadingCollectionTracks}
+              loadingTrackId={loadingTrackId}
               onBack={() => setActiveCollection(null)}
               onPlayTrack={handlePlayCollectionTrack}
               onPlayAll={handlePlayAllCollection}
@@ -2585,6 +2617,7 @@ export const App: React.FC = () => {
                   tracks={tracks}
                   queuedTrackIds={queuedTrackIds}
                   onPlayTrack={handlePlayTrack}
+                  loadingTrackId={loadingTrackId}
                   onEnqueueTrack={handleEnqueueTrack}
                   onLikeTrack={handleLike}
                   onRemoveFeedback={handleRemoveFeedback}
@@ -2626,6 +2659,7 @@ export const App: React.FC = () => {
                   onSearchDirect={handleInitiateDirectDownloadSearch}
                   onFetchPlaylistTracks={handleFetchPlaylistTracks}
                   onPlayTrack={handlePlayTrack}
+                  loadingTrackId={loadingTrackId}
                   queuedTrackIds={queuedTrackIds}
                   onEnqueueTrack={handleEnqueueTrack}
                   onOpenCollection={handleOpenCollection}
@@ -2651,6 +2685,7 @@ export const App: React.FC = () => {
                   onSearchDirect={handleInitiateDirectDownloadSearch}
                   onFetchPlaylistTracks={handleFetchPlaylistTracks}
                   onPlayTrack={handlePlayTrack}
+                  loadingTrackId={loadingTrackId}
                   queuedTrackIds={queuedTrackIds}
                   onEnqueueTrack={handleEnqueueTrack}
                   onOpenCollection={handleOpenCollection}
@@ -2662,6 +2697,7 @@ export const App: React.FC = () => {
               {currentView === "discovery" && (
                 <DiscoveryView
                   recommendations={discoveryRecs}
+                  worldTrending={worldTrending}
                   localTracks={tracks}
                   playlists={playlists}
                   onPlayPlaylist={handlePlayPlaylist}
@@ -2671,12 +2707,12 @@ export const App: React.FC = () => {
                   onSearchDirect={(artist, title) =>
                     handleInitiateDirectDownloadSearch(artist, title)
                   }
-                  onRefresh={fetchDiscovery}
+                  onRefresh={() => fetchDiscovery(true, true)}
                   onPlayOnlineTrack={handlePlayOnlineTrack}
                   onStopTrack={handleStopTrack}
                   activeOnlineTrackId={playbackState.current_track?.id || null}
                   isOnlinePlaying={playbackState.is_playing}
-                  isOnlineLoading={false}
+                  loadingTrackId={loadingTrackId}
                   currentLocalTrack={playbackState.current_track}
                   isLocalPlaying={playbackState.is_playing}
                   onOpenCollection={handleOpenCollection}
@@ -2761,6 +2797,7 @@ export const App: React.FC = () => {
       {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
       <NowPlayingBar
         playbackState={playbackState}
+        isLoading={loadingTrackId !== null}
         currentTrack={playbackState.current_track}
         coverArtUrl={activePlayingArtwork}
         onPlayPause={handleUnifiedPlayPause}
@@ -2779,12 +2816,12 @@ export const App: React.FC = () => {
         isInPlaylist={isCurrentTrackInPlaylist}
         onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
         onOpenOrigin={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
             ? handleOpenPlayingOrigin
             : undefined
         }
         originName={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
             ? playingOrigin.name
             : undefined
         }
@@ -2799,6 +2836,7 @@ export const App: React.FC = () => {
       {isFullscreen && (
         <FullScreenPlayerView
           playbackState={playbackState}
+          isLoading={loadingTrackId !== null}
           currentTrack={playbackState.current_track}
           coverArtUrl={activePlayingArtwork}
           isInPlaylist={isCurrentTrackInPlaylist}
@@ -2820,7 +2858,7 @@ export const App: React.FC = () => {
           onRemoveFeedback={handleRemoveFeedback}
           onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
           onOpenOrigin={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
               ? () => {
                   handleToggleFullscreen(false);
                   handleOpenPlayingOrigin();
@@ -2828,7 +2866,7 @@ export const App: React.FC = () => {
               : undefined
           }
           originName={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix"
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
               ? playingOrigin.name
               : undefined
           }

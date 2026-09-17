@@ -102,6 +102,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       : 0;
 
   const handleCardClick = () => {
+    if (isLoading) return;
     if (isPlaying) {
       onStop(rec);
     } else {
@@ -245,6 +246,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         <button
           type="button"
           onClick={handlePlayBtnClick}
+          disabled={isLoading}
           style={{
             position: "absolute",
             bottom: "8px",
@@ -268,7 +270,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           title={isPlaying ? "Pause / Stop playback" : "Play"}
         >
           {isLoading ? (
-            <RefreshCw size={16} className="animate-spin" />
+            <RefreshCw size={16} className="spin-animation" />
           ) : isPlaying ? (
             <Pause size={17} fill="#e8d8c9" />
           ) : (
@@ -607,7 +609,6 @@ interface ChartItem {
   region: string;
   bgGradient: string;
   badgeBg: string;
-  searchQuery: string;
 }
 
 const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () => void }> = ({
@@ -749,6 +750,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
+  worldTrending: DiscoveryRecommendation[];
   localTracks: Track[];
   playlists?: Playlist[];
   onPlayPlaylist?: (id: string) => void;
@@ -759,7 +761,7 @@ interface DiscoveryViewProps {
   onStopTrack?: (rec: DiscoveryRecommendation) => void;
   activeOnlineTrackId?: string | null;
   isOnlinePlaying?: boolean;
-  isOnlineLoading?: boolean;
+  loadingTrackId?: string | null;
   currentLocalTrack?: Track | null;
   isLocalPlaying?: boolean;
   onOpenCollection?: (collection: CollectionData) => void;
@@ -783,6 +785,7 @@ interface DiscoveryViewProps {
 
 export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   recommendations,
+  worldTrending,
   localTracks,
   playlists = [],
   onPlayPlaylist,
@@ -793,7 +796,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onStopTrack,
   activeOnlineTrackId,
   isOnlinePlaying = false,
-  isOnlineLoading = false,
+  loadingTrackId = null,
   currentLocalTrack,
   isLocalPlaying = false,
   onOpenCollection,
@@ -843,7 +846,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       .map(([trackId]) => trackId)),
     [trackPlaylistMap]
   );
-  const { forYou, trending } = useMemo(() => splitDiscoveryRecommendations({
+  const { forYou } = useMemo(() => splitDiscoveryRecommendations({
     recommendations,
     playlistTrackIds,
     likedTrackIds: likedTrackIds || new Set<string>(),
@@ -851,6 +854,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     downloadTargets,
     localTracks,
   }), [recommendations, playlistTrackIds, likedTrackIds, downloads, downloadTargets, localTracks]);
+  const trending = worldTrending;
 
   const handleSongsScroll = () => {
     const el = songsScrollRef.current;
@@ -1042,140 +1046,64 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       };
     });
 
-  const curatedMixes: MixItem[] = [
-    {
-      id: "daily_mix_1",
-      name: "Daily Mix 1",
-      subtitle: "Personalized blend tailored to your recent favorites",
-      bgGradient: "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
-      accentColor: "#8b7cf6",
-      searchQuery: "Daily Mix Hits",
-    },
-    {
-      id: "chill_vibes",
-      name: "Chill Vibes",
-      subtitle: "Mellow acoustic, lo-fi, and downtempo ambient melodies",
-      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 100%)",
-      accentColor: "#4b607f",
-      searchQuery: "Chill Lo-Fi Vibes",
-    },
-    {
-      id: "hiphop_urban",
-      name: "Hip-Hop & Urban",
-      subtitle: "Hard-hitting beats, lyrical flows, and urban anthems",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
-      accentColor: "#f3701e",
-      searchQuery: "Hip-Hop Hits",
-    },
-    {
-      id: "late_night_drive",
-      name: "Late Night Drive",
-      subtitle: "Moody synths, atmospheric basslines, and nocturnal rhythms",
-      bgGradient: "linear-gradient(135deg, #1a1714 0%, #8b7cf6 100%)",
-      accentColor: "#8b7cf6",
-      searchQuery: "Synthwave Night Drive",
-    },
-    {
-      id: "pop_viral_hits",
-      name: "Pop & Viral Hits",
-      subtitle: "Catchy melodies, trending hooks, and radio favorites",
-      bgGradient: "linear-gradient(135deg, #8b7cf6 0%, #f3701e 100%)",
-      accentColor: "#8b7cf6",
-      searchQuery: "Top Pop Hits",
-    },
-    {
-      id: "acoustic_afternoon",
-      name: "Acoustic Afternoon",
-      subtitle: "Warm acoustic guitars, gentle keys, and soul-stirring vocals",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
-      accentColor: "#f3701e",
-      searchQuery: "Acoustic Pop Indie",
-    },
-    {
-      id: "edm_dance_mix",
-      name: "EDM Energy",
-      subtitle: "Festival bangers, dance floor anthems, and club beats",
-      bgGradient: "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
-      accentColor: "#8b7cf6",
-      searchQuery: "EDM Dance Hits",
-    },
-  ];
-
-  const curatedMixesFiltered = curatedMixes.filter((c) => {
-    const cClean = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return !userSmartMixes.some((u) => {
-      const uClean = u.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-      return (
-        uClean.includes(cClean) ||
-        cClean.includes(uClean) ||
-        (cClean.includes("daily") && uClean.includes("daily")) ||
-        (cClean.includes("chill") && (uClean.includes("chill") || uClean.includes("lofi")))
-      );
-    });
-  });
-
-  const allMixes = [...userSmartMixes, ...curatedMixesFiltered];
+  // Every mix shown here is generated for the active account from its library
+  // and listening profile. Generic search presets do not belong in For You.
+  const allMixes = userSmartMixes;
 
   const topCharts: ChartItem[] = [
     {
       id: "chart_top50_global",
-      title: "Top 50 - Global",
-      subtitle: "The most played tracks worldwide right now",
-      chartNumber: "GLOBAL",
+      title: "Top 50 - Worldwide",
+      subtitle: "Popular across 12 country charts",
+      chartNumber: "WORLD",
       region: "Worldwide",
       bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 55%, #8b7cf6 100%)",
       badgeBg: "#8b7cf6",
-      searchQuery: "Top 50 Global",
     },
     {
       id: "chart_top50_india",
       title: "Top 50 - India",
-      subtitle: "Trending blockbusters, Hindi, Punjabi, and Indian indie hits",
+      subtitle: "Current top songs in the India chart",
       chartNumber: "INDIA",
       region: "India",
       bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
       badgeBg: "#f3701e",
-      searchQuery: "Top 50 India",
-    },
-    {
-      id: "chart_viral50_global",
-      title: "Viral 50 - Global",
-      subtitle: "The tracks going viral on social and streaming charts",
-      chartNumber: "VIRAL",
-      region: "Worldwide",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
-      badgeBg: "#8b7cf6",
-      searchQuery: "Viral 50 Global",
     },
     {
       id: "chart_top50_usa",
       title: "Top 50 - USA",
-      subtitle: "Hottest charting tracks and Billboard favorites in the United States",
+      subtitle: "Current top songs in the US chart",
       chartNumber: "USA",
       region: "United States",
       bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #8b7cf6 100%)",
       badgeBg: "#4b607f",
-      searchQuery: "Top 50 USA",
     },
     {
-      id: "chart_bollywood_punjabi",
-      title: "Top 50 - Bollywood & Punjabi",
-      subtitle: "Blockbuster film songs, Punjabi hits, and Desi pop anthems",
-      chartNumber: "DESI",
-      region: "India / Global",
+      id: "chart_top50_uk",
+      title: "Top 50 - UK",
+      subtitle: "Current top songs in the UK chart",
+      chartNumber: "UK",
+      region: "United Kingdom",
+      bgGradient: "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
+      badgeBg: "#8b7cf6",
+    },
+    {
+      id: "chart_top50_japan",
+      title: "Top 50 - Japan",
+      subtitle: "Current top songs in the Japan chart",
+      chartNumber: "JAPAN",
+      region: "Japan",
       bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 58%, #8b7cf6 100%)",
       badgeBg: "#f3701e",
-      searchQuery: "Bollywood Punjabi Hits",
     },
     {
-      id: "chart_top50_dance_edm",
-      title: "Top 50 - Dance & EDM",
-      subtitle: "Top club anthems, festival bangers, and electronic dance hits",
-      chartNumber: "DANCE",
-      region: "Worldwide",
+      id: "chart_top50_brazil",
+      title: "Top 50 - Brazil",
+      subtitle: "Current top songs in the Brazil chart",
+      chartNumber: "BRAZIL",
+      region: "Brazil",
       bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #f3701e 100%)",
       badgeBg: "#8b7cf6",
-      searchQuery: "Top 50 EDM Dance",
     },
   ];
 
@@ -1206,7 +1134,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     tag: `TOP CHART • ${chart.region.toUpperCase()}`,
     bgGradient: chart.bgGradient,
     accentColor: chart.badgeBg,
-    searchQuery: chart.searchQuery,
   });
 
   const handleOpenChart = (chart: ChartItem) => {
@@ -1231,11 +1158,12 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       void onPlayCollection(chartToCollection(chart));
       return;
     }
-    setSearchQuery(chart.searchQuery);
-    handleSearchOnline(chart.searchQuery);
+    onOpenCollection?.(chartToCollection(chart));
   };
 
   const renderSongCard = (rec: DiscoveryRecommendation) => {
+    const isLoading = loadingTrackId === rec.external_track_id ||
+      (!!rec.matched_local_track_id && loadingTrackId === rec.matched_local_track_id);
     const hasRealLocalMatch = !!rec.matched_local_track_id &&
       !rec.matched_local_track_id.startsWith("itunes:") &&
       !rec.matched_local_track_id.startsWith("online:");
@@ -1255,8 +1183,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         <DiscoveryTrackCard
           rec={rec}
           isPlaying={isPlaying}
-          isLoading={activeOnlineTrackId === rec.external_track_id && isOnlineLoading}
-          isSelected={isPlaying || activeOnlineTrackId === rec.external_track_id}
+          isLoading={isLoading}
+          isSelected={isPlaying || isLoading || activeOnlineTrackId === rec.external_track_id}
           onPlay={onPlayOnlineTrack}
           onStop={onStopTrack || onPlayOnlineTrack}
           onArtistClick={(artist) => {
@@ -1373,7 +1301,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           onStopTrack={onStopTrack}
           activeOnlineTrackId={activeOnlineTrackId}
           isOnlinePlaying={isOnlinePlaying}
-          isOnlineLoading={isOnlineLoading}
+          isOnlineLoading={loadingTrackId !== null}
+          loadingTrackId={loadingTrackId}
           currentLocalTrack={currentLocalTrack}
           isLocalPlaying={isLocalPlaying}
           onAddToPlaylist={onAddToPlaylist}
@@ -1424,7 +1353,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               <span>Trending Songs</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Popular songs from the charts
+              Popular songs across world charts
             </p>
           </div>
 
@@ -1622,6 +1551,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
 
         <div ref={mixesScrollRef} className="horizontal-scroll-row">
+          {allMixes.length === 0 && (
+            <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed" }}>
+              Play more of your library to build mixes for your taste.
+            </div>
+          )}
           {allMixes.map((mix) => (
             <div key={mix.id} style={{ flex: "0 0 174px", width: "174px" }}>
               <MixCard
@@ -1659,7 +1593,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               <span>Top Charts</span>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Top 50 Global, Top 50 India, and trending viral music charts worldwide
+              Current world and country top-song charts
             </p>
           </div>
 

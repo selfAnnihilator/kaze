@@ -279,7 +279,6 @@ impl PlaybackService {
                         &track.id,
                         &track.title,
                         artist,
-                        track.preview_url.as_deref(),
                     )
                     .await?;
                 (cached_path.to_string_lossy().to_string(), dur)

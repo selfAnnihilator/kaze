@@ -10,6 +10,7 @@ import {
   User,
   Music,
   ListMusic,
+  RefreshCw,
 } from "lucide-react";
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
 import { sameSongMetadata } from "../../localTrackMatch";
@@ -23,6 +24,7 @@ interface OnlineSearchResultsSectionProps {
   activeOnlineTrackId?: string | null;
   isOnlinePlaying: boolean;
   isOnlineLoading: boolean;
+  loadingTrackId?: string | null;
   currentLocalTrack?: Track | null;
   isLocalPlaying?: boolean;
   onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
@@ -46,6 +48,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   activeOnlineTrackId = null,
   isOnlinePlaying,
   isOnlineLoading,
+  loadingTrackId = null,
   currentLocalTrack,
   isLocalPlaying = false,
   onAddToPlaylist,
@@ -91,7 +94,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   };
 
   const isTrackLoading = (rec: DiscoveryRecommendation) => {
-    return activeOnlineTrackId === rec.external_track_id && isOnlineLoading;
+    return isOnlineLoading && (loadingTrackId === rec.external_track_id ||
+      (!!rec.matched_local_track_id && loadingTrackId === rec.matched_local_track_id));
   };
 
   const getDownloadStatus = (rec: DiscoveryRecommendation) => {
@@ -115,6 +119,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   };
 
   const handleTogglePlay = (rec: DiscoveryRecommendation) => {
+    if (isTrackLoading(rec)) return;
     if (isTrackPlaying(rec)) {
       if (onStopTrack) {
         onStopTrack(rec);
@@ -368,10 +373,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     <div
                       onClick={() => handleTogglePlay(topResult)}
                       style={{
-                        backgroundColor: isTrackPlaying(topResult)
+                        backgroundColor: isTrackPlaying(topResult) || isTrackLoading(topResult)
                           ? "rgba(139, 124, 246, 0.14)"
                           : "var(--bg-card)",
-                        border: isTrackPlaying(topResult)
+                        border: isTrackPlaying(topResult) || isTrackLoading(topResult)
                           ? "1.5px solid var(--accent-secondary)"
                           : "1px solid var(--border)",
                         borderRadius: "12px",
@@ -635,7 +640,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             gap: "12px",
                             padding: "8px 12px",
                             borderRadius: "8px",
-                            backgroundColor: isPlaying
+                            backgroundColor: isPlaying || isLoading
                               ? "rgba(139, 124, 246, 0.1)"
                               : isHovered
                               ? "rgba(255, 255, 255, 0.06)"
@@ -877,6 +882,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   >
                     {remainingSongs.slice(0, 6).map((rec) => {
                       const isPlaying = isTrackPlaying(rec);
+                      const isLoading = isTrackLoading(rec);
                       return (
                         <div
                           key={rec.external_track_id}
@@ -887,7 +893,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             gap: "10px",
                             padding: "8px 12px",
                             borderRadius: "8px",
-                            backgroundColor: isPlaying
+                            backgroundColor: isPlaying || isLoading
                               ? "rgba(139, 124, 246, 0.1)"
                               : "rgba(255, 255, 255, 0.03)",
                             border: "1px solid rgba(255, 255, 255, 0.05)",
@@ -902,6 +908,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               borderRadius: "4px",
                               overflow: "hidden",
                               flexShrink: 0,
+                              position: "relative",
                             }}
                           >
                             {rec.cover_art_url ? (
@@ -922,6 +929,11 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 }}
                               >
                                 <Disc size={16} color="var(--accent-light)" />
+                              </div>
+                            )}
+                            {isLoading && (
+                              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0.55)" }}>
+                                <RefreshCw size={16} className="spin-animation" aria-label="Loading song" />
                               </div>
                             )}
                           </div>
@@ -1000,6 +1012,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
               {searchResults.map((rec) => {
                 const isPlaying = isTrackPlaying(rec);
+                const isLoading = isTrackLoading(rec);
                 const isHovered = hoveredTrackId === rec.external_track_id;
                 const trackId = rec.matched_local_track_id || rec.external_track_id;
                 const inPlaylist = trackId && trackPlaylistMap?.[trackId]?.length ? true : false;
@@ -1016,7 +1029,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       gap: "12px",
                       padding: "8px 12px",
                       borderRadius: "8px",
-                      backgroundColor: isPlaying
+                      backgroundColor: isPlaying || isLoading
                         ? "rgba(139, 124, 246, 0.1)"
                         : isHovered
                         ? "rgba(255, 255, 255, 0.06)"
@@ -1057,7 +1070,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         </div>
                       )}
 
-                      {(isHovered || isPlaying) && (
+                      {(isHovered || isPlaying || isLoading) && (
                         <div
                           style={{
                             position: "absolute",
@@ -1068,7 +1081,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             justifyContent: "center",
                           }}
                         >
-                          {isPlaying ? (
+                          {isLoading ? (
+                            <RefreshCw size={16} className="spin-animation" />
+                          ) : isPlaying ? (
                             <Pause size={16} fill="var(--accent-secondary)" color="var(--accent-secondary)" />
                           ) : (
                             <Play size={16} fill="#e8d8c9" color="#e8d8c9" />

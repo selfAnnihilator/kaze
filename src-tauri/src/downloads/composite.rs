@@ -162,4 +162,12 @@ impl DownloadProvider for CompositeDownloadProvider {
             Ok(None)
         }
     }
+
+    async fn resolve_stream_urls(&self, query: &str) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
+        if self.ytdlp.is_available() {
+            self.ytdlp.resolve_stream_urls(query).await
+        } else {
+            Ok(Vec::new())
+        }
+    }
 }

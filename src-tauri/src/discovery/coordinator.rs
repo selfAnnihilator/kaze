@@ -33,6 +33,7 @@ pub struct DiscoveryCoordinator {
     taste_engine: Arc<TasteProfileEngine>,
     #[allow(dead_code)]
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
+    world_chart_cache: tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
 }
 
 /// Maps common genre names/keywords to iTunes Store genre IDs
@@ -97,6 +98,102 @@ pub fn genre_matches(candidate_genre: &str, user_genre: &str) -> bool {
 }
 
 impl DiscoveryCoordinator {
+    /// Reads a public chart in its published order. The chart ID is an explicit
+    /// product selection and is never derived from the user's taste profile.
+    pub async fn get_chart_songs(&self, chart_id: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
+        if chart_id == "chart_top50_global" {
+            return self.get_world_trending(limit, false).await;
+        }
+        let storefront = match chart_id {
+            "chart_top50_india" => "in",
+            "chart_top50_usa" => "us",
+            "chart_top50_uk" => "gb",
+            "chart_top50_japan" => "jp",
+            "chart_top50_brazil" => "br",
+            _ => return Err(crate::core::error::AppError::Validation("Unknown chart".to_string())),
+        };
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .build()
+            .map_err(|e| crate::core::error::AppError::Internal(e.to_string()))?;
+        let url = format!("https://itunes.apple.com/{storefront}/rss/topsongs/limit=50/json");
+        let feed: serde_json::Value = client.get(url).send().await
+            .and_then(|response| response.error_for_status())
+            .map_err(|e| crate::core::error::AppError::Network(e.to_string()))?
+            .json().await
+            .map_err(|e| crate::core::error::AppError::Network(e.to_string()))?;
+        Ok(feed.pointer("/feed/entry")
+            .and_then(|entries| entries.as_array())
+            .into_iter().flatten()
+            .filter_map(|entry| chart_entry_to_recommendation(entry, storefront))
+            .take(limit.min(50))
+            .collect())
+    }
+
+    /// Aggregate current top-song charts across major regional storefronts.
+    /// This feed is independent of library taste and stored recommendations.
+    pub async fn get_world_trending(&self, limit: usize, force_refresh: bool) -> AppResult<Vec<DiscoveryRecommendation>> {
+        if !force_refresh {
+            let cache = self.world_chart_cache.read().await;
+            if let Some((fetched_at, songs)) = &*cache {
+                if fetched_at.elapsed() < std::time::Duration::from_secs(15 * 60) {
+                    return Ok(songs.iter().take(limit).cloned().collect());
+                }
+            }
+        }
+        const STOREFRONTS: &[&str] = &["us", "gb", "in", "jp", "sg", "br", "de", "fr", "au", "ca", "mx", "za"];
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(6))
+            .build()
+            .map_err(|e| crate::core::error::AppError::Internal(e.to_string()))?;
+        let mut requests = tokio::task::JoinSet::new();
+        for &storefront in STOREFRONTS {
+            let client = client.clone();
+            requests.spawn(async move {
+                let url = format!("https://itunes.apple.com/{storefront}/rss/topsongs/limit=50/json");
+                let response = client.get(url).send().await.ok()?.error_for_status().ok()?;
+                let feed = response.json::<serde_json::Value>().await.ok()?;
+                Some((storefront, feed))
+            });
+        }
+
+        let mut by_song: HashMap<String, (DiscoveryRecommendation, usize, usize)> = HashMap::new();
+        while let Some(result) = requests.join_next().await {
+            let Ok(Some((storefront, feed))) = result else { continue };
+            let Some(entries) = feed.pointer("/feed/entry").and_then(|v| v.as_array()) else { continue };
+            for (rank, entry) in entries.iter().enumerate() {
+                let Some(rec) = chart_entry_to_recommendation(entry, storefront) else { continue };
+                let key = format!("{}:{}", rec.artist.to_lowercase(), rec.title.to_lowercase());
+                let item = by_song.entry(key).or_insert_with(|| (rec.clone(), 0, 0));
+                if item.0.preview_url.is_none() && rec.preview_url.is_some() {
+                    item.0 = rec;
+                }
+                item.1 += 1;
+                item.2 += 51usize.saturating_sub(rank);
+            }
+        }
+
+        let mut ranked: Vec<_> = by_song.into_values().collect();
+        ranked.sort_by(|a, b| (b.1, b.2).cmp(&(a.1, a.2)));
+        let mut artist_counts = HashMap::<String, usize>::new();
+        let songs: Vec<_> = ranked.into_iter().filter_map(|(mut rec, country_count, _)| {
+            let count = artist_counts.entry(rec.artist.to_lowercase()).or_default();
+            if *count >= 2 { None } else {
+                *count += 1;
+                rec.recommendation_reason = format!("Charting in {country_count} countries");
+                Some(rec)
+            }
+        }).take(100).collect();
+        if songs.is_empty() {
+            if let Some((_, cached)) = &*self.world_chart_cache.read().await {
+                return Ok(cached.iter().take(limit).cloned().collect());
+            }
+        } else {
+            *self.world_chart_cache.write().await = Some((std::time::Instant::now(), songs.clone()));
+        }
+        Ok(songs.into_iter().take(limit).collect())
+    }
+
     pub fn new(
         wishlist_repo: Arc<dyn WishlistRepository>,
         track_repo: Arc<dyn TrackRepository>,
@@ -108,6 +205,7 @@ impl DiscoveryCoordinator {
             track_repo,
             taste_engine,
             provider_coordinator,
+            world_chart_cache: tokio::sync::RwLock::new(None),
         }
     }
 
@@ -326,7 +424,8 @@ impl DiscoveryCoordinator {
                         title: title.to_string(),
                         artist: artist.to_string(),
                         album: album.or_else(|| genre.clone()),
-                        duration_secs: Some(30.0),
+                        // RSS exposes a 30-second preview, not song duration.
+                        duration_secs: None,
                         cover_art_url,
                         preview_url,
                         genre,
@@ -414,7 +513,9 @@ impl DiscoveryCoordinator {
                         title: title.to_string(),
                         artist: artist.to_string(),
                         album,
-                        duration_secs: Some(30.0),
+                        duration_secs: item.get("trackTimeMillis")
+                            .and_then(|value| value.as_f64())
+                            .map(|millis| millis / 1000.0),
                         cover_art_url,
                         preview_url,
                         genre: genre.or_else(|| Some("Malayalam".to_string())),
@@ -651,6 +752,10 @@ impl DiscoveryCoordinator {
         for mut track in ext_tracks {
             let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&track.title)
                 || FuzzyTrackMatcher::is_lofi_indicator(&track.artist);
+            // Older chart rows stored the preview length as the song length.
+            if track.preview_url.is_some() && track.duration_secs.is_some_and(|seconds| seconds <= 35.0) {
+                track.duration_secs = None;
+            }
             let match_res = FuzzyTrackMatcher::find_best_match(
                 &track.title,
                 &track.artist,
@@ -1192,6 +1297,56 @@ impl DiscoveryCoordinator {
 
         info!(count = out.len(), query = %clean_query, "Online music search returning candidates");
         Ok(out)
+    }
+}
+
+fn chart_entry_to_recommendation(entry: &serde_json::Value, storefront: &str) -> Option<DiscoveryRecommendation> {
+    let title = entry.pointer("/im:name/label")?.as_str()?.trim();
+    let artist = entry.pointer("/im:artist/label")?.as_str()?.trim();
+    if title.is_empty() || artist.is_empty() { return None; }
+    let id = entry.pointer("/id/attributes/im:id")?.as_str()?;
+    let cover_art_url = entry.get("im:image")?.as_array()?.last()?
+        .get("label")?.as_str().map(str::to_string);
+    let preview_url = entry.get("link").and_then(|links| links.as_array())
+        .and_then(|links| links.iter().find(|link| link.pointer("/attributes/rel").and_then(|v| v.as_str()) == Some("enclosure")))
+        .and_then(|link| link.pointer("/attributes/href"))
+        .and_then(|v| v.as_str()).map(str::to_string);
+    Some(DiscoveryRecommendation {
+        external_track_id: format!("itunes:{id}"),
+        provider: "itunes".into(),
+        provider_id: id.into(),
+        title: title.into(),
+        artist: artist.into(),
+        album: entry.pointer("/im:collection/im:name/label").and_then(|v| v.as_str()).map(str::to_string),
+        duration_secs: None,
+        cover_art_url,
+        preview_url,
+        genre: entry.pointer("/category/attributes/label").and_then(|v| v.as_str()).map(str::to_string),
+        match_status: MatchStatus::NotFound,
+        matched_local_track_id: None,
+        recommendation_reason: format!("Top songs chart · {}", storefront.to_uppercase()),
+        in_wishlist: false,
+    })
+}
+
+#[cfg(test)]
+mod world_chart_tests {
+    use super::*;
+
+    #[test]
+    fn chart_entry_uses_song_identity_and_preview_without_claiming_preview_duration() {
+        let entry = serde_json::json!({
+            "im:name": {"label": "Song"},
+            "im:artist": {"label": "Artist"},
+            "id": {"attributes": {"im:id": "123"}},
+            "im:image": [{"label": "https://example.com/art.jpg"}],
+            "link": [{"attributes": {"rel": "enclosure", "href": "https://example.com/preview.m4a"}}]
+        });
+        let rec = chart_entry_to_recommendation(&entry, "gb").unwrap();
+        assert_eq!(rec.external_track_id, "itunes:123");
+        assert_eq!(rec.preview_url.as_deref(), Some("https://example.com/preview.m4a"));
+        assert_eq!(rec.duration_secs, None);
+        assert_eq!(rec.recommendation_reason, "Top songs chart · GB");
     }
 }
 

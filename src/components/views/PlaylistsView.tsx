@@ -4,6 +4,7 @@ import {
   Sparkles,
   Plus,
   Play,
+  RefreshCw,
   Share2,
   DownloadCloud,
   Check,
@@ -46,6 +47,7 @@ interface PlaylistsViewProps {
   onSearchDirect?: (artist: string, title: string, album?: string) => void;
   onFetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
   onPlayTrack: (trackId: string) => void;
+  loadingTrackId?: string | null;
   queuedTrackIds?: Set<string>;
   onEnqueueTrack: (trackId: string) => void;
   onOpenCollection?: (collection: CollectionData) => void;
@@ -68,6 +70,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   onSearchDirect,
   onFetchPlaylistTracks,
   onPlayTrack,
+  loadingTrackId,
   queuedTrackIds,
   onEnqueueTrack,
   onOpenCollection,
@@ -882,7 +885,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   </thead>
                   <tbody>
                     {playlistTracks.map((tr, idx) => (
-                      <tr key={tr.id} className="track-row" onDoubleClick={() => onPlayTrack(tr.id)}>
+                      <tr key={tr.id} className="track-row" onDoubleClick={() => onPlayTrack(tr.id)} style={{ backgroundColor: loadingTrackId === tr.id ? "rgba(243, 112, 30, 0.12)" : undefined }}>
                         <td style={{ textAlign: "center", color: "var(--text-dim)" }}>{idx + 1}</td>
                         <td className="primary">{tr.title}</td>
                         <td>{tr.artist_name || "Unknown Artist"}</td>
@@ -896,7 +899,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                               title="Play Track"
                               onClick={() => onPlayTrack(tr.id)}
                             >
-                              <Play size={14} />
+                              {loadingTrackId === tr.id ? <RefreshCw size={14} className="spin-animation" aria-label="Loading song" /> : <Play size={14} />}
                             </button>
                             {(() => {
                               const isEnqueued = queuedTrackIds ? queuedTrackIds.has(tr.id) : false;

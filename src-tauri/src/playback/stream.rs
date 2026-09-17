@@ -242,15 +242,14 @@ impl StreamPlaybackManager {
     /// Checks in order:
     /// 1. Local matched file on disk (from library).
     /// 2. Downloaded audio file in downloads folder.
-    /// 3. Valid cached audio in remote-audio cache (or migrated from legacy cache).
+    /// 3. Valid full-length cached audio in remote-audio cache.
     /// 4. Remote full-audio stream resolution (via yt-dlp / composite provider).
-    /// 5. Remote preview URL fallback (via iTunes / Deezer / Audius).
+    /// No preview URL is treated as playable audio.
     pub async fn resolve_and_prepare_audio(
         &self,
         track_id: &str,
         title: &str,
         artist: &str,
-        preview_url: Option<&str>,
     ) -> AppResult<(PathBuf, f64)> {
         info!(track_id, title, artist, "Resolving stream audio for playback");
 
@@ -306,32 +305,20 @@ impl StreamPlaybackManager {
         }
 
         // 3. Check if cached in stream disk cache (Cache Hit)
-        let cache_key = Self::compute_cache_key(track_id, artist, title);
+        // Version the full-song key: older cache entries may contain a 30-second
+        // preview under the same track identity.
+        let cache_key = format!("full:v2:{}", Self::compute_cache_key(track_id, artist, title));
         let cache_path = self.get_cache_path(&cache_key);
 
-        if Self::is_valid_cache_entry(&cache_path) {
+        if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
             debug!(path = %cache_path.display(), "Cache hit for remote audio stream");
             Self::touch_cache_entry(&cache_path);
-            let dur = self.get_known_duration(track_id).await.unwrap_or(210.0);
+            let dur = self.full_cache_duration(&cache_path, track_id).await;
             return Ok((cache_path, dur));
         }
 
-        // Check legacy cache dir if present
-        let legacy_path = self.legacy_cache_dir.join(
-            cache_path
-                .file_name()
-                .and_then(|f| f.to_str())
-                .unwrap_or(""),
-        );
-        if Self::is_valid_cache_entry(&legacy_path) {
-            let _ = tokio::fs::create_dir_all(&self.cache_dir).await;
-            if tokio::fs::rename(&legacy_path, &cache_path).await.is_ok() {
-                debug!(from = %legacy_path.display(), to = %cache_path.display(), "Migrated legacy cache entry to remote-audio");
-                Self::touch_cache_entry(&cache_path);
-                let dur = self.get_known_duration(track_id).await.unwrap_or(210.0);
-                return Ok((cache_path, dur));
-            }
-        }
+        // The previous cache layout did not distinguish previews from full audio.
+        // Do not migrate those entries into the full-song namespace.
 
         // Handle duplicate in-flight downloads for the exact same cache path
         let waiter_notify = {
@@ -348,9 +335,9 @@ impl StreamPlaybackManager {
 
         if let Some(notify) = waiter_notify {
             notify.notified().await;
-            if Self::is_valid_cache_entry(&cache_path) {
+            if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
                 Self::touch_cache_entry(&cache_path);
-                let dur = self.get_known_duration(track_id).await.unwrap_or(210.0);
+                let dur = self.full_cache_duration(&cache_path, track_id).await;
                 return Ok((cache_path, dur));
             }
             // If previous download failed, acquire slot and attempt fresh fetch
@@ -385,91 +372,60 @@ impl StreamPlaybackManager {
             download_waiters: self.download_waiters.clone(),
         };
 
-        // 4. Resolve stream URL
-        // If a direct preview_url is provided (e.g. from iTunes/Discovery recommendations),
-        // prioritize it for instant, pristine 256kbps preview playback (~300ms download).
-        let direct_preview = preview_url.filter(|p| !p.trim().is_empty()).map(|p| p.to_string());
-        let mut candidates: Vec<(String, f64)> = Vec::new();
-
-        if let Some(ref prev) = direct_preview {
-            candidates.push((prev.clone(), 30.0));
-        }
-
-        // Secondary / alternative: resolve full track audio via download service if available
-        // If no preview was provided, this becomes the primary choice.
-        if candidates.is_empty() {
-            if let Some(ref dl) = self.download_service {
-                match dl.resolve_full_track_audio(artist, title).await {
-                    Ok(Some((stream_url, dur, _))) => {
-                        info!(%stream_url, dur, "Resolved full track stream URL");
-                        candidates.push((stream_url, dur));
-                    }
-                    Ok(None) => {
-                        debug!("Full track stream not resolved by provider, falling back");
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "Error resolving full track stream from download service");
-                    }
-                }
-            }
-        }
-
-        // Also check DB for cached preview URL if still empty
-        if candidates.is_empty() {
-            if let Some(pool) = &self.pool {
-                let db_prev: Option<(Option<String>, Option<f64>)> = sqlx::query_as(
-                    "SELECT preview_url, duration_secs FROM external_tracks WHERE id = ?",
-                )
-                .bind(track_id)
-                .fetch_optional(pool)
-                .await
-                .unwrap_or(None);
-
-                if let Some((Some(p), dur)) = db_prev {
-                    if !p.trim().is_empty() {
-                        candidates.push((p, dur.unwrap_or(30.0)));
-                    }
-                }
-            }
-        }
-
+        let dl = self.download_service.as_ref().ok_or_else(|| {
+            AppError::Playback("Full-song resolver is unavailable".to_string())
+        })?;
+        let candidates = dl.resolve_full_track_audio_candidates(artist, title).await?;
         if candidates.is_empty() {
             return Err(AppError::Playback(format!(
-                "No streamable audio source available for \"{}\" by \"{}\"",
-                title, artist
+                "No full-song source available for \"{}\" by \"{}\"", title, artist
             )));
         }
-
-        // 5. Download and cache the stream (Cache Miss with fallback across candidates)
         let mut last_error = None;
-        let mut successful_duration = 210.0;
-
-        for (stream_url, dur) in candidates {
-            info!(url = %stream_url, target = %cache_path.display(), "Attempting to download remote audio stream to cache");
-            match self.download_and_cache(&stream_url, &cache_path).await {
-                Ok(()) => {
-                    successful_duration = dur;
-                    last_error = None;
-                    break;
+        for (index, (stream_url, dur, _)) in candidates.into_iter().take(3).enumerate() {
+            info!(candidate = index + 1, dur, "Trying full-song source");
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(20),
+                self.download_and_cache(&stream_url, &cache_path),
+            ).await;
+            match result {
+                Ok(Ok(())) if Self::is_decodable_audio(&cache_path) => {
+                    self.spawn_cache_eviction();
+                    return Ok((cache_path, dur));
                 }
-                Err(err) => {
-                    warn!(url = %stream_url, error = %err, "Failed to download stream candidate, checking for alternative candidate");
-                    last_error = Some(err);
+                Ok(Ok(())) => {
+                    last_error = Some("Downloaded source is not decodable audio".to_string());
+                    let _ = tokio::fs::remove_file(&cache_path).await;
                 }
+                Ok(Err(error)) => last_error = Some(error.to_string()),
+                Err(_) => last_error = Some("Download timed out after 20 seconds".to_string()),
             }
+            warn!(candidate = index + 1, error = last_error.as_deref().unwrap_or("unknown"), "Full-song source failed");
         }
+        Err(AppError::Playback(format!(
+            "Could not play a full song for \"{}\" by \"{}\": {}",
+            title, artist, last_error.unwrap_or_else(|| "all sources failed".to_string())
+        )))
+    }
 
-        if let Some(err) = last_error {
-            return Err(err);
-        }
+    fn is_decodable_audio(path: &Path) -> bool {
+        crate::playback::decoder::SymphoniaSource::new(path).is_ok()
+    }
 
-        // Trigger asynchronous background eviction if needed (never blocks playback startup)
-        let manager_clone = self.clone_for_bg();
-        tokio::spawn(async move {
-            let _ = manager_clone.enforce_cache_limits().await;
-        });
+    async fn full_cache_duration(&self, path: &Path, track_id: &str) -> f64 {
+        use rodio::Source;
+        let decoded = crate::playback::decoder::SymphoniaSource::new(path)
+            .ok()
+            .and_then(|source| source.total_duration())
+            .map(|duration| duration.as_secs_f64())
+            .filter(|duration| *duration > 30.0);
+        if let Some(duration) = decoded { return duration; }
+        self.get_known_duration(track_id).await.filter(|duration| *duration > 30.0).unwrap_or(210.0)
+    }
 
-        Ok((cache_path, successful_duration))
+    fn spawn_cache_eviction(&self) {
+        let manager = self.clone_for_bg();
+        tokio::spawn(async move { let _ = manager.enforce_cache_limits().await; });
     }
 
     /// Downloads the remote audio stream to a `.part` file, verifies size, and atomically renames it.
@@ -506,8 +462,23 @@ impl StreamPlaybackManager {
                 status
             )));
         }
+        if response.headers().get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|content_type| content_type.starts_with("text/") || content_type.contains("json"))
+        {
+            return Err(AppError::Playback("Audio source returned a page instead of audio".to_string()));
+        }
 
         let config = self.config.read().await.clone();
+        let range_total = if status == reqwest::StatusCode::PARTIAL_CONTENT {
+            response.headers().get(reqwest::header::CONTENT_RANGE)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| {
+                    let (range, total) = value.strip_prefix("bytes ")?.split_once('/')?;
+                    if !range.starts_with("0-") { return None; }
+                    total.parse::<u64>().ok()
+                })
+        } else { None };
         if let Some(content_length) = response.content_length() {
             if content_length > config.max_single_file_bytes {
                 return Err(AppError::Playback(format!(
@@ -553,6 +524,14 @@ impl StreamPlaybackManager {
 
         if downloaded_bytes == 0 {
             return Err(AppError::Playback("Audio stream was empty".to_string()));
+        }
+        if let Some(expected_bytes) = range_total {
+            if downloaded_bytes != expected_bytes {
+                return Err(AppError::Playback(format!(
+                    "Incomplete ranged audio stream: received {} of {} bytes",
+                    downloaded_bytes, expected_bytes
+                )));
+            }
         }
 
         // Atomic rename from .part to final .audio

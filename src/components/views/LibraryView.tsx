@@ -7,6 +7,7 @@ interface LibraryViewProps {
   tracks: Track[];
   queuedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
+  loadingTrackId?: string | null;
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
@@ -29,6 +30,7 @@ type LibraryRowProps = {
   queuedTrackIds?: Set<string>;
   trackPlaylistMap?: Record<string, string[]>;
   onPlayTrack: (trackId: string) => void;
+  loadingTrackId?: string | null;
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
@@ -42,6 +44,7 @@ const LibraryRow = ({
   queuedTrackIds,
   trackPlaylistMap,
   onPlayTrack,
+  loadingTrackId,
   onEnqueueTrack,
   onLikeTrack,
   onRemoveFeedback,
@@ -53,6 +56,7 @@ const LibraryRow = ({
   const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
   const playlistIds = trackPlaylistMap?.[track.id] || [];
   const isInPlaylist = playlistIds.length > 0;
+  const isLoading = loadingTrackId === track.id;
 
   return (
     <div
@@ -64,6 +68,7 @@ const LibraryRow = ({
         padding: "0 14px",
         fontSize: "0.9rem",
         color: "var(--text-muted)",
+        backgroundColor: isLoading ? "rgba(243, 112, 30, 0.12)" : undefined,
         borderBottom: "1px solid var(--border)",
         boxSizing: "border-box",
       }}
@@ -77,7 +82,7 @@ const LibraryRow = ({
           onClick={() => onPlayTrack(track.id)}
           style={{ color: "var(--accent-light)", flexShrink: 0 }}
         >
-          <Play size={14} />
+          {isLoading ? <RotateCw size={14} className="spin-animation" aria-label="Loading song" /> : <Play size={14} />}
         </button>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {track.title}
@@ -168,6 +173,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({
   tracks,
   queuedTrackIds,
   onPlayTrack,
+  loadingTrackId,
   onEnqueueTrack,
   onLikeTrack,
   onRemoveFeedback,
@@ -299,6 +305,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({
                 queuedTrackIds,
                 trackPlaylistMap,
                 onPlayTrack,
+                loadingTrackId,
                 onEnqueueTrack,
                 onLikeTrack,
                 onRemoveFeedback,

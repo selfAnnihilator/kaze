@@ -56,6 +56,7 @@ export interface CollectionData {
 interface CollectionDetailViewProps {
   collection: CollectionData;
   isLoadingTracks?: boolean;
+  loadingTrackId?: string | null;
   onBack: () => void;
   onPlayTrack: (track: CollectionTrackItem) => void;
   onPlayAll: () => void;
@@ -84,6 +85,7 @@ interface CollectionDetailViewProps {
 export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   collection,
   isLoadingTracks = false,
+  loadingTrackId = null,
   onBack,
   onPlayTrack,
   onPlayAll,
@@ -687,6 +689,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               isPlaying &&
               (currentPlayingTrackId === track.id ||
                 currentPlayingTrackId === track.matched_local_track_id);
+            const isLoadingThis = loadingTrackId === track.id ||
+              (!!track.matched_local_track_id && loadingTrackId === track.matched_local_track_id);
 
             const activeDownload =
               activeDownloadMap.get(`${(track.artist || "").toLowerCase().trim()}:::${track.title.toLowerCase().trim()}`) ||
@@ -718,8 +722,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                   padding: "10px 18px",
                   alignItems: "center",
                   fontSize: "0.88rem",
-                  color: isPlayingThis ? "var(--accent-secondary)" : "var(--text-main)",
-                  backgroundColor: isPlayingThis
+                  color: isPlayingThis || isLoadingThis ? "var(--accent-secondary)" : "var(--text-main)",
+                  backgroundColor: isPlayingThis || isLoadingThis
                     ? "rgba(139, 124, 246, 0.08)"
                     : isHovered
                     ? "rgba(255, 255, 255, 0.04)"
@@ -730,8 +734,10 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 }}
               >
                 {/* Index / Play icon */}
-                <div style={{ color: isPlayingThis ? "var(--accent-secondary)" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 500 }}>
-                  {isPlayingThis ? (
+                <div style={{ color: isPlayingThis || isLoadingThis ? "var(--accent-secondary)" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 500 }}>
+                  {isLoadingThis ? (
+                    <RefreshCw size={15} className="spin-animation" aria-label="Loading song" />
+                  ) : isPlayingThis ? (
                     isHovered ? (
                       <Pause size={15} fill="var(--accent-secondary)" />
                     ) : (

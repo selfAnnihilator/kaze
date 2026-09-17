@@ -323,26 +323,23 @@ impl DownloadProvider for YtDlpProvider {
     }
 
     async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
+        Ok(self.resolve_stream_urls(query).await?.into_iter().next())
+    }
+
+    async fn resolve_stream_urls(&self, query: &str) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
         let clean = query.trim();
         if clean.is_empty() {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
-        let yt_query = format!("ytsearch1:{}", clean);
-        info!(query = %yt_query, "Resolving full song audio stream URL via yt-dlp");
+        let yt_query = format!("ytsearch5:{}", clean);
+        info!(query = %yt_query, "Resolving full song candidates via yt-dlp");
 
-        let resolver_future = tokio::process::Command::new(&self.binary_path)
-            .args([
+        let mut command = tokio::process::Command::new(&self.binary_path);
+        command.kill_on_drop(true);
+        let resolver_future = command.args([
                 "--print",
-                "%(url)s",
-                "--print",
-                "%(duration)s",
-                "--print",
-                "%(id)s",
-                "--print",
-                "%(title)s",
-                "--print",
-                "%(uploader)s",
+                "%(url)s\t%(duration)s\t%(id)s\t%(title)s\t%(uploader)s",
                 "-f",
                 "bestaudio[ext=m4a]/bestaudio/best",
                 "--no-warnings",
@@ -351,33 +348,47 @@ impl DownloadProvider for YtDlpProvider {
             ])
             .output();
 
-        let output = match tokio::time::timeout(std::time::Duration::from_secs(12), resolver_future).await {
+        let output = match tokio::time::timeout(std::time::Duration::from_secs(25), resolver_future).await {
             Ok(res) => res.map_err(|e| AppError::Internal(format!("Failed to run yt-dlp stream resolver: {}", e)))?,
             Err(_) => {
-                warn!(query = %yt_query, "yt-dlp stream resolution timed out after 12s");
-                return Ok(None);
+                warn!(query = %yt_query, "yt-dlp stream resolution timed out after 25s");
+                return Ok(Vec::new());
             }
         };
 
-        if !output.status.success() {
-            return Ok(None);
-        }
-
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let lines: Vec<&str> = stdout.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
-        if lines.is_empty() {
-            return Ok(None);
+        let candidates = stdout.lines().filter_map(parse_playback_candidate).take(5).collect();
+        if !output.status.success() {
+            warn!(status = %output.status, "yt-dlp returned an error while resolving full song candidates");
         }
+        Ok(candidates)
+    }
+}
 
-        let stream_url = lines[0].to_string();
-        let duration = if lines.len() > 1 {
-            lines[1].parse::<f64>().unwrap_or(240.0)
-        } else {
-            240.0
-        };
+fn parse_playback_candidate(line: &str) -> Option<(String, f64, Option<DownloadSearchResult>)> {
+    let parts: Vec<&str> = line.trim().splitn(5, '\t').collect();
+    if parts.len() != 5 { return None; }
+    let stream_url = parts[0].trim();
+    if !stream_url.starts_with("https://") && !stream_url.starts_with("http://") { return None; }
+    let duration = parts[1].parse::<f64>().ok()?;
+    if !duration.is_finite() || !(60.0..=900.0).contains(&duration) { return None; }
+    let result = playback_download_result(&[stream_url, parts[1], parts[2], parts[3], parts[4]], duration);
+    Some((stream_url.to_string(), duration, result))
+}
 
-        let download_result = playback_download_result(&lines, duration);
-        Ok(Some((stream_url, duration, download_result)))
+#[cfg(test)]
+mod full_candidate_tests {
+    use super::parse_playback_candidate;
+
+    #[test]
+    fn rejects_short_clips_and_retains_full_song_sources() {
+        let short = "https://example.com/short.m4a\t30\tabcdefghijk\tSong\tArtist";
+        let full = "https://example.com/full.m4a\t220\tabcdefghijk\tSong\tArtist";
+        assert!(parse_playback_candidate(short).is_none());
+        let (url, duration, source) = parse_playback_candidate(full).unwrap();
+        assert_eq!(url, "https://example.com/full.m4a");
+        assert_eq!(duration, 220.0);
+        assert_eq!(source.unwrap().id, "ytdlp_stream_mp3_abcdefghijk");
     }
 }
 
