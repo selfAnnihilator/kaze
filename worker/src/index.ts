@@ -917,12 +917,16 @@ export default {
 
         const userId = session.user_id;
 
-        const [songs, playlists, playlistSongs, songStats, userStats, userSettings] =
+        const [songs, playlists, playlistSongs, songStats, dailyStats, trackDeviceStats, userStats, userSettings] =
           await Promise.all([
             env.DB.prepare("SELECT * FROM songs WHERE user_id = ?").bind(userId).all(),
             env.DB.prepare("SELECT * FROM playlists WHERE user_id = ?").bind(userId).all(),
             env.DB.prepare("SELECT * FROM playlist_songs WHERE user_id = ?").bind(userId).all(),
             env.DB.prepare("SELECT * FROM song_stats WHERE user_id = ?").bind(userId).all(),
+            env.DB.prepare("SELECT * FROM daily_user_stats WHERE user_id = ?").bind(userId).all(),
+            env.DB.prepare(
+              "SELECT device_id, track_id, play_count, total_seconds, completion_count, skip_count, last_played_at, updated_at FROM track_device_stats WHERE user_id = ?"
+            ).bind(userId).all(),
             env.DB.prepare("SELECT * FROM user_stats WHERE user_id = ?").bind(userId).first(),
             env.DB.prepare("SELECT * FROM user_settings WHERE user_id = ?").bind(userId).first(),
           ]);
@@ -938,6 +942,8 @@ export default {
             playlists: playlists.results || [],
             playlist_songs: playlistSongs.results || [],
             song_stats: songStats.results || [],
+            daily_stats: dailyStats.results || [],
+            track_device_stats: trackDeviceStats.results || [],
             user_stats: userStats || null,
             user_settings: userSettings || null,
           },
@@ -1050,6 +1056,70 @@ export default {
                   ss.skip_count || 0,
                   ss.manual_like !== undefined ? ss.manual_like : 0,
                   ss.updated_at || now
+                )
+              );
+            }
+          }
+        }
+
+        // 4.5. Sync Daily Stats
+        if (Array.isArray(payload.daily_stats)) {
+          for (const ds of payload.daily_stats) {
+            if (ds.device_id && ds.stat_date) {
+              batchStatements.push(
+                env.DB.prepare(
+                  "INSERT INTO daily_user_stats (user_id, device_id, stat_date, listening_seconds, play_count, completion_count, skip_count, updated_at) " +
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+                  "ON CONFLICT(user_id, device_id, stat_date) DO UPDATE SET " +
+                  "listening_seconds = MAX(daily_user_stats.listening_seconds, excluded.listening_seconds), " +
+                  "play_count = MAX(daily_user_stats.play_count, excluded.play_count), " +
+                  "completion_count = MAX(daily_user_stats.completion_count, excluded.completion_count), " +
+                  "skip_count = MAX(daily_user_stats.skip_count, excluded.skip_count), " +
+                  "updated_at = MAX(daily_user_stats.updated_at, excluded.updated_at)"
+                ).bind(
+                  userId,
+                  ds.device_id,
+                  ds.stat_date,
+                  ds.listening_seconds || 0.0,
+                  ds.play_count || 0,
+                  ds.completion_count || 0,
+                  ds.skip_count || 0,
+                  ds.updated_at || now
+                )
+              );
+            }
+          }
+        }
+
+        // 4.6. Sync Track Device Stats
+        if (Array.isArray(payload.track_device_stats)) {
+          for (const tds of payload.track_device_stats) {
+            if (tds.device_id && tds.track_id) {
+              batchStatements.push(
+                env.DB.prepare(
+                  "INSERT INTO track_device_stats (user_id, device_id, track_id, play_count, total_seconds, completion_count, skip_count, last_played_at, updated_at) " +
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                  "ON CONFLICT(user_id, device_id, track_id) DO UPDATE SET " +
+                  "play_count = MAX(track_device_stats.play_count, excluded.play_count), " +
+                  "total_seconds = MAX(track_device_stats.total_seconds, excluded.total_seconds), " +
+                  "completion_count = MAX(track_device_stats.completion_count, excluded.completion_count), " +
+                  "skip_count = MAX(track_device_stats.skip_count, excluded.skip_count), " +
+                  "last_played_at = CASE " +
+                    "WHEN track_device_stats.last_played_at IS NULL THEN excluded.last_played_at " +
+                    "WHEN excluded.last_played_at IS NULL THEN track_device_stats.last_played_at " +
+                    "ELSE MAX(track_device_stats.last_played_at, excluded.last_played_at) " +
+                  "END, " +
+                  "updated_at = MAX(track_device_stats.updated_at, excluded.updated_at)"
+                ).bind(
+                  userId,
+                  tds.device_id,
+                  tds.track_id,
+                  tds.play_count || 0,
+                  tds.total_seconds ?? tds.total_time_listened ?? 0.0,
+                  tds.completion_count || 0,
+                  tds.skip_count || 0,
+                  tds.last_played_at ?? null,
+                  tds.updated_at || now
                 )
               );
             }

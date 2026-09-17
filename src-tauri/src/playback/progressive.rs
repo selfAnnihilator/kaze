@@ -50,6 +50,7 @@ impl ProgressiveStreamState {
             debug!(track_id = %self.track_id, bytes = new_bytes, "Progressive stream resumed after buffering");
             if let Some(ref bus) = self.event_bus {
                 let _ = bus.publish(Event::PlaybackResumed {
+                    session_id: String::new(),
                     track_id: self.track_id.clone(),
                     position_secs: 0.0,
                 });
@@ -164,6 +165,7 @@ impl Read for ProgressiveStreamReader {
                         debug!(pos = self.read_pos, "Progressive stream entered buffering, waiting for download chunks");
                         if let Some(ref bus) = self.state.event_bus {
                             let _ = bus.publish(Event::PlaybackBuffering {
+                                session_id: String::new(),
                                 track_id: self.state.track_id.clone(),
                             });
                         }

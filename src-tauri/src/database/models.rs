@@ -84,6 +84,7 @@ pub struct PlaylistRecord {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct PlaybackHistoryRecord {
     pub id: String,
+    pub user_id: String,
     pub track_id: String,
     pub started_at: i64,
     pub ended_at: i64,

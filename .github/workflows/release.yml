@@ -83,6 +83,9 @@ jobs:
           releaseBody: |
             ## Kaze ${{ github.ref_name }}
 
+            > ⚠️ **Important Compatibility Notice:**
+            > This release includes a statistics/history storage migration and updated cloud sync format. Older builds are no longer compatible with the current sync backend and should be upgraded.
+
             Download the installer for your platform below:
 
             | Platform | File | Notes |

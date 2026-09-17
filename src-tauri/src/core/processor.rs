@@ -94,15 +94,25 @@ impl CoreProcessor {
             Some(db_pool.clone()),
         );
 
+        let current_user = Arc::new(RwLock::new(None));
+        let session_state = Arc::new(RwLock::new(AuthSessionState::SignedOut));
+
         let history_repo = Arc::new(SqliteHistoryRepository::new(db_pool.clone()));
         let stats_repo = Arc::new(SqliteStatsRepository::new(db_pool.clone()));
 
-        let history_service = HistoryService::new(
+        let history_service = HistoryService::new_with_pool(
             history_repo.clone(),
             stats_repo.clone(),
             config.history.clone(),
             event_bus.clone(),
+            Some(current_user.clone()),
+            Some(db_pool.clone()),
         );
+
+        let hs_recover = history_service.clone();
+        tokio::spawn(async move {
+            hs_recover.recover_interrupted_sessions().await;
+        });
 
         let ranking_engine = Arc::new(RankingEngine::new(
             stats_repo.clone(),
@@ -170,8 +180,6 @@ impl CoreProcessor {
         let cloud_client = Arc::new(CloudClient::new());
         let settings_repo = Arc::new(SqliteSettingsRepository::new(db_pool.clone()));
         let profile_service = Arc::new(ProfileService::new(config.cache_dir.clone()));
-        let current_user = Arc::new(RwLock::new(None));
-        let session_state = Arc::new(RwLock::new(AuthSessionState::SignedOut));
         let app_start_date = Arc::new(RwLock::new(0));
 
         // Validate active cloud session on launch, sync with server, and enforce hybrid expiry
@@ -1212,8 +1220,7 @@ impl CoreProcessor {
                     // Reassign orphan playlists to this user
                     let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
 
-                    // Claim guest data locally
-                    let _ = self.user_repo.claim_guest_data_for_user(&profile.id).await;
+                    // Guest listening retains its original owner on registration.
                     *self.current_user.write().await = Some(profile.clone());
                     *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
                         user: cloud_user,
@@ -1623,93 +1630,6 @@ impl CoreProcessor {
                     return Err(AppError::Validation("Server URL cannot be empty".to_string()));
                 }
                 self.settings_repo.set_setting("cloud_sync_url", &trimmed).await?;
-                Ok(CommandResponse::Ok)
-            }
-            Command::RecordPlaybackSession {
-                track_id,
-                title,
-                artist,
-                album,
-                duration_secs,
-                seconds_listened,
-                completed,
-                skipped,
-                source,
-            } => {
-                let now = chrono::Utc::now().timestamp();
-                let current_user_guard = self.current_user.read().await;
-                let user_id = current_user_guard.as_ref().map(|u| u.id.as_str()).unwrap_or("default");
-
-                // Ensure external track exists in db if needed
-                let _ = sqlx::query(
-                    "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, created_at)
-                     VALUES (?, 'online', ?, ?, ?, ?, ?, ?)
-                     ON CONFLICT(provider, provider_id) DO UPDATE SET title = excluded.title, artist = excluded.artist"
-                )
-                .bind(&track_id)
-                .bind(&track_id)
-                .bind(&title)
-                .bind(artist.as_deref().unwrap_or("Unknown Artist"))
-                .bind(album.as_deref().unwrap_or(""))
-                .bind(duration_secs)
-                .bind(now)
-                .execute(&self.db_pool)
-                .await;
-
-                let _ = crate::recommendations::mixes::ensure_online_track(
-                    &self.db_pool,
-                    &track_id,
-                    if title.is_empty() { &track_id } else { &title },
-                    artist.as_deref(),
-                    album.as_deref(),
-                    Some(duration_secs),
-                    None,
-                    None,
-                )
-                .await;
-
-                let percentage = if duration_secs > 0.0 {
-                    (seconds_listened / duration_secs).clamp(0.0, 1.0)
-                } else {
-                    0.0
-                };
-
-                let entry_id = uuid::Uuid::new_v4().to_string();
-                let started_at = now - (seconds_listened.round() as i64);
-
-                sqlx::query(
-                    "INSERT INTO playback_history (
-                        id, track_id, started_at, ended_at, seconds_listened,
-                        percentage_listened, completed, skipped, source, playlist_id,
-                        recommendation_session_id, user_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                )
-                .bind(&entry_id)
-                .bind(&track_id)
-                .bind(started_at)
-                .bind(now)
-                .bind(seconds_listened)
-                .bind(percentage)
-                .bind(if completed { 1 } else { 0 })
-                .bind(if skipped { 1 } else { 0 })
-                .bind(&source)
-                .bind(None::<String>)
-                .bind(None::<String>)
-                .bind(user_id)
-                .execute(&self.db_pool)
-                .await
-                .map_err(|e| AppError::Database(format!("Failed to record playback history: {}", e)))?;
-
-                let is_meaningful = seconds_listened >= 30.0 || completed;
-                let _ = self.stats_repo.update_track_playback_stats_scoped(
-                    user_id,
-                    &track_id,
-                    seconds_listened,
-                    is_meaningful,
-                    completed,
-                    skipped,
-                ).await;
-
                 Ok(CommandResponse::Ok)
             }
         }

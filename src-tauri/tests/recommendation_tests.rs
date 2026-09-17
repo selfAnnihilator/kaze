@@ -117,6 +117,7 @@ async fn test_taste_profile_generation() {
         history_repo
             .record_playback(&PlaybackHistoryRecord {
                 id: Uuid::new_v4().to_string(),
+                user_id: "default".into(),
                 track_id: id.clone(),
                 started_at: now - 3600,
                 ended_at: now - 3240,
@@ -189,6 +190,7 @@ async fn test_offline_local_recommendations_and_diversity() {
     history_repo
         .record_playback(&PlaybackHistoryRecord {
             id: Uuid::new_v4().to_string(),
+            user_id: "default".into(),
             track_id: pink_floyd_ids[0].clone(),
             started_at: now - 3600,
             ended_at: now - 3240,
@@ -272,6 +274,7 @@ async fn test_smart_mix_generation_and_persistence() {
         history_repo
             .record_playback(&PlaybackHistoryRecord {
                 id: Uuid::new_v4().to_string(),
+                user_id: "default".into(),
                 track_id: id.clone(),
                 started_at: now - 1000,
                 ended_at: now - 800,
@@ -412,20 +415,26 @@ async fn test_multi_user_taste_and_stats_isolation() {
     // 1. User A logs in, plays Pink Floyd, likes Pink Floyd
     *processor.current_user.write().await = Some(user_a.clone());
 
-    processor
-        .dispatch_command(Command::RecordPlaybackSession {
+    {
+        use music_player_backend::database::models::PlaybackHistoryRecord;
+        use music_player_backend::database::repositories::{HistoryRepository, SqliteHistoryRepository};
+        let history_repo = SqliteHistoryRepository::new(pool.clone());
+        let rec = PlaybackHistoryRecord {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id: "user_a".to_string(),
             track_id: pf_track.clone(),
-            title: "Comfortably Numb Pt 1".to_string(),
-            artist: Some("Pink Floyd".to_string()),
-            album: Some("The Wall".to_string()),
-            duration_secs: 360.0,
+            started_at: 1700000000,
+            ended_at: 1700000360,
             seconds_listened: 360.0,
-            completed: true,
-            skipped: false,
+            percentage_listened: 1.0,
+            completed: 1,
+            skipped: 0,
             source: "library".to_string(),
-        })
-        .await
-        .expect("record playback for user A");
+            playlist_id: None,
+            recommendation_session_id: None,
+        };
+        history_repo.record_session(&rec, "2023-11-14", true).await.expect("record playback for user A");
+    }
 
     processor
         .dispatch_command(Command::LikeTrack {
@@ -437,20 +446,26 @@ async fn test_multi_user_taste_and_stats_isolation() {
     // 2. User B logs in, plays Daft Punk, likes Daft Punk
     *processor.current_user.write().await = Some(user_b.clone());
 
-    processor
-        .dispatch_command(Command::RecordPlaybackSession {
+    {
+        use music_player_backend::database::models::PlaybackHistoryRecord;
+        use music_player_backend::database::repositories::{HistoryRepository, SqliteHistoryRepository};
+        let history_repo = SqliteHistoryRepository::new(pool.clone());
+        let rec = PlaybackHistoryRecord {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id: "user_b".to_string(),
             track_id: dp_track.clone(),
-            title: "One More Time 1".to_string(),
-            artist: Some("Daft Punk".to_string()),
-            album: Some("Discovery".to_string()),
-            duration_secs: 300.0,
+            started_at: 1700000000,
+            ended_at: 1700000300,
             seconds_listened: 300.0,
-            completed: true,
-            skipped: false,
+            percentage_listened: 1.0,
+            completed: 1,
+            skipped: 0,
             source: "library".to_string(),
-        })
-        .await
-        .expect("record playback for user B");
+            playlist_id: None,
+            recommendation_session_id: None,
+        };
+        history_repo.record_session(&rec, "2023-11-14", true).await.expect("record playback for user B");
+    }
 
     processor
         .dispatch_command(Command::LikeTrack {

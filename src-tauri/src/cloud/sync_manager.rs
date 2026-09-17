@@ -438,6 +438,55 @@ impl SyncManager {
             }
         }
 
+        // 4.5. Daily stats
+        let daily_rows: Vec<(String, String, f64, i64, i64, i64, i64)> = sqlx::query_as(
+            "SELECT device_id, stat_date, listening_seconds, play_count, completion_count, skip_count, updated_at
+             FROM daily_user_stats WHERE user_id = ?"
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        let daily_stats: Vec<CloudDailyStat> = daily_rows
+            .into_iter()
+            .map(|r| CloudDailyStat {
+                user_id: user_id.to_string(),
+                device_id: r.0,
+                stat_date: r.1,
+                listening_seconds: r.2,
+                play_count: r.3,
+                completion_count: r.4,
+                skip_count: r.5,
+                updated_at: r.6,
+            })
+            .collect();
+
+        // 4.6. Track device stats
+        let tds_rows: Vec<(String, String, i64, f64, i64, i64, Option<i64>, i64)> = sqlx::query_as(
+            "SELECT device_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, updated_at
+             FROM track_device_statistics WHERE user_id = ?"
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        let track_device_stats: Vec<CloudTrackDeviceStat> = tds_rows
+            .into_iter()
+            .map(|r| CloudTrackDeviceStat {
+                user_id: user_id.to_string(),
+                device_id: r.0,
+                track_id: r.1,
+                play_count: r.2,
+                total_seconds: r.3,
+                completion_count: r.4,
+                skip_count: r.5,
+                last_played_at: r.6,
+                updated_at: r.7,
+            })
+            .collect();
+
         // 5. User stats (yearly archive)
         let yearly_rows: Vec<(String, i64, f64, String, String, i64)> = sqlx::query_as(
             "SELECT id, year, total_seconds, top_songs_json, top_artists_json, archived_at
@@ -519,6 +568,8 @@ impl SyncManager {
             playlists,
             playlist_songs,
             song_stats,
+            daily_stats,
+            track_device_stats,
             user_stats,
             user_settings,
             deleted_playlists,
@@ -672,6 +723,85 @@ impl SyncManager {
             .bind(ss.skip_count)
             .bind(ss.last_played_at)
             .bind(ss.manual_like)
+            .execute(pool)
+            .await;
+        }
+
+        // 4.5. Daily user stats
+        for ds in &payload.daily_stats {
+            let stat_user_id = user_id;
+            sqlx::query(
+                "INSERT INTO daily_user_stats (
+                    user_id, device_id, stat_date, listening_seconds, play_count, completion_count, skip_count, updated_at
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(user_id, device_id, stat_date) DO UPDATE SET
+                     listening_seconds = MAX(daily_user_stats.listening_seconds, excluded.listening_seconds),
+                     play_count = MAX(daily_user_stats.play_count, excluded.play_count),
+                     completion_count = MAX(daily_user_stats.completion_count, excluded.completion_count),
+                     skip_count = MAX(daily_user_stats.skip_count, excluded.skip_count),
+                     updated_at = MAX(daily_user_stats.updated_at, excluded.updated_at)"
+            )
+            .bind(stat_user_id)
+            .bind(&ds.device_id)
+            .bind(&ds.stat_date)
+            .bind(ds.listening_seconds)
+            .bind(ds.play_count)
+            .bind(ds.completion_count)
+            .bind(ds.skip_count)
+            .bind(ds.updated_at)
+            .execute(pool)
+            .await.map_err(|e| AppError::Database(format!("Failed to reconcile daily stats: {}", e)))?;
+        }
+
+        // 4.6. Track device stats
+        for tds in &payload.track_device_stats {
+            let stat_user_id = user_id;
+            sqlx::query(
+                "INSERT INTO track_device_statistics (
+                    user_id, device_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, updated_at
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(user_id, device_id, track_id) DO UPDATE SET
+                     play_count = MAX(track_device_statistics.play_count, excluded.play_count),
+                     total_time_listened = MAX(track_device_statistics.total_time_listened, excluded.total_time_listened),
+                     completion_count = MAX(track_device_statistics.completion_count, excluded.completion_count),
+                     skip_count = MAX(track_device_statistics.skip_count, excluded.skip_count),
+                     last_played_at = CASE
+                         WHEN track_device_statistics.last_played_at IS NULL THEN excluded.last_played_at
+                         WHEN excluded.last_played_at IS NULL THEN track_device_statistics.last_played_at
+                         ELSE MAX(track_device_statistics.last_played_at, excluded.last_played_at)
+                     END,
+                     updated_at = MAX(track_device_statistics.updated_at, excluded.updated_at)"
+            )
+            .bind(stat_user_id)
+            .bind(&tds.device_id)
+            .bind(&tds.track_id)
+            .bind(tds.play_count)
+            .bind(tds.total_seconds)
+            .bind(tds.completion_count)
+            .bind(tds.skip_count)
+            .bind(tds.last_played_at)
+            .bind(tds.updated_at)
+            .execute(pool)
+            .await.map_err(|e| AppError::Database(format!("Failed to reconcile track device stats: {}", e)))?;
+
+            // Also keep track_statistics compatibility layer synchronized with the sum across all devices
+            let _ = sqlx::query(
+                "INSERT INTO track_statistics (
+                    user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at
+                 )
+                 SELECT user_id, track_id, SUM(play_count), SUM(total_time_listened), SUM(completion_count), SUM(skip_count), MAX(last_played_at)
+                 FROM track_device_statistics
+                 WHERE user_id = ? AND track_id = ?
+                 GROUP BY user_id, track_id
+                 ON CONFLICT(user_id, track_id) DO UPDATE SET
+                     play_count = excluded.play_count,
+                     total_time_listened = excluded.total_time_listened,
+                     completion_count = excluded.completion_count,
+                     skip_count = excluded.skip_count,
+                     last_played_at = excluded.last_played_at"
+            )
+            .bind(stat_user_id)
+            .bind(&tds.track_id)
             .execute(pool)
             .await;
         }

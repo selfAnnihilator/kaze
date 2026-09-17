@@ -132,6 +132,8 @@ async fn test_cloud_sync_payload_and_database_persistence() {
             "top_artists_json": "[]",
             "updated_at": 1700000000,
         }])),
+        daily_stats: vec![],
+        track_device_stats: vec![],
         user_settings: None,
         deleted_playlists: vec![],
         deleted_playlist_songs: vec![],

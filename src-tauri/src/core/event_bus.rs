@@ -58,7 +58,7 @@ mod tests {
         let mut rx1 = bus.subscribe();
         let mut rx2 = bus.subscribe();
 
-        let event = Event::PlaybackStopped;
+        let event = Event::PlaybackStopped { session_id: "sess_test".to_string() };
         let subscriber_count = bus.publish(event.clone()).unwrap();
 
         assert_eq!(subscriber_count, 2);

@@ -161,7 +161,7 @@ impl UserRepository for SqliteUserRepository {
         .await
         .map_err(|e| AppError::Database(format!("Failed to insert user: {}", e)))?;
 
-        let _ = self.claim_guest_data_for_user(&user_id).await;
+        // Registration does not implicitly transfer guest listening ownership.
 
         Ok(UserProfile {
             id: user_id,

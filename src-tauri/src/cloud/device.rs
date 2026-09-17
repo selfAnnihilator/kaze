@@ -21,7 +21,8 @@ pub async fn get_or_create_device_id(pool: &SqlitePool) -> AppResult<String> {
     let now = chrono::Utc::now().timestamp();
     sqlx::query(
         "INSERT INTO application_settings (key, value, updated_at) VALUES ('device_id', ?, ?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+         WHERE trim(application_settings.value) = ''"
     )
     .bind(&new_id)
     .bind(now)
@@ -29,7 +30,9 @@ pub async fn get_or_create_device_id(pool: &SqlitePool) -> AppResult<String> {
     .await
     .map_err(|e| AppError::Database(format!("Failed to store device_id setting: {}", e)))?;
 
-    Ok(new_id)
+    sqlx::query_scalar("SELECT value FROM application_settings WHERE key = 'device_id'")
+        .fetch_one(pool).await
+        .map_err(|e| AppError::Database(format!("Failed to read device_id: {}", e)))
 }
 
 /// Returns a friendly, non-invasive device name based on the operating system.

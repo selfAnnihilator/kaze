@@ -147,17 +147,34 @@ CREATE TABLE IF NOT EXISTS playback_history (
 CREATE INDEX IF NOT EXISTS idx_history_track ON playback_history(track_id);
 CREATE INDEX IF NOT EXISTS idx_history_started ON playback_history(started_at);
 
--- Pre-aggregated Track Statistics (Updated incrementally on meaningful plays)
+-- Pre-aggregated Track Statistics (Updated incrementally on meaningful plays, cloud-synced)
 CREATE TABLE IF NOT EXISTS track_statistics (
-    track_id TEXT PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL DEFAULT 'default',
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
     play_count INTEGER NOT NULL DEFAULT 0,
     total_time_listened REAL NOT NULL DEFAULT 0.0,
     completion_count INTEGER NOT NULL DEFAULT 0,
     skip_count INTEGER NOT NULL DEFAULT 0,
     last_played_at INTEGER,
     manual_like INTEGER NOT NULL DEFAULT 0,    -- 1 for liked, -1 for disliked, 0 neutral
-    playlist_addition_count INTEGER NOT NULL DEFAULT 0
+    playlist_addition_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, track_id)
 );
+
+-- Compact Daily User Statistics (Aggregated by day and device, cloud-synced)
+CREATE TABLE IF NOT EXISTS daily_user_stats (
+    user_id TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    stat_date TEXT NOT NULL,                  -- Local calendar day 'YYYY-MM-DD'
+    listening_seconds REAL NOT NULL DEFAULT 0.0,
+    play_count INTEGER NOT NULL DEFAULT 0,
+    completion_count INTEGER NOT NULL DEFAULT 0,
+    skip_count INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, device_id, stat_date)
+);
+CREATE INDEX IF NOT EXISTS idx_daily_user_stats_date ON daily_user_stats(user_id, stat_date);
+CREATE INDEX IF NOT EXISTS idx_daily_user_stats_updated ON daily_user_stats(user_id, updated_at);
 
 -- Artist Aggregated Statistics
 CREATE TABLE IF NOT EXISTS artist_statistics (
@@ -177,6 +194,18 @@ CREATE TABLE IF NOT EXISTS genre_statistics (
     affinity_score REAL NOT NULL DEFAULT 0.0
 );
 ```
+
+#### Three-Layer Statistics Architecture
+1. **`track_statistics`** (Cumulative / All-Time, Cloud-Synced):
+   - Authoritative for **Lifetime Listening**, **All-Time Top Songs**, and **All-Time Top Artists**.
+   - Preserves complete listening aggregates across re-installs and device migrations.
+2. **`daily_user_stats`** (Date-Bucketed Aggregates, Cloud-Synced):
+   - Authoritative for **Today**, **This Week**, **This Month**, **This Year**, **Daily Graph**, **Active Days**, and **Top Days**.
+   - Keyed by `(user_id, device_id, stat_date)`. Total for a user/date is `SUM(listening_seconds)` across devices.
+   - Snapshot upserts (`ON CONFLICT ... DO UPDATE SET ... WHERE excluded.updated_at >= updated_at`) prevent double-counting on repeated syncs.
+3. **`playback_history`** (Granular Chronological Log, Local-Only):
+   - Stores raw session events with precise start/end timestamps and percentage completed.
+   - Strictly local; never uploaded to the cloud or synced to preserve user privacy and cloud storage bandwidth.
 
 ### 2.4 Taste Profile, Recommendations & Discovery
 

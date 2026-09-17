@@ -52,6 +52,9 @@ pub struct PlaybackService {
     active_stream_state: Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
     pool: Option<SqlitePool>,
     preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    /// Authoritative session token for the currently playing track.
+    /// Generated fresh at each `play_item` call; cleared on stop/track-finish.
+    active_session_id: Arc<RwLock<Option<String>>>,
 }
 
 impl PlaybackService {
@@ -73,6 +76,7 @@ impl PlaybackService {
             active_stream_state: Arc::new(std::sync::RwLock::new(None)),
             pool,
             preresolution_handle: Arc::new(Mutex::new(None)),
+            active_session_id: Arc::new(RwLock::new(None)),
         });
 
         // Spawn periodic position monitor and track finish detector
@@ -104,7 +108,6 @@ impl PlaybackService {
     async fn run_playback_monitor_loop(&self) {
         let mut interval = tokio::time::interval(Duration::from_millis(250));
         let mut was_playing = false;
-        let mut current_track_id_cache: Option<String> = None;
 
         loop {
             interval.tick().await;
@@ -122,24 +125,36 @@ impl PlaybackService {
 
             if !is_paused && !is_finished && duration > 0.0 {
                 was_playing = true;
-                if current_track_id_cache.is_none() {
-                    let q_guard = self.queue.read().await;
-                    if let Some(item) = q_guard.current() {
-                        current_track_id_cache = Some(item.track_id.clone());
-                    }
-                }
+
+                // Always read from authoritative source — no stale local cache.
+                let session_id = self.active_session_id.read().await
+                    .clone()
+                    .unwrap_or_default();
 
                 let _ = self.event_bus.publish(Event::PlaybackPositionChanged {
+                    session_id,
                     position_secs: pos_secs,
                     duration_secs: duration,
                 });
             } else if was_playing && is_finished && duration > 0.0 {
                 // Track finished!
                 was_playing = false;
-                let track_id_finished = current_track_id_cache.take();
-                if let Some(track_id) = track_id_finished {
-                    info!(%track_id, "Track finished playing to end of stream");
+
+                // Read track_id and session_id from authoritative sources.
+                let track_id_opt = {
+                    let q_guard = self.queue.read().await;
+                    q_guard.current().map(|i| i.track_id.clone())
+                };
+                // Take (clear) the session_id: this session is now over.
+                let session_id = {
+                    let mut guard = self.active_session_id.write().await;
+                    guard.take().unwrap_or_default()
+                };
+
+                if let Some(track_id) = track_id_opt {
+                    info!(%track_id, %session_id, "Track finished playing to end of stream");
                     let _ = self.event_bus.publish(Event::TrackFinished {
+                        session_id,
                         track_id,
                         seconds_listened: duration,
                         completed: true,
@@ -346,8 +361,13 @@ impl PlaybackService {
             sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_protect))).await;
         }
 
+        // Generate a fresh session token for this playback session.
+        let session_id = Uuid::new_v4().to_string();
+        *self.active_session_id.write().await = Some(session_id.clone());
+
         let src = self.current_source.read().await.clone();
         let _ = self.event_bus.publish(Event::PlaybackStarted {
+            session_id,
             track_id: item.track_id.clone(),
             title: item.title.clone(),
             artist: item.artist.clone(),
@@ -375,7 +395,12 @@ impl PlaybackService {
             q_guard.current().map(|i| i.track_id.clone()).unwrap_or_default()
         };
 
+        let session_id = self.active_session_id.read().await
+            .clone()
+            .unwrap_or_default();
+
         let _ = self.event_bus.publish(Event::PlaybackPaused {
+            session_id,
             track_id,
             position_secs: pos,
         });
@@ -392,7 +417,12 @@ impl PlaybackService {
             q_guard.current().map(|i| i.track_id.clone()).unwrap_or_default()
         };
 
+        let session_id = self.active_session_id.read().await
+            .clone()
+            .unwrap_or_default();
+
         let _ = self.event_bus.publish(Event::PlaybackResumed {
+            session_id,
             track_id,
             position_secs: pos,
         });
@@ -413,7 +443,13 @@ impl PlaybackService {
             sm.set_active_playing_path(None).await;
         }
 
-        let _ = self.event_bus.publish(Event::PlaybackStopped);
+        // Take (clear) the active session id — this session is ending.
+        let session_id = {
+            let mut guard = self.active_session_id.write().await;
+            guard.take().unwrap_or_default()
+        };
+
+        let _ = self.event_bus.publish(Event::PlaybackStopped { session_id });
         Ok(())
     }
 

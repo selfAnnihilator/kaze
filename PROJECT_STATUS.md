@@ -1,10 +1,17 @@
 # Project Status
 
 ## Current Development Phase
-**Phase 19: Progressive Remote Audio Streaming & Speculative Pre-Resolution Engine (Complete, Tested & Production-Ready)**
+**Phase 21: Three-Layer Compact Cloud-Synced Daily Statistics Architecture — Implemented &amp; Audited (2026-09-17)**
 
-- **Progressive Streaming Engine**: Instant ~2s playback via `ProgressiveStreamReader` buffering ~64–128 KB before Rodio playback starts while background download continues.
-- **Remote Source Resolution Optimization**: Bounded in-memory `ResolutionCache` (TTL-aware, YouTube expiry extraction, max 100 entries, LRU), staged direct provider racing (Audius + Internet Archive), non-mutating lookahead `peek_next()`, and background speculative pre-resolution reducing sequential track transitions to ~2–4s (~70-85% latency reduction).
+See audit report: [`docs/audits/2026-09-17-statistics-history.md`](docs/audits/2026-09-17-statistics-history.md)
+
+**Verdict:** The three-layer architecture is sound and targeted audit fixes are in place. The implementation is *not* cleared for an unconditional long-term reliability sign-off — the correctness gaps listed below must be addressed before that bar is met.
+
+- **Three-Layer Statistics Engine**: Full separation between cumulative all-time metrics (`track_statistics`, cloud-synced), compact date-bucketed aggregates (`daily_user_stats`, cloud-synced), and granular chronological session logs (`playback_history`, local-only).
+- **Multi-Device Daily Aggregation**: Keyed by `(user_id, device_id, stat_date)` with snapshot upsert semantics (`WHERE excluded.updated_at >= daily_user_stats.updated_at`). Eliminates additive double-counting on repeated syncs while enabling natural summation across distinct devices.
+- **Privacy-Preserving Cloud Sync**: Detailed timeline listening (Today, This Week, This Month, This Year, Daily Graph, Active Days) survives reinstalls and device migrations without syncing raw session logs to the cloud.
+- **Historical Ownership Repair**: Migration `20260917000000_repair_legacy_user_stats.sql` and `20260917000001_daily_user_stats.sql` safely consolidated records and backfilled daily aggregates for canonical user `103cc229-6f41-4da2-abb9-beba57ef0367`.
+- **Progressive Remote Audio Streaming & Pre-Resolution Engine**: Instant ~2s playback via `ProgressiveStreamReader` buffering ~64–128 KB, with bounded `ResolutionCache` and speculative queue pre-resolution.
 
 ## Architecture Summary
 - **Backend**: Rust 2021 modular monolith running on Tokio async runtime.
@@ -82,19 +89,31 @@
 - **Soulseek / Slskd Download Integration**: Search query dispatch, user-initiated download actions, progress event emission, cancelation, and task tracking (`DownloadService`).
 - **Automated Library Import & Wishlist Completion**: Automatically indexes completed downloads into the local library and transitions linked wishlist records to `DOWNLOADED`.
 
-## Partially Implemented Features
-- None (Phases 1 through 8 fully realized and verified).
+### Partially Implemented Features
+- None (Phases 1 through 21 fully realized and verified, subject to audit caveats).
 
-## Known Broken Features
-- None.
+## Known Correctness Gaps (from 2026-09-17 Phase 21 audit)
 
-## Important Files & Modules
+**P1 — must fix before long-term reliability sign-off:**
+- **Lifetime MAX undercount** (`sync_manager.rs`, `worker/src/index.ts`): independent offline contributions from two devices merge to `MAX`, not `SUM`. Requires per-device per-track cumulative components or a delta protocol.
+- **Position ≠ elapsed time** (`HistoryService`): `max_position_secs` inflates with seeks forward, undercounts seeks backward; EOF is published as `completed=true` even on premature stream end.
+- **Stale completion monitor** (`playback/service.rs:107–149`): `current_track_id_cache` not cleared on manual Next/Previous/Stop; a delayed EOF can finalize the wrong track after a skip.
+- **No shutdown finalization** (`app.rs`): no exit/close handler; the active session is lost on normal quit or crash. A rolled-back atomic transaction consumes the session without queuing it for retry.
+- **Legacy repair migration** (`20260917000000_repair_legacy_user_stats.sql`): hardcoded canonical UUID, only two collision tracks merged; breaks with a third colliding track (`UNIQUE constraint failed`). Unsafe for distribution to other installations.
+
+**P2 — should fix:**
+- **Start ownership race**: `HistoryService::on_playback_started` reads `current_user` asynchronously; account switch in the narrow window before consumption can assign the session to the wrong user.
+- **Legacy recording command**: `Command::RecordPlaybackSession` has no session UUID, generates duplicates on repeated calls, and can pick the wrong owner during account switching. Retire or require explicit session identity.
+- **Unscoped local history query**: `SqliteHistoryRepository::get_recent_history` has no `user_id` filter; multi-user local installs can expose another user's sessions.
+
+## Important Files &amp; Modules
 - `docs/ARCHITECTURE.md` - Overall system structure and threading model.
 - `docs/BACKEND.md` - Modular monolith structure and service interfaces.
 - `docs/DATABASE.md` - Complete SQLite schema and optimization PRAGMAs.
 - `docs/EVENTS.md` - Exhaustive Command, Event, and Query catalogs.
 - `docs/DISCOVERY.md` - Fuzzy matching specifications and wishlist architecture.
 - `docs/DOWNLOADS.md` - Download architecture, Soulseek/Slskd integration, and auto-import.
+- `docs/audits/2026-09-17-statistics-history.md` - Phase 21 correctness audit (risks, fixes, open issues, live data, test results).
 - `src-tauri/src/downloads/` - `DownloadProvider`, `SoulseekProvider`, `MockDownloadProvider`, `DownloadService`.
 - `src-tauri/src/discovery/` - `FuzzyTrackMatcher`, `WishlistManager`, `DiscoveryCoordinator`.
 - `src-tauri/src/providers/` - `MusicBrainzProvider`, `CoverArtArchiveProvider`, `SpotifyProvider`, `ProviderCoordinator`.
@@ -102,10 +121,16 @@
 - `src-tauri/src/playback/` - `PlaybackService`, `PlaybackQueue`, `AudioBackend`.
 - `src-tauri/src/library/` - `LibraryService`, `LibraryScanner`, `LibraryWatcher`.
 - `src-tauri/src/database/` - Connection pooling, models, migrations, and repositories.
-- `src-tauri/tests/` - 8 integration test suites (`foundation_tests.rs`, `library_tests.rs`, `playback_tests.rs`, `history_tests.rs`, `recommendation_tests.rs`, `provider_tests.rs`, `discovery_tests.rs`, `download_tests.rs`).
+- `src-tauri/src/history/` - `HistoryService`, `SqliteHistoryRepository`, `ActiveSession`.
+- `src-tauri/src/cloud/` - `SyncManager`, `CloudDailyStat`, `SyncPayload`.
 
 ## Current Blockers
-- None.
+- Five P1 correctness gaps identified by the 2026-09-17 audit (see above). No build or test failures.
 
-## Next Recommended Task
-Begin **Phase 9: Frontend & Desktop Shell**: initialize Tauri v2 desktop shell with React + TypeScript, create thin presentation views (Home/Library, Player Bar, Smart Mixes, Discovery, Wishlist, Downloads, Settings), wire typed Tauri IPC invocations to the backend `CoreProcessor`, and subscribe to real-time `EventBus` broadcasts.
+## Next Recommended Tasks
+**Phase 22 options (in priority order):**
+1. Fix the completion monitor stale-cache bug and add shutdown finalization / pending-session recovery in `app.rs` (P1, targeted scope).
+2. Retire or gate `Command::RecordPlaybackSession`; add `user_id` filter to `get_recent_history` (P2, low risk).
+3. Design and implement a per-device per-track delta protocol to close the lifetime MAX undercount (P1, requires schema/protocol revision).
+4. Capture session owner at `PlaybackService::start` (producer side) to close the account-switch race (P2, architectural).
+5. Plan the legacy repair migration release strategy for multi-user distribution (P1, release engineering).

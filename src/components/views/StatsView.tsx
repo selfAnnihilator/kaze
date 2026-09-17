@@ -794,6 +794,63 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 Past 7 days
               </div>
             </div>
+
+            {/* Lifetime Listening Card */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(40, 25, 60, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%)",
+                border: "1px solid rgba(168, 85, 247, 0.25)",
+                borderRadius: "18px",
+                padding: "20px 24px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "rgba(255, 255, 255, 0.6)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Lifetime Listening
+                </span>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    background: "rgba(168, 85, 247, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#c084fc",
+                  }}
+                >
+                  <Award size={20} />
+                </div>
+              </div>
+              <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
+                {formatSeconds(stats?.lifetime_seconds || 0)}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(255, 255, 255, 0.4)",
+                  marginTop: "4px",
+                }}
+              >
+                All-time cumulative history
+              </div>
+            </div>
           </div>
 
           {/* Row 2: Monthly Stats Section (Takes Whole Width Below Daily & Weekly) */}
@@ -980,7 +1037,14 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       <strong>{formatSeconds(hoveredDay.total_seconds)}</strong>
                     </span>
                   ) : (
-                    <span>Daily listening activity across {activeMonthName} ({monthlyGraph.length} days)</span>
+                    <span>
+                      Daily listening activity across {activeMonthName} ({monthlyGraph.length} days)
+                      {stats?.history_started_at ? (
+                        <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.45)", marginLeft: "8px" }}>
+                          • Detailed timeline history available since {new Date(stats.history_started_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      ) : null}
+                    </span>
                   )}
                 </div>
 
@@ -1563,7 +1627,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 }}
               >
                 <Archive size={16} />
-                <span>Archived Year Record</span>
+                <span>Year in Review</span>
               </div>
               <h2
                 style={{
@@ -1582,7 +1646,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   fontSize: "14px",
                 }}
               >
-                Stored official archive of your top music listening data for the year {viewingYear}.
+                Daily listening totals for {viewingYear}, with your all-time music rankings.
               </p>
             </div>
 
@@ -1604,7 +1668,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   marginBottom: "4px",
                 }}
               >
-                Total Listening Time
+                {isPastYear ? `Total Listening Time (${viewingYear})` : `Tracked in ${viewingYear}`}
               </div>
               <div
                 style={{
@@ -1614,6 +1678,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 }}
               >
                 {formatSeconds(stats?.total_year_seconds || 0)}
+              </div>
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "rgba(255, 255, 255, 0.4)",
+                  marginTop: "4px",
+                }}
+              >
+                {`Daily listening totals for ${viewingYear}`}
               </div>
             </div>
           </div>
@@ -1636,7 +1709,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               }}
             >
               <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 16px 0" }}>
-                Top 10 Songs of {viewingYear}
+                All-Time Top 10 Songs
               </h3>
               {!stats?.top_songs || stats.top_songs.length === 0 ? (
                 <div
@@ -1647,7 +1720,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     fontSize: "13px",
                   }}
                 >
-                  No songs recorded in the {viewingYear} archive.
+                  No songs recorded yet.
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -1705,7 +1778,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               }}
             >
               <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 16px 0" }}>
-                Top 10 Artists of {viewingYear}
+                All-Time Top 10 Artists
               </h3>
               {!stats?.top_artists || stats.top_artists.length === 0 ? (
                 <div
@@ -1716,7 +1789,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     fontSize: "13px",
                   }}
                 >
-                  No artists recorded in the {viewingYear} archive.
+                  No artists recorded yet.
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>

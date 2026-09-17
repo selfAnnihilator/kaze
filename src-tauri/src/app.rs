@@ -136,8 +136,18 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![execute_command, execute_query])
-        .run(context)
-        .expect("error while running tauri application");
+        .build(context)
+        .expect("error building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                let processor = app_handle.state::<Arc<CoreProcessor>>();
+                let ps = processor.playback_service();
+                tauri::async_runtime::block_on(async {
+                    let _ = ps.stop().await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                });
+            }
+        });
 }
 
 fn main() {

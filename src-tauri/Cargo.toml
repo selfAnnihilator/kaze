@@ -1,6 +1,6 @@
 [package]
 name = "music-player-backend"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 authors = ["Music Player Contributors"]
 description = "Backend-First Intelligent Local Music Player"
@@ -72,7 +72,7 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 rfd = "0.15"
 
 [build-dependencies]
-tauri-build = { version = "2.0", default-features = false }
+tauri-build = { version = "2.0", default-features = false , features = [] }
 
 [dev-dependencies]
 tempfile = "3.12"

@@ -245,4 +245,47 @@ src-tauri/src/profile/
   - `CloudinaryAvatarStorage`: Handles signed SHA-1 uploads and deletions targeting `music-player/avatars/{user_id}`, returning `public_id`, `secure_url`, `version`.
   - Secure credential isolation: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are stored as Worker environment secrets.
 
+---
+
+## 7. Three-Layer Statistics Architecture: Cumulative, Daily Buckets, and Local Sessions
+
+Kaze maintains an explicit architectural separation across three distinct statistics layers:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 Three-Layer Stats Engine                                   │
+├──────────────────────────┬─────────────────────────────┬───────────────────────────────────┤
+│ Layer 1: track_statistics│ Layer 2: daily_user_stats   │ Layer 3: playback_history         │
+│ (All-Time Cumulative)    │ (Date-Bucketed Aggregates)  │ (Local Granular Session Log)      │
+├──────────────────────────┼─────────────────────────────┼───────────────────────────────────┤
+│ • O(N) bounded table     │ • Compact daily aggregate   │ • Chronological append-only log   │
+│ • Synchronized with D1   │ • Synchronized with D1      │ • Strictly LOCAL (never synced)   │
+│ • Stores all-time plays, │ • Key: (user, device, date) │ • Stores exact session timestamps │
+│   seconds, likes, skips  │ • Stores daily seconds,     │   and completion percentages      │
+│ • Authoritative for:     │   plays, skips, completions │ • Authoritative for:              │
+│   - Lifetime Listening   │ • Authoritative for:        │   - Granular session history logs │
+│   - All-Time Top Songs   │   - Today / Week / Month    │   - Real-time session auditing    │
+│   - All-Time Top Artists │   - Daily graph & top days  │                                   │
+│                          │   - Current year totals     │                                   │
+│                          │   - Multi-device summation  │                                   │
+└──────────────────────────┴─────────────────────────────┴───────────────────────────────────┘
+```
+
+### 7.1 Authoritative Source Mapping
+1. **Lifetime Listening**: Computed strictly from `SUM(track_statistics.total_time_listened)`. Incorporates all cloud-restored listening history (~23.6h / 765 plays) and local plays. Never double-counted.
+2. **All-Time Top Songs & Artists**: Computed from `track_statistics` scored via multi-factor weighted ranking formulas. Allows cloud-restored tracks to surface accurately in all-time rankings without requiring local session logs.
+3. **Time-Bucketed Metrics (Daily, Weekly, Monthly, Graph, Top Days, Yearly)**:
+   - Computed from `daily_user_stats` by summing across devices for the user (`SUM(listening_seconds)`), with fallback to `playback_history` if daily records are unpopulated.
+   - Preserves date-level listening across reinstalls and device changes without leaking raw session logs to the cloud.
+   - Pushing/pulling uses snapshot upserts (`ON CONFLICT(user_id, device_id, stat_date) DO UPDATE ... WHERE excluded.updated_at >= daily_user_stats.updated_at`), eliminating double-counting on repeated syncs.
+4. **Detailed Timeline Indicator**:
+   - `StatsOverview` returns `history_started_at: Option<i64>` parsed from the earliest `daily_user_stats.stat_date` (or `playback_history.started_at`).
+   - The UI surfaces this indicator in the activity graph (e.g., "Detailed timeline history available since Sep 16, 2026").
+
+### 7.2 Session Ownership & Future-Write Contract
+- **Session-Start Capture**: When playback starts (`PlaybackStarted`), the authenticated `user_id` is captured and locked into `ActiveSession`. If unauthenticated, it defaults safely to `"default"`.
+- **User-Switch Immunity**: Switching users or logging in/out during an active playback session does not mutate the `ActiveSession` owner; upon track completion, history and stats write strictly to the user who initiated the session.
+- **Multi-Tenant Isolation**: All statistics, playback history, preferences, and archives enforce strict `WHERE user_id = ?` scoping, preventing cross-tenant leakage.
+
+
 

@@ -218,6 +218,44 @@ pub struct CloudUserSetting {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CloudDailyStat {
+    #[serde(default)]
+    pub user_id: String,
+    pub device_id: String,
+    pub stat_date: String,
+    #[serde(default)]
+    pub listening_seconds: f64,
+    #[serde(default)]
+    pub play_count: i64,
+    #[serde(default)]
+    pub completion_count: i64,
+    #[serde(default)]
+    pub skip_count: i64,
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CloudTrackDeviceStat {
+    #[serde(default)]
+    pub user_id: String,
+    pub device_id: String,
+    pub track_id: String,
+    #[serde(default)]
+    pub play_count: i64,
+    #[serde(default, alias = "total_time_listened")]
+    pub total_seconds: f64,
+    #[serde(default)]
+    pub completion_count: i64,
+    #[serde(default)]
+    pub skip_count: i64,
+    #[serde(default)]
+    pub last_played_at: Option<i64>,
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudPlaylistSongRef {
     pub playlist_id: String,
@@ -234,6 +272,10 @@ pub struct SyncPayload {
     pub playlist_songs: Vec<CloudPlaylistSong>,
     #[serde(default)]
     pub song_stats: Vec<CloudSongStat>,
+    #[serde(default)]
+    pub daily_stats: Vec<CloudDailyStat>,
+    #[serde(default)]
+    pub track_device_stats: Vec<CloudTrackDeviceStat>,
     #[serde(default)]
     pub user_stats: Option<serde_json::Value>,
     #[serde(default)]

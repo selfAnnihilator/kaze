@@ -421,6 +421,8 @@ export interface StatsOverview {
   weekly_seconds: number;
   monthly_seconds: number;
   total_year_seconds: number;
+  lifetime_seconds: number;
+  history_started_at?: number | null;
   monthly_graph: DailyListeningPoint[];
   top_songs: RankedTrackItem[];
   top_artists: RankedArtistItem[];

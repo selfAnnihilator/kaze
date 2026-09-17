@@ -2,7 +2,7 @@ use crate::config::RankingWeightsConfig;
 use crate::core::error::{AppError, AppResult};
 use crate::database::models::TrackStatisticsRecord;
 use async_trait::async_trait;
-use chrono::{Datelike, Duration as ChronoDuration, NaiveDate, Utc};
+use chrono::{Datelike, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 
@@ -74,6 +74,10 @@ pub struct StatsOverview {
     pub weekly_seconds: f64,
     pub monthly_seconds: f64,
     pub total_year_seconds: f64,
+    #[serde(default)]
+    pub lifetime_seconds: f64,
+    #[serde(default)]
+    pub history_started_at: Option<i64>,
     pub monthly_graph: Vec<DailyListeningPoint>,
     pub top_songs: Vec<RankedTrackItem>,
     pub top_artists: Vec<RankedArtistItem>,
@@ -199,6 +203,33 @@ pub trait StatsRepository: Send + Sync {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedArtistItem>>;
+
+    async fn get_all_time_ranked_tracks(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedTrackItem>>;
+
+    async fn get_all_time_ranked_artists(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedArtistItem>>;
+
+    async fn record_daily_playback(
+        &self,
+        user_id: &str,
+        device_id: Option<&str>,
+        stat_date: &str,
+        seconds: f64,
+        is_meaningful: bool,
+        completed: bool,
+        skipped: bool,
+    ) -> AppResult<()>;
+
+    async fn backfill_daily_stats_from_history(&self, default_device_id: Option<&str>) -> AppResult<usize>;
 }
 
 #[derive(Clone)]
@@ -209,6 +240,17 @@ pub struct SqliteStatsRepository {
 impl SqliteStatsRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
+    }
+
+    pub async fn resolve_device_id(&self, explicit_id: Option<&str>) -> String {
+        if let Some(id) = explicit_id {
+            if !id.trim().is_empty() {
+                return id.to_string();
+            }
+        }
+        crate::cloud::device::get_or_create_device_id(&self.pool)
+            .await
+            .unwrap_or_else(|_| "legacy_device".to_string())
     }
 }
 
@@ -311,6 +353,74 @@ impl StatsRepository for SqliteStatsRepository {
         }
 
         Ok(())
+    }
+
+    async fn record_daily_playback(
+        &self,
+        user_id: &str,
+        device_id: Option<&str>,
+        stat_date: &str,
+        seconds: f64,
+        is_meaningful: bool,
+        completed: bool,
+        skipped: bool,
+    ) -> AppResult<()> {
+        let dev_id = self.resolve_device_id(device_id).await;
+        let now = Utc::now().timestamp();
+        let play_inc: i64 = if is_meaningful { 1 } else { 0 };
+        let comp_inc: i64 = if completed { 1 } else { 0 };
+        let skip_inc: i64 = if skipped { 1 } else { 0 };
+
+        sqlx::query(
+            "INSERT INTO daily_user_stats (
+                user_id, device_id, stat_date, listening_seconds, play_count, completion_count, skip_count, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, device_id, stat_date) DO UPDATE SET
+                 listening_seconds = daily_user_stats.listening_seconds + excluded.listening_seconds,
+                 play_count = daily_user_stats.play_count + excluded.play_count,
+                 completion_count = daily_user_stats.completion_count + excluded.completion_count,
+                 skip_count = daily_user_stats.skip_count + excluded.skip_count,
+                 updated_at = excluded.updated_at"
+        )
+        .bind(user_id)
+        .bind(&dev_id)
+        .bind(stat_date)
+        .bind(seconds)
+        .bind(play_inc)
+        .bind(comp_inc)
+        .bind(skip_inc)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to record daily playback: {}", e)))?;
+
+        Ok(())
+    }
+
+    async fn backfill_daily_stats_from_history(&self, default_device_id: Option<&str>) -> AppResult<usize> {
+        let dev_id = self.resolve_device_id(default_device_id).await;
+        let res = sqlx::query(
+            "INSERT OR IGNORE INTO daily_user_stats (
+                user_id, device_id, stat_date, listening_seconds, play_count, completion_count, skip_count, updated_at
+             )
+             SELECT
+                 COALESCE(h.user_id, 'default') as user_id,
+                 ? as device_id,
+                 strftime('%Y-%m-%d', datetime(h.started_at, 'unixepoch', 'localtime')) as stat_date,
+                 COALESCE(SUM(h.seconds_listened), 0.0) as listening_seconds,
+                 COALESCE(SUM(CASE WHEN h.seconds_listened >= 30.0 OR h.completed = 1 THEN 1 ELSE 0 END), 0) as play_count,
+                 COALESCE(SUM(h.completed), 0) as completion_count,
+                 COALESCE(SUM(h.skipped), 0) as skip_count,
+                 COALESCE(MAX(h.ended_at), MAX(h.started_at), strftime('%s', 'now')) as updated_at
+             FROM playback_history h
+             GROUP BY user_id, stat_date"
+        )
+        .bind(&dev_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to backfill daily stats from history: {}", e)))?;
+
+        Ok(res.rows_affected() as usize)
     }
 
     async fn set_track_like(&self, track_id: &str, like_status: i64) -> AppResult<()> {
@@ -583,7 +693,7 @@ impl StatsRepository for SqliteStatsRepository {
         selected_month: Option<u32>,
         weights: &RankingWeightsConfig,
     ) -> AppResult<StatsOverview> {
-        let now = Utc::now();
+        let now = chrono::Local::now();
         let current_year = now.date_naive().year();
         let target_year = selected_year.unwrap_or(current_year);
         let target_month = selected_month.unwrap_or_else(|| {
@@ -594,22 +704,32 @@ impl StatsRepository for SqliteStatsRepository {
             }
         });
 
-        // 1. Fetch available years from playback history and yearly archives
-        let year_rows: Vec<(Option<i32>,)> = sqlx::query_as(
-            "SELECT DISTINCT CAST(strftime('%Y', datetime(started_at, 'unixepoch', 'localtime')) AS INTEGER) as yr
-             FROM playback_history
-             WHERE user_id = ?
-             UNION
-             SELECT DISTINCT year as yr
-             FROM yearly_stats_archive
-             WHERE user_id = ?
-             ORDER BY yr DESC"
+        // Query lifetime listening seconds from track_statistics (all-time aggregate, includes cloud-restored data)
+        let lifetime_seconds: f64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(total_time_listened), 0.0) FROM track_statistics WHERE user_id = ?"
         )
         .bind(user_id)
-        .bind(user_id)
-        .fetch_all(&self.pool)
+        .fetch_one(&self.pool)
         .await
-        .unwrap_or_default();
+        .unwrap_or(0.0);
+
+        // Daily aggregates are the only timeline authority, including restored installs.
+        let min_date: Option<String> = sqlx::query_scalar(
+            "SELECT MIN(stat_date) FROM daily_user_stats WHERE user_id = ?")
+            .bind(user_id).fetch_one(&self.pool).await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let history_started_at = min_date.and_then(|date| {
+            use chrono::TimeZone;
+            chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d").ok()
+                .and_then(|day| day.and_hms_opt(0, 0, 0))
+                .and_then(|midnight| chrono::Local.from_local_datetime(&midnight).earliest())
+                .map(|dt| dt.timestamp())
+        });
+        let year_rows: Vec<(Option<i32>,)> = sqlx::query_as(
+            "SELECT DISTINCT CAST(substr(stat_date, 1, 4) AS INTEGER) as yr
+             FROM daily_user_stats WHERE user_id = ? ORDER BY yr DESC")
+            .bind(user_id).fetch_all(&self.pool).await
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         let mut available_years: Vec<i32> = year_rows.into_iter().filter_map(|r| r.0).collect();
         if !available_years.contains(&current_year) {
@@ -630,30 +750,20 @@ impl StatsRepository for SqliteStatsRepository {
             _ => 30,
         };
 
-        let start_of_month = NaiveDate::from_ymd_opt(target_year, target_month, 1)
-            .unwrap_or_default()
-            .and_hms_opt(0, 0, 0)
-            .unwrap_or_default()
-            .and_utc()
-            .timestamp();
-        let end_of_month = NaiveDate::from_ymd_opt(target_year, target_month, days_in_month)
-            .unwrap_or_default()
-            .and_hms_opt(23, 59, 59)
-            .unwrap_or_default()
-            .and_utc()
-            .timestamp();
+        let start_date_str = format!("{:04}-{:02}-01", target_year, target_month);
+        let end_date_str = format!("{:04}-{:02}-{:02}", target_year, target_month, days_in_month);
 
         let daily_rows: Vec<(String, f64)> = sqlx::query_as(
             "SELECT
-                strftime('%Y-%m-%d', datetime(started_at, 'unixepoch', 'localtime')) as day_date,
-                COALESCE(SUM(seconds_listened), 0.0) as total_seconds
-             FROM playback_history
-             WHERE user_id = ? AND started_at >= ? AND started_at <= ?
-             GROUP BY day_date"
+                stat_date as day_date,
+                COALESCE(SUM(listening_seconds), 0.0) as total_seconds
+             FROM daily_user_stats
+             WHERE user_id = ? AND stat_date >= ? AND stat_date <= ?
+             GROUP BY stat_date"
         )
         .bind(user_id)
-        .bind(start_of_month)
-        .bind(end_of_month)
+        .bind(&start_date_str)
+        .bind(&end_date_str)
         .fetch_all(&self.pool)
         .await
         .unwrap_or_default();
@@ -676,159 +786,54 @@ impl StatsRepository for SqliteStatsRepository {
             });
         }
 
-        // 2. Check if selected year is a past year
-        if target_year < current_year {
-            let archive: Option<(f64, String, String)> = sqlx::query_as(
-                "SELECT total_seconds, top_songs_json, top_artists_json FROM yearly_stats_archive
-                 WHERE user_id = ? AND year = ?"
-            )
-            .bind(user_id)
-            .bind(target_year)
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten();
-
-            if let Some((total_seconds, songs_json, artists_json)) = archive {
-                let top_songs: Vec<RankedTrackItem> = serde_json::from_str(&songs_json).unwrap_or_default();
-                let top_artists: Vec<RankedArtistItem> = serde_json::from_str(&artists_json).unwrap_or_default();
-                return Ok(StatsOverview {
-                    app_start_date,
-                    user_joined_date: user_joined_at,
-                    current_year,
-                    selected_year: target_year,
-                    available_years,
-                    selected_month: target_month,
-                    available_months,
-                    daily_seconds: 0.0,
-                    weekly_seconds: 0.0,
-                    monthly_seconds,
-                    total_year_seconds: total_seconds,
-                    monthly_graph,
-                    top_songs,
-                    top_artists,
-                    top_days: vec![],
-                });
-            }
-
-            // Not yet archived: compute past year and archive it
-            let start_of_yr = NaiveDate::from_ymd_opt(target_year, 1, 1)
-                .unwrap_or_default()
-                .and_hms_opt(0, 0, 0)
-                .unwrap_or_default()
-                .and_utc()
-                .timestamp();
-            let end_of_yr = NaiveDate::from_ymd_opt(target_year, 12, 31)
-                .unwrap_or_default()
-                .and_hms_opt(23, 59, 59)
-                .unwrap_or_default()
-                .and_utc()
-                .timestamp();
-
-            let total_seconds: f64 = sqlx::query_scalar(
-                "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-                 WHERE user_id = ? AND started_at >= ? AND started_at <= ?"
-            )
-            .bind(user_id)
-            .bind(start_of_yr)
-            .bind(end_of_yr)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0.0);
-
-            let top_songs = self.get_ranked_tracks_scoped(Some(user_id), Some(start_of_yr), Some(end_of_yr), weights, 10).await.unwrap_or_default();
-            let top_artists = self.get_ranked_artists_scoped(Some(user_id), Some(start_of_yr), Some(end_of_yr), weights, 10).await.unwrap_or_default();
-
-            let id = format!("{}_{}", user_id, target_year);
-            let songs_json = serde_json::to_string(&top_songs).unwrap_or_else(|_| "[]".to_string());
-            let artists_json = serde_json::to_string(&top_artists).unwrap_or_else(|_| "[]".to_string());
-            let _ = sqlx::query(
-                "INSERT OR REPLACE INTO yearly_stats_archive (id, user_id, year, total_seconds, top_songs_json, top_artists_json, archived_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)"
-            )
-            .bind(&id)
-            .bind(user_id)
-            .bind(target_year)
-            .bind(total_seconds)
-            .bind(&songs_json)
-            .bind(&artists_json)
-            .bind(now.timestamp())
-            .execute(&self.pool)
-            .await;
-
-            return Ok(StatsOverview {
-                app_start_date,
-                user_joined_date: user_joined_at,
-                current_year,
-                selected_year: target_year,
-                available_years,
-                selected_month: target_month,
-                available_months,
-                daily_seconds: 0.0,
-                weekly_seconds: 0.0,
-                monthly_seconds,
-                total_year_seconds: total_seconds,
-                monthly_graph,
-                top_songs,
-                top_artists,
-                top_days: vec![],
-            });
-        }
-
-        // 3. Current year stats
-        let start_of_day = now
-            .date_naive()
-            .and_hms_opt(0, 0, 0)
-            .unwrap_or_default()
-            .and_utc()
-            .timestamp();
-        let start_of_week = (now - ChronoDuration::days(7)).timestamp();
-        let start_of_year = NaiveDate::from_ymd_opt(current_year, 1, 1)
-            .unwrap_or_default()
-            .and_hms_opt(0, 0, 0)
-            .unwrap_or_default()
-            .and_utc()
-            .timestamp();
+        // 3. Current year stats from daily_user_stats
+        let today_str = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let week_ago_str = (chrono::Local::now() - ChronoDuration::days(6)).format("%Y-%m-%d").to_string();
+        let year_start_str = format!("{:04}-01-01", target_year);
+        let year_end_str = format!("{:04}-12-31", target_year);
 
         let daily_seconds: f64 = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE user_id = ? AND started_at >= ?"
+            "SELECT COALESCE(SUM(listening_seconds), 0.0) FROM daily_user_stats
+             WHERE user_id = ? AND stat_date = ?"
         )
         .bind(user_id)
-        .bind(start_of_day)
+        .bind(&today_str)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| AppError::Database(format!("daily_seconds query failed: {}", e)))?;
+        .unwrap_or(0.0);
 
         let weekly_seconds: f64 = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE user_id = ? AND started_at >= ?"
+            "SELECT COALESCE(SUM(listening_seconds), 0.0) FROM daily_user_stats
+             WHERE user_id = ? AND stat_date >= ? AND stat_date <= ?"
         )
         .bind(user_id)
-        .bind(start_of_week)
+        .bind(&week_ago_str)
+        .bind(&today_str)
         .fetch_one(&self.pool)
         .await
         .unwrap_or(0.0);
 
         let total_year_seconds: f64 = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(seconds_listened), 0.0) FROM playback_history
-             WHERE user_id = ? AND started_at >= ?"
+            "SELECT COALESCE(SUM(listening_seconds), 0.0) FROM daily_user_stats
+             WHERE user_id = ? AND stat_date >= ? AND stat_date <= ?"
         )
         .bind(user_id)
-        .bind(start_of_year)
+        .bind(&year_start_str)
+        .bind(&year_end_str)
         .fetch_one(&self.pool)
         .await
         .unwrap_or(0.0);
 
-        let top_songs = self.get_ranked_tracks_scoped(Some(user_id), Some(start_of_year), None, weights, 10).await.unwrap_or_default();
-        let top_artists = self.get_ranked_artists_scoped(Some(user_id), Some(start_of_year), None, weights, 10).await.unwrap_or_default();
+        // For all-time / current year rankings, base on track_statistics to encompass cloud-restored and local playback
+        let top_songs = self.get_all_time_ranked_tracks(user_id, weights, 10).await.unwrap_or_default();
+        let top_artists = self.get_all_time_ranked_artists(user_id, weights, 10).await.unwrap_or_default();
         let top_days = self.get_top_listening_days(user_id, 5).await.unwrap_or_default();
 
         Ok(StatsOverview {
             app_start_date,
             user_joined_date: user_joined_at,
             current_year,
-            selected_year: current_year,
+            selected_year: target_year,
             available_years,
             selected_month: target_month,
             available_months,
@@ -836,6 +841,8 @@ impl StatsRepository for SqliteStatsRepository {
             weekly_seconds,
             monthly_seconds,
             total_year_seconds,
+            lifetime_seconds,
+            history_started_at,
             monthly_graph,
             top_songs,
             top_artists,
@@ -846,12 +853,12 @@ impl StatsRepository for SqliteStatsRepository {
     async fn get_top_listening_days(&self, user_id: &str, limit: u32) -> AppResult<Vec<TopListeningDay>> {
         let rows: Vec<(String, String, f64)> = sqlx::query_as(
             "SELECT
-                strftime('%Y-%m-%d', datetime(started_at, 'unixepoch', 'localtime')) as day_date,
-                strftime('%w', datetime(started_at, 'unixepoch', 'localtime')) as day_of_week,
-                COALESCE(SUM(seconds_listened), 0.0) as total_seconds
-             FROM playback_history
+                stat_date as day_date,
+                strftime('%w', stat_date) as day_of_week,
+                COALESCE(SUM(listening_seconds), 0.0) as total_seconds
+             FROM daily_user_stats
              WHERE user_id = ?
-             GROUP BY day_date
+             GROUP BY stat_date
              HAVING total_seconds > 0
              ORDER BY total_seconds DESC
              LIMIT ?"
@@ -896,6 +903,9 @@ impl StatsRepository for SqliteStatsRepository {
         limit: u32,
     ) -> AppResult<Vec<RankedTrackItem>> {
         let uid = user_id.unwrap_or("default");
+        if window_end.is_none() {
+            return self.get_all_time_ranked_tracks(uid, weights, limit).await;
+        }
         let start_filter = window_start.unwrap_or(0);
         let end_filter = window_end.unwrap_or(i64::MAX);
 
@@ -958,6 +968,9 @@ impl StatsRepository for SqliteStatsRepository {
         limit: u32,
     ) -> AppResult<Vec<RankedArtistItem>> {
         let uid = user_id.unwrap_or("default");
+        if window_end.is_none() {
+            return self.get_all_time_ranked_artists(uid, weights, limit).await;
+        }
         let start_filter = window_start.unwrap_or(0);
         let end_filter = window_end.unwrap_or(i64::MAX);
 
@@ -996,6 +1009,96 @@ impl StatsRepository for SqliteStatsRepository {
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::Database(format!("Ranked artists query failed: {}", e)))?;
+
+        Ok(records)
+    }
+
+    async fn get_all_time_ranked_tracks(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedTrackItem>> {
+        let sql = format!("
+            SELECT
+                COALESCE(t.id, et.id, ts.track_id) as track_id,
+                COALESCE(t.title, et.title, ts.track_id) as title,
+                COALESCE(a.name, et.artist, 'Unknown Artist') as artist_name,
+                COALESCE(al.title, et.album) as album_title,
+                CAST(ts.play_count AS INTEGER) as play_count,
+                CAST(ts.total_time_listened AS REAL) as total_seconds,
+                CAST(ts.completion_count AS INTEGER) as completion_count,
+                CAST(ts.skip_count AS INTEGER) as skip_count,
+                (
+                    (? * ts.play_count) +
+                    (? * (ts.total_time_listened / 60.0)) +
+                    (? * ts.completion_count) +
+                    (? * ts.manual_like) -
+                    (? * ts.skip_count)
+                ) as score
+            FROM track_statistics ts
+            LEFT JOIN tracks t ON ts.track_id = t.id
+            LEFT JOIN artists a ON t.artist_id = a.id
+            LEFT JOIN albums al ON t.album_id = al.id
+            LEFT JOIN external_tracks et ON ts.track_id = et.id
+            WHERE ts.user_id = ?
+              AND (score > 0 OR ts.play_count > 0 OR ts.total_time_listened > 0)
+            ORDER BY score DESC, ts.total_time_listened DESC, ts.play_count DESC
+            LIMIT ?
+        ");
+
+        let records = sqlx::query_as::<_, RankedTrackItem>(&sql)
+            .bind(weights.play_count_weight)
+            .bind(weights.listening_duration_weight)
+            .bind(weights.completion_weight)
+            .bind(weights.user_preference_weight)
+            .bind(weights.skip_penalty)
+            .bind(user_id)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(format!("All-time ranked tracks query failed: {}", e)))?;
+
+        Ok(records)
+    }
+
+    async fn get_all_time_ranked_artists(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedArtistItem>> {
+        let sql = format!("
+            SELECT
+                COALESCE(a.id, et.artist, 'artist_' || COALESCE(a.name, et.artist, 'Unknown')) as artist_id,
+                COALESCE(a.name, et.artist, 'Unknown Artist') as name,
+                CAST(SUM(ts.play_count) AS INTEGER) as play_count,
+                CAST(SUM(ts.total_time_listened) AS REAL) as total_seconds,
+                (
+                    (? * SUM(ts.play_count)) +
+                    (? * (SUM(ts.total_time_listened) / 60.0)) -
+                    (? * SUM(ts.skip_count))
+                ) as score
+            FROM track_statistics ts
+            LEFT JOIN tracks t ON ts.track_id = t.id
+            LEFT JOIN artists a ON t.artist_id = a.id
+            LEFT JOIN external_tracks et ON ts.track_id = et.id
+            WHERE ts.user_id = ?
+            GROUP BY artist_id
+            HAVING score > 0 OR play_count > 0 OR total_seconds > 0
+            ORDER BY score DESC, total_seconds DESC, play_count DESC
+            LIMIT ?
+        ");
+
+        let records = sqlx::query_as::<_, RankedArtistItem>(&sql)
+            .bind(weights.play_count_weight)
+            .bind(weights.listening_duration_weight)
+            .bind(weights.skip_penalty)
+            .bind(user_id)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(format!("All-time ranked artists query failed: {}", e)))?;
 
         Ok(records)
     }

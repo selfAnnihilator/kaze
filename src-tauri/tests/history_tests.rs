@@ -80,8 +80,10 @@ async fn test_meaningful_play_and_history_logging() {
     let stats_repo = processor.history_service().stats_repo();
 
     // 1. Simulate a completed meaningful play on Track 1 (240 seconds listened)
+    let sid1 = "test-session-1".to_string();
     event_bus
         .publish(Event::PlaybackStarted {
+            session_id: sid1.clone(),
             track_id: track1_id.clone(),
             title: "Favorite Song".into(),
             artist: "The Prodigy".into(),
@@ -95,6 +97,7 @@ async fn test_meaningful_play_and_history_logging() {
 
     event_bus
         .publish(Event::TrackFinished {
+            session_id: sid1.clone(),
             track_id: track1_id.clone(),
             seconds_listened: 240.0,
             completed: true,
@@ -111,8 +114,10 @@ async fn test_meaningful_play_and_history_logging() {
     assert!(stats1.total_time_listened >= 240.0);
 
     // 2. Simulate an accidental click / skip on Track 2 (only 5 seconds listened)
+    let sid2 = "test-session-2".to_string();
     event_bus
         .publish(Event::PlaybackStarted {
+            session_id: sid2.clone(),
             track_id: track2_id.clone(),
             title: "Skipped Song".into(),
             artist: "Unknown Band".into(),
@@ -123,9 +128,10 @@ async fn test_meaningful_play_and_history_logging() {
 
     tokio::time::sleep(Duration::from_millis(50)).await;
 
-    // Stopped after 5 seconds
+    // Stopped after 5 seconds (position change does not update listened_secs)
     event_bus
         .publish(Event::PlaybackPositionChanged {
+            session_id: sid2.clone(),
             position_secs: 5.0,
             duration_secs: 180.0,
         })
@@ -133,7 +139,7 @@ async fn test_meaningful_play_and_history_logging() {
 
     tokio::time::sleep(Duration::from_millis(20)).await;
 
-    event_bus.publish(Event::PlaybackStopped).unwrap();
+    event_bus.publish(Event::PlaybackStopped { session_id: sid2.clone() }).unwrap();
 
     tokio::time::sleep(Duration::from_millis(50)).await;
 
@@ -143,7 +149,7 @@ async fn test_meaningful_play_and_history_logging() {
     assert_eq!(stats2.skip_count, 1, "Short playback should count as skip");
 
     // Check history list
-    let history_items = processor.history_service().get_recent_history(10).await.unwrap();
+    let history_items = processor.history_service().get_recent_history(10, "default").await.unwrap();
     assert_eq!(history_items.len(), 2);
 }
 
@@ -204,6 +210,7 @@ async fn test_multi_factor_rankings() {
         history_repo
             .record_playback(&PlaybackHistoryRecord {
                 id: Uuid::new_v4().to_string(),
+                user_id: "default".into(),
                 track_id: track1_id.clone(),
                 started_at: now - 3600,
                 ended_at: now,
@@ -229,6 +236,7 @@ async fn test_multi_factor_rankings() {
     history_repo
         .record_playback(&PlaybackHistoryRecord {
             id: Uuid::new_v4().to_string(),
+            user_id: "default".into(),
             track_id: track2_id.clone(),
             started_at: now - 1800,
             ended_at: now,

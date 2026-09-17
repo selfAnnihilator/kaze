@@ -42,6 +42,7 @@ async fn test_event_bus_broadcast() {
     let mut rx = bus.subscribe();
 
     bus.publish(Event::PlaybackStarted {
+        session_id: "session_123".into(),
         track_id: "track_123".into(),
         title: "Test Track".into(),
         artist: "Test Artist".into(),

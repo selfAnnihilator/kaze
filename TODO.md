@@ -1,6 +1,34 @@
 # Project Task Tracking
 
-## Current (Phase 19: Progressive Remote Audio Streaming & Speculative Pre-Resolution Engine - COMPLETE)
+## Current (Phase 22: Post-Audit Correctness Fixes — OPEN)
+
+Items sourced from the 2026-09-17 Phase 21 audit (`docs/audits/2026-09-17-statistics-history.md`).
+
+### P1 — must fix before long-term reliability sign-off
+- [ ] **Shutdown finalization** (`app.rs`): register Tauri `on_window_event`/`RunEvent::ExitRequested` handler to await `HistoryService` draining and commit the active session before process exit; add a pending-session queue for retry after a rolled-back atomic commit.
+- [ ] **Stale completion monitor** (`playback/service.rs:107–149`): reset `current_track_id_cache` on every manual Next/Previous/Stop/replacement so a delayed EOF cannot emit `TrackFinished` for the previous track. Cover short tracks that finish before the first monitor tick.
+- [ ] **Lifetime MAX undercount** (`cloud/sync_manager.rs`, `worker/src/index.ts`): design per-device per-track cumulative component records or an explicit delta/operation protocol so independent offline additions from two devices sum (not take the maximum). Document schema/protocol revision; do not apply SUM to existing snapshots.
+- [ ] **Legacy repair migration distribution** (`20260917000000_repair_legacy_user_stats.sql`): produce a separate, non-SQLx migration release strategy that handles arbitrary colliding tracks and does not assign guest history to an arbitrary user. Gate behind an explicit opt-in upgrade command for multi-installation distribution.
+- [ ] **Position ≠ elapsed time** (long-term): replace `max_position_secs` with active-play accounting that pauses during pause/seek/buffering gaps. Requires `PlaybackService` instrumentation; deferred but tracked.
+
+### P2 — should fix
+- [ ] **Unscoped local history query**: add `WHERE user_id = ?` to `SqliteHistoryRepository::get_recent_history` so multi-user installs cannot mix sessions.
+- [ ] **Legacy recording command**: retire `Command::RecordPlaybackSession` or require an explicit session UUID before supporting legacy callers; document removal in `EVENTS.md`.
+- [ ] **Start ownership race**: move session-owner capture to the `PlaybackService` start producer (before the event is published) so `HistoryService` receives it as part of the event rather than reading mutable state asynchronously.
+
+## Completed (Phase 21 Audit: Statistics & Listening-History Correctness — 2026-09-17)
+- [x] Atomic `record_session` transaction (history/lifetime/daily/affinity in one commit; UUID conflict is no-op).
+- [x] Session UUID and start-day label pinned at session creation; event subscription made synchronous before consumer spawn; lag logged and listener continues.
+- [x] Componentwise MAX daily merge locally and in Worker; daily reconcile errors propagate; local import uses requested account identity.
+- [x] Concurrent device-ID initialization safety (`config/`).
+- [x] Stats summary sources corrected: Past 7 Days = today minus 6 local dates; year/month use local calendar; year totals always from `daily_user_stats`; yearly-cache and raw-history fallbacks removed.
+- [x] Timeline epoch represented as local midnight to prevent prior-day display west of UTC.
+- [x] Implicit guest-session claiming removed from local and cloud registration paths.
+- [x] UI year-panel wording corrected to "daily totals" and "all-time rankings" (no layout/performance changes).
+- [x] Regression/evidence tests added; production-mutating migration test made opt-in; read-only live audit added as separate opt-in test.
+- [x] Test results: 125 Rust backend / 11 frontend / 2 Worker tests passing; `npm run build` passing.
+
+## Completed (Phase 19: Progressive Remote Audio Streaming & Speculative Pre-Resolution Engine - COMPLETE)
 - [x] Progressive Disk-Backed Audio Streaming:
   - Implemented `ProgressiveStreamReader` implementing Symphonia's `MediaSource` in non-seekable streaming mode.
   - Symphonia probes and starts audible playback as soon as ~64–128 KB is buffered to disk.

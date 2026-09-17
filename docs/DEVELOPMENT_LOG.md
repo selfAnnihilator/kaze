@@ -762,3 +762,141 @@ Hardening the remote audio playback disk cache in Kaze's unified Rust playback e
    - Measured sequential track startup latency dropping from **~13.68 s down to ~4.13 s (~70% faster)**, with pre-resolved cache hit latency of **0.002 ms**.
    - Total workspace tests: 88 integration and unit tests passing cleanly (`cargo test`).
 
+---
+
+## 2026-09-17 (Phase 20: Dual-Layer Statistics Architecture & Historical Ownership Repair)
+
+### Worked On
+1. Forensic audit and root-cause analysis of stats discrepancies between cloud-synced cumulative statistics (~23.6h / 765 plays in `track_statistics`) and the Stats/Profile UI which only displayed ~230 seconds from recent local `playback_history`.
+2. Implemented future-write session ownership architecture capturing the authenticated `user_id` at session inception, guaranteeing session-switch immunity and guest defaults.
+3. Authored and executed idempotent one-time historical ownership repair migration (`20260917000000_repair_legacy_user_stats.sql`) consolidating legacy `default` records into canonical user `103cc229-6f41-4da2-abb9-beba57ef0367`.
+4. Refactored `StatsRepository` and `StatsView` into a clear dual-layer architecture separating cumulative all-time metrics (`track_statistics`) from chronological session metrics (`playback_history`).
+
+### Changes
+1. **Future-Write Architecture (`src-tauri/src/`)**:
+   - Captured authenticated `user_id` when `Event::PlaybackStarted` fires and stored it in `ActiveSession`.
+   - Guaranteed that mid-session user logins or logouts do not alter the session's recorded owner upon `Event::TrackFinished`.
+   - Ensured guest sessions default safely to `"default"` without panics or fabricated IDs.
+2. **One-Time Idempotent Historical Repair (`migrations/20260917000000_repair_legacy_user_stats.sql`)**:
+   - Reassigned 44 `playback_history` records to canonical user `103cc229-6f41-4da2-abb9-beba57ef0367`.
+   - Merged 65 `track_statistics` rows via `ON CONFLICT(user_id, track_id) DO UPDATE SET` summing plays, total listened duration, completions, and skips.
+   - Reassigned and merged `artist_statistics`, `genre_statistics`, and `user_preferences`.
+   - Validated non-destructive execution and idempotency against verified pre-migration database backup.
+3. **Dual-Layer Stats Engine (`src-tauri/src/database/repositories/stats_repo.rs`)**:
+   - Added `lifetime_seconds` to `StatsOverview`, computed strictly from `SUM(track_statistics.total_time_listened)`.
+   - Added `history_started_at: Option<i64>` to `StatsOverview` indicating the earliest local session timestamp.
+   - Added `get_all_time_ranked_tracks` and `get_all_time_ranked_artists` utilizing `track_statistics` multi-factor scores, allowing cloud-restored tracks (e.g. *PHONKY TOWN* with 71 plays) to surface accurately in all-time rankings.
+   - Maintained strict `playback_history` basis for time-bucketed metrics (`daily_seconds`, `weekly_seconds`, `monthly_seconds`, `monthly_graph`, `top_days`) without fabricating historical dates.
+   - Clearly differentiated `total_year_seconds` as the timestamped session total for the current year.
+4. **UI Updates (`src/components/views/StatsView.tsx`, `src/types.ts`)**:
+   - Added "Lifetime Listening" stat card displaying cumulative listening time (e.g. 23h 38m).
+   - Added detailed timeline availability footnote in the monthly activity graph (e.g. "Detailed timeline history available since Sep 16, 2026").
+   - Labeled yearly card as "Tracked in {Year}" with subtitle "Timestamped session logs for {Year}".
+   - Zero performance regression: strictly adhered to `AGENTS.md` rules (no `backdrop-filter`, no high-frequency root re-renders, leaf component isolation).
+5. **Testing & Verification**:
+   - Authored unit and integration test suite `test_stats_lifetime_and_all_time_rankings_architecture` in `tests/stats_and_account_tests.rs`.
+   - Verified multi-tenant user isolation, non-double-counting, ranking delegation, and live database figures.
+   - Frontend built cleanly (`tsc && vite build`) and all 86 backend integration tests passed.
+
+---
+
+## 2026-09-17 (Phase 21: Three-Layer Compact Cloud-Synced Daily Statistics Architecture)
+
+### Worked On
+1. Extended Kaze's statistics architecture so date-level listening history is no longer local-only.
+2. Implemented compact, cloud-synced daily aggregate layer (`daily_user_stats`) while keeping granular `playback_history` strictly local (never synced to cloud, preserving privacy and minimizing bandwidth).
+3. Designed multi-device composite primary key `(user_id, device_id, stat_date)` with snapshot upsert semantics, eliminating additive double-counting on repeated syncs while enabling natural summation across distinct devices.
+4. Updated Cloudflare Worker D1 schema, sync endpoints (`GET /api/sync`, `POST /api/sync`), Rust sync engine, and `StatsRepository` queries.
+5. Authored comprehensive integration tests covering daily aggregate recording, multi-device summation, idempotent push/pull, and reinstallation restoration without local playback history.
+
+### Changes
+1. **Local Schema Migration (`migrations/20260917000001_daily_user_stats.sql`)**:
+   - Added table `daily_user_stats` with composite PK `(user_id, device_id, stat_date)` and columns `listening_seconds REAL`, `play_count INTEGER`, `completion_count INTEGER`, `skip_count INTEGER`, `updated_at INTEGER`.
+   - Added indexes on `(user_id, stat_date)` and `(user_id, updated_at)`.
+   - Included idempotent SQL backfill from existing local `playback_history` resolving persistent device UUID from `application_settings`.
+2. **Cloud D1 Schema & Sync Worker (`worker/`)**:
+   - Added migration `0004_daily_user_stats.sql` and updated `worker/schema.sql`.
+   - Extended `GET /api/sync` in `worker/src/index.ts` to return `data.daily_stats` scoped by `user_id`.
+   - Extended `POST /api/sync` to batch upsert incoming `payload.daily_stats` with `ON CONFLICT(user_id, device_id, stat_date) DO UPDATE ... WHERE excluded.updated_at >= daily_user_stats.updated_at`.
+3. **Rust Models & Sync Manager (`src-tauri/src/cloud/`)**:
+   - Added `CloudDailyStat` struct and added `daily_stats: Vec<CloudDailyStat>` to `SyncPayload`.
+   - In `prepare_local_sync_payload`, extracted local `daily_user_stats` for the active `user_id`.
+   - In `apply_remote_sync_payload`, monotonically upserted remote daily stats into local `daily_user_stats`.
+4. **Backend Stats Repository & Playback Integration (`src-tauri/src/`)**:
+   - Added `record_daily_playback` and `backfill_daily_stats_from_history` to `StatsRepository`.
+   - Updated `get_stats_overview`: `daily_seconds`, `weekly_seconds`, `monthly_seconds`, `total_year_seconds`, `monthly_graph`, and `get_top_listening_days` now query `daily_user_stats` (summing across devices) with fallback to `playback_history`.
+   - Updated `finalize_active_session` and `Command::RecordPlaybackSession` to invoke `record_daily_playback` whenever a session ends.
+   - `history_started_at`: parses earliest `stat_date` from `daily_user_stats` to UTC midnight.
+5. **Testing & Verification**:
+   - Authored `test_daily_aggregate_recording`: verified same-day accumulation, next-day new row creation, guest defaults, authenticated canonical IDs, and multi-tenant user isolation.
+   - Authored `test_multi_device_daily_sync`: verified multi-device summation (Device A 3600s + Device B 1000s = 4600s), snapshot updates (5200s), idempotent repeated pulls, and full timeline restoration on a fresh/reinstalled device with 0 `playback_history` rows.
+   - Authored `test_daily_user_stats_backfill`: verified idempotent backfill and multi-session daily aggregation.
+   - All 89 backend tests pass (`cargo test`).
+   - Frontend builds cleanly in 1.88s (`npm run build`).
+
+---
+
+## 2026-09-17 (Phase 21 Audit: Statistics & Listening-History Correctness)
+
+### Worked On
+Correctness audit of the Phase 21 statistics and listening-history stack. Production SQLite inspected read-only. No production database repair, Worker deployment, playback-streaming change, MPRIS work, or UI redesign performed.
+
+**Verdict:** Not ready for an unconditional long-term reliability sign-off. The three-layer separation is sound; targeted changes repair several real defects. Lifetime multi-device merging and playback-event accounting retain correctness gaps documented below.
+
+### Changes Made During Audit
+
+1. **Atomic `record_session` transaction** (`src-tauri/src/history/`): combined history/lifetime/daily/affinity writes into one SQLite transaction. Conflict on session UUID is a no-op; injected failure rolls back all three tables atomically. Routed both native and legacy recording paths through this function.
+2. **Session UUID and day label pinned at creation** (`HistoryService`): UUID allocated when the session opens and reused at persistence. Start-day label captured at event creation time, not finalization. Subscribed to events synchronously before spawning the consumer; lag is now logged and the listener continues rather than silently terminating.
+3. **Componentwise maximum for daily merging** (local `sync_manager.rs` and `worker/src/index.ts`): replaced timestamp-gated replacement with per-field `MAX`. Daily reconcile errors now propagate; local import uses the requested account identity.
+4. **Concurrent device-ID initialization safety** (`src-tauri/src/config/`): first callers now return the same stored ID rather than racing to insert.
+5. **Stats summary source corrections** (`StatsRepository`): Past 7 Days changed to today plus six prior local dates; current year/month use local calendar; selected-year totals always query `daily_user_stats`; yearly-cache and raw-history fallbacks removed from summary paths.
+6. **Timeline epoch as local midnight** (`StatsRepository`): earliest timeline date now represented as local midnight, preventing the frontend from displaying the prior day west of UTC.
+7. **Guest claiming removed** (`HistoryService`, cloud registration): implicit guest-session claiming removed from both local and cloud registration paths. Login/restore behavior was already isolation-correct.
+8. **UI wording** (`StatsView.tsx`): year panel text corrected to describe daily totals and all-time rankings. No layout or performance changes; all `AGENTS.md` performance guardrails preserved.
+9. **Tests**: added regression/evidence tests; made production-mutating migration test opt-in; added a separately opt-in read-only live audit test.
+
+### Test Results
+
+| Suite | Result |
+|---|---|
+| Full Rust backend | **125 passed, 0 failed, 4 ignored** (two live benchmarks, production migration, optional live audit) |
+| Read-only live repository audit | **1 passed** (explicitly opt-in) |
+| Frontend regression | **11 passed** across 4 files |
+| Worker regression/evidence | **2 passed** (SQLite D1 adapter; not a deployed-D1 test) |
+| `npm run build` | **passed** |
+
+### Remaining Correctness Gaps
+
+**P1:**
+- **Lifetime MAX undercount**: independent offline contributions from two devices merge to `MAX`, not `SUM`. A Worker regression test documents the observed `130 + 140 → 140` (not `170`) behavior. Fixing requires per-device per-track components or an explicit delta protocol; no schema redesign made during audit.
+- **Position ≠ elapsed time**: `max_position_secs` inflates with forward seeks and undercounts backward seeks; any backend EOF is published as `completed=true` including premature stream ends.
+- **Stale completion monitor**: `current_track_id_cache` in `playback/service.rs:107–149` is not cleared on manual Next/Previous/Stop; a delayed EOF can finalize the wrong track after a track change.
+- **No shutdown finalization**: `app.rs` has no exit/close handler; the active session can be lost on normal quit or crash; a rolled-back atomic commit consumes the session without retry queuing.
+- **Legacy repair migration** (`20260917000000_repair_legacy_user_stats.sql`): hardcoded canonical UUID, only two collision tracks merged; a third colliding track causes `UNIQUE constraint failed`. Unsafe for distribution to other installations; needs a separate release decision.
+
+**P2:**
+- **Start ownership race**: `HistoryService::on_playback_started` reads `current_user` asynchronously; an account switch in the narrow window can assign the session to the wrong user.
+- **Legacy recording command**: `Command::RecordPlaybackSession` generates a new UUID per call with no session identity; repeated calls duplicate sessions; account switching can pick the wrong owner.
+- **Unscoped local history query**: `SqliteHistoryRepository::get_recent_history` filters no `user_id`; multi-user installs can mix sessions.
+
+### Live Data Snapshot (2026-09-17, read-only)
+
+| Metric | Value |
+|---|---:|
+| Lifetime seconds | 85,116.22 |
+| Lifetime hours | 23.64 |
+| Track-stat rows | 66 |
+| Daily rows / devices | 2 / 1 |
+| Earliest / latest date | 2026-09-16 / 2026-09-17 |
+| Past 7 days | 259.14 s |
+| Top song / artist | PHONKY TOWN / Playaphonk |
+| Expected display | **23h 38m lifetime**, **3m today**, **4m week/month/year** |
+
+### Decisions
+- Audit scope deliberately excluded playback streaming internals, MPRIS, and Worker deployment; those remain unchanged.
+- `MAX` merge for daily rows is the correct semantic for nondecreasing counters; the lifetime undercount is a distinct, harder problem requiring protocol work.
+- The legacy repair migration is left as-is because changing an applied SQLx migration's checksum breaks startup; the correctness limitation is documented rather than patched in-place.
+
+### References
+- Full audit report: `docs/audits/2026-09-17-statistics-history.md`
+- Stats metric source map, full path matrix, risk register, and Worker test design in the audit document.

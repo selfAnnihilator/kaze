@@ -16,6 +16,7 @@ pub struct QueueItem {
 pub enum Event {
     // --- Playback State Changes ---
     PlaybackStarted {
+        session_id: String,
         track_id: String,
         title: String,
         artist: String,
@@ -23,14 +24,18 @@ pub enum Event {
         source: String,
     },
     PlaybackPaused {
+        session_id: String,
         track_id: String,
         position_secs: f64,
     },
     PlaybackResumed {
+        session_id: String,
         track_id: String,
         position_secs: f64,
     },
-    PlaybackStopped,
+    PlaybackStopped {
+        session_id: String,
+    },
     OnlinePlaybackRequested {
         track_id: String,
         title: String,
@@ -39,6 +44,7 @@ pub enum Event {
         duration_secs: f64,
     },
     PlaybackPositionChanged {
+        session_id: String,
         position_secs: f64,
         duration_secs: f64,
     },
@@ -55,14 +61,17 @@ pub enum Event {
         queue_track_ids: Vec<String>,
     },
     PlaybackError {
+        session_id: String,
         message: String,
     },
     PlaybackBuffering {
+        session_id: String,
         track_id: String,
     },
 
     // --- History & Track Milestones ---
     TrackFinished {
+        session_id: String,
         track_id: String,
         seconds_listened: f64,
         completed: bool,
