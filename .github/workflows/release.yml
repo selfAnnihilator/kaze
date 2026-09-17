@@ -7,28 +7,24 @@ on:
       - 'v*'
   # Also allow manual trigger from the GitHub Actions UI
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build and publish (e.g. v1.0.4)'
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  build-tauri:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux builds
-          - platform: ubuntu-22.04
-            args: '--target x86_64-unknown-linux-gnu'
-            label: 'linux-x86_64'
-          # Windows builds
-          - platform: windows-latest
-            args: '--target x86_64-pc-windows-msvc'
-            label: 'windows-x86_64'
-
-    runs-on: ${{ matrix.platform }}
-    name: Build (${{ matrix.label }})
-
+  # ── Linux Build Job ─────────────────────────────────────────────────────────
+  build-linux:
+    name: Build (linux-x86_64)
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +33,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'ubuntu-22.04' && 'x86_64-unknown-linux-gnu' || 'x86_64-pc-windows-msvc' }}
+          targets: x86_64-unknown-linux-gnu
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -56,7 +52,6 @@ jobs:
 
       # ── Linux system dependencies ───────────────────────────────────────
       - name: Install Linux system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -69,40 +64,248 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      # ── Build, sign, and publish ─────────────────────────────────────────
+      # ── Build and sign (build-only, no release publish) ─────────────────
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signing key for update packages — stored as a GitHub repo secret
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Kaze ${{ github.ref_name }}'
-          releaseBody: |
-            ## Kaze ${{ github.ref_name }}
+          args: '--target x86_64-unknown-linux-gnu'
 
-            > ⚠️ **Important Compatibility Notice:**
-            > This release includes a statistics/history storage migration and updated cloud sync format. Older builds are no longer compatible with the current sync backend and should be upgraded.
+      # ── Upload build outputs as workflow artifact ───────────────────────
+      - name: Upload Linux build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux
+          path: |
+            target/x86_64-unknown-linux-gnu/release/bundle/deb/Kaze_*
+            target/x86_64-unknown-linux-gnu/release/bundle/appimage/Kaze_*
+            target/x86_64-unknown-linux-gnu/release/bundle/rpm/Kaze*
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/Kaze_*
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/Kaze_*
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/Kaze*
+          if-no-files-found: error
 
-            Download the installer for your platform below:
+  # ── Windows Build Job ───────────────────────────────────────────────────────
+  build-windows:
+    name: Build (windows-x86_64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            | Platform | File | Notes |
-            |---|---|---|
-            | 🐧 Linux (Debian/Ubuntu) | `.deb` | Recommended for Ubuntu, Mint, Pop!_OS |
-            | 🐧 Linux (AppImage) | `.AppImage` | Works on any Linux distro |
-            | 🐧 Linux (RPM) | `.rpm` | For Fedora, openSUSE, RHEL |
-            | 🪟 Windows | `_x64-setup.exe` | NSIS installer, double-click to install |
-            | 🪟 Windows (MSI) | `_x64_en-US.msi` | Alternative Windows installer |
+      # ── Rust toolchain ──────────────────────────────────────────────────
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-            > **Already installed?** Just keep the app open — it checks for updates automatically and will restart with the new version.
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
 
-            > **First time?** See [INSTALL.md](https://github.com/${{ github.repository }}/blob/prod/INSTALL.md) for step-by-step instructions.
+      # ── Node.js / npm ───────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-            > *(Note: `.sig` files and `latest.json` are cryptographic verification files used internally by the auto-updater; you do not need to download them manually.)*
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
-          # Upload the updater JSON manifest so in-app updates work
-          includeUpdaterJson: true
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      # ── Build and sign (build-only, no release publish) ─────────────────
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          args: '--target x86_64-pc-windows-msvc'
+
+      # ── Upload build outputs as workflow artifact ───────────────────────
+      - name: Upload Windows build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-windows
+          path: |
+            target/x86_64-pc-windows-msvc/release/bundle/msi/Kaze_*
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/Kaze_*
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/Kaze_*
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Kaze_*
+          if-no-files-found: error
+
+  # ── Dedicated Publish Job ───────────────────────────────────────────────────
+  publish-release:
+    name: Publish Release
+    needs:
+      - build-linux
+      - build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag_info
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          [[ "$TAG" =~ ^v ]] || TAG="v$TAG"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: artifacts-*
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded release artifacts:"
+          ls -la release-artifacts
+
+      - name: Prepare release notes
+        run: |
+          cat << EOF > release_notes.md
+          ## Kaze ${RELEASE_TAG}
+
+          > ⚠️ **Important Compatibility Notice:**
+          > This release includes a statistics/history storage migration and updated cloud sync format. Older builds are no longer compatible with the current sync backend and should be upgraded.
+
+          Download the installer for your platform below:
+
+          | Platform | File | Notes |
+          |---|---|---|
+          | 🐧 Linux (Debian/Ubuntu) | \`.deb\` | Recommended for Ubuntu, Mint, Pop!_OS |
+          | 🐧 Linux (AppImage) | \`.AppImage\` | Works on any Linux distro |
+          | 🐧 Linux (RPM) | \`.rpm\` | For Fedora, openSUSE, RHEL |
+          | 🪟 Windows | \`_x64-setup.exe\` | NSIS installer, double-click to install |
+          | 🪟 Windows (MSI) | \`_x64_en-US.msi\` | Alternative Windows installer |
+
+          > **Already installed?** Just keep the app open — it checks for updates automatically and will restart with the new version.
+
+          > **First time?** See [INSTALL.md](https://github.com/${GITHUB_REPOSITORY}/blob/prod/INSTALL.md) for step-by-step instructions.
+
+          > *(Note: \`.sig\` files and \`latest.json\` are cryptographic verification files used internally by the auto-updater; you do not need to download them manually.)*
+          EOF
+
+      - name: Generate updater manifest (latest.json)
+        run: |
+          node -e '
+          const fs = require("fs");
+          const path = require("path");
+
+          const artifactsDir = path.resolve("release-artifacts");
+          const tag = process.env.RELEASE_TAG;
+          const repo = process.env.GITHUB_REPOSITORY;
+          const releaseNotes = fs.readFileSync("release_notes.md", "utf8").trim();
+          const version = tag.replace(/^v/, "");
+
+          const files = fs.readdirSync(artifactsDir);
+          console.log("Processing artifacts in " + artifactsDir + ":", files);
+
+          const baseUrl = `https://github.com/${repo}/releases/download/${tag}`;
+          const platforms = {};
+
+          for (const file of files) {
+            if (!file.endsWith(".sig")) continue;
+            const targetFile = file.slice(0, -4);
+            if (!files.includes(targetFile)) continue;
+
+            const sigContent = fs.readFileSync(path.join(artifactsDir, file), "utf8").trim();
+            const downloadUrl = `${baseUrl}/${targetFile}`;
+
+            if (targetFile.endsWith(".AppImage")) {
+              platforms["linux-x86_64"] = { signature: sigContent, url: downloadUrl };
+              platforms["linux-x86_64-appimage"] = { signature: sigContent, url: downloadUrl };
+            } else if (targetFile.endsWith(".deb")) {
+              platforms["linux-x86_64-deb"] = { signature: sigContent, url: downloadUrl };
+            } else if (targetFile.endsWith(".rpm")) {
+              platforms["linux-x86_64-rpm"] = { signature: sigContent, url: downloadUrl };
+            } else if (targetFile.endsWith(".msi")) {
+              platforms["windows-x86_64-msi"] = { signature: sigContent, url: downloadUrl };
+              if (!platforms["windows-x86_64"]) {
+                platforms["windows-x86_64"] = { signature: sigContent, url: downloadUrl };
+              }
+            } else if (targetFile.endsWith(".exe") || targetFile.includes("setup")) {
+              platforms["windows-x86_64-nsis"] = { signature: sigContent, url: downloadUrl };
+              platforms["windows-x86_64"] = { signature: sigContent, url: downloadUrl };
+            }
+          }
+
+          const manifest = {
+            version,
+            notes: releaseNotes,
+            pub_date: new Date().toISOString(),
+            platforms
+          };
+
+          const manifestPath = path.join(artifactsDir, "latest.json");
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+          console.log("Successfully generated " + manifestPath + ":\n", JSON.stringify(manifest, null, 2));
+          '
+
+      - name: Create or update draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, updating title and notes..."
+            gh release edit "$TAG" --title "Kaze $TAG" --notes-file release_notes.md
+          else
+            echo "Creating draft release for $TAG..."
+            gh release create "$TAG" \
+              --draft \
+              --title "Kaze $TAG" \
+              --notes-file release_notes.md
+          fi
+
+      - name: Upload artifacts to GitHub release with retry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          cd release-artifacts
+
+          # Collect list of files to upload
+          shopt -s nullglob
+          FILES=( * )
+          echo "Found ${#FILES[@]} artifacts to upload for release $TAG:"
+          printf ' - %s\n' "${FILES[@]}"
+
+          for file in "${FILES[@]}"; do
+            [ -f "$file" ] || continue
+            echo "=========================================="
+            echo "Uploading: $file"
+            echo "=========================================="
+            uploaded=0
+            for attempt in 1 2 3; do
+              echo "Attempt $attempt of 3..."
+              if gh release upload "$TAG" "$file" --clobber; then
+                echo "✓ Successfully uploaded $file"
+                uploaded=1
+                break
+              fi
+              echo "⚠ Upload of $file failed on attempt $attempt"
+              if [ "$attempt" -lt 3 ]; then
+                wait_secs=$(( attempt * 10 ))
+                echo "Waiting ${wait_secs}s before next attempt..."
+                sleep "$wait_secs"
+              fi
+            done
+            if [ "$uploaded" -ne 1 ]; then
+              echo "✗ Fatal: Failed to upload $file after 3 attempts."
+              exit 1
+            fi
+          done
+
+          echo "=========================================="
+          echo "All release artifacts uploaded successfully!"
+          echo "=========================================="
