@@ -265,12 +265,125 @@ impl DownloadProvider for AudiusProvider {
         }
         Ok(())
     }
-}
+
+    /// Resolves a direct, stable Audius streaming URL for the given query.
+    ///
+    /// Strategy:
+    ///   1. Search Audius for `query` (title + artist combined), limiting to
+    ///      publicly downloadable/streamable tracks.
+    ///   2. Apply strict matching: the result's artist *and* title must both
+    ///      appear (case-insensitive) in the query string.  This prevents
+    ///      unrelated Audius tracks from being preferred over a correct yt-dlp
+    ///      result.
+    ///   3. Return the `/stream` endpoint URL (permanent, no expiry) together
+    ///      with the track duration parsed from the API response.
+    ///
+    /// Returns at most one candidate because Audius streaming URLs are stable
+    /// and we only want the best match.
+    async fn resolve_stream_urls(
+        &self,
+        query: &str,
+    ) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
+        let query_lc = query.trim().to_lowercase();
+        if query_lc.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Fetch raw track data so we can read duration (not exposed by
+        // parse_tracks which only produces DownloadSearchResult).
+        let response: Value = match self
+            .client
+            .get(format!("{API_BASE}/tracks/search"))
+            .query(&[
+                ("query", query.trim()),
+                ("only_downloadable", "true"),
+                ("include_purchaseable", "false"),
+                ("limit", "10"),
+            ])
+            .timeout(Duration::from_secs(8))
+            .send()
+            .await
+            .and_then(|r| r.error_for_status())
+        {
+            Ok(resp) => match resp.json::<Value>().await {
+                Ok(v) => v,
+                Err(_) => return Ok(Vec::new()),
+            },
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let Some(tracks) = response.get("data").and_then(Value::as_array) else {
+            return Ok(Vec::new());
+        };
+
+        for track in tracks {
+            let id = match track.get("id").and_then(Value::as_str) {
+                Some(id) if !id.is_empty() && id.len() <= 80 && id.chars().all(|c| c.is_ascii_alphanumeric()) => id,
+                _ => continue,
+            };
+            let artist = match track.pointer("/user/name").and_then(Value::as_str) {
+                Some(a) if !a.is_empty() => a.trim(),
+                _ => continue,
+            };
+            let title = match track.get("title").and_then(Value::as_str) {
+                Some(t) if !t.is_empty() => t.trim(),
+                _ => continue,
+            };
+
+            // Gating / availability checks — same rules as parse_tracks.
+            if track.get("downloadable").and_then(Value::as_bool) != Some(true) { continue; }
+            if track.get("is_download_gated").and_then(Value::as_bool) == Some(true) { continue; }
+            if track.get("is_stream_gated").and_then(Value::as_bool) == Some(true) { continue; }
+            if track.get("is_purchaseable").and_then(Value::as_bool) == Some(true) { continue; }
+            if track.get("is_purchasable").and_then(Value::as_bool) == Some(true) { continue; }
+            if track.pointer("/access/download").and_then(Value::as_bool) == Some(false) { continue; }
+            if !ungated(track.get("download_conditions")) { continue; }
+            if !ungated(track.get("stream_conditions")) { continue; }
+
+            // Strict match: both artist and title must appear in the query.
+            let artist_lc = artist.to_lowercase();
+            let title_lc = title.to_lowercase();
+            if !query_lc.contains(&artist_lc) || !query_lc.contains(&title_lc) {
+                continue;
+            }
+
+            let duration = track
+                .get("duration")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0);
+
+            // Duration guard — same 60–900s window as yt-dlp candidates.
+            if !(60.0..=900.0).contains(&duration) {
+                continue;
+            }
+
+            let stream_url = format!("{API_BASE}/tracks/{id}/stream");
+            let result = DownloadSearchResult {
+                id: format!("audius_{id}"),
+                provider: "audius".to_string(),
+                username: artist.to_string(),
+                filename: safe_name(&format!("{artist} - {title}.mp3")),
+                file_size: 0,
+                bitrate: None,
+                sample_rate: None,
+                format: "mp3".to_string(),
+                slots_free: true,
+                speed_bps: 0,
+            };
+
+            self.available_tracks.write().await.insert(result.id.clone());
+            return Ok(vec![(stream_url, duration, Some(result))]);
+        }
+
+        Ok(Vec::new())
+    }
+} // impl DownloadProvider for AudiusProvider
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
 
     #[test]
     fn only_public_downloadable_tracks_are_offered() {

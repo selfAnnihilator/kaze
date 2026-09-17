@@ -298,12 +298,29 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
     let config = AppConfig::default_with_dirs();
     let cache_dir = config.cache_dir.join("remote-audio");
     tokio::fs::create_dir_all(&cache_dir).await.unwrap();
-    let cache_key = "online:test-song:queue artist:queued stream";
+    let cache_key = format!("full:v2:{}", "online:test-song:queue artist:queued stream");
     let mut hasher = sha2::Sha256::new();
     hasher.update(cache_key.as_bytes());
     let hash = format!("{:x}", hasher.finalize());
     let cached_file = cache_dir.join(format!("{}.audio", hash));
-    tokio::fs::write(&cached_file, vec![0u8; 10000]).await.unwrap();
+    
+    // Write valid WAV header so Symphonia accepts the cached file
+    let samples = vec![0u8; 16_000];
+    let mut bytes = Vec::with_capacity(44 + samples.len());
+    bytes.extend_from_slice(b"RIFF");
+    bytes.extend_from_slice(&(36u32 + samples.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(b"WAVEfmt ");
+    bytes.extend_from_slice(&16u32.to_le_bytes());
+    bytes.extend_from_slice(&1u16.to_le_bytes());
+    bytes.extend_from_slice(&1u16.to_le_bytes());
+    bytes.extend_from_slice(&8000u32.to_le_bytes());
+    bytes.extend_from_slice(&16000u32.to_le_bytes());
+    bytes.extend_from_slice(&2u16.to_le_bytes());
+    bytes.extend_from_slice(&16u16.to_le_bytes());
+    bytes.extend_from_slice(b"data");
+    bytes.extend_from_slice(&(samples.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&samples);
+    tokio::fs::write(&cached_file, bytes).await.unwrap();
 
     processor
         .dispatch_command(Command::PlayTrack {

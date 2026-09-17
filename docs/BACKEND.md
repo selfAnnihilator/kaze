@@ -17,10 +17,13 @@ src-tauri/src/
 │
 ├── playback/
 │   ├── mod.rs
-│   ├── service.rs           // PlaybackService orchestrating playback logic
+│   ├── service.rs           // PlaybackService orchestrating playback logic & next-track pre-resolution
 │   ├── backend.rs           // AudioBackend trait & RodioAudioBackend
-│   ├── queue.rs             // Playback queue, shuffle, and repeat state
-│   └── stream.rs            // StreamPlaybackManager: bounded LRU cache & remote stream resolution
+│   ├── decoder.rs           // Symphonia decoding pipeline & streaming source integration
+│   ├── progressive.rs       // ProgressiveStreamReader & live buffer synchronization
+│   ├── queue.rs             // Playback queue, peek_next lookahead, shuffle, and repeat state
+│   ├── resolution_cache.rs  // Bounded TTL-aware source resolution cache
+│   └── stream.rs            // StreamPlaybackManager: bounded LRU cache, resolve_source_only & streaming
 │
 ├── library/
 │   ├── mod.rs

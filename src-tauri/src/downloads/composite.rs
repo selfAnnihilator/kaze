@@ -156,14 +156,97 @@ impl DownloadProvider for CompositeDownloadProvider {
     }
 
     async fn resolve_stream_url(&self, query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
-        if self.ytdlp.is_available() {
-            self.ytdlp.resolve_stream_url(query).await
-        } else {
-            Ok(None)
-        }
+        Ok(self.resolve_stream_urls(query).await?.into_iter().next())
     }
 
+    /// Resolves streamable audio URL candidates using a staged approach:
+    ///
+    /// **Phase 1 – direct providers (Audius + Internet Archive in parallel)**
+    ///   Both providers are queried concurrently.  If *either* returns a valid
+    ///   candidate it is returned immediately; yt-dlp is never invoked.
+    ///   Direct providers have permanent or very long-lived URLs and complete in
+    ///   ~100–500ms.
+    ///
+    /// **Phase 2 – yt-dlp fallback**
+    ///   Only reached when Phase 1 yields no candidates.  yt-dlp is the
+    ///   universal fallback (8–20s) and returns signed, time-limited URLs.
+    ///
+    /// This design means yt-dlp is bypassed entirely for tracks that are
+    /// available on Audius or Internet Archive, cutting resolution from ~12s to
+    /// ~0.5s for those tracks.
     async fn resolve_stream_urls(&self, query: &str) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
+        use tokio::select;
+
+        // -----------------------------------------------------------------
+        // Phase 1: race Audius and Archive concurrently.
+        // We use select! with two branches so the first provider to return a
+        // non-empty result wins and we cancel the other immediately (by letting
+        // its future drop).
+        // -----------------------------------------------------------------
+        let audius = self.audius.clone();
+        let archive = self.archive.clone();
+        let q = query.to_string();
+
+        // Spawn both as independent tasks so we can cancel the winner's
+        // "opponent" by simply dropping the losing future.
+        let audius_fut = {
+            let q2 = q.clone();
+            async move { audius.resolve_stream_urls(&q2).await }
+        };
+        let archive_fut = {
+            let q3 = q.clone();
+            async move { archive.resolve_stream_urls(&q3).await }
+        };
+
+        // Pin both futures.
+        tokio::pin!(audius_fut);
+        tokio::pin!(archive_fut);
+
+        // Keep track of which branch finished first.
+        let mut audius_done = false;
+        let mut archive_done = false;
+        let mut audius_result: Vec<(String, f64, Option<DownloadSearchResult>)> = Vec::new();
+        let mut archive_result: Vec<(String, f64, Option<DownloadSearchResult>)> = Vec::new();
+
+        // We poll both futures until we have results from both or one winner.
+        loop {
+            select! {
+                res = &mut audius_fut, if !audius_done => {
+                    audius_done = true;
+                    if let Ok(candidates) = res {
+                        if !candidates.is_empty() {
+                            // Direct Audius match — return immediately.
+                            return Ok(candidates);
+                        }
+                        audius_result = Vec::new(); // empty, continue
+                    }
+                    if archive_done {
+                        break; // Both finished, no direct hits.
+                    }
+                }
+                res = &mut archive_fut, if !archive_done => {
+                    archive_done = true;
+                    if let Ok(candidates) = res {
+                        if !candidates.is_empty() {
+                            // Direct Archive match — return immediately.
+                            return Ok(candidates);
+                        }
+                        archive_result = Vec::new(); // empty, continue
+                    }
+                    if audius_done {
+                        break; // Both finished, no direct hits.
+                    }
+                }
+            }
+            if audius_done && archive_done {
+                break;
+            }
+        }
+        let _ = (audius_result, archive_result); // suppress unused warning
+
+        // -----------------------------------------------------------------
+        // Phase 2: fall back to yt-dlp (slower but universal).
+        // -----------------------------------------------------------------
         if self.ytdlp.is_available() {
             self.ytdlp.resolve_stream_urls(query).await
         } else {

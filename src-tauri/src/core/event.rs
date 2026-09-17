@@ -57,6 +57,9 @@ pub enum Event {
     PlaybackError {
         message: String,
     },
+    PlaybackBuffering {
+        track_id: String,
+    },
 
     // --- History & Track Milestones ---
     TrackFinished {

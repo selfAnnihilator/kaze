@@ -28,16 +28,23 @@ impl SymphoniaSource {
             AppError::Playback(format!("Failed to open file for playback: {}", e))
         })?;
 
-        // Std File implements symphonia's MediaSource directly and provides accurate byte_len,
-        // avoiding Rodio's ReadSeekSource bug which drops byte_len and panics on ISO-MP4/M4A streams.
-        let mss = MediaSourceStream::new(Box::new(file), Default::default());
-
         let mut hint = Hint::new();
         if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
             if ext != "audio" {
                 hint.with_extension(ext);
             }
         }
+
+        let desc = file_path.display().to_string();
+        Self::from_media_source(Box::new(file), hint, &desc)
+    }
+
+    pub fn from_media_source(
+        source: Box<dyn symphonia::core::io::MediaSource>,
+        hint: Hint,
+        source_desc: &str,
+    ) -> AppResult<Self> {
+        let mss = MediaSourceStream::new(source, Default::default());
 
         let format_opts = FormatOptions {
             enable_gapless: true,
@@ -47,7 +54,7 @@ impl SymphoniaSource {
 
         let mut probed = symphonia::default::get_probe()
             .format(&hint, mss, &format_opts, &metadata_opts)
-            .map_err(|e| AppError::Playback(format!("Audio format probe error for {}: {}", file_path.display(), e)))?;
+            .map_err(|e| AppError::Playback(format!("Audio format probe error for {}: {}", source_desc, e)))?;
 
         let stream = match probed.format.default_track() {
             Some(s) => s,
@@ -56,7 +63,7 @@ impl SymphoniaSource {
                 .tracks()
                 .iter()
                 .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-                .ok_or_else(|| AppError::Playback(format!("No supported audio track in {}", file_path.display())))?,
+                .ok_or_else(|| AppError::Playback(format!("No supported audio track in {}", source_desc)))?,
         };
 
         let track_id = stream.id;

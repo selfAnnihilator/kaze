@@ -125,6 +125,55 @@ impl PlaybackQueue {
         }
     }
 
+    /// Peeks at the item that would follow the current one without mutating any
+    /// queue state.  Respects shuffle order and the current repeat mode:
+    ///
+    /// * **RepeatMode::One**  — returns the *current* item (it will replay).
+    /// * **RepeatMode::All**  — wraps around when the current track is last.
+    /// * **RepeatMode::None** — returns `None` when the current track is last.
+    ///
+    /// This is the single authoritative implementation for "what comes next?"
+    /// lookups; callers must never reproduce the shuffle-index arithmetic
+    /// themselves.
+    pub fn peek_next(&self) -> Option<&QueueItem> {
+        if self.items.is_empty() {
+            return None;
+        }
+
+        // RepeatOne — same track replays on natural completion.
+        if self.repeat_mode == crate::core::command::RepeatMode::One {
+            return self.current();
+        }
+
+        if self.shuffle_enabled && !self.shuffle_indices.is_empty() {
+            let current_pos_in_shuffle = self
+                .current_index
+                .and_then(|curr| self.shuffle_indices.iter().position(|&idx| idx == curr))
+                .unwrap_or(0);
+
+            return if current_pos_in_shuffle + 1 < self.shuffle_indices.len() {
+                let next_idx = self.shuffle_indices[current_pos_in_shuffle + 1];
+                self.items.get(next_idx)
+            } else if self.repeat_mode == crate::core::command::RepeatMode::All {
+                // Wrap: first position in the shuffle order.
+                let first_idx = self.shuffle_indices[0];
+                self.items.get(first_idx)
+            } else {
+                None
+            };
+        }
+
+        // Sequential playback.
+        match self.current_index {
+            Some(curr) if curr + 1 < self.items.len() => self.items.get(curr + 1),
+            Some(_) if self.repeat_mode == crate::core::command::RepeatMode::All => {
+                self.items.first()
+            }
+            None if !self.items.is_empty() => self.items.first(),
+            _ => None,
+        }
+    }
+
     /// Advances to the next track for an explicit user action. Repeat-one does not
     /// trap the Next button on the current track.
     pub fn next(&mut self) -> Option<&QueueItem> {
@@ -307,5 +356,57 @@ mod tests {
         assert_eq!(queue.previous().map(|entry| entry.track_id.as_str()), Some("first"));
         assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("second"));
         assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("queued"));
+    }
+
+    // --- peek_next tests ---
+
+    #[test]
+    fn peek_next_sequential_does_not_mutate() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("a"), item("b"), item("c")], Some(0));
+        // Peeking twice must yield the same result.
+        assert_eq!(queue.peek_next().map(|e| e.track_id.as_str()), Some("b"));
+        assert_eq!(queue.peek_next().map(|e| e.track_id.as_str()), Some("b"));
+        // Current must still be "a".
+        assert_eq!(queue.current().map(|e| e.track_id.as_str()), Some("a"));
+    }
+
+    #[test]
+    fn peek_next_at_end_with_no_repeat_returns_none() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("only")], Some(0));
+        assert_eq!(queue.peek_next(), None);
+    }
+
+    #[test]
+    fn peek_next_at_end_with_repeat_all_wraps() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("x"), item("y")], Some(1));
+        queue.set_repeat_mode(RepeatMode::All);
+        assert_eq!(queue.peek_next().map(|e| e.track_id.as_str()), Some("x"));
+    }
+
+    #[test]
+    fn peek_next_with_repeat_one_returns_current() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("solo"), item("next")], Some(0));
+        queue.set_repeat_mode(RepeatMode::One);
+        // Peek must see the *current* track because it will replay.
+        assert_eq!(queue.peek_next().map(|e| e.track_id.as_str()), Some("solo"));
+        // Queue must still be unmutated.
+        assert_eq!(queue.current().map(|e| e.track_id.as_str()), Some("solo"));
+    }
+
+    #[test]
+    fn peek_next_no_current_returns_first() {
+        let mut queue = PlaybackQueue::new();
+        queue.set_queue(vec![item("first"), item("second")], None);
+        assert_eq!(queue.peek_next().map(|e| e.track_id.as_str()), Some("first"));
+    }
+
+    #[test]
+    fn peek_next_empty_queue_returns_none() {
+        let queue = PlaybackQueue::new();
+        assert_eq!(queue.peek_next(), None);
     }
 }

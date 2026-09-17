@@ -14,14 +14,22 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
-use tracing::info;
+use tracing::{debug, info};
 use uuid::Uuid;
+
+fn default_can_seek() -> bool {
+    true
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlaybackStateDto {
     pub current_track_id: Option<String>,
     pub is_playing: bool,
     pub is_paused: bool,
+    #[serde(default = "default_can_seek")]
+    pub can_seek: bool,
+    #[serde(default)]
+    pub is_buffering: bool,
     pub position_secs: f64,
     pub duration_secs: f64,
     pub volume: f32,
@@ -41,7 +49,9 @@ pub struct PlaybackService {
     current_source: Arc<RwLock<String>>,
     volume: Arc<RwLock<f32>>,
     stream_manager: Arc<std::sync::RwLock<Option<Arc<StreamPlaybackManager>>>>,
+    active_stream_state: Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
     pool: Option<SqlitePool>,
+    preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl PlaybackService {
@@ -60,7 +70,9 @@ impl PlaybackService {
             current_source: Arc::new(RwLock::new("library".to_string())),
             volume: Arc::new(RwLock::new(0.8)),
             stream_manager: Arc::new(std::sync::RwLock::new(None)),
+            active_stream_state: Arc::new(std::sync::RwLock::new(None)),
             pool,
+            preresolution_handle: Arc::new(Mutex::new(None)),
         });
 
         // Spawn periodic position monitor and track finish detector
@@ -72,8 +84,20 @@ impl PlaybackService {
         service
     }
 
-    pub fn set_stream_manager(&self, stream_manager: Arc<StreamPlaybackManager>) {
-        *self.stream_manager.write().unwrap() = Some(stream_manager);
+    pub fn set_stream_manager(&self, sm: Arc<StreamPlaybackManager>) {
+        sm.set_event_bus(self.event_bus.clone());
+        let mut w = self.stream_manager.write().unwrap();
+        *w = Some(sm);
+    }
+
+    pub async fn cancel_active_stream(&self) {
+        if let Some(state) = self.active_stream_state.write().unwrap().take() {
+            state.set_cancelled();
+        }
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        if let Some(sm) = sm_opt {
+            sm.cancel_active_stream().await;
+        }
     }
 
     /// Background task monitoring playback position and track completion.
@@ -269,34 +293,57 @@ impl PlaybackService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", item.track_id)))?;
 
+        // Cancel any active progressive stream before starting a new track
+        self.cancel_active_stream().await;
+
         let is_online = track.format == "online" || track.file_path.starts_with("online://");
-        let (file_path_to_play, actual_duration) = if is_online {
+        let prepared = if is_online {
             let sm_opt = self.stream_manager.read().unwrap().clone();
             if let Some(sm) = sm_opt {
                 let artist = track.artist_name.as_deref().unwrap_or("Unknown Artist");
-                let (cached_path, dur) = sm
-                    .resolve_and_prepare_audio(
-                        &track.id,
-                        &track.title,
-                        artist,
-                    )
-                    .await?;
-                (cached_path.to_string_lossy().to_string(), dur)
+                sm.resolve_and_prepare_playback(
+                    &track.id,
+                    &track.title,
+                    artist,
+                )
+                .await?
             } else {
                 return Err(AppError::Playback(
                     "Stream manager not initialized for online audio playback".to_string(),
                 ));
             }
         } else {
-            (track.file_path.clone(), track.duration_secs)
+            crate::playback::stream::PreparedPlayback::LocalFile {
+                path: PathBuf::from(&track.file_path),
+                duration: track.duration_secs,
+            }
+        };
+
+        let (file_path_to_protect, actual_duration) = match prepared {
+            crate::playback::stream::PreparedPlayback::LocalFile { path, duration } => {
+                *self.active_stream_state.write().unwrap() = None;
+                self.load_and_play_file(&path.to_string_lossy()).await?;
+                (path.to_string_lossy().to_string(), duration)
+            }
+            crate::playback::stream::PreparedPlayback::ProgressiveStream {
+                source,
+                part_path,
+                target_path,
+                duration,
+                state,
+            } => {
+                *self.active_stream_state.write().unwrap() = Some(state);
+                let mut backend = self.backend.lock().await;
+                backend.load_and_play_source(source, Some(&part_path))?;
+                (target_path.to_string_lossy().to_string(), duration)
+            }
         };
 
         *self.current_duration_secs.write().await = actual_duration;
-        self.load_and_play_file(&file_path_to_play).await?;
 
         let sm_opt = self.stream_manager.read().unwrap().clone();
         if let Some(sm) = sm_opt {
-            sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_play))).await;
+            sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_protect))).await;
         }
 
         let src = self.current_source.read().await.clone();
@@ -353,6 +400,10 @@ impl PlaybackService {
     }
 
     pub async fn stop(&self) -> AppResult<()> {
+        if let Some(task) = self.preresolution_handle.lock().await.take() {
+            task.abort();
+        }
+        self.cancel_active_stream().await;
         let mut backend = self.backend.lock().await;
         backend.stop()?;
         *self.current_duration_secs.write().await = 0.0;
@@ -367,6 +418,14 @@ impl PlaybackService {
     }
 
     pub async fn seek(&self, position_secs: f64) -> AppResult<()> {
+        let can_seek = match &*self.active_stream_state.read().unwrap() {
+            Some(state) => state.is_completed(),
+            None => true,
+        };
+        if !can_seek {
+            return Err(AppError::Playback("Seeking is unavailable while audio is streaming. It will become available once the track is fully cached.".into()));
+        }
+
         let dur = Duration::from_secs_f64(position_secs.max(0.0));
         let mut backend = self.backend.lock().await;
         backend.seek(dur)?;
@@ -593,6 +652,15 @@ impl PlaybackService {
             q_guard.items().iter().map(|i| i.track_id.clone()).collect()
         };
 
+        let can_seek = match &*self.active_stream_state.read().unwrap() {
+            Some(state) => state.is_completed(),
+            None => true,
+        };
+        let is_buffering = match &*self.active_stream_state.read().unwrap() {
+            Some(state) => state.is_buffering(),
+            None => false,
+        };
+
         PlaybackStateDto {
             current_track_id: if has_active_track {
                 q_guard.current().map(|i| i.track_id.clone())
@@ -601,6 +669,8 @@ impl PlaybackService {
             },
             is_playing,
             is_paused,
+            can_seek,
+            is_buffering,
             position_secs: pos,
             duration_secs: duration,
             volume: vol,
@@ -613,24 +683,70 @@ impl PlaybackService {
     }
 
     async fn emit_queue_updated(&self) {
-        let q_guard = self.queue.read().await;
-        let has_active_track = q_guard.current_index().is_some();
+        let (items, current_index, queue_track_ids) = {
+            let q_guard = self.queue.read().await;
+            let has_active_track = q_guard.current_index().is_some();
 
-        let queue_track_ids: Vec<String> = if has_active_track {
-            if let Some(curr) = q_guard.current_index() {
-                q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+            let queue_track_ids: Vec<String> = if has_active_track {
+                if let Some(curr) = q_guard.current_index() {
+                    q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+                } else {
+                    q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+                }
             } else {
                 q_guard.items().iter().map(|i| i.track_id.clone()).collect()
-            }
-        } else {
-            q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+            };
+
+            (q_guard.items().to_vec(), q_guard.current_index(), queue_track_ids)
         };
 
         let _ = self.event_bus.publish(Event::QueueUpdated {
-            items: q_guard.items().to_vec(),
-            current_index: q_guard.current_index(),
+            items,
+            current_index,
             queue_track_ids,
         });
+
+        self.trigger_next_track_preresolution().await;
+    }
+
+    /// Speculatively pre-resolves the next upcoming track in the background.
+    ///
+    /// Guardrails:
+    /// - Peeks the next item using `PlaybackQueue::peek_next()`, honoring normal/shuffle/repeat.
+    /// - Only resolves the audio source (URL / local path) and caches it in memory.
+    /// - Never starts downloading audio, creating `.part` files, or mutating playback.
+    /// - Previous speculative resolution tasks are cancelled if still running.
+    pub async fn trigger_next_track_preresolution(&self) {
+        let (next_item, is_active) = {
+            let q = self.queue.read().await;
+            (q.peek_next().cloned(), q.current_index().is_some())
+        };
+
+        if !is_active {
+            return;
+        }
+
+        let Some(item) = next_item else {
+            return;
+        };
+
+        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let Some(sm) = sm_opt else {
+            return;
+        };
+
+        // Abort previous in-flight pre-resolution task if still running
+        let mut handle_guard = self.preresolution_handle.lock().await;
+        if let Some(prev) = handle_guard.take() {
+            prev.abort();
+        }
+
+        let task = tokio::spawn(async move {
+            debug!(track_id = %item.track_id, title = %item.title, artist = %item.artist, "Background pre-resolving next track audio source");
+            let _ = sm.resolve_source_only(&item.track_id, &item.title, &item.artist).await;
+        });
+
+        *handle_guard = Some(task);
     }
 
     pub async fn clear_remote_audio_cache(&self) -> AppResult<(u64, usize)> {

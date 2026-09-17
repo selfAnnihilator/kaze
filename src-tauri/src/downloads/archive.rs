@@ -409,6 +409,88 @@ impl DownloadProvider for ArchiveProvider {
         }
         Ok(())
     }
+
+    /// Resolves a direct, stable Internet Archive download URL for the given query.
+    ///
+    /// Strategy:
+    ///   1. Calls `search_music(artist, title)` where artist and title are
+    ///      extracted from the query by splitting on " - " or " ".
+    ///   2. Applies strict matching: both the result's `username` (creator) and
+    ///      `filename` stem must appear (case-insensitive) in the query.
+    ///   3. Returns the direct `archive.org/download/…` URL if matched.
+    ///
+    /// Internet Archive download URLs are permanent — no expiry parameter.
+    async fn resolve_stream_urls(
+        &self,
+        query: &str,
+    ) -> AppResult<Vec<(String, f64, Option<super::types::DownloadSearchResult>)>> {
+        let query_lc = query.trim().to_lowercase();
+        if query_lc.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Attempt to split "artist title" into two parts.
+        let (artist, title) = if let Some((a, t)) = query.trim().split_once(" - ") {
+            (a.trim(), t.trim())
+        } else if let Some((a, t)) = query.trim().split_once(' ') {
+            (a.trim(), t.trim())
+        } else {
+            ("", query.trim())
+        };
+
+        let results = match self.search_music(artist, title).await {
+            Ok(r) => r,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let files = self.files.read().await;
+
+        for result in &results {
+            let creator_lc = result.username.to_lowercase();
+            // Derive a stem from the filename (drop extension).
+            let stem = std::path::Path::new(&result.filename)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&result.filename)
+                .to_lowercase();
+
+            // Strict match: the query must contain both the creator name and
+            // at least part of the filename stem.
+            if !query_lc.contains(&creator_lc) {
+                continue;
+            }
+            // Check that a meaningful portion of the stem appears in the query.
+            let stem_words: Vec<&str> = stem.split_whitespace().collect();
+            let matching_words = stem_words
+                .iter()
+                .filter(|&&w| w.len() > 2 && query_lc.contains(w))
+                .count();
+            if matching_words == 0 {
+                continue;
+            }
+
+            // Retrieve the cached URL.
+            let archive_file = match files.get(&result.id) {
+                Some(f) => f,
+                None => continue,
+            };
+
+            // Use a heuristic duration (file_size / ~16 kB/s for mp3/ogg/m4a).
+            let estimated_duration = if result.file_size > 0 {
+                (result.file_size as f64 / 16_000.0).clamp(60.0, 900.0)
+            } else {
+                continue; // Unknown duration, skip.
+            };
+
+            return Ok(vec![(
+                archive_file.url.to_string(),
+                estimated_duration,
+                Some(result.clone()),
+            )]);
+        }
+
+        Ok(Vec::new())
+    }
 }
 
 #[cfg(test)]

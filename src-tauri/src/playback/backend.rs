@@ -11,6 +11,13 @@ use tracing::{debug, info, warn};
 /// Abstraction trait for audio output backends.
 pub trait AudioBackend: Send + Sync {
     fn load_and_play(&mut self, file_path: &Path) -> AppResult<()>;
+    fn load_and_play_source(&mut self, _source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
+        if let Some(path) = file_path {
+            self.load_and_play(path)
+        } else {
+            Err(AppError::Playback("Backend does not support direct PlayerSource without file path".into()))
+        }
+    }
     fn pause(&mut self) -> AppResult<()>;
     fn resume(&mut self) -> AppResult<()>;
     fn stop(&mut self) -> AppResult<()>;
@@ -59,6 +66,26 @@ impl RodioAudioBackend {
 }
 
 impl AudioBackend for RodioAudioBackend {
+    fn load_and_play_source(&mut self, source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
+        if let Some(ref handle) = self.stream_handle {
+            let sink = Sink::try_new(handle).map_err(|e| {
+                AppError::Playback(format!("Failed to initialize audio sink: {}", e))
+            })?;
+            sink.set_volume(self.volume);
+            sink.append(source);
+            sink.play();
+
+            self.sink = Some(sink);
+            self.current_path = file_path.map(|p| p.to_path_buf());
+            self.is_paused = false;
+
+            info!(path = ?file_path, "Rodio playback started");
+            Ok(())
+        } else {
+            Err(AppError::Playback("Audio output device unavailable".into()))
+        }
+    }
+
     fn load_and_play(&mut self, file_path: &Path) -> AppResult<()> {
         if !file_path.exists() {
             return Err(AppError::Playback(format!(
@@ -67,41 +94,23 @@ impl AudioBackend for RodioAudioBackend {
             )));
         }
 
-        // Recreate sink to clear any previous buffer completely
-        if let Some(ref handle) = self.stream_handle {
-            let sink = Sink::try_new(handle).map_err(|e| {
-                AppError::Playback(format!("Failed to initialize audio sink: {}", e))
-            })?;
-            sink.set_volume(self.volume);
+        let source = match crate::playback::decoder::SymphoniaSource::new(file_path) {
+            Ok(symphonia_source) => {
+                crate::playback::decoder::PlayerSource::Symphonia(symphonia_source)
+            }
+            Err(err) => {
+                debug!(error = %err, path = %file_path.display(), "SymphoniaSource failed, attempting rodio::Decoder fallback");
+                let file = File::open(file_path).map_err(|e| {
+                    AppError::Playback(format!("Failed to open file for playback: {}", e))
+                })?;
+                let rodio_decoder = Decoder::new(BufReader::new(file)).map_err(|e| {
+                    AppError::Playback(format!("Audio decoder failure for {}: {}", file_path.display(), e))
+                })?;
+                crate::playback::decoder::PlayerSource::Rodio(rodio_decoder)
+            }
+        };
 
-            let source = match crate::playback::decoder::SymphoniaSource::new(file_path) {
-                Ok(symphonia_source) => {
-                    crate::playback::decoder::PlayerSource::Symphonia(symphonia_source)
-                }
-                Err(err) => {
-                    debug!(error = %err, path = %file_path.display(), "SymphoniaSource failed, attempting rodio::Decoder fallback");
-                    let file = File::open(file_path).map_err(|e| {
-                        AppError::Playback(format!("Failed to open file for playback: {}", e))
-                    })?;
-                    let rodio_decoder = Decoder::new(BufReader::new(file)).map_err(|e| {
-                        AppError::Playback(format!("Audio decoder failure for {}: {}", file_path.display(), e))
-                    })?;
-                    crate::playback::decoder::PlayerSource::Rodio(rodio_decoder)
-                }
-            };
-
-            sink.append(source);
-            sink.play();
-
-            self.sink = Some(sink);
-            self.current_path = Some(file_path.to_path_buf());
-            self.is_paused = false;
-
-            info!(path = %file_path.display(), "Rodio playback started");
-            Ok(())
-        } else {
-            Err(AppError::Playback("Audio output device unavailable".into()))
-        }
+        self.load_and_play_source(source, Some(file_path))
     }
 
     fn pause(&mut self) -> AppResult<()> {
@@ -201,6 +210,15 @@ impl MockAudioBackend {
 }
 
 impl AudioBackend for MockAudioBackend {
+    fn load_and_play_source(&mut self, _source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
+        let mut path_guard = self.loaded_path.lock().unwrap();
+        *path_guard = file_path.map(|p| p.to_path_buf());
+        self.is_paused_flag.store(false, Ordering::SeqCst);
+        self.is_finished_flag.store(false, Ordering::SeqCst);
+        self.position_millis.store(0, Ordering::SeqCst);
+        Ok(())
+    }
+
     fn load_and_play(&mut self, file_path: &Path) -> AppResult<()> {
         let mut path_guard = self.loaded_path.lock().unwrap();
         *path_guard = Some(file_path.to_path_buf());

@@ -105,3 +105,28 @@ Cached audio ──────┘
   - `Command::ClearRemoteAudioCache`: Safely removes all un-protected cached audio, returning `bytes_freed` and `files_removed`.
   - `Query::GetRemoteAudioCacheStats`: Returns `total_size_bytes`, `file_count`, `max_size_bytes`, and `partial_file_count`.
 
+---
+
+## 6. Progressive Disk-Backed Streaming Engine
+
+Cold remote track playback utilizes non-seekable disk-backed streaming (`ProgressiveStreamReader`) to eliminate the multi-second download-to-completion delay:
+* **Early Audible Playback**: Symphonia probes and begins decoding audio as soon as ~64–128 KB of audio data is buffered to `<sha256>.audio.part`.
+* **Condvar-Driven Reader**: `ProgressiveStreamReader` blocks on a `std::sync::Condvar` when the consumer reaches EOF while downloading is active, waking up immediately on new chunks, completion, cancellation, or error.
+* **Atomic Finalization**: Once background downloading finishes, the `.part` file is atomically renamed to `<sha256>.audio` and entered into the LRU cache.
+
+---
+
+## 7. Source Resolution Optimization & Speculative Pre-Resolution
+
+To prevent source resolution (especially yt-dlp queries) from stalling track playback:
+* **Lookup Priority Hierarchy**:
+  `Local Library DB` → `Downloads Directory` → `Disk Audio Cache (full:v2:*)` → `Resolved-URL Memory Cache` → `Staged Provider Resolution`.
+* **In-Memory Resolution Cache (`ResolutionCache`)**:
+  Bounded to 100 entries. Entries are TTL-aware, extracting provider expiry timestamps (e.g. YouTube CDN `expire` query parameter) or defaulting to a conservative 4-hour window with safety margin. Evicts expired entries first, then LRU.
+* **Staged Direct Resolution**:
+  Direct audio providers (Audius, Internet Archive) are raced concurrently in Phase 1 (~100–500ms). If a match is found under strict title/artist validation, yt-dlp is completely bypassed. Only misses fall back to yt-dlp.
+* **Speculative Background Lookahead**:
+  `PlaybackQueue::peek_next()` serves as the single non-mutating authority for upcoming track lookahead across sequential, repeat-one, repeat-all, and shuffle modes. Whenever a track begins playing, `PlaybackService` triggers `resolve_source_only()` for the upcoming track in the background, pre-resolving its URL without downloading audio.
+* **Seamless Track Transitions**:
+  Sequential track playback transitions experience a resolution cache hit in <0.01 ms, dropping total cold track transition latency from ~13.7s down to ~2–4s.
+

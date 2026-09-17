@@ -728,3 +728,37 @@ Hardening the remote audio playback disk cache in Kaze's unified Rust playback e
    - Authored `src-tauri/tests/cache_tests.rs` with 14 unit and integration tests covering key generation, naming, mtime touch, LRU eviction, active track protection, active download protection, drop guards, stale part cleanup, IPC commands, and boundary safety.
    - All 71 tests passing across the entire workspace (`cargo test`).
 
+---
+
+## 2026-09-17 (Phase 19 Part 2: Progressive Playback & Source Resolution Latency Optimization)
+
+### Worked On
+1. Progressive disk-backed remote audio streaming eliminating multi-second full-file download wait.
+2. Remote audio source resolution latency optimization eliminating the 8–20s yt-dlp bottleneck via in-memory TTL caching, staged direct provider resolution (Audius + Internet Archive), and speculative background lookahead pre-resolution.
+
+### Changes
+1. **Progressive Streaming Engine (`src-tauri/src/playback/progressive.rs`)**:
+   - Implemented `ProgressiveStreamReader` implementing `std::io::Read`, `std::io::Seek` (non-seekable during stream), and `symphonia::core::io::MediaSource`.
+   - Consumer thread blocks on `std::sync::Condvar` when awaiting download producer bytes, waking up immediately on new data, completion, cancellation, or failure.
+   - Stream begins probing with Symphonia and playing through Rodio after buffering ~64–128 KB.
+   - Background task continues downloading chunk-by-chunk and atomically finalizes `.part` to `<sha256>.audio` on completion.
+2. **In-Memory Resolution Cache (`src-tauri/src/playback/resolution_cache.rs`)**:
+   - Bounded thread-safe `ResolutionCache` capped at 100 entries (`RESOLUTION_CACHE_MAX`).
+   - TTL-aware: parses `expire` UNIX timestamp from YouTube CDN signed URLs with a 10-minute safety margin or defaults to conservative 4-hour window.
+   - Eviction policy: removes all expired entries first, then evicts oldest by `resolved_at`.
+   - Supports explicit entry invalidation (`invalidate()`).
+3. **Staged Direct Provider Resolution (`src-tauri/src/downloads/`)**:
+   - Added `resolve_stream_urls` to `AudiusProvider` and `ArchiveProvider` with strict artist/title matching.
+   - In `CompositeDownloadProvider`, raced direct providers (Audius + Internet Archive) concurrently in Phase 1 (~100–500ms).
+   - If direct match succeeds, yt-dlp is completely bypassed; Phase 2 (yt-dlp) only executes on misses.
+4. **Queue Lookahead & Speculative Pre-Resolution (`src-tauri/src/playback/`)**:
+   - Added `PlaybackQueue::peek_next()` as the single authoritative non-mutating lookahead respecting sequential, repeat-one, repeat-all, and shuffle modes.
+   - Implemented `StreamPlaybackManager::resolve_source_only()` following strict priority: local DB → downloads folder → disk cache hit → resolution cache hit → provider resolution. Never downloads audio or creates `.part` files.
+   - Implemented `PlaybackService::trigger_next_track_preresolution()` spawning an asynchronous task with an independent cancellation handle, automatically aborting stale pre-resolution tasks when the queue or active track changes.
+   - Added automatic invalidation and fresh provider retry in `resolve_and_prepare_playback` if a cached candidate fails progressive streaming.
+5. **Testing & Benchmark Verification**:
+   - Authored `tests/source_resolution_tests.rs` (10 tests covering cache hits, TTL expiry, max capacity, query param parsing, peek_next, and zero-download guardrails).
+   - Authored `run_preresolved_sequential_playback_benchmark` in `tests/benchmark_live_progressive.rs`.
+   - Measured sequential track startup latency dropping from **~13.68 s down to ~4.13 s (~70% faster)**, with pre-resolved cache hit latency of **0.002 ms**.
+   - Total workspace tests: 88 integration and unit tests passing cleanly (`cargo test`).
+
