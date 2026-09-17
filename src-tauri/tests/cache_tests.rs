@@ -440,3 +440,19 @@ async fn test_stream_playback_manager_downloads_preview_stream() {
     assert_eq!(metadata.len(), 100);
 }
 
+#[test]
+fn test_symphonia_source_decodes_cached_audio() {
+    use music_player_backend::playback::decoder::SymphoniaSource;
+    use rodio::source::Source;
+
+    let path = std::path::Path::new("/home/abhi/.cache/music-player/remote-audio/80ad09229f8315e26989c61b06ebdb687e96ed46a53d46748d61719b8c744487.audio");
+    if !path.exists() {
+        return;
+    }
+
+    let mut source = SymphoniaSource::new(path).expect("SymphoniaSource must initialize without error");
+    assert!(source.channels() > 0);
+    assert!(source.sample_rate() > 0);
+    assert!(source.next().is_some());
+}
+

@@ -74,12 +74,21 @@ impl AudioBackend for RodioAudioBackend {
             })?;
             sink.set_volume(self.volume);
 
-            let file = File::open(file_path).map_err(|e| {
-                AppError::Playback(format!("Failed to open file for playback: {}", e))
-            })?;
-            let source = Decoder::new(BufReader::new(file)).map_err(|e| {
-                AppError::Playback(format!("Audio decoder failure for {}: {}", file_path.display(), e))
-            })?;
+            let source = match crate::playback::decoder::SymphoniaSource::new(file_path) {
+                Ok(symphonia_source) => {
+                    crate::playback::decoder::PlayerSource::Symphonia(symphonia_source)
+                }
+                Err(err) => {
+                    debug!(error = %err, path = %file_path.display(), "SymphoniaSource failed, attempting rodio::Decoder fallback");
+                    let file = File::open(file_path).map_err(|e| {
+                        AppError::Playback(format!("Failed to open file for playback: {}", e))
+                    })?;
+                    let rodio_decoder = Decoder::new(BufReader::new(file)).map_err(|e| {
+                        AppError::Playback(format!("Audio decoder failure for {}: {}", file_path.display(), e))
+                    })?;
+                    crate::playback::decoder::PlayerSource::Rodio(rodio_decoder)
+                }
+            };
 
             sink.append(source);
             sink.play();
