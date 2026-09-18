@@ -10,7 +10,7 @@ on:
     inputs:
       tag:
         description: 'Release tag to build and publish (e.g. v1.0.4)'
-        required: false
+        required: true
         type: string
 
 concurrency:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # ── Linux Build Job ─────────────────────────────────────────────────────────
@@ -146,6 +146,8 @@ jobs:
       - build-linux
       - build-windows
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
