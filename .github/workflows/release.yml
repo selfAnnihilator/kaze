@@ -204,6 +204,7 @@ jobs:
           const path = require("path");
 
           const artifactsDir = path.resolve("release-artifacts");
+          const uploadDir = path.resolve("release-upload");
           const tag = process.env.RELEASE_TAG;
           const repo = process.env.GITHUB_REPOSITORY;
           const releaseNotes = fs.readFileSync("release_notes.md", "utf8").trim();
@@ -214,8 +215,33 @@ jobs:
           const createUpdaterArtifacts = tauriConf?.bundle?.createUpdaterArtifacts;
           console.log("Read tauri.conf.json - createUpdaterArtifacts:", createUpdaterArtifacts);
 
-          const files = fs.readdirSync(artifactsDir);
-          console.log("Processing artifacts in " + artifactsDir + ":", files);
+          // Recursively discover all regular files under release-artifacts
+          function walk(dir) {
+            return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+              const full = path.join(dir, entry.name);
+              return entry.isDirectory() ? walk(full) : [full];
+            });
+          }
+
+          const allDiscoveredFiles = walk(artifactsDir);
+          console.log(`Discovered ${allDiscoveredFiles.length} files under ${artifactsDir}:`, allDiscoveredFiles);
+
+          // Flatten discovered release artifacts into release-upload/
+          fs.rmSync(uploadDir, { recursive: true, force: true });
+          fs.mkdirSync(uploadDir, { recursive: true });
+
+          const basenameMap = new Map();
+          for (const filePath of allDiscoveredFiles) {
+            const base = path.basename(filePath);
+            if (basenameMap.has(base)) {
+              throw new Error(`Duplicate artifact basename detected: ${base} (${filePath} vs ${basenameMap.get(base)})`);
+            }
+            basenameMap.set(base, filePath);
+            fs.copyFileSync(filePath, path.join(uploadDir, base));
+          }
+
+          const files = fs.readdirSync(uploadDir);
+          console.log(`Flattened ${files.length} artifacts into ${uploadDir}:`, files);
 
           const baseUrl = `https://github.com/${repo}/releases/download/${tag}`;
 
@@ -229,29 +255,29 @@ jobs:
           } else {
             // createUpdaterArtifacts is true (Tauri v2 native mode: uncompressed installer)
             linuxFile = files.find(f => f.endsWith(".AppImage") && !f.endsWith(".sig"));
-            // Prefer NSIS setup executable configured in tauri.conf.json, fallback to MSI
+            // Canonical Windows updater target: NSIS -setup.exe (fallback to .exe or .msi)
             windowsFile = files.find(f => (f.endsWith("-setup.exe") || f.endsWith(".exe")) && !f.endsWith(".sig")) || files.find(f => f.endsWith(".msi") && !f.endsWith(".sig"));
           }
 
           if (!linuxFile) {
-            throw new Error("Could not find a canonical Linux updater artifact (.AppImage) in " + artifactsDir);
+            throw new Error("Could not find a canonical Linux updater artifact (.AppImage) in " + uploadDir);
           }
           if (!windowsFile) {
-            throw new Error("Could not find a canonical Windows updater artifact (-setup.exe / .msi) in " + artifactsDir);
+            throw new Error("Could not find a canonical Windows updater artifact (-setup.exe / .msi) in " + uploadDir);
           }
 
           const linuxSigFile = linuxFile + ".sig";
           const windowsSigFile = windowsFile + ".sig";
 
           if (!files.includes(linuxSigFile)) {
-            throw new Error(`Matching Linux signature file (${linuxSigFile}) not found in ${artifactsDir}`);
+            throw new Error(`Matching Linux signature file (${linuxSigFile}) not found in ${uploadDir}`);
           }
           if (!files.includes(windowsSigFile)) {
-            throw new Error(`Matching Windows signature file (${windowsSigFile}) not found in ${artifactsDir}`);
+            throw new Error(`Matching Windows signature file (${windowsSigFile}) not found in ${uploadDir}`);
           }
 
-          const linuxSig = fs.readFileSync(path.join(artifactsDir, linuxSigFile), "utf8").trim();
-          const windowsSig = fs.readFileSync(path.join(artifactsDir, windowsSigFile), "utf8").trim();
+          const linuxSig = fs.readFileSync(path.join(uploadDir, linuxSigFile), "utf8").trim();
+          const windowsSig = fs.readFileSync(path.join(uploadDir, windowsSigFile), "utf8").trim();
 
           const platforms = {
             "linux-x86_64": {
@@ -271,7 +297,7 @@ jobs:
             platforms
           };
 
-          const manifestPath = path.join(artifactsDir, "latest.json");
+          const manifestPath = path.join(uploadDir, "latest.json");
           fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
           console.log("Successfully generated " + manifestPath + ":\n", JSON.stringify(manifest, null, 2));
           '
@@ -297,7 +323,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ env.RELEASE_TAG }}"
-          cd release-artifacts
+          cd release-upload
 
           # Collect list of files to upload
           shopt -s nullglob
