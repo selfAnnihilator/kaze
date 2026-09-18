@@ -223,15 +223,44 @@ jobs:
             });
           }
 
-          const allDiscoveredFiles = walk(artifactsDir);
-          console.log(`Discovered ${allDiscoveredFiles.length} files under ${artifactsDir}:`, allDiscoveredFiles);
+          function isReleaseAsset(filePath) {
+            const base = path.basename(filePath);
 
-          // Flatten discovered release artifacts into release-upload/
+            // Explicitly ignore known internal packaging files and directories
+            if (base === "control.tar.gz" || base === "data.tar.gz" || base === "debian-binary") return false;
+            if (base === "control" || base === "Kaze.desktop" || base.endsWith(".png")) return false;
+
+            // Linux release assets
+            if (base.endsWith(".AppImage") || base.endsWith(".AppImage.sig")) return true;
+            if (base.endsWith(".deb") || base.endsWith(".deb.sig")) return true;
+            if (base.endsWith(".rpm") || base.endsWith(".rpm.sig")) return true;
+
+            // Windows release assets
+            if (base.endsWith(".msi") || base.endsWith(".msi.sig")) return true;
+            if (base.endsWith("-setup.exe") || base.endsWith("-setup.exe.sig")) return true;
+
+            // Optional updater archives if v1Compatible
+            if (base.endsWith(".AppImage.tar.gz") || base.endsWith(".AppImage.tar.gz.sig")) return true;
+            if (base.endsWith(".nsis.zip") || base.endsWith(".nsis.zip.sig") || base.endsWith(".msi.zip") || base.endsWith(".msi.zip.sig")) return true;
+
+            return false;
+          }
+
+          const allDiscoveredFiles = walk(artifactsDir);
+          const filteredFiles = allDiscoveredFiles.filter(isReleaseAsset);
+
+          console.log("=== ALL DISCOVERED FILE COUNT ===");
+          console.log(`Total files discovered: ${allDiscoveredFiles.length}`);
+
+          console.log("=== FILTERED RELEASE ASSETS ===");
+          console.log(`Release assets (${filteredFiles.length}):`, filteredFiles.map(f => path.basename(f)));
+
+          // Flatten filtered release artifacts into release-upload/
           fs.rmSync(uploadDir, { recursive: true, force: true });
           fs.mkdirSync(uploadDir, { recursive: true });
 
           const basenameMap = new Map();
-          for (const filePath of allDiscoveredFiles) {
+          for (const filePath of filteredFiles) {
             const base = path.basename(filePath);
             if (basenameMap.has(base)) {
               throw new Error(`Duplicate artifact basename detected: ${base} (${filePath} vs ${basenameMap.get(base)})`);
@@ -241,7 +270,6 @@ jobs:
           }
 
           const files = fs.readdirSync(uploadDir);
-          console.log(`Flattened ${files.length} artifacts into ${uploadDir}:`, files);
 
           const baseUrl = `https://github.com/${repo}/releases/download/${tag}`;
 
@@ -265,6 +293,12 @@ jobs:
           if (!windowsFile) {
             throw new Error("Could not find a canonical Windows updater artifact (-setup.exe / .msi) in " + uploadDir);
           }
+
+          console.log("=== CANONICAL LINUX UPDATER ===");
+          console.log(linuxFile);
+
+          console.log("=== CANONICAL WINDOWS UPDATER ===");
+          console.log(windowsFile);
 
           const linuxSigFile = linuxFile + ".sig";
           const windowsSigFile = windowsFile + ".sig";
@@ -299,6 +333,9 @@ jobs:
 
           const manifestPath = path.join(uploadDir, "latest.json");
           fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+          console.log("=== FILES COPIED TO release-upload/ ===");
+          console.log(fs.readdirSync(uploadDir));
           console.log("Successfully generated " + manifestPath + ":\n", JSON.stringify(manifest, null, 2));
           '
 
