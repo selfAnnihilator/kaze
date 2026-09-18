@@ -1,6 +1,6 @@
 [package]
 name = "music-player-backend"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["Music Player Contributors"]
 description = "Backend-First Intelligent Local Music Player"

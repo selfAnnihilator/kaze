@@ -161,7 +161,7 @@ jobs:
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
-          su builder -c "cd packaging/arch && (updpkgsums || true) && makepkg -s --noconfirm"
+          su builder -c "cd packaging/arch && (updpkgsums || (tar -czf kaze-\${VERSION}.tar.gz --transform \"s,^,kaze-\${VERSION}/,\" --exclude=./packaging --exclude=./target --exclude=./src-tauri/target --exclude=./node_modules --exclude=./.git ../.. && updpkgsums)) && makepkg -s --noconfirm"
 
       - name: Upload Arch build artifacts
         uses: actions/upload-artifact@v4
