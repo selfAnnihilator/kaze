@@ -207,37 +207,60 @@ jobs:
           const releaseNotes = fs.readFileSync("release_notes.md", "utf8").trim();
           const version = tag.replace(/^v/, "");
 
+          const tauriConfPath = path.resolve("src-tauri/tauri.conf.json");
+          const tauriConf = JSON.parse(fs.readFileSync(tauriConfPath, "utf8"));
+          const createUpdaterArtifacts = tauriConf?.bundle?.createUpdaterArtifacts;
+          console.log("Read tauri.conf.json - createUpdaterArtifacts:", createUpdaterArtifacts);
+
           const files = fs.readdirSync(artifactsDir);
           console.log("Processing artifacts in " + artifactsDir + ":", files);
 
           const baseUrl = `https://github.com/${repo}/releases/download/${tag}`;
-          const platforms = {};
 
-          for (const file of files) {
-            if (!file.endsWith(".sig")) continue;
-            const targetFile = file.slice(0, -4);
-            if (!files.includes(targetFile)) continue;
+          // Choose canonical updater artifact based on createUpdaterArtifacts setting
+          let linuxFile;
+          let windowsFile;
 
-            const sigContent = fs.readFileSync(path.join(artifactsDir, file), "utf8").trim();
-            const downloadUrl = `${baseUrl}/${targetFile}`;
-
-            if (targetFile.endsWith(".AppImage")) {
-              platforms["linux-x86_64"] = { signature: sigContent, url: downloadUrl };
-              platforms["linux-x86_64-appimage"] = { signature: sigContent, url: downloadUrl };
-            } else if (targetFile.endsWith(".deb")) {
-              platforms["linux-x86_64-deb"] = { signature: sigContent, url: downloadUrl };
-            } else if (targetFile.endsWith(".rpm")) {
-              platforms["linux-x86_64-rpm"] = { signature: sigContent, url: downloadUrl };
-            } else if (targetFile.endsWith(".msi")) {
-              platforms["windows-x86_64-msi"] = { signature: sigContent, url: downloadUrl };
-              if (!platforms["windows-x86_64"]) {
-                platforms["windows-x86_64"] = { signature: sigContent, url: downloadUrl };
-              }
-            } else if (targetFile.endsWith(".exe") || targetFile.includes("setup")) {
-              platforms["windows-x86_64-nsis"] = { signature: sigContent, url: downloadUrl };
-              platforms["windows-x86_64"] = { signature: sigContent, url: downloadUrl };
-            }
+          if (createUpdaterArtifacts === "v1Compatible") {
+            linuxFile = files.find(f => f.endsWith(".AppImage.tar.gz"));
+            windowsFile = files.find(f => f.endsWith(".nsis.zip")) || files.find(f => f.endsWith(".msi.zip")) || files.find(f => f.endsWith(".zip") && !f.endsWith(".sig"));
+          } else {
+            // createUpdaterArtifacts is true (Tauri v2 native mode: uncompressed installer)
+            linuxFile = files.find(f => f.endsWith(".AppImage") && !f.endsWith(".sig"));
+            // Prefer NSIS setup executable configured in tauri.conf.json, fallback to MSI
+            windowsFile = files.find(f => (f.endsWith("-setup.exe") || f.endsWith(".exe")) && !f.endsWith(".sig")) || files.find(f => f.endsWith(".msi") && !f.endsWith(".sig"));
           }
+
+          if (!linuxFile) {
+            throw new Error("Could not find a canonical Linux updater artifact (.AppImage) in " + artifactsDir);
+          }
+          if (!windowsFile) {
+            throw new Error("Could not find a canonical Windows updater artifact (-setup.exe / .msi) in " + artifactsDir);
+          }
+
+          const linuxSigFile = linuxFile + ".sig";
+          const windowsSigFile = windowsFile + ".sig";
+
+          if (!files.includes(linuxSigFile)) {
+            throw new Error(`Matching Linux signature file (${linuxSigFile}) not found in ${artifactsDir}`);
+          }
+          if (!files.includes(windowsSigFile)) {
+            throw new Error(`Matching Windows signature file (${windowsSigFile}) not found in ${artifactsDir}`);
+          }
+
+          const linuxSig = fs.readFileSync(path.join(artifactsDir, linuxSigFile), "utf8").trim();
+          const windowsSig = fs.readFileSync(path.join(artifactsDir, windowsSigFile), "utf8").trim();
+
+          const platforms = {
+            "linux-x86_64": {
+              signature: linuxSig,
+              url: `${baseUrl}/${linuxFile}`
+            },
+            "windows-x86_64": {
+              signature: windowsSig,
+              url: `${baseUrl}/${windowsFile}`
+            }
+          };
 
           const manifest = {
             version,
