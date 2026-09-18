@@ -48,42 +48,71 @@ Kaze is mainly for playing music you already have locally, with online streaming
 
 ## Download & Install
 
-See **[INSTALL.md](INSTALL.md)** for full per-platform instructions.
+Pre-built binaries and packages for all supported operating systems are available on the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest). See **[INSTALL.md](INSTALL.md)** for detailed installation notes.
 
-| Platform | File to download |
-|---|---|
-| 🐧 Linux (Arch / CachyOS / Manjaro) | `.AppImage` (install via terminal script below) |
-| 🐧 Linux (Ubuntu / Debian / Mint) | `.deb` |
-| 🐧 Linux (Fedora / openSUSE / RHEL) | `.rpm` |
-| 🐧 Linux (Generic / Portable) | `.AppImage` |
-| 🪟 Windows | `_x64-setup.exe` |
+### Arch Linux / CachyOS / Manjaro / EndeavourOS
 
-All downloads are on the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest).
+Kaze is published on the AUR as `kaze`. The native Arch package links against your system libraries for the best performance and is strongly preferred over the AppImage on Arch-based systems.
 
-### Arch Linux / CachyOS quick setup
-Download the `.AppImage` and integrate it as a native desktop application with `kaze` terminal command:
+Install using `yay`:
+```bash
+yay -S kaze
+```
+
+Or using `paru`:
+```bash
+paru -S kaze
+```
+
+### Ubuntu / Debian / Linux Mint / Pop!_OS
+
+Download the latest `.deb` from the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest), then install it:
+
+```bash
+sudo apt install ./kaze_*.deb
+```
+
+### Fedora / RHEL
+
+Download the latest `.rpm` from the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest), then install it:
+
+```bash
+sudo dnf install ./kaze_*.rpm
+```
+
+### openSUSE
+
+Download the latest `.rpm` from the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest), then install it:
+
+```bash
+sudo zypper install ./kaze_*.rpm
+```
+
+### Generic Linux (AppImage)
+
+The AppImage is the generic, portable Linux option. It runs on any modern Linux distribution without installation.
+
+Download the `.AppImage` from the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest), make it executable, and run:
 
 ```bash
 chmod +x Kaze_*.AppImage
-mkdir -p ~/.local/bin
-cp Kaze_*.AppImage ~/.local/bin/kaze
-
-# Extract desktop entry & icon so it appears in application launchers
-~/.local/bin/kaze --appimage-extract "*.desktop"
-~/.local/bin/kaze --appimage-extract "*.png"
-mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
-cp squashfs-root/*.desktop ~/.local/share/applications/kaze.desktop 2>/dev/null || true
-sed -i 's|^Exec=.*|Exec='$HOME'/.local/bin/kaze|' ~/.local/share/applications/kaze.desktop 2>/dev/null || true
-cp squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png 2>/dev/null || true
-rm -rf squashfs-root
+./Kaze_*.AppImage
 ```
-Now typing `kaze` in any terminal runs it, and it will show up when searching your desktop apps.
+
+### Windows
+
+1. Download `Kaze_*_x64-setup.exe` from the [Releases page](https://github.com/selfAnnihilator/kaze/releases/latest) and run it.
+2. Follow the setup wizard to complete installation.
+
+*(An alternative `.msi` installer is also available on the Releases page.)*
 
 ---
 
 ## Automatic updates
 
-Once installed, Kaze checks for updates every time you open it. When a new version is ready it downloads in the background and restarts the app automatically. You don't need to do anything.
+For standalone installations (Windows and AppImage), Kaze automatically checks for updates on launch, downloads the latest version in the background, and restarts the app.
+
+> **Note:** If you installed Kaze via the AUR (`yay` / `paru`) or a system package manager (`.deb` / `.rpm`), update the app through your package manager rather than relying on the built-in updater.
 
 ---
 
