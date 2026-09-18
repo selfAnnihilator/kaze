@@ -1,0 +1,23 @@
+pkgbase = kaze
+	pkgdesc = A calm, intelligent local music player
+	pkgver = 1.0.4
+	pkgrel = 1
+	url = https://github.com/selfAnnihilator/kaze
+	arch = x86_64
+	license = MIT
+	license = Apache-2.0
+	makedepends = cargo
+	makedepends = nodejs
+	makedepends = npm
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libsoup3
+	depends = alsa-lib
+	depends = openssl
+	depends = hicolor-icon-theme
+	source = kaze-1.0.4.tar.gz::https://github.com/selfAnnihilator/kaze/archive/refs/tags/v1.0.4.tar.gz
+	source = kaze.desktop
+	sha256sums = 9f93ddeda534ebc65b4f7f35c9b14093bac5013b2126316e12c35dedf4272f42
+	sha256sums = eaf39dc7d4a05cefeb1543018e5a2ae84148343e3b5a8de50ba365087d43dd0c
+
+pkgname = kaze

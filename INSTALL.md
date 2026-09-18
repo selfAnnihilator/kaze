@@ -22,32 +22,24 @@ Kaze is a free, open-source desktop music player. Choose the installer for your 
 
 ---
 
-### Option 2: Arch Linux / CachyOS / Manjaro (System & Terminal Integration)
+### Option 2: Arch Linux / CachyOS / Manjaro (`.pkg.tar.zst` — Native Package)
 
-To make `kaze` executable from any terminal and register the desktop entry in your application launcher:
+Native Arch package built specifically for Arch Linux, CachyOS, and Manjaro using system WebKitGTK and GTK3 libraries for optimal performance.
 
-```bash
-# 1. Download Kaze_*.AppImage and make executable
-chmod +x Kaze_*.AppImage
+1. Download `kaze-*.pkg.tar.zst` from the [latest release](../../releases/latest).
+2. Install it with pacman:
+   ```bash
+   sudo pacman -U ./kaze-*.pkg.tar.zst
+   ```
+3. Launch Kaze from your app launcher (Rofi, Wofi, GNOME, KDE) or run `kaze` in any terminal.
 
-# 2. Install to your local user binary directory
-mkdir -p ~/.local/bin
-cp Kaze_*.AppImage ~/.local/bin/kaze
+> **Building from source / AUR:**
+> You can also build and install the package locally from source using the included `PKGBUILD`:
+> ```bash
+> cd packaging/arch
+> makepkg -si
+> ```
 
-# 3. Extract desktop entry and icon for system app launcher
-mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
-~/.local/bin/kaze --appimage-extract "usr/share/applications/Kaze.desktop"
-~/.local/bin/kaze --appimage-extract "usr/share/icons/hicolor/512x512/apps/kaze.png"
-cp squashfs-root/usr/share/applications/Kaze.desktop ~/.local/share/applications/kaze.desktop
-cp squashfs-root/usr/share/icons/hicolor/512x512/apps/kaze.png ~/.local/share/icons/hicolor/512x512/apps/kaze.png
-sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/kaze|" ~/.local/share/applications/kaze.desktop
-rm -rf squashfs-root
-update-desktop-database ~/.local/share/applications 2>/dev/null || true
-```
-
-After running this once:
-- Type `kaze` in your terminal to start the player anytime.
-- Search "Kaze" in your app menu (Rofi, Wofi, GNOME, KDE) to launch it.
 
 ---
 

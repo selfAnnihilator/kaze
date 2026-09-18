@@ -139,12 +139,44 @@ jobs:
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Kaze_*
           if-no-files-found: error
 
+  # ── Arch Linux Build Job ───────────────────────────────────────────────────
+  build-arch:
+    name: Build (arch-x86_64)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Arch build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed git rust cargo nodejs npm webkit2gtk-4.1 gtk3 alsa-lib libsoup3 openssl sudo pacman-contrib
+
+      - name: Build Arch package
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/arch/PKGBUILD
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R builder:builder .
+          su builder -c "cd packaging/arch && (updpkgsums || true) && makepkg -s --noconfirm"
+
+      - name: Upload Arch build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-arch
+          path: packaging/arch/*.pkg.tar.zst*
+          if-no-files-found: error
+
   # ── Dedicated Publish Job ───────────────────────────────────────────────────
   publish-release:
     name: Publish Release
     needs:
       - build-linux
       - build-windows
+      - build-arch
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -184,6 +216,7 @@ jobs:
 
           | Platform | File | Notes |
           |---|---|---|
+          | 🐧 Linux (Arch/CachyOS/Manjaro) | \`.pkg.tar.zst\` | Native Arch package, best performance |
           | 🐧 Linux (Debian/Ubuntu) | \`.deb\` | Recommended for Ubuntu, Mint, Pop!_OS |
           | 🐧 Linux (AppImage) | \`.AppImage\` | Works on any Linux distro |
           | 🐧 Linux (RPM) | \`.rpm\` | For Fedora, openSUSE, RHEL |
@@ -231,6 +264,7 @@ jobs:
             if (base === "control" || base === "Kaze.desktop" || base.endsWith(".png")) return false;
 
             // Linux release assets
+            if (base.endsWith(".pkg.tar.zst") || base.endsWith(".pkg.tar.zst.sig")) return true;
             if (base.endsWith(".AppImage") || base.endsWith(".AppImage.sig")) return true;
             if (base.endsWith(".deb") || base.endsWith(".deb.sig")) return true;
             if (base.endsWith(".rpm") || base.endsWith(".rpm.sig")) return true;
