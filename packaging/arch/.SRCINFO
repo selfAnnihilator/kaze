@@ -14,10 +14,12 @@ pkgbase = kaze
 	depends = libsoup3
 	depends = alsa-lib
 	depends = openssl
+	depends = sqlite
 	depends = hicolor-icon-theme
+	options = !lto
 	source = kaze-1.0.5.tar.gz::https://github.com/selfAnnihilator/kaze/archive/refs/tags/v1.0.5.tar.gz
 	source = kaze.desktop
-	sha256sums = 9f93ddeda534ebc65b4f7f35c9b14093bac5013b2126316e12c35dedf4272f42
+	sha256sums = be4c339b03be784201cdfb435aaead6a2a0ce614b3035fa3770c10362171bbda
 	sha256sums = eaf39dc7d4a05cefeb1543018e5a2ae84148343e3b5a8de50ba365087d43dd0c
 
 pkgname = kaze

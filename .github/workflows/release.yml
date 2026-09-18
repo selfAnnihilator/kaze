@@ -151,7 +151,7 @@ jobs:
 
       - name: Install Arch build dependencies
         run: |
-          pacman -Syu --noconfirm --needed git rust cargo nodejs npm webkit2gtk-4.1 gtk3 alsa-lib libsoup3 openssl sudo pacman-contrib
+          pacman -Syu --noconfirm --needed git rust cargo nodejs npm webkit2gtk-4.1 gtk3 alsa-lib libsoup3 openssl sqlite sudo pacman-contrib
 
       - name: Build Arch package
         run: |
