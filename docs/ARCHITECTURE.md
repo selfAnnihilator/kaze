@@ -15,45 +15,120 @@ The application is a **free, open-source, local-first desktop music player** eng
 
 ## 2. High-Level Architecture Diagram
 
-```text
- ┌──────────────────────────────────────────────────────────────┐
- │                     Frontend (Tauri Webview)                 │
- │            React 19 + TypeScript + Zustand Stores             │
- └──────────────┬───────────────────────────────▲───────────────┘
-                │ Typed IPC Commands / Queries  │ Event Stream
-                ▼                               │ (Tauri Events)
- ┌──────────────────────────────────────────────┴───────────────┐
- │                      CoreProcessor                           │
- │     - Command Router, Validator & Task Coordinator           │
- └──────┬──────────────────────┬──────────────────────┬─────────┘
-        │                      │                      │
-        ▼                      ▼                      ▼
- ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
- │   Playback   │       │   Library    │       │   Playlist   │
- │   Service    │       │   Service    │       │   Service    │
- │ (rodio/cpal) │       │   (lofty)    │       │ (Static/Mix) │
- └──────┬───────┘       └──────┬───────┘       └──────┬───────┘
-        │                      │                      │
-        └──────────────────────┼──────────────────────┘
-                               ▼
- ┌──────────────────────────────────────────────────────────────┐
- │                         EventBus                             │
- │   (tokio::sync::broadcast channel for internal event pub/sub)│
- └──────┬──────────────────────┬──────────────────────┬─────────┘
-        │                      │                      │
-        ▼                      ▼                      ▼
- ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
- │  Statistics  │       │    Taste     │       │Recommendation│
- │  & History   │──────>│   Profile    │──────>│    Engine    │
- │   Service    │       │    Engine    │       │ (Local/Disc) │
- └──────┬───────┘       └──────────────┘       └──────┬───────┘
-        │                                             │
-        ▼                                             ▼
- ┌──────────────┐                              ┌──────────────┐
- │  SQLite /    │                              │   External   │
- │    sqlx      │                              │  Providers   │
- │ Repositories │                              │ (MB / Spot)  │
- └──────────────┘                              └──────────────┘
+```mermaid
+flowchart TD
+
+subgraph group_frontend["Desktop UI"]
+  node_react_ui["React UI<br/>[App.tsx]"]
+  node_api_bridge["API Bridge<br/>[api.ts]"]
+end
+
+subgraph group_application["Application Core"]
+  node_tauri_gateway["Tauri Gateway<br/>[app.rs]"]
+  node_core_processor["Core Processor<br/>[processor.rs]"]
+  node_event_bus["Event Bus<br/>[event_bus.rs]"]
+end
+
+subgraph group_media["Library Playback"]
+  node_library_service["Library Service<br/>[service.rs]"]
+  node_library_scanner["Library Scanner<br/>[scanner.rs]"]
+  node_folder_watcher["Folder Watcher<br/>[watcher.rs]"]
+  node_playback_service["Playback Service<br/>[service.rs]"]
+  node_history_service["History Service<br/>[service.rs]"]
+end
+
+subgraph group_intelligence["Discovery Intelligence"]
+  node_discovery["Discovery Coordinator<br/>[coordinator.rs]"]
+  node_recommendations["Recommendation Engine<br/>[recommendations/]"]
+  node_ranking_engine["Ranking Engine<br/>[engine.rs]"]
+  node_wishlist_manager["Wishlist Manager<br/>[wishlist.rs]"]
+end
+
+subgraph group_integrations["Data Integrations"]
+  node_sqlite[("SQLite Database<br/>[mod.rs]")]
+  node_playlist_repo["Playlist Repository<br/>[playlist_repo.rs]"]
+  node_provider_coordinator["Provider Coordinator<br/>[coordinator.rs]"]
+  node_download_service["Download Service<br/>[service.rs]"]
+  node_cloud_sync["Cloud Sync<br/>[sync_manager.rs]"]
+  node_cloud_client["Cloud Client<br/>[client.rs]"]
+end
+
+node_user(("User"))
+node_metadata_providers["Metadata Providers"]
+node_download_sources["Download Sources"]
+node_spotify_api["Spotify API"]
+node_cloud_api["Cloud API"]
+
+node_user -->|"uses"| node_react_ui
+node_react_ui -->|"calls"| node_api_bridge
+node_api_bridge -->|"invokes"| node_tauri_gateway
+node_tauri_gateway -->|"dispatches"| node_core_processor
+node_core_processor -->|"publishes"| node_event_bus
+node_event_bus -->|"emits events"| node_tauri_gateway
+node_tauri_gateway -->|"updates"| node_react_ui
+node_core_processor -->|"queries"| node_library_service
+node_core_processor -->|"commands"| node_playback_service
+node_core_processor -->|"queries"| node_discovery
+node_core_processor -->|"queries"| node_ranking_engine
+node_core_processor -->|"commands"| node_download_service
+node_core_processor -->|"coordinates sync"| node_cloud_sync
+node_library_service -->|"scans"| node_library_scanner
+node_folder_watcher -->|"notifies changes"| node_library_service
+node_library_scanner -->|"writes catalog"| node_sqlite
+node_library_service -->|"reads catalog"| node_sqlite
+node_playback_service -->|"reads tracks"| node_sqlite
+node_playback_service -->|"publishes playback"| node_event_bus
+node_event_bus -->|"delivers playback"| node_history_service
+node_history_service -->|"records history"| node_sqlite
+node_ranking_engine -->|"reads statistics"| node_sqlite
+node_recommendations -->|"reads listening data"| node_sqlite
+node_discovery -->|"builds mixes"| node_recommendations
+node_discovery -.->|"requests metadata"| node_provider_coordinator
+node_provider_coordinator -.->|"looks up metadata"| node_metadata_providers
+node_playlist_repo -->|"reads writes"| node_sqlite
+node_core_processor -->|"manages playlists"| node_playlist_repo
+node_download_service -->|"uses wishlist"| node_wishlist_manager
+node_download_service -.->|"searches sources"| node_download_sources
+node_download_service -->|"stores tasks"| node_sqlite
+node_core_processor -.->|"imports Spotify"| node_provider_coordinator
+node_provider_coordinator -.->|"imports playlist"| node_spotify_api
+node_cloud_sync -->|"reads writes"| node_sqlite
+node_cloud_sync -.->|"uses"| node_cloud_client
+node_cloud_client -.->|"HTTPS"| node_cloud_api
+
+click node_react_ui "https://github.com/selfannihilator/kaze/blob/prod/src/App.tsx"
+click node_api_bridge "https://github.com/selfannihilator/kaze/blob/prod/src/services/api.ts"
+click node_tauri_gateway "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/app.rs"
+click node_core_processor "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/core/processor.rs"
+click node_event_bus "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/core/event_bus.rs"
+click node_library_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/service.rs"
+click node_library_scanner "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/scanner.rs"
+click node_folder_watcher "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/watcher.rs"
+click node_playback_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/playback/service.rs"
+click node_history_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/history/service.rs"
+click node_sqlite "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/database/mod.rs"
+click node_discovery "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/discovery/coordinator.rs"
+click node_recommendations "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/recommendations/mod.rs"
+click node_ranking_engine "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/ranking/engine.rs"
+click node_playlist_repo "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/database/repositories/playlist_repo.rs"
+click node_wishlist_manager "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/discovery/wishlist.rs"
+click node_provider_coordinator "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/providers/coordinator.rs"
+click node_download_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/downloads/service.rs"
+click node_cloud_sync "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/cloud/sync_manager.rs"
+click node_cloud_client "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/cloud/client.rs"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_react_ui,node_api_bridge toneBlue
+class node_tauri_gateway,node_core_processor,node_event_bus toneAmber
+class node_library_service,node_library_scanner,node_folder_watcher,node_playback_service,node_history_service,node_spotify_api,node_cloud_api toneMint
+class node_discovery,node_recommendations,node_ranking_engine,node_wishlist_manager toneRose
+class node_sqlite,node_playlist_repo,node_provider_coordinator,node_download_service,node_cloud_sync,node_cloud_client,node_user,node_metadata_providers,node_download_sources toneIndigo
 ```
 
 ---

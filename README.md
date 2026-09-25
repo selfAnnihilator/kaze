@@ -141,6 +141,14 @@ FLAC · MP3 · OGG · Opus · M4A · AAC · WAV
 
 ---
 
+## Architecture
+
+Kaze is built as a local-first, backend-heavy desktop application using Tauri v2, Rust, and React 19. Audio playback, library scanning, local recommendations, and cloud synchronization logic reside within the native Rust backend.
+
+See **[Architecture Documentation](docs/ARCHITECTURE.md)** for the complete system architecture diagram and component breakdown.
+
+---
+
 ## Built with
 
 [Rust](https://www.rust-lang.org/) · [Tauri v2](https://tauri.app/) · [React 19](https://react.dev/) · [SQLite](https://www.sqlite.org/)
