@@ -62,6 +62,8 @@ export interface PlaybackState {
   repeat_mode: "off" | "one" | "all";
   is_shuffled: boolean;
   queue_track_ids?: string[];
+  can_seek?: boolean;
+  is_buffering?: boolean;
 }
 
 export interface WishlistItem {

@@ -65,8 +65,9 @@ const formatTime = (seconds: number): string => {
 
 const NowPlayingProgressBar: React.FC<{
   duration: number;
+  canSeek?: boolean;
   onSeek: (seconds: number) => void;
-}> = React.memo(({ duration: propDuration, onSeek }) => {
+}> = React.memo(({ duration: propDuration, canSeek = true, onSeek }) => {
   const { position, duration: progressDuration } = usePlaybackProgress(propDuration);
   const [seekingValue, setSeekingValue] = useState<number | null>(null);
 
@@ -79,27 +80,32 @@ const NowPlayingProgressBar: React.FC<{
       <span className="time-label">{formatTime(displayPos)}</span>
       <input
         type="range"
-        className="scrubber"
+        className={`scrubber ${!canSeek ? "disabled" : ""}`}
+        disabled={!canSeek}
+        title={!canSeek ? "Seeking unavailable while audio is streaming" : undefined}
         min={0}
         max={duration > 0 ? duration : 100}
         step={0.5}
         value={displayPos}
-        style={{ "--range-progress": `${seekProgress}%` } as React.CSSProperties}
-        onMouseDown={() => setSeekingValue(position)}
-        onTouchStart={() => setSeekingValue(position)}
-        onChange={(e) => setSeekingValue(parseFloat(e.target.value))}
-        onMouseUp={(e) => {
+        style={{
+          "--range-progress": `${seekProgress}%`,
+          cursor: !canSeek ? "not-allowed" : "pointer",
+          opacity: !canSeek ? 0.6 : 1,
+        } as React.CSSProperties}
+        onPointerDown={() => {
+          if (canSeek) setSeekingValue(position);
+        }}
+        onChange={(e) => {
+          if (canSeek) setSeekingValue(parseFloat(e.target.value));
+        }}
+        onPointerUp={(e) => {
+          if (!canSeek) return;
           const val = parseFloat((e.target as HTMLInputElement).value);
           onSeek(val);
           setSeekingValue(null);
         }}
-        onTouchEnd={() => {
-          if (seekingValue !== null) {
-            onSeek(seekingValue);
-            setSeekingValue(null);
-          }
-        }}
         onKeyUp={(e) => {
+          if (!canSeek) return;
           const val = parseFloat((e.target as HTMLInputElement).value);
           onSeek(val);
           setSeekingValue(null);
@@ -233,10 +239,10 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
             <button
               className="player-icon-btn"
               title={currentTrack.manual_like === 1 || isOnlineLiked ? "Unlike track" : "Like track"}
+              aria-label={currentTrack.manual_like === 1 || isOnlineLiked ? "Unlike track" : "Like track"}
               onClick={() => {
-                if (currentTrack.manual_like === 1 || isOnlineLiked) {
-                  onRemoveFeedback(currentTrack.id);
-                } else if (isOnline && onLikeOnline) {
+                const isLiked = currentTrack.manual_like === 1 || isOnlineLiked;
+                if (isOnline && onLikeOnline) {
                   onLikeOnline({
                     id: currentTrack.id,
                     title: currentTrack.title,
@@ -246,6 +252,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
                     preview_url: currentTrack.preview_url,
                     duration_secs: currentTrack.duration_secs,
                   });
+                } else if (isLiked) {
+                  onRemoveFeedback(currentTrack.id);
                 } else {
                   onLike(currentTrack.id);
                 }
@@ -338,7 +346,11 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
         </div>
 
 
-        <NowPlayingProgressBar duration={duration} onSeek={onSeek} />
+        <NowPlayingProgressBar
+          duration={duration}
+          canSeek={playbackState.can_seek !== false}
+          onSeek={onSeek}
+        />
       </div>
 
       {/* Right: Lyrics, Volume, and Full Screen Controls */}

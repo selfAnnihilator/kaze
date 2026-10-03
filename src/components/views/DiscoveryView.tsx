@@ -1198,7 +1198,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           onAddToPlaylist={onAddToPlaylist}
           isQueued={queuedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
           onEnqueue={onEnqueueTrack}
-          isLiked={likedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
+          isLiked={Boolean((rec.matched_local_track_id && likedTrackIds?.has(rec.matched_local_track_id)) || (rec.external_track_id && likedTrackIds?.has(rec.external_track_id)))}
         />
       </div>
     );

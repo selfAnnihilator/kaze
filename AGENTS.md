@@ -39,3 +39,15 @@ When modifying, redesigning, or styling the frontend UI, **ALL** agents and cont
 - All audio playback (local files, remote streams, preview URLs, downloaded/cached audio) is handled by the **Rust backend (`PlaybackService`)**.
 - WebKit / frontend must **NEVER** instantiate HTML5 `new Audio(...)` or `<audio>` elements.
 - The player maintains **one queue, one state machine, one history path, one stats path, and one event stream**.
+
+---
+
+## Knowledge Base & Second Brain Checkpoint
+- The canonical second brain for this workspace is at `/home/abhi/wiki`.
+- **Autonomous Retrieval**: Consult `/home/abhi/wiki/projects/kage.md` and related notes anytime for historical decisions, contracts, and architecture without asking permission.
+- **Autonomous Capture**: When a core milestone is reached, an architectural contract is established, or a non-obvious bug root cause is diagnosed and fixed, capture it in `/home/abhi/wiki/projects/kage.md` and append a summary entry to `/home/abhi/wiki/log.md`.
+- Validate wiki integrity after editing: `python3 /home/abhi/wiki/scripts/validate_wiki.py`.
+- At the end of every task, perform a knowledge checkpoint in the final response:
+  - `Knowledge updated: <path>` (when wiki notes were updated)
+  - `Knowledge unchanged: no durable discovery` (when no durable update was warranted)
+

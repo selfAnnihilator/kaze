@@ -7,6 +7,8 @@ pub mod downloads;
 pub mod history;
 pub mod library;
 pub mod logging;
+#[cfg(target_os = "linux")]
+pub mod mpris;
 pub mod playback;
 pub mod profile;
 pub mod providers;

@@ -707,7 +707,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 ? 50
                 : 0;
             const effectiveTrackId = track.matched_local_track_id || track.id;
-            const isLiked = likedTrackIds?.has(effectiveTrackId) || isLikedSongs;
+            const isLiked = likedTrackIds
+              ? (likedTrackIds.has(effectiveTrackId) || likedTrackIds.has(track.id))
+              : isLikedSongs;
             const isQueued = queuedTrackIds?.has(effectiveTrackId) || false;
 
             return (
@@ -879,27 +881,35 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => onEnqueueTrack?.(track)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEnqueueTrack?.(track);
+                    }}
                     style={{ background: isQueued ? "rgba(139,124,246,0.16)" : "none", border: isQueued ? "1px solid rgba(139,124,246,0.4)" : "1px solid transparent", borderRadius: "50%", color: isQueued ? "var(--accent-secondary)" : "var(--text-dim)", cursor: "pointer", padding: "4px", display: "flex" }}
                     title={isQueued ? "Already in queue" : "Add to queue"}
                   >
                     {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
                   </button>
 
-                  {isLikedSongs ? (
-                    <span title="Liked song" style={{ color: "#ec4899", padding: "4px", display: "flex" }}>
-                      <Heart size={15} fill="#ec4899" />
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onToggleLike?.(track, !!isLiked)}
-                      style={{ background: "none", border: "none", color: isLiked ? "#ec4899" : "var(--text-dim)", cursor: "pointer", padding: "4px", display: "flex" }}
-                      title={isLiked ? "Unlike track" : "Like track"}
-                    >
-                      <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLike?.(track, !!isLiked);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: isLiked ? "#ec4899" : "var(--text-dim)",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                    }}
+                    title={isLiked ? "Unlike track" : "Like track"}
+                    aria-label={isLiked ? "Unlike track" : "Like track"}
+                  >
+                    <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
+                  </button>
 
                   {(() => {
                     const trackId = track.matched_local_track_id || track.id;
@@ -913,7 +923,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     return (
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (onAddToPlaylist) {
                             onAddToPlaylist(track);
                           } else if (onAddToWishlist) {

@@ -49,12 +49,17 @@ pub struct PlaybackService {
     current_source: Arc<RwLock<String>>,
     volume: Arc<RwLock<f32>>,
     stream_manager: Arc<std::sync::RwLock<Option<Arc<StreamPlaybackManager>>>>,
-    active_stream_state: Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
+    active_stream_state:
+        Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
     pool: Option<SqlitePool>,
     preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     /// Authoritative session token for the currently playing track.
     /// Generated fresh at each `play_item` call; cleared on stop/track-finish.
     active_session_id: Arc<RwLock<Option<String>>>,
+    /// Generation token to cancel obsolete track transitions during rapid skips.
+    play_generation: Arc<std::sync::atomic::AtomicU64>,
+    /// Indicates whether an audio source is actively being resolved over network.
+    is_resolving: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl PlaybackService {
@@ -77,6 +82,8 @@ impl PlaybackService {
             pool,
             preresolution_handle: Arc::new(Mutex::new(None)),
             active_session_id: Arc::new(RwLock::new(None)),
+            play_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            is_resolving: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         });
 
         // Spawn periodic position monitor and track finish detector
@@ -127,7 +134,10 @@ impl PlaybackService {
                 was_playing = true;
 
                 // Always read from authoritative source — no stale local cache.
-                let session_id = self.active_session_id.read().await
+                let session_id = self
+                    .active_session_id
+                    .read()
+                    .await
                     .clone()
                     .unwrap_or_default();
 
@@ -182,7 +192,9 @@ impl PlaybackService {
                     .await
                     .unwrap_or(None);
 
-                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) = ext {
+                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) =
+                        ext
+                    {
                         let _ = crate::recommendations::mixes::ensure_online_track(
                             pool,
                             track_id,
@@ -192,9 +204,13 @@ impl PlaybackService {
                             duration_secs,
                             cover_art_url.as_deref(),
                             preview_url.as_deref(),
-                        ).await;
+                        )
+                        .await;
                         self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {
-                            AppError::NotFound(format!("Track not found after registration: {}", track_id))
+                            AppError::NotFound(format!(
+                                "Track not found after registration: {}",
+                                track_id
+                            ))
                         })?
                     } else {
                         return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
@@ -254,7 +270,8 @@ impl PlaybackService {
                 duration_secs,
                 cover_art_url,
                 preview_url,
-            ).await;
+            )
+            .await;
         }
 
         self.play_track(track_id, source).await
@@ -282,7 +299,8 @@ impl PlaybackService {
                 duration_secs,
                 cover_art_url,
                 preview_url,
-            ).await;
+            )
+            .await;
         }
 
         self.enqueue_track(track_id, play_next).await
@@ -302,35 +320,92 @@ impl PlaybackService {
     }
 
     async fn play_item(&self, item: &QueueItem) -> AppResult<()> {
-        let track = self
-            .track_repo
-            .find_by_id(&item.track_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Track not found: {}", item.track_id)))?;
+        let generation = self
+            .play_generation
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            + 1;
+        self.is_resolving
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        let track = match self.track_repo.find_by_id(&item.track_id).await {
+            Ok(Some(t)) => t,
+            Ok(None) => {
+                self.is_resolving
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+                return Err(AppError::NotFound(format!(
+                    "Track not found: {}",
+                    item.track_id
+                )));
+            }
+            Err(e) => {
+                self.is_resolving
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+                return Err(e);
+            }
+        };
+
+        // Immediately stop backend playback and reset current duration / session
+        // so stale audio never plays while resolving the new track
+        {
+            let mut backend = self.backend.lock().await;
+            let _ = backend.stop();
+        }
+        *self.current_duration_secs.write().await = 0.0;
+        *self.active_session_id.write().await = None;
 
         // Cancel any active progressive stream before starting a new track
         self.cancel_active_stream().await;
 
+        let _ = self.event_bus.publish(Event::PlaybackBuffering {
+            session_id: String::new(),
+            track_id: item.track_id.clone(),
+        });
+
         let is_online = track.format == "online" || track.file_path.starts_with("online://");
-        let prepared = if is_online {
+        let prepared_res = if is_online {
             let sm_opt = self.stream_manager.read().unwrap().clone();
             if let Some(sm) = sm_opt {
                 let artist = track.artist_name.as_deref().unwrap_or("Unknown Artist");
-                sm.resolve_and_prepare_playback(
-                    &track.id,
-                    &track.title,
-                    artist,
-                )
-                .await?
+                sm.resolve_and_prepare_playback(&track.id, &track.title, artist)
+                    .await
             } else {
-                return Err(AppError::Playback(
+                Err(AppError::Playback(
                     "Stream manager not initialized for online audio playback".to_string(),
-                ));
+                ))
             }
         } else {
-            crate::playback::stream::PreparedPlayback::LocalFile {
+            Ok(crate::playback::stream::PreparedPlayback::LocalFile {
                 path: PathBuf::from(&track.file_path),
                 duration: track.duration_secs,
+            })
+        };
+
+        self.is_resolving
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+
+        // Check if a newer track transition was requested while resolving
+        if self
+            .play_generation
+            .load(std::sync::atomic::Ordering::SeqCst)
+            != generation
+        {
+            debug!(
+                item_title = %item.title,
+                expected_gen = generation,
+                current_gen = self.play_generation.load(std::sync::atomic::Ordering::SeqCst),
+                "Aborting obsolete play_item: newer playback request received during resolution"
+            );
+            return Ok(());
+        }
+
+        let prepared = match prepared_res {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = self.event_bus.publish(Event::PlaybackError {
+                    session_id: String::new(),
+                    message: e.to_string(),
+                });
+                return Err(e);
             }
         };
 
@@ -358,7 +433,8 @@ impl PlaybackService {
 
         let sm_opt = self.stream_manager.read().unwrap().clone();
         if let Some(sm) = sm_opt {
-            sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_protect))).await;
+            sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_protect)))
+                .await;
         }
 
         // Generate a fresh session token for this playback session.
@@ -392,10 +468,16 @@ impl PlaybackService {
         let pos = backend.position().as_secs_f64();
         let track_id = {
             let q_guard = self.queue.read().await;
-            q_guard.current().map(|i| i.track_id.clone()).unwrap_or_default()
+            q_guard
+                .current()
+                .map(|i| i.track_id.clone())
+                .unwrap_or_default()
         };
 
-        let session_id = self.active_session_id.read().await
+        let session_id = self
+            .active_session_id
+            .read()
+            .await
             .clone()
             .unwrap_or_default();
 
@@ -414,10 +496,16 @@ impl PlaybackService {
         let pos = backend.position().as_secs_f64();
         let track_id = {
             let q_guard = self.queue.read().await;
-            q_guard.current().map(|i| i.track_id.clone()).unwrap_or_default()
+            q_guard
+                .current()
+                .map(|i| i.track_id.clone())
+                .unwrap_or_default()
         };
 
-        let session_id = self.active_session_id.read().await
+        let session_id = self
+            .active_session_id
+            .read()
+            .await
             .clone()
             .unwrap_or_default();
 
@@ -430,6 +518,10 @@ impl PlaybackService {
     }
 
     pub async fn stop(&self) -> AppResult<()> {
+        self.play_generation
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.is_resolving
+            .store(false, std::sync::atomic::Ordering::SeqCst);
         if let Some(task) = self.preresolution_handle.lock().await.take() {
             task.abort();
         }
@@ -449,7 +541,9 @@ impl PlaybackService {
             guard.take().unwrap_or_default()
         };
 
-        let _ = self.event_bus.publish(Event::PlaybackStopped { session_id });
+        let _ = self
+            .event_bus
+            .publish(Event::PlaybackStopped { session_id });
         Ok(())
     }
 
@@ -466,9 +560,9 @@ impl PlaybackService {
         let mut backend = self.backend.lock().await;
         backend.seek(dur)?;
 
-        let _ = self.event_bus.publish(Event::PlaybackSeeked {
-            position_secs,
-        });
+        let _ = self
+            .event_bus
+            .publish(Event::PlaybackSeeked { position_secs });
         Ok(())
     }
 
@@ -588,7 +682,9 @@ impl PlaybackService {
                     .await
                     .unwrap_or(None);
 
-                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) = ext {
+                    if let Some((title, artist, album, duration_secs, cover_art_url, preview_url)) =
+                        ext
+                    {
                         let _ = crate::recommendations::mixes::ensure_online_track(
                             pool,
                             track_id,
@@ -598,9 +694,13 @@ impl PlaybackService {
                             duration_secs,
                             cover_art_url.as_deref(),
                             preview_url.as_deref(),
-                        ).await;
+                        )
+                        .await;
                         self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {
-                            AppError::NotFound(format!("Track not found after registration: {}", track_id))
+                            AppError::NotFound(format!(
+                                "Track not found after registration: {}",
+                                track_id
+                            ))
                         })?
                     } else {
                         return Err(AppError::NotFound(format!("Track not found: {}", track_id)));
@@ -680,7 +780,12 @@ impl PlaybackService {
 
         let queue_track_ids: Vec<String> = if has_active_track {
             if let Some(curr) = q_guard.current_index() {
-                q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+                q_guard
+                    .items()
+                    .iter()
+                    .skip(curr + 1)
+                    .map(|i| i.track_id.clone())
+                    .collect()
             } else {
                 q_guard.items().iter().map(|i| i.track_id.clone()).collect()
             }
@@ -692,10 +797,12 @@ impl PlaybackService {
             Some(state) => state.is_completed(),
             None => true,
         };
-        let is_buffering = match &*self.active_stream_state.read().unwrap() {
-            Some(state) => state.is_buffering(),
-            None => false,
-        };
+        let is_buffering = self.is_resolving.load(std::sync::atomic::Ordering::Relaxed)
+            || match &*self.active_stream_state.read().unwrap() {
+                Some(state) => state.is_buffering(),
+                None => false,
+            };
+        let has_active_track = (duration > 0.0 && (!is_finished || is_paused)) || is_buffering;
 
         PlaybackStateDto {
             current_track_id: if has_active_track {
@@ -725,7 +832,12 @@ impl PlaybackService {
 
             let queue_track_ids: Vec<String> = if has_active_track {
                 if let Some(curr) = q_guard.current_index() {
-                    q_guard.items().iter().skip(curr + 1).map(|i| i.track_id.clone()).collect()
+                    q_guard
+                        .items()
+                        .iter()
+                        .skip(curr + 1)
+                        .map(|i| i.track_id.clone())
+                        .collect()
                 } else {
                     q_guard.items().iter().map(|i| i.track_id.clone()).collect()
                 }
@@ -733,7 +845,11 @@ impl PlaybackService {
                 q_guard.items().iter().map(|i| i.track_id.clone()).collect()
             };
 
-            (q_guard.items().to_vec(), q_guard.current_index(), queue_track_ids)
+            (
+                q_guard.items().to_vec(),
+                q_guard.current_index(),
+                queue_track_ids,
+            )
         };
 
         let _ = self.event_bus.publish(Event::QueueUpdated {
@@ -779,7 +895,9 @@ impl PlaybackService {
 
         let task = tokio::spawn(async move {
             debug!(track_id = %item.track_id, title = %item.title, artist = %item.artist, "Background pre-resolving next track audio source");
-            let _ = sm.resolve_source_only(&item.track_id, &item.title, &item.artist).await;
+            let _ = sm
+                .resolve_source_only(&item.track_id, &item.title, &item.artist)
+                .await;
         });
 
         *handle_guard = Some(task);
@@ -795,7 +913,9 @@ impl PlaybackService {
         }
     }
 
-    pub async fn get_remote_audio_cache_stats(&self) -> AppResult<crate::playback::stream::RemoteAudioCacheStats> {
+    pub async fn get_remote_audio_cache_stats(
+        &self,
+    ) -> AppResult<crate::playback::stream::RemoteAudioCacheStats> {
         let sm_opt = self.stream_manager.read().unwrap().clone();
         if let Some(sm) = sm_opt {
             sm.get_cache_stats().await

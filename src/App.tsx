@@ -314,11 +314,38 @@ export const App: React.FC = () => {
     [isFullscreen]
   );
 
+  const handlePlayPauseRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === "Escape" && isFullscreen) || e.key === "F11") {
         e.preventDefault();
         handleToggleFullscreen(e.key === "Escape" ? false : undefined);
+        return;
+      }
+
+      if (
+        e.code === "Space" &&
+        !e.repeat &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        !e.shiftKey
+      ) {
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "SELECT" ||
+            target.isContentEditable ||
+            Boolean(target.closest?.("[contenteditable='true'], [contenteditable='']")))
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        handlePlayPauseRef.current?.();
       }
     };
 
@@ -717,16 +744,45 @@ export const App: React.FC = () => {
             ...prev,
             current_track: track,
             is_playing: true,
+            is_buffering: false,
             position_secs: 0,
             duration_secs: event.payload?.duration_secs || track.duration_secs || prev.duration_secs,
           }));
           break;
         }
 
+        case "PlaybackBuffering": {
+          const trackId = event.payload?.track_id;
+          const found = tracksRef.current.find((t) => t.id === trackId);
+          setPlaybackState((prev) => ({
+            ...prev,
+            current_track: found || (trackId ? {
+              id: trackId,
+              file_path: "",
+              title: (prev.current_track?.id === trackId ? prev.current_track?.title : undefined) || "Resolving Audio...",
+              artist_name: (prev.current_track?.id === trackId ? prev.current_track?.artist_name : undefined) || "Please wait",
+              duration_secs: (prev.current_track?.id === trackId ? prev.current_track?.duration_secs : undefined) || 0,
+              format: "online",
+              has_cover_art: 0,
+            } : prev.current_track),
+            is_buffering: true,
+            position_secs: 0,
+          }));
+          break;
+        }
+
+        case "PlaybackError":
+          setPlaybackState((prev) => ({
+            ...prev,
+            is_buffering: false,
+          }));
+          break;
+
         case "PlaybackPaused":
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: false,
+            is_buffering: false,
             position_secs: event.payload?.position_secs ?? prev.position_secs,
           }));
           break;
@@ -735,6 +791,7 @@ export const App: React.FC = () => {
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: true,
+            is_buffering: false,
             position_secs: event.payload?.position_secs ?? prev.position_secs,
           }));
           break;
@@ -743,6 +800,7 @@ export const App: React.FC = () => {
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: false,
+            is_buffering: false,
             position_secs: 0,
           }));
           break;
@@ -1062,6 +1120,10 @@ export const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    handlePlayPauseRef.current = handlePlayPause;
+  });
+
   const handleUnifiedPlayPause = handlePlayPause;
 
   const handleNextTrack = async () => {
@@ -1123,11 +1185,61 @@ export const App: React.FC = () => {
         ? { ...prev, current_track: { ...prev.current_track, manual_like: 1 } }
         : prev
     );
-    await dispatchCommand({
-      command: "LikeTrack",
-      payload: { track_id: trackId },
-    });
-    await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+    try {
+      await dispatchCommand({
+        command: "LikeTrack",
+        payload: { track_id: trackId },
+      });
+      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+      // If Liked Songs is the active collection, refresh its tracks
+      if (
+        activeCollection &&
+        (activeCollection.title === "Liked Songs" ||
+          (likedPlaylistId && (activeCollection.playlistId === likedPlaylistId || activeCollection.id === likedPlaylistId)))
+      ) {
+        const plId = activeCollection.playlistId || activeCollection.id || likedPlaylistId;
+        if (plId) {
+          const res = await executeQuery({
+            query: "GetPlaylistTracks",
+            payload: { playlist_id: plId },
+          });
+          const plTracks: Track[] = (res.data as any) || [];
+          const items: CollectionTrackItem[] = plTracks.map((t) => {
+            const isOnline =
+              t.format === "online" ||
+              t.file_path?.startsWith("online://") ||
+              t.id.startsWith("itunes:") ||
+              t.id.startsWith("online:");
+            return {
+              id: t.id,
+              title: t.title,
+              artist: t.artist_name || "Unknown Artist",
+              album: t.album_title,
+              duration_secs: t.duration_secs || 210,
+              cover_art_url: t.cover_art_url,
+              preview_url: t.preview_url,
+              is_downloaded: !isOnline,
+              matched_local_track_id: isOnline ? undefined : t.id,
+              rawLocalTrack: isOnline ? undefined : t,
+            };
+          });
+          setActiveCollection((prev) =>
+            prev ? { ...prev, tracks: items, subtitle: `${items.length} tracks` } : prev
+          );
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to like track:", err);
+      setTracks((prev) =>
+        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t))
+      );
+      setPlaybackState((prev) =>
+        prev.current_track?.id === trackId
+          ? { ...prev, current_track: { ...prev.current_track, manual_like: 0 } }
+          : prev
+      );
+      addAppNotification("error", "Like Failed", err?.message || "Could not like track.");
+    }
   };
 
   const handleRemoveFeedback = async (trackId: string) => {
@@ -1139,11 +1251,40 @@ export const App: React.FC = () => {
         ? { ...prev, current_track: { ...prev.current_track, manual_like: 0 } }
         : prev
     );
-    await dispatchCommand({
-      command: "RemoveTrackFeedback",
-      payload: { track_id: trackId },
-    });
-    await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+    try {
+      await dispatchCommand({
+        command: "RemoveTrackFeedback",
+        payload: { track_id: trackId },
+      });
+      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+      // If Liked Songs is the active collection, remove the unliked track immediately
+      setActiveCollection((prev) => {
+        if (!prev || !prev.tracks) return prev;
+        const isLikedSongs =
+          prev.title === "Liked Songs" ||
+          (likedPlaylistId && (prev.playlistId === likedPlaylistId || prev.id === likedPlaylistId));
+        if (!isLikedSongs) return prev;
+        const updatedTracks = prev.tracks.filter(
+          (t) => t.id !== trackId && t.matched_local_track_id !== trackId
+        );
+        return {
+          ...prev,
+          tracks: updatedTracks,
+          subtitle: `${updatedTracks.length} tracks`,
+        };
+      });
+    } catch (err: any) {
+      console.error("Failed to remove feedback:", err);
+      setTracks((prev) =>
+        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t))
+      );
+      setPlaybackState((prev) =>
+        prev.current_track?.id === trackId
+          ? { ...prev, current_track: { ...prev.current_track, manual_like: 1 } }
+          : prev
+      );
+      addAppNotification("error", "Action Failed", err?.message || "Could not update track rating.");
+    }
   };
 
   const handleEnqueueTrack = async (trackId: string) => {
@@ -1301,57 +1442,124 @@ export const App: React.FC = () => {
 
   // Online likes are represented by membership in the account's Liked Songs playlist.
   const handleLikeOnline = async (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => {
-    const res = await dispatchCommand({ command: "EnsureLikedSongsPlaylist" });
-    const likedId = (res as any)?.data;
-    if (likedId) {
-      const isLiked = (trackPlaylistMap[track.id] || []).includes(likedId);
-      if (isLiked) {
-        await dispatchCommand({
-          command: "RemoveTrackFromPlaylist",
-          payload: { playlist_id: likedId, track_id: track.id },
-        });
-      } else {
-        await dispatchCommand({
-          command: "AddTrackToPlaylist",
-          payload: {
-            playlist_id: likedId,
-            track_id: track.id,
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            duration_secs: track.duration_secs,
-            cover_art_url: track.cover_art_url,
-            preview_url: track.preview_url,
-          },
-        });
+    try {
+      const res = await dispatchCommand({ command: "EnsureLikedSongsPlaylist" });
+      const likedId = (res as any)?.data;
+      if (likedId) {
+        const isLiked = (trackPlaylistMap[track.id] || []).includes(likedId);
+        if (isLiked) {
+          await dispatchCommand({
+            command: "RemoveTrackFromPlaylist",
+            payload: { playlist_id: likedId, track_id: track.id },
+          });
+          setTrackPlaylistMap((prev) => {
+            const next = { ...prev };
+            if (next[track.id]) {
+              next[track.id] = next[track.id].filter((id) => id !== likedId);
+            }
+            return next;
+          });
+          setActiveCollection((prev) => {
+            if (!prev || !prev.tracks) return prev;
+            const isLikedSongs =
+              prev.title === "Liked Songs" ||
+              prev.playlistId === likedId ||
+              prev.id === likedId;
+            if (!isLikedSongs) return prev;
+            const updatedTracks = prev.tracks.filter((t) => t.id !== track.id);
+            return {
+              ...prev,
+              tracks: updatedTracks,
+              subtitle: `${updatedTracks.length} tracks`,
+            };
+          });
+        } else {
+          await dispatchCommand({
+            command: "AddTrackToPlaylist",
+            payload: {
+              playlist_id: likedId,
+              track_id: track.id,
+              title: track.title,
+              artist: track.artist,
+              album: track.album,
+              duration_secs: track.duration_secs,
+              cover_art_url: track.cover_art_url,
+              preview_url: track.preview_url,
+            },
+          });
+          setTrackPlaylistMap((prev) => {
+            const next = { ...prev };
+            const existing = next[track.id] || [];
+            if (!existing.includes(likedId)) {
+              next[track.id] = [...existing, likedId];
+            }
+            return next;
+          });
+        }
+        await fetchPlaylists();
+        await fetchTrackPlaylistMemberships();
       }
-      await fetchPlaylists();
-      await fetchTrackPlaylistMemberships();
+    } catch (err: any) {
+      console.error("Failed to toggle online like:", err);
+      addAppNotification("error", "Like Failed", err?.message || "Could not update online track like.");
     }
   };
 
   const handleToggleCollectionLike = async (track: CollectionTrackItem, isLiked: boolean) => {
-    const hasLocalTrack =
-      !!track.matched_local_track_id &&
-      !track.matched_local_track_id.startsWith("online:") &&
-      !track.matched_local_track_id.startsWith("itunes:");
-    if (hasLocalTrack) {
-      if (isLiked) {
-        await handleRemoveFeedback(track.matched_local_track_id!);
+    const localId =
+      (track.matched_local_track_id &&
+        !track.matched_local_track_id.startsWith("online:") &&
+        !track.matched_local_track_id.startsWith("itunes:")
+        ? track.matched_local_track_id
+        : undefined) ||
+      (!track.id.startsWith("online:") &&
+        !track.id.startsWith("itunes:") &&
+        tracks.some((t) => t.id === track.id)
+        ? track.id
+        : undefined);
+
+    const isLikedSongsView =
+      activeCollection?.title === "Liked Songs" ||
+      (likedPlaylistId && (activeCollection?.playlistId === likedPlaylistId || activeCollection?.id === likedPlaylistId));
+
+    try {
+      if (localId) {
+        if (isLiked) {
+          await handleRemoveFeedback(localId);
+        } else {
+          await handleLike(localId);
+        }
       } else {
-        await handleLike(track.matched_local_track_id!);
+        await handleLikeOnline({
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          cover_art_url: track.cover_art_url,
+          preview_url: track.preview_url,
+          duration_secs: track.duration_secs,
+        });
       }
-      return;
+
+      if (isLiked && isLikedSongsView) {
+        setActiveCollection((prev) => {
+          if (!prev || !prev.tracks) return prev;
+          const updatedTracks = prev.tracks.filter(
+            (t) =>
+              t.id !== track.id &&
+              (!localId || (t.matched_local_track_id !== localId && t.id !== localId))
+          );
+          return {
+            ...prev,
+            tracks: updatedTracks,
+            subtitle: `${updatedTracks.length} tracks`,
+          };
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to toggle collection like:", err);
+      addAppNotification("error", "Like Failed", err?.message || "Could not update track like state.");
     }
-    await handleLikeOnline({
-      id: track.id,
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      cover_art_url: track.cover_art_url,
-      preview_url: track.preview_url,
-      duration_secs: track.duration_secs,
-    });
   };
 
   const handleCreatePlaylist = async (name: string, description?: string): Promise<string | null> => {
@@ -2449,18 +2657,26 @@ export const App: React.FC = () => {
 
   const likedPlaylistId = playlists.find((playlist) => playlist.name === "Liked Songs")?.id;
   const likedTrackIds = useMemo(() => {
-    if (!likedPlaylistId) return new Set<string>();
-    return new Set(
-      Object.entries(trackPlaylistMap)
-        .filter(([, playlistIds]) => playlistIds.includes(likedPlaylistId))
-        .map(([trackId]) => trackId)
-    );
-  }, [trackPlaylistMap, likedPlaylistId]);
+    const set = new Set<string>();
+    if (likedPlaylistId) {
+      for (const [trackId, playlistIds] of Object.entries(trackPlaylistMap)) {
+        if (playlistIds.includes(likedPlaylistId)) {
+          set.add(trackId);
+        }
+      }
+    }
+    for (const track of tracks) {
+      if (track.manual_like === 1) {
+        set.add(track.id);
+      }
+    }
+    return set;
+  }, [trackPlaylistMap, likedPlaylistId, tracks]);
 
   const isCurrentTrackLiked = useMemo(() => {
     if (!playbackState.current_track) return false;
     const tid = playbackState.current_track.id;
-    return likedTrackIds.has(tid);
+    return likedTrackIds.has(tid) || playbackState.current_track.manual_like === 1;
   }, [playbackState.current_track, likedTrackIds]);
 
   const regularPlaylistIds = useMemo(
@@ -2624,6 +2840,7 @@ export const App: React.FC = () => {
                   onRescan={handleRescanLibrary}
                   onSearch={handleSearchLibrary}
                   trackPlaylistMap={regularTrackPlaylistMap}
+                  likedTrackIds={likedTrackIds}
                   onOpenAddToPlaylistModal={(t) =>
                     handleOpenAddToPlaylistModal({
                       id: t.id,
@@ -2797,7 +3014,7 @@ export const App: React.FC = () => {
       {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
       <NowPlayingBar
         playbackState={playbackState}
-        isLoading={loadingTrackId !== null}
+        isLoading={loadingTrackId !== null || !!playbackState.is_buffering}
         currentTrack={playbackState.current_track}
         coverArtUrl={activePlayingArtwork}
         onPlayPause={handleUnifiedPlayPause}
@@ -2836,7 +3053,7 @@ export const App: React.FC = () => {
       {isFullscreen && (
         <FullScreenPlayerView
           playbackState={playbackState}
-          isLoading={loadingTrackId !== null}
+          isLoading={loadingTrackId !== null || !!playbackState.is_buffering}
           currentTrack={playbackState.current_track}
           coverArtUrl={activePlayingArtwork}
           isInPlaylist={isCurrentTrackInPlaylist}

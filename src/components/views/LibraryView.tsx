@@ -14,6 +14,7 @@ interface LibraryViewProps {
   onRescan: () => void;
   onSearch: (query: string) => void;
   trackPlaylistMap?: Record<string, string[]>;
+  likedTrackIds?: Set<string>;
   onOpenAddToPlaylistModal?: (track: Track) => void;
 }
 
@@ -29,6 +30,7 @@ type LibraryRowProps = {
   tracks: Track[];
   queuedTrackIds?: Set<string>;
   trackPlaylistMap?: Record<string, string[]>;
+  likedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
   loadingTrackId?: string | null;
   onEnqueueTrack: (trackId: string) => void;
@@ -43,6 +45,7 @@ const LibraryRow = ({
   tracks,
   queuedTrackIds,
   trackPlaylistMap,
+  likedTrackIds,
   onPlayTrack,
   loadingTrackId,
   onEnqueueTrack,
@@ -52,7 +55,7 @@ const LibraryRow = ({
 }: RowComponentProps<LibraryRowProps>): React.ReactElement | null => {
   const track = tracks[index];
   if (!track) return null;
-  const isLiked = track.manual_like === 1;
+  const isLiked = track.manual_like === 1 || (likedTrackIds ? likedTrackIds.has(track.id) : false);
   const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
   const playlistIds = trackPlaylistMap?.[track.id] || [];
   const isInPlaylist = playlistIds.length > 0;
@@ -133,7 +136,15 @@ const LibraryRow = ({
         <button
           className="player-icon-btn"
           title={isLiked ? "Unlike track" : "Like track"}
-          onClick={() => (isLiked ? onRemoveFeedback(track.id) : onLikeTrack(track.id))}
+          aria-label={isLiked ? "Unlike track" : "Like track"}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isLiked) {
+              onRemoveFeedback(track.id);
+            } else {
+              onLikeTrack(track.id);
+            }
+          }}
           style={{ color: isLiked ? "#ef4444" : "var(--text-muted)" }}
         >
           <Heart size={16} fill={isLiked ? "#ef4444" : "none"} />
@@ -180,6 +191,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({
   onRescan,
   onSearch,
   trackPlaylistMap,
+  likedTrackIds,
   onOpenAddToPlaylistModal,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -304,6 +316,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({
                 tracks,
                 queuedTrackIds,
                 trackPlaylistMap,
+                likedTrackIds,
                 onPlayTrack,
                 loadingTrackId,
                 onEnqueueTrack,

@@ -1815,13 +1815,8 @@ impl CoreProcessor {
             Query::GetPlaylists => {
                 let user_id = self.current_user_id().await;
                 let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
-                let current_user_guard = self.current_user.read().await;
-                let playlists = if let Some(ref u) = *current_user_guard {
-                    self.playlist_repo.ensure_liked_songs_playlist(&u.id).await?;
-                    self.playlist_repo.get_user_playlists(&u.id).await?
-                } else {
-                    self.playlist_repo.get_smart_mixes_for_user(&user_id).await?
-                };
+                self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                let playlists = self.playlist_repo.get_user_playlists(&user_id).await?;
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
@@ -2126,12 +2121,8 @@ impl CoreProcessor {
                 Ok(QueryResponse::CoverArt(cover_result))
             }
             Query::GetTrackPlaylistMemberships => {
-                let current_user_guard = self.current_user.read().await;
-                let memberships = if let Some(ref u) = *current_user_guard {
-                    self.playlist_repo.get_track_playlist_memberships_for_user(&u.id).await?
-                } else {
-                    std::collections::HashMap::new()
-                };
+                let user_id = self.current_user_id().await;
+                let memberships = self.playlist_repo.get_track_playlist_memberships_for_user(&user_id).await?;
                 let val = serde_json::to_value(&memberships)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::TrackPlaylistMemberships(val))

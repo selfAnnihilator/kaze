@@ -25,7 +25,8 @@ async fn execute_command(
             }
         }
     }
-    let parsed_command: Command = serde_json::from_value(val).map_err(|e| format!("Command parse error: {}", e))?;
+    let parsed_command: Command =
+        serde_json::from_value(val).map_err(|e| format!("Command parse error: {}", e))?;
     processor
         .dispatch_command(parsed_command)
         .await
@@ -40,12 +41,14 @@ async fn execute_query(
     let mut val = query;
     if let Some(obj) = val.as_object_mut() {
         if obj.get("query").and_then(|q| q.as_str()) == Some("GetStatsOverview") {
-            if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null) {
+            if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null)
+            {
                 obj.insert("payload".to_string(), serde_json::json!({}));
             }
         }
     }
-    let parsed_query: Query = serde_json::from_value(val).map_err(|e| format!("Query parse error: {}", e))?;
+    let parsed_query: Query =
+        serde_json::from_value(val).map_err(|e| format!("Query parse error: {}", e))?;
     processor
         .execute_query(parsed_query)
         .await
@@ -83,7 +86,11 @@ pub fn run() {
                     .expect("Failed to initialize SQLite pool");
                 let pool_for_repair = pool.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = music_player_backend::recommendations::mixes::repair_legacy_online_tracks(&pool_for_repair).await;
+                    let _ =
+                        music_player_backend::recommendations::mixes::repair_legacy_online_tracks(
+                            &pool_for_repair,
+                        )
+                        .await;
                 });
                 let processor = Arc::new(CoreProcessor::new(pool, config));
 
@@ -98,7 +105,10 @@ pub fn run() {
                                 }
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                                tracing::warn!(skipped, "Event bus receiver lagged behind; continuing");
+                                tracing::warn!(
+                                    skipped,
+                                    "Event bus receiver lagged behind; continuing"
+                                );
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                                 tracing::info!("Event bus channel closed; exiting event loop");
@@ -107,6 +117,22 @@ pub fn run() {
                         }
                     }
                 });
+
+                #[cfg(target_os = "linux")]
+                {
+                    let mpris_processor = processor.clone();
+                    let mpris_handle = handle.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = music_player_backend::mpris::start_mpris_service(
+                            mpris_processor,
+                            Some(mpris_handle),
+                        )
+                        .await
+                        {
+                            tracing::warn!("Failed to start Linux MPRIS service: {}", e);
+                        }
+                    });
+                }
 
                 handle.manage(processor);
 
@@ -120,9 +146,13 @@ pub fn run() {
                                 let version = update.version.clone();
                                 tracing::info!("Update available: v{}", version);
                                 // Notify frontend so it can show a banner
-                                let _ = update_handle.emit("update-available", serde_json::json!({ "version": version }));
+                                let _ = update_handle.emit(
+                                    "update-available",
+                                    serde_json::json!({ "version": version }),
+                                );
                                 // Download and install; app will restart automatically
-                                if let Err(e) = update.download_and_install(|_, _| {}, || {}).await {
+                                if let Err(e) = update.download_and_install(|_, _| {}, || {}).await
+                                {
                                     tracing::error!("Update install failed: {}", e);
                                 }
                             }
