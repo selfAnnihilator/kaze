@@ -54,6 +54,15 @@ Pre-built binaries and packages for all supported operating systems are availabl
 
 Kaze is published on the AUR as `kaze`. The native Arch package links against your system libraries for the best performance and is strongly preferred over the AppImage on Arch-based systems.
 
+The AUR package builds Kaze from source. Its build dependencies include **`rust`**,
+so `yay` or `paru` installs the compiler and Cargo automatically when needed;
+you do not need to install Rust first. Accept the dependency-installation prompt.
+
+If you already use **`rustup`**, it satisfies the dependency. If it has no configured
+toolchain, run `rustup default stable` and retry the build.
+See [Rust toolchain troubleshooting](INSTALL.md#rust-toolchain-for-aur-builds)
+for details. Prebuilt `.pkg.tar.zst` packages do not need Rust or Cargo installed.
+
 Install using `yay`:
 ```bash
 yay -S kaze

@@ -1,12 +1,12 @@
 pkgbase = kaze
 	pkgdesc = A calm, intelligent local music player
 	pkgver = 1.0.6
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/selfAnnihilator/kaze
 	arch = x86_64
 	license = MIT
 	license = Apache-2.0
-	makedepends = cargo
+	makedepends = rust
 	makedepends = nodejs
 	makedepends = npm
 	depends = webkit2gtk-4.1

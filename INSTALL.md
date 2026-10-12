@@ -40,6 +40,48 @@ Native Arch package built specifically for Arch Linux, CachyOS, and Manjaro usin
 > makepkg -si
 > ```
 
+#### Rust toolchain for AUR builds
+
+The `kaze` AUR package compiles the application, so Cargo and `rustc` are build
+requirements. The package declares `rust` as a build dependency, selecting Arch's
+compiler/Cargo package on a fresh system. An existing Arch `rustup` installation
+also satisfies this dependency. Older Kaze packaging declared the virtual
+dependency `cargo`, which could prompt you to choose between `rust` and `rustup`.
+
+On a fresh system, the AUR helper installs **`rust`**, including the compiler and
+Cargo, as a build dependency. Run the installation directly and accept dependency
+installation when prompted:
+
+```bash
+yay -S kaze
+# Or: paru -S kaze
+```
+
+If you already use the Arch **`rustup`** package, keep it. It conflicts with `rust`,
+and installing the manager alone does not guarantee an installed toolchain.
+Configure stable, check the tools, then retry your AUR installation:
+
+```bash
+rustup default stable
+cargo --version
+rustc --version
+```
+
+If Cargo reports that no default toolchain is configured, the rustup command
+above addresses that error. If Cargo is still missing, open a new terminal and
+check `command -v cargo` and `pacman -Q rust rustup` to identify the installed
+provider. A Rust installation from the upstream shell installer is not registered
+with pacman and may still cause the AUR helper to request a packaged provider.
+Use one intentional package-managed setup rather than accepting a removal of
+an existing Rust toolchain blindly.
+
+If you install the prebuilt `.pkg.tar.zst` using `pacman -U`, you only need Kaze's
+runtime dependencies; Cargo and Rust are not required.
+
+References: [Arch Rust packages](https://archlinux.org/packages/extra/x86_64/rust/),
+[Arch rustup package](https://archlinux.org/packages/extra/x86_64/rustup/), and
+[Arch Rust packaging guidelines](https://wiki.archlinux.org/title/Rust_package_guidelines).
+
 
 ---
 
