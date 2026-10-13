@@ -1565,12 +1565,19 @@ async fn test_multi_device_daily_sync() {
 
     let pool = create_in_memory_pool().await.expect("DB pool");
     let stats_repo = SqliteStatsRepository::new(pool.clone());
+    use chrono::Datelike;
     let weights = RankingWeightsConfig::default();
 
     let user_id = "user_multidevice_test";
     let dev_a = "device_desktop";
     let dev_b = "device_laptop";
-    let today = "2026-09-17";
+    let now_local = chrono::Local::now();
+    let today_str = now_local.format("%Y-%m-%d").to_string();
+    let today = today_str.as_str();
+    let current_year = now_local.year();
+    let current_month = now_local.month();
+    let earlier_date = now_local.date_naive() - chrono::Duration::days(1);
+    let earlier_stat_date = earlier_date.format("%Y-%m-%d").to_string();
     let now = chrono::Utc::now().timestamp();
 
     // 1. Device A records 3600.0s, Device B records 1000.0s on the same day
@@ -1586,7 +1593,7 @@ async fn test_multi_device_daily_sync() {
 
     // Overview sums across devices: 3600 + 1000 = 4600.0s
     let overview = stats_repo
-        .get_stats_overview(user_id, 0, 0, Some(2026), Some(9), &weights)
+        .get_stats_overview(user_id, 0, 0, Some(current_year), Some(current_month), &weights)
         .await
         .expect("overview");
     assert_eq!(overview.total_year_seconds, 4600.0, "Same-day multi-device sessions must sum correctly");
@@ -1611,7 +1618,7 @@ async fn test_multi_device_daily_sync() {
         .expect("record dev A more playback");
 
     let overview_updated = stats_repo
-        .get_stats_overview(user_id, 0, 0, Some(2026), Some(9), &weights)
+        .get_stats_overview(user_id, 0, 0, Some(current_year), Some(current_month), &weights)
         .await
         .expect("overview updated");
     // Device A snapshot is now 4200.0s. Total is 4200 + 1000 = 5200.0s
@@ -1643,7 +1650,7 @@ async fn test_multi_device_daily_sync() {
         .expect("apply remote 2 (idempotent)");
 
     let overview_after_sync = stats_repo
-        .get_stats_overview(user_id, 0, 0, Some(2026), Some(9), &weights)
+        .get_stats_overview(user_id, 0, 0, Some(current_year), Some(current_month), &weights)
         .await
         .expect("overview after pull");
     // Should still be exactly 5200.0s, not 6200.0s or 7200.0s!
@@ -1687,7 +1694,7 @@ async fn test_multi_device_daily_sync() {
             CloudDailyStat {
                 user_id: user_id.to_string(),
                 device_id: dev_a.to_string(),
-                stat_date: "2026-09-16".to_string(),
+                stat_date: earlier_stat_date.clone(),
                 listening_seconds: 1800.0,
                 play_count: 3,
                 completion_count: 3,
@@ -1711,14 +1718,14 @@ async fn test_multi_device_daily_sync() {
 
     // Verify timeline stats are fully restored on the new device!
     let restored_overview = fresh_stats_repo
-        .get_stats_overview(user_id, 0, 0, Some(2026), Some(9), &weights)
+        .get_stats_overview(user_id, 0, 0, Some(current_year), Some(current_month), &weights)
         .await
         .expect("restored overview");
 
     assert_eq!(restored_overview.daily_seconds, 5200.0, "Today's daily total restored from daily_user_stats");
-    assert_eq!(restored_overview.total_year_seconds, 7000.0, "Yearly total (5200 + 1800) restored from daily_user_stats");
-    assert_eq!(restored_overview.monthly_seconds, 7000.0, "Monthly total restored from daily_user_stats");
-    assert_eq!(restored_overview.history_started_at, Some(local_midnight("2026-09-16")), "Earliest stat_date (2026-09-16) restored as local midnight");
+    assert_eq!(restored_overview.total_year_seconds, if earlier_date.year() == current_year { 7000.0 } else { 5200.0 }, "Yearly total (5200 + 1800) restored from daily_user_stats");
+    assert_eq!(restored_overview.monthly_seconds, if earlier_date.month() == current_month && earlier_date.year() == current_year { 7000.0 } else { 5200.0 }, "Monthly total restored from daily_user_stats");
+    assert_eq!(restored_overview.history_started_at, Some(local_midnight(&earlier_stat_date)), "Earliest stat_date restored as local midnight");
 }
 
 #[tokio::test]

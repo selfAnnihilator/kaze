@@ -13,6 +13,7 @@ interface LibraryViewProps {
   onRemoveFeedback: (trackId: string) => void;
   onRescan: () => void;
   onSearch: (query: string) => void;
+  searchQuery?: string;
   trackPlaylistMap?: Record<string, string[]>;
   likedTrackIds?: Set<string>;
   onOpenAddToPlaylistModal?: (track: Track) => void;
@@ -190,14 +191,20 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(({
   onRemoveFeedback,
   onRescan,
   onSearch,
+  searchQuery = "",
   trackPlaylistMap,
   likedTrackIds,
   onOpenAddToPlaylistModal,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchQuery);
   const debounceTimerRef = useRef<any>(null);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const { height: containerHeight } = useContainerDimensions(listContainerRef);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

@@ -130,6 +130,19 @@ pub enum Query {
         user_id: Option<String>,
     },
     GetRemoteAudioCacheStats,
+    GetHomeOverview,
+    GetFlowQueue {
+        #[serde(default)]
+        familiarity_ratio: Option<f64>,
+        #[serde(default)]
+        limit: Option<u32>,
+        #[serde(default)]
+        exclude_track_ids: Option<Vec<String>>,
+    },
+    GetFlowTrackReason {
+        track_id: String,
+    },
+    GetFlowSession,
 }
 
 /// Query response wrapper.
@@ -179,5 +192,9 @@ pub enum QueryResponse {
         max_size_bytes: u64,
         partial_file_count: usize,
     },
+    HomeOverview(serde_json::Value),
+    FlowQueue(Vec<serde_json::Value>),
+    FlowTrackReason(Option<crate::recommendations::FlowExplanation>),
+    FlowSession(Option<serde_json::Value>),
     Empty,
 }

@@ -13,12 +13,17 @@ import {
   SpotifyPlaylistImport,
   AppNotification,
   CloudSyncStatus,
+  HomeOverview, FlowExplanation,
 } from "./types";
 import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
 import { playbackProgress } from "./services/playbackProgress";
-import { Sidebar, ViewType } from "./components/Sidebar";
+import { viewDestination } from "./navigationHistory";
+import { useNavigationHistory } from "./hooks/useNavigationHistory";
+import { Sidebar } from "./components/Sidebar";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { OnboardingModal } from "./components/OnboardingModal";
+import { TrackExplanation } from "./components/TrackExplanation";
+import { HomeView } from "./components/views/HomeView";
 import { LibraryView } from "./components/views/LibraryView";
 import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
@@ -130,9 +135,32 @@ const PromptModal: React.FC<PromptModalProps> = ({
 
 export const App: React.FC = () => {
   // Navigation
-  const [currentView, setCurrentView] = useState<ViewType>("discovery");
-  const [activeCollection, setActiveCollection] = useState<CollectionData | null>(null);
+  const { destination, navigate, updateDestination, back: navigateBack } = useNavigationHistory();
+  const currentView = destination.view;
+  const activeCollection = destination.collection;
+  const isLyricsActive = destination.lyrics;
+  // Collection edits and asynchronous hydration replace the current entry.
+  const setActiveCollection = useCallback((value: React.SetStateAction<CollectionData | null>) => {
+    updateDestination(current => {
+      const collection = typeof value === "function" ? value(current.collection) : value;
+      return collection === current.collection ? current : { ...current, collection };
+    });
+  }, [updateDestination]);
+  const setIsLyricsActive = useCallback((value: React.SetStateAction<boolean>) => {
+    const lyrics = typeof value === "function" ? value(destination.lyrics) : value;
+    navigate({ ...destination, lyrics });
+  }, [destination, navigate]);
   const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
+
+  // Home & Flow State
+  const [homeOverview, setHomeOverview] = useState<HomeOverview | null>(null);
+  const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
+  const [flowSteering, setFlowSteering] = useState<number>(0.5);
+  const [whyTrackModal, setWhyTrackModal] = useState<{
+    title: string;
+    artist: string;
+    explanation: FlowExplanation;
+  } | null>(null);
 
   // Playlist Management Modal
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
@@ -199,7 +227,13 @@ export const App: React.FC = () => {
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
-  const [globalSearchResults, setGlobalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+  const globalSearchResults = destination.searchResults;
+  const setGlobalSearchResults = useCallback((results: React.SetStateAction<DiscoveryRecommendation[] | null>) => {
+    updateDestination(current => ({ ...current, searchResults: typeof results === "function" ? results(current.searchResults) : results }));
+  }, [updateDestination]);
+  const destinationRef = useRef(destination);
+  destinationRef.current = destination;
+  useEffect(() => { setGlobalSearchQuery(destination.searchQuery); }, [destination.searchQuery]);
   const [downloadTargets, setDownloadTargets] = useState<Record<string, { title: string; artist: string }>>({});
   const currentSearchResults = useMemo(
     () => attachLocalSearchMatches(globalSearchResults, tracks),
@@ -224,11 +258,11 @@ export const App: React.FC = () => {
 
   // Full Screen & Lyrics View State
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLyricsActive, setIsLyricsActive] = useState(false);
+
 
   // Playing Origin state: identifies where the current track is playing from
   const [playingOrigin, setPlayingOrigin] = useState<{
-    type: "playlist" | "mix" | "chart" | "album" | "discovery";
+    type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
     id?: string;
     name?: string;
     collectionData?: CollectionData;
@@ -524,6 +558,45 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  const homeRequestRef = useRef(0);
+  const steeringRevisionRef = useRef(0);
+  const steeringPendingRef = useRef(false);
+  const flowSessionRequestRef = useRef(0);
+  const fetchHomeOverview = useCallback(async () => {
+    const request = ++homeRequestRef.current;
+    const steeringRevision = steeringRevisionRef.current;
+    const flowRevision = flowSessionRequestRef.current;
+    try {
+      setIsHomeLoading(true);
+      const res = await executeQuery({ query: "GetHomeOverview" });
+      if (res.type === "HomeOverview" && res.data && request === homeRequestRef.current) {
+        setHomeOverview(prev => ({ ...res.data, flow_session: flowRevision === flowSessionRequestRef.current ? res.data.flow_session : prev?.flow_session } as HomeOverview));
+        if (res.data.flow_session && !steeringPendingRef.current && steeringRevision === steeringRevisionRef.current) {
+          setFlowSteering(res.data.flow_session.familiarity_ratio);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch home overview:", err);
+    } finally {
+      if (request === homeRequestRef.current) setIsHomeLoading(false);
+    }
+  }, []);
+
+  const fetchFlowSession = useCallback(async () => {
+    const request = ++flowSessionRequestRef.current;
+    const res = await executeQuery({ query: "GetFlowSession" });
+    if (res.type === "FlowSession" && request === flowSessionRequestRef.current) {
+      setHomeOverview(prev => ({ ...(prev || { recent_rotation: [], rediscover: [], for_you: [] }), flow_session: res.data }));
+      setPlayingOrigin(prev => res.data?.is_active ? { type: "flow", name: "Flow" } : prev?.type === "flow" ? null : prev);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentView !== "home") return;
+    const timer = setTimeout(() => { void fetchHomeOverview(); }, 250);
+    return () => clearTimeout(timer);
+  }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview]);
+
   const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
     const [discovery, charts] = await Promise.allSettled([
       executeQuery({
@@ -690,6 +763,7 @@ export const App: React.FC = () => {
     fetchWishlist();
     fetchDownloads();
     fetchDiscovery();
+    fetchHomeOverview();
     fetchSettings();
     fetchCurrentUser();
     fetchCloudSyncStatus();
@@ -703,6 +777,7 @@ export const App: React.FC = () => {
     fetchWishlist,
     fetchDownloads,
     fetchDiscovery,
+    fetchHomeOverview,
     fetchSettings,
     fetchCurrentUser,
     fetchCloudSyncStatus,
@@ -828,6 +903,7 @@ export const App: React.FC = () => {
           break;
 
         case "QueueUpdated": {
+          void fetchFlowSession().catch(console.error);
           if (Array.isArray(event.payload?.queue_track_ids)) {
             setQueuedTrackIds(new Set(event.payload.queue_track_ids));
           } else {
@@ -937,6 +1013,10 @@ export const App: React.FC = () => {
           break;
 
         case "SessionChanged": {
+          ++homeRequestRef.current;
+          ++flowSessionRequestRef.current;
+          void fetchHomeOverview();
+          void fetchFlowSession().catch(console.error);
           const user = event.payload?.user;
           if (user) {
             setCurrentUser(user);
@@ -982,7 +1062,7 @@ export const App: React.FC = () => {
     return () => {
       if (unlistenFn) unlistenFn();
     };
-  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification, fetchPlaylists, fetchTrackPlaylistMemberships, fetchCloudSyncStatus]);
+  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification, fetchPlaylists, fetchTrackPlaylistMemberships, fetchCloudSyncStatus, fetchFlowSession, fetchHomeOverview]);
 
 
   // --- Actions & Commands ---
@@ -1000,7 +1080,6 @@ export const App: React.FC = () => {
     async (trackId: string) => {
       const requestId = beginPlaybackLoading(trackId);
       try {
-        const preservedQueue = Array.from(queuedTrackIds).filter((queuedId) => queuedId !== trackId);
         const found = tracks.find((t) => t.id === trackId);
         if (found) {
           setPlaybackState((prev) => ({
@@ -1015,16 +1094,6 @@ export const App: React.FC = () => {
           command: "PlayTrack",
           payload: { track_id: trackId },
         });
-        for (const queuedId of preservedQueue) {
-          try {
-            await dispatchCommand({
-              command: "EnqueueTrack",
-              payload: { track_id: queuedId, play_next: false },
-            });
-          } catch (err) {
-            console.warn("Could not restore queued track after direct playback:", err);
-          }
-        }
         await fetchPlaybackState();
       } catch (err) {
         await fetchPlaybackState();
@@ -1033,7 +1102,7 @@ export const App: React.FC = () => {
         endPlaybackLoading(requestId);
       }
     },
-    [tracks, queuedTrackIds, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
+    [tracks, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
   );
 
   const handlePlayOnlineTrack = useCallback(
@@ -1110,7 +1179,7 @@ export const App: React.FC = () => {
     [playbackState.is_playing, playbackState.current_track, handlePlayTrack, addAppNotification, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
   );
 
-  const handlePlayPause = async () => {
+  const handlePlayPause = useCallback(async () => {
     if (playbackState.is_playing) {
       await dispatchCommand({ command: "Pause" });
       setPlaybackState((prev) => ({ ...prev, is_playing: false }));
@@ -1118,7 +1187,7 @@ export const App: React.FC = () => {
       await dispatchCommand({ command: "Resume" });
       setPlaybackState((prev) => ({ ...prev, is_playing: true }));
     }
-  };
+  }, [playbackState.is_playing]);
 
   useEffect(() => {
     handlePlayPauseRef.current = handlePlayPause;
@@ -1190,7 +1259,7 @@ export const App: React.FC = () => {
         command: "LikeTrack",
         payload: { track_id: trackId },
       });
-      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships(), fetchHomeOverview()]);
       // If Liked Songs is the active collection, refresh its tracks
       if (
         activeCollection &&
@@ -1256,7 +1325,7 @@ export const App: React.FC = () => {
         command: "RemoveTrackFeedback",
         payload: { track_id: trackId },
       });
-      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships()]);
+      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships(), fetchHomeOverview()]);
       // If Liked Songs is the active collection, remove the unliked track immediately
       setActiveCollection((prev) => {
         if (!prev || !prev.tracks) return prev;
@@ -1347,34 +1416,119 @@ export const App: React.FC = () => {
     await handleEnqueueTrack(trackId);
   };
 
-  const handleSearchLibrary = async (queryText: string) => {
-    if (!queryText.trim()) {
-      fetchTracks();
-      return;
-    }
-    try {
-      const res = await executeQuery({
-        query: "SearchLibrary",
-        payload: { query_text: queryText, limit: 100 },
-      });
-      if (Array.isArray(res.data)) {
-        setTracks(res.data);
-      }
-    } catch (err) {
-      console.error("Search failed:", err);
-    }
-  };
+  const handleSearchLibrary = useCallback((queryText: string) => {
+    updateDestination(current => ({ ...current, libraryQuery: queryText.trim(), libraryAlbumId: undefined }));
+  }, [updateDestination]);
 
-  const handleSelectAlbum = useCallback(
-    (albumId: string) => {
-      const album = albums.find((al) => al.id === albumId);
-      if (album) {
-        handleSearchLibrary(album.title);
-        setCurrentView("library");
+  useEffect(() => {
+    if (destination.view !== "library" || destination.collection || destination.lyrics) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await executeQuery(destination.libraryQuery
+          ? { query: "SearchLibrary", payload: { query_text: destination.libraryQuery, limit: 100 } }
+          : { query: "GetTracks", payload: { limit: 1000, offset: 0, ascending: true } });
+        if (!cancelled && Array.isArray(res.data)) setTracks(res.data);
+      } catch (err) { console.error("Library navigation failed:", err); }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [destination.view, destination.collection, destination.lyrics, destination.libraryQuery, destination.libraryAlbumId]);
+
+  const handleSelectAlbum = useCallback((albumId: string) => {
+    const album = albums.find(al => al.id === albumId);
+    if (album) navigate({ ...viewDestination("library"), libraryQuery: album.title, libraryAlbumId: album.id });
+  }, [albums, navigate]);
+
+  const handleStartFlow = useCallback(
+    async (familiarityRatio: number) => {
+      try {
+        setIsHomeLoading(true);
+        await dispatchCommand({
+          command: "StartFlow",
+          payload: { familiarity_ratio: familiarityRatio },
+        });
+        await fetchPlaybackState();
+        await fetchHomeOverview();
+        await fetchFlowSession();
+      } catch (err) {
+        console.error("Failed to start Flow:", err);
+        addAppNotification(
+          "error",
+          "Flow Error",
+          "Failed to start Flow: " + String(err)
+        );
+      } finally {
+        setIsHomeLoading(false);
       }
     },
-    [albums]
+    [fetchPlaybackState, fetchHomeOverview, fetchFlowSession, addAppNotification]
   );
+
+
+  const handleToggleFlowPlayback = useCallback(async () => {
+    if (playbackState.is_playing) {
+      await handleUnifiedPlayPause();
+    } else {
+      await dispatchCommand({ command: "ContinueFlow" });
+      await fetchPlaybackState();
+    }
+  }, [playbackState.is_playing, handleUnifiedPlayPause, fetchPlaybackState]);
+
+  const steeringDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleFlowSteeringChange = useCallback((val: number) => {
+    const revision = ++steeringRevisionRef.current;
+    steeringPendingRef.current = true;
+    setFlowSteering(val);
+    if (steeringDebounceRef.current) {
+      clearTimeout(steeringDebounceRef.current);
+    }
+    steeringDebounceRef.current = setTimeout(async () => {
+      try {
+        await dispatchCommand({
+          command: "SetFlowSteering",
+          payload: { familiarity_ratio: val },
+        });
+        if (revision === steeringRevisionRef.current) steeringPendingRef.current = false;
+      } catch (err) {
+        console.error("Failed to update Flow steering:", err);
+        if (revision === steeringRevisionRef.current) steeringPendingRef.current = false;
+      }
+    }, 250);
+  }, []);
+
+  useEffect(() => () => {
+    if (steeringDebounceRef.current) clearTimeout(steeringDebounceRef.current);
+  }, []);
+
+  const handleStopFlow = useCallback(async () => {
+    try {
+      await dispatchCommand({ command: "StopFlow" });
+      await fetchFlowSession();
+      await fetchPlaybackState();
+    } catch (err) {
+      addAppNotification("error", "Flow Error", String(err));
+    }
+  }, [fetchFlowSession, fetchPlaybackState, addAppNotification]);
+
+  const handleInspectWhyCurrentTrack = useCallback(async () => {
+    if (!playbackState.current_track) return;
+    try {
+      const res = await executeQuery({
+        query: "GetFlowTrackReason",
+        payload: { track_id: playbackState.current_track.id },
+      });
+      if (res.data) {
+        setWhyTrackModal({
+          title: playbackState.current_track.title,
+          artist: playbackState.current_track.artist_name || "Unknown Artist",
+          explanation: res.data,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch Flow track reason:", err);
+    }
+  }, [playbackState.current_track]);
 
   // Onboarding completion
   const handleCompleteOnboarding = async (folders: string[], startScan: boolean) => {
@@ -1780,96 +1934,105 @@ export const App: React.FC = () => {
   };
 
   // --- Collection Detail Handlers (Mixes, Top Charts, Playlists) ---
-  const handleOpenCollection = useCallback(async (collection: CollectionData) => {
-    setActiveCollection(collection);
+  const handleOpenCollection = useCallback((collection: CollectionData) => {
+    navigate({ ...destinationRef.current, view: collection.playlistId ? "playlists" : destinationRef.current.view, collection, lyrics: false });
     if (collection.playlistId || collection.type === "playlist") {
       setPlayingPlaylistId(collection.playlistId || collection.id);
     }
-    if (collection.tracks && collection.tracks.length > 0) {
+  }, [navigate]);
+
+  useEffect(() => {
+    const collection = activeCollection;
+    if (!collection || collection.tracks !== undefined) {
+      setIsLoadingCollectionTracks(false);
       return;
     }
-
-    setIsLoadingCollectionTracks(true);
-    try {
-      if (collection.playlistId) {
-        const res = await executeQuery({
-          query: "GetPlaylistTracks",
-          payload: { playlist_id: collection.playlistId },
-        });
-        const plTracks: Track[] = (res.data as any) || [];
-        const items: CollectionTrackItem[] = plTracks.map((t) => {
-          const isOnline =
-            t.format === "online" ||
-            t.file_path?.startsWith("online://") ||
-            t.id.startsWith("itunes:") ||
-            t.id.startsWith("online:");
-          return {
-            id: t.id,
-            title: t.title,
-            artist: t.artist_name || "Unknown Artist",
-            album: t.album_title,
-            duration_secs: t.duration_secs || 210,
-            cover_art_url: t.cover_art_url,
-            preview_url: t.preview_url,
-            is_downloaded: !isOnline,
-            matched_local_track_id: isOnline ? undefined : t.id,
-            rawLocalTrack: isOnline ? undefined : t,
-            rawRecommendation: isOnline
-              ? {
-                  external_track_id: t.id,
-                  provider: "online",
-                  provider_id: t.id,
-                  title: t.title,
-                  artist: t.artist_name || "Unknown Artist",
-                  album: t.album_title,
-                  duration_secs: t.duration_secs || 210,
-                  cover_art_url: t.cover_art_url,
-                  preview_url: t.preview_url,
-                  match_status: "NOT_FOUND",
-                  recommendation_reason: "",
-                  in_wishlist: false,
-                }
-              : undefined,
-          };
-        });
-        setActiveCollection((prev) =>
-          prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
-        );
-      } else if (collection.type === "chart" || collection.searchQuery) {
-        const res = await executeQuery(collection.type === "chart"
-          ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
-          : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
-        const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
-        const items: CollectionTrackItem[] = onlineRecs.map((r) => {
-          const validLocalId =
-            r.matched_local_track_id &&
-            !r.matched_local_track_id.startsWith("online:") &&
-            !r.matched_local_track_id.startsWith("itunes:")
-              ? r.matched_local_track_id
-              : undefined;
-          return {
-            id: r.external_track_id,
-            title: r.title,
-            artist: r.artist,
-            album: r.album,
-            duration_secs: r.duration_secs || 210,
-            cover_art_url: r.cover_art_url,
-            preview_url: r.preview_url,
-            is_downloaded: !!validLocalId,
-            matched_local_track_id: validLocalId,
-            rawRecommendation: r,
-          };
-        });
-        setActiveCollection((prev) =>
-          prev && prev.id === collection.id ? { ...prev, tracks: items } : prev
-        );
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingCollectionTracks(true);
+      try {
+        if (collection.playlistId) {
+          const res = await executeQuery({
+            query: "GetPlaylistTracks",
+            payload: { playlist_id: collection.playlistId },
+          });
+          const plTracks: Track[] = (res.data as any) || [];
+          const items: CollectionTrackItem[] = plTracks.map((t) => {
+            const isOnline =
+              t.format === "online" ||
+              t.file_path?.startsWith("online://") ||
+              t.id.startsWith("itunes:") ||
+              t.id.startsWith("online:");
+            return {
+              id: t.id,
+              title: t.title,
+              artist: t.artist_name || "Unknown Artist",
+              album: t.album_title,
+              duration_secs: t.duration_secs || 210,
+              cover_art_url: t.cover_art_url,
+              preview_url: t.preview_url,
+              is_downloaded: !isOnline,
+              matched_local_track_id: isOnline ? undefined : t.id,
+              rawLocalTrack: isOnline ? undefined : t,
+              rawRecommendation: isOnline
+                ? {
+                    external_track_id: t.id,
+                    provider: "online",
+                    provider_id: t.id,
+                    title: t.title,
+                    artist: t.artist_name || "Unknown Artist",
+                    album: t.album_title,
+                    duration_secs: t.duration_secs || 210,
+                    cover_art_url: t.cover_art_url,
+                    preview_url: t.preview_url,
+                    match_status: "NOT_FOUND",
+                    recommendation_reason: "",
+                    in_wishlist: false,
+                  }
+                : undefined,
+            };
+          });
+          setActiveCollection((prev) =>
+            !cancelled && prev === collection ? { ...prev, tracks: items } : prev
+          );
+        } else if (collection.type === "chart" || collection.searchQuery) {
+          const res = await executeQuery(collection.type === "chart"
+            ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
+            : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
+          const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
+          const items: CollectionTrackItem[] = onlineRecs.map((r) => {
+            const validLocalId =
+              r.matched_local_track_id &&
+              !r.matched_local_track_id.startsWith("online:") &&
+              !r.matched_local_track_id.startsWith("itunes:")
+                ? r.matched_local_track_id
+                : undefined;
+            return {
+              id: r.external_track_id,
+              title: r.title,
+              artist: r.artist,
+              album: r.album,
+              duration_secs: r.duration_secs || 210,
+              cover_art_url: r.cover_art_url,
+              preview_url: r.preview_url,
+              is_downloaded: !!validLocalId,
+              matched_local_track_id: validLocalId,
+              rawRecommendation: r,
+            };
+          });
+          setActiveCollection((prev) =>
+            !cancelled && prev === collection ? { ...prev, tracks: items } : prev
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load collection tracks:", err);
+      } finally {
+        if (!cancelled) setIsLoadingCollectionTracks(false);
       }
-    } catch (err) {
-      console.error("Failed to load collection tracks:", err);
-    } finally {
-      setIsLoadingCollectionTracks(false);
-    }
-  }, []);
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [activeCollection, setActiveCollection]);
 
   const handlePlayDiscoveredCollection = useCallback(async (collection: CollectionData) => {
     if (collection.type !== "chart" && !collection.searchQuery) return;
@@ -2006,13 +2169,15 @@ export const App: React.FC = () => {
 
   const handleOpenPlayingOrigin = useCallback(() => {
     if (!playingOrigin) return;
+    if (playingOrigin.type === "flow") {
+      navigate(viewDestination("home"));
+      return;
+    }
     if (playingOrigin.collectionData) {
-      setIsLyricsActive(false);
       handleOpenCollection(playingOrigin.collectionData);
     } else if (playingOrigin.type === "playlist" && playingOrigin.id) {
       const pl = playlists.find((p) => p.id === playingOrigin.id);
       if (pl) {
-        setIsLyricsActive(false);
         handleOpenCollection({
           id: pl.id,
           title: pl.name,
@@ -2025,7 +2190,7 @@ export const App: React.FC = () => {
         });
       }
     }
-  }, [playingOrigin, playlists, handleOpenCollection]);
+  }, [playingOrigin, playlists, handleOpenCollection, navigate]);
 
   const handlePlayCollectionTrack = useCallback(
     async (item: CollectionTrackItem) => {
@@ -2517,57 +2682,64 @@ export const App: React.FC = () => {
     }
   };
 
+  const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
   const handleGlobalOnlineSearch = async (queryOverride?: string) => {
     const q = (typeof queryOverride === "string" ? queryOverride : globalSearchQuery).trim();
-    if (!q) {
-      setGlobalSearchResults(null);
-      return;
-    }
-    setGlobalSearchQuery(q);
-    setIsGlobalSearching(true);
-    setActiveCollection(null);
-    setCurrentView("discovery");
-
-    try {
-      const res = await executeQuery({
-        query: "SearchOnlineMusic",
-        payload: { query: q, limit: 35 },
-      });
-      let incoming: DiscoveryRecommendation[] = [];
-      if (res && Array.isArray(res.data)) {
-        incoming = res.data;
-      }
-
-      // Relevant results filter: Keep items that directly match query words or artist/title
-      const qLower = q.toLowerCase();
-      const qTokens = qLower.split(/\s+/).filter((t) => t.length > 1);
-
-      const relevant = incoming.filter((r) => {
-        const titleLower = r.title.toLowerCase();
-        const artistLower = r.artist.toLowerCase();
-        const albumLower = r.album ? r.album.toLowerCase() : "";
-
-        // Direct substring match
-        if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
-          return true;
-        }
-
-        // Token match: title or artist contains any significant token
-        return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
-      });
-
-      setGlobalSearchResults(relevant.length > 0 ? relevant : incoming);
-    } catch (err) {
-      console.error("Global online music search failed:", err);
-      setGlobalSearchResults([]);
-    } finally {
-      setIsGlobalSearching(false);
-    }
+    navigate({ ...viewDestination("discovery"), searchQuery: q });
+    setSearchRefreshRevision(revision => revision + 1);
   };
 
+  useEffect(() => {
+    const q = destination.searchQuery;
+    if (!q || destination.view !== "discovery" || destination.collection || destination.lyrics) {
+      setIsGlobalSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setIsGlobalSearching(true);
+    const load = async () => {
+      try {
+        const res = await executeQuery({
+          query: "SearchOnlineMusic",
+          payload: { query: q, limit: 35 },
+        });
+        let incoming: DiscoveryRecommendation[] = [];
+        if (res && Array.isArray(res.data)) {
+          incoming = res.data;
+        }
+
+        // Relevant results filter: Keep items that directly match query words or artist/title
+        const qLower = q.toLowerCase();
+        const qTokens = qLower.split(/\s+/).filter((t) => t.length > 1);
+
+        const relevant = incoming.filter((r) => {
+          const titleLower = r.title.toLowerCase();
+          const artistLower = r.artist.toLowerCase();
+          const albumLower = r.album ? r.album.toLowerCase() : "";
+
+          // Direct substring match
+          if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
+            return true;
+          }
+
+          // Token match: title or artist contains any significant token
+          return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
+        });
+
+        updateDestination(current => !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: relevant.length > 0 ? relevant : incoming } : current);
+      } catch (err) {
+        console.error("Global online music search failed:", err);
+        updateDestination(current => !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: [] } : current);
+      } finally {
+        if (!cancelled) setIsGlobalSearching(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [destination.searchQuery, destination.view, destination.collection, destination.lyrics, searchRefreshRevision, updateDestination]);
+
   const handleGlobalClearSearch = () => {
-    setGlobalSearchQuery("");
-    setGlobalSearchResults(null);
+    navigate(viewDestination("discovery"));
   };
 
   const handleGlobalRefresh = async () => {
@@ -2578,6 +2750,7 @@ export const App: React.FC = () => {
       }
       await Promise.allSettled([
         fetchDiscovery(true),
+        fetchHomeOverview(),
         fetchTracks(),
         fetchAlbums(),
       ]);
@@ -2714,19 +2887,16 @@ export const App: React.FC = () => {
         <Sidebar
           currentView={currentView}
           onSelectView={(view) => {
-            setActiveCollection(null);
-            setIsLyricsActive(false);
+
             if (view === "stats") {
               setStatsRefreshTrigger((prev) => prev + 1);
             }
-            setCurrentView(view);
+            navigate(viewDestination(view));
           }}
           unreadNotificationsCount={unreadNotificationsCount}
           playlists={playlists}
           activePlaylistId={activeCollection?.type === "playlist" ? (activeCollection.playlistId || activeCollection.id) : null}
           onSelectPlaylist={(playlist) => {
-            setCurrentView("playlists");
-            setIsLyricsActive(false);
             handleOpenCollection({
               id: playlist.id,
               type: playlist.is_smart_mix === 1 ? "mix" : "playlist",
@@ -2771,7 +2941,7 @@ export const App: React.FC = () => {
               collection={activeCollection}
               isLoadingTracks={isLoadingCollectionTracks}
               loadingTrackId={loadingTrackId}
-              onBack={() => setActiveCollection(null)}
+              onBack={() => { if (!navigateBack()) navigate({ ...destination, collection: null }); }}
               onPlayTrack={handlePlayCollectionTrack}
               onPlayAll={handlePlayAllCollection}
               onShuffleAll={handleShuffleCollection}
@@ -2828,6 +2998,28 @@ export const App: React.FC = () => {
             />
           ) : (
             <>
+              {currentView === "home" && (
+                <HomeView
+                  overview={homeOverview}
+                  isLoading={isHomeLoading}
+                  onRefresh={fetchHomeOverview}
+                  onStartFlow={handleStartFlow}
+                  onTogglePlayback={handleUnifiedPlayPause}
+                  onToggleFlowPlayback={handleToggleFlowPlayback}
+                  currentTrack={playbackState.current_track}
+                  onStopFlow={handleStopFlow}
+                  onPlayTrack={handlePlayTrack}
+                  onEnqueueTrack={handleEnqueueTrack}
+                  onOpenAlbum={handleSelectAlbum}
+                  loadingTrackId={loadingTrackId}
+                  activeTrackId={playbackState.current_track?.id}
+                  isPlaying={playbackState.is_playing}
+                  flowSteering={flowSteering}
+                  onFlowSteeringChange={handleFlowSteeringChange}
+                  queuedTrackIds={queuedTrackIds}
+                />
+              )}
+
               {currentView === "library" && (
                 <LibraryView
                   tracks={tracks}
@@ -2839,6 +3031,7 @@ export const App: React.FC = () => {
                   onRemoveFeedback={handleRemoveFeedback}
                   onRescan={handleRescanLibrary}
                   onSearch={handleSearchLibrary}
+                  searchQuery={destination.libraryQuery}
                   trackPlaylistMap={regularTrackPlaylistMap}
                   likedTrackIds={likedTrackIds}
                   onOpenAddToPlaylistModal={(t) =>
@@ -2958,7 +3151,7 @@ export const App: React.FC = () => {
                       cover_art_url: rec.cover_art_url,
                     })
                   }
-                  onGoToLibrary={() => setCurrentView("library")}
+                  onGoToLibrary={() => navigate(viewDestination("library"))}
                   queuedTrackIds={queuedTrackIds}
                   onEnqueueTrack={handleEnqueueRecommendation}
                   likedTrackIds={likedTrackIds}
@@ -3033,13 +3226,18 @@ export const App: React.FC = () => {
         isInPlaylist={isCurrentTrackInPlaylist}
         onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
         onOpenOrigin={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
             ? handleOpenPlayingOrigin
             : undefined
         }
         originName={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
+          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
             ? playingOrigin.name
+            : undefined
+        }
+        onInspectWhyTrack={
+          playingOrigin?.type === "flow" && playbackState.current_track
+            ? handleInspectWhyCurrentTrack
             : undefined
         }
         isLyricsActive={isLyricsActive}
@@ -3075,7 +3273,7 @@ export const App: React.FC = () => {
           onRemoveFeedback={handleRemoveFeedback}
           onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
           onOpenOrigin={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
               ? () => {
                   handleToggleFullscreen(false);
                   handleOpenPlayingOrigin();
@@ -3083,7 +3281,7 @@ export const App: React.FC = () => {
               : undefined
           }
           originName={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart"
+            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
               ? playingOrigin.name
               : undefined
           }
@@ -3158,6 +3356,85 @@ export const App: React.FC = () => {
             setPromptDialog(null);
           }}
         />
+      )}
+
+      {/* Flow Why This Track Modal */}
+      {whyTrackModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setWhyTrackModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.72)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "420px",
+              width: "90%",
+              padding: "24px",
+              borderRadius: "14px",
+              backgroundColor: "var(--bg-card, #1a1714)",
+              border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
+              boxShadow: "0 20px 48px rgba(0, 0, 0, 0.65)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Sparkles size={18} color="var(--accent-secondary, #f3701e)" />
+                <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "var(--text-main, #e8d8c9)" }}>
+                  Why This Track?
+                </h3>
+              </div>
+              <button
+                onClick={() => setWhyTrackModal(null)}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-main, #e8d8c9)" }}>
+                {whyTrackModal.title}
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-dim, #948779)" }}>
+                {whyTrackModal.artist}
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(243, 112, 30, 0.08)",
+                border: "1px solid rgba(243, 112, 30, 0.2)",
+                fontSize: "0.88rem",
+                color: "var(--accent-light, #ff9b60)",
+                lineHeight: 1.45,
+              }}
+            >
+              <TrackExplanation evidence={whyTrackModal.explanation} />
+            </div>
+
+            <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setWhyTrackModal(null)}
+                style={{ fontSize: "0.85rem", padding: "6px 16px" }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

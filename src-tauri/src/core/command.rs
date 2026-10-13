@@ -93,6 +93,17 @@ pub enum Command {
     ClearQueue,
     ClearRemoteAudioCache,
 
+    // --- Flow Controls ---
+    StartFlow {
+        #[serde(default)]
+        familiarity_ratio: Option<f64>,
+    },
+    ContinueFlow,
+    StopFlow,
+    SetFlowSteering {
+        familiarity_ratio: f64,
+    },
+
     // --- Library & Onboarding Management ---
     CompleteOnboarding {
         music_folders: Vec<String>,

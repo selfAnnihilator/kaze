@@ -39,3 +39,26 @@ export const attachLocalSearchMatches = (
   const local = findLocalSearchMatch(rec, tracks);
   return local ? { ...rec, match_status: "EXACT_MATCH" as const, matched_local_track_id: local.id } : rec;
 }) ?? null;
+
+export interface PlaybackCandidate {
+  track_id?: string;
+  id?: string;
+  external_track_id?: string;
+  matched_local_track_id?: string;
+  title: string;
+  artist_name?: string;
+  artist?: string;
+  duration_secs?: number;
+}
+
+export const isCurrentPlaybackTrack = (candidate: PlaybackCandidate, current?: Track | null): boolean => {
+  if (!current) return false;
+  const ids = [candidate.track_id, candidate.id, candidate.external_track_id, candidate.matched_local_track_id].filter(Boolean);
+  if (ids.includes(current.id)) return true;
+  // Only catalog/online aliases may fall back to metadata. Distinct local files
+  // with the same tags remain distinct tracks.
+  const online = (id: string) => id.startsWith("online:") || id.startsWith("itunes:");
+  if (!(ids.some(id => online(id!)) || online(current.id) || current.format === "online" || current.file_path.startsWith("online://"))) return false;
+  if (!sameSongMetadata(candidate.title, candidate.artist_name || candidate.artist || "", current.title, current.artist_name || "")) return false;
+  return !candidate.duration_secs || candidate.duration_secs <= 35 || !current.duration_secs || Math.abs(candidate.duration_secs - current.duration_secs) <= 12;
+};

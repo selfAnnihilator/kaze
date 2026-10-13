@@ -244,6 +244,10 @@ export type Command =
   | { command: "DequeueTrack"; payload: { track_id: string } }
   | { command: "ClearQueue" }
   | { command: "ClearRemoteAudioCache" }
+  | { command: "StartFlow"; payload?: { familiarity_ratio?: number } }
+  | { command: "ContinueFlow" }
+  | { command: "StopFlow" }
+  | { command: "SetFlowSteering"; payload: { familiarity_ratio: number } }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
   | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
@@ -334,7 +338,11 @@ export type Query =
   | { query: "GetCloudSyncStatus" }
   | { query: "GetSessionState" }
   | { query: "ListSessions" }
-  | { query: "GetRemoteAudioCacheStats" };
+  | { query: "GetRemoteAudioCacheStats" }
+  | { query: "GetHomeOverview" }
+  | { query: "GetFlowQueue"; payload?: { familiarity_ratio?: number; limit?: number; exclude_track_ids?: string[] } }
+  | { query: "GetFlowTrackReason"; payload: { track_id: string } }
+  | { query: "GetFlowSession" };
 
 export interface RemoteAudioCacheStats {
   total_size_bytes: number;
@@ -472,4 +480,104 @@ export interface AppNotification {
   message: string;
   timestamp: number;
   read: boolean;
+}
+
+export interface FlowExplanation {
+  primary: string;
+  is_liked: boolean;
+  is_unplayed: boolean;
+  play_count?: number | null;
+  days_since_played?: number | null;
+  artist_affinity?: number | null;
+  artist_name?: string | null;
+  familiarity_ratio?: number | null;
+  selected_at?: number | null;
+  from_existing_queue: boolean;
+}
+
+export interface FlowTrackItem {
+  track_id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  duration_secs: number;
+  cover_art_url?: string;
+  score: number;
+  reason: string;
+  reason_category: string;
+  explanation?: FlowExplanation;
+}
+
+export interface FlowSessionState {
+  generation?: number | null;
+  is_active: boolean;
+  familiarity_ratio: number;
+  updated_at: number;
+  last_track_id?: string;
+  last_track_title?: string;
+  last_track_artist?: string;
+  flow_label: string;
+}
+
+export interface RecentTrackItem {
+  track_id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  duration_secs: number;
+  cover_art_url?: string;
+  started_at: number;
+}
+
+export interface RediscoverTrackItem {
+  track_id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  duration_secs: number;
+  cover_art_url?: string;
+  last_played_at?: number;
+  play_count: number;
+  is_liked: boolean;
+  reason: string;
+  explanation?: FlowExplanation | null;
+}
+
+export interface LibraryMoment {
+  album_id: string;
+  album_title: string;
+  artist_name: string;
+  cover_art_path?: string;
+  total_tracks: number;
+  release_year?: number;
+  subtitle: string;
+}
+
+export interface YourWeekStats {
+  total_seconds: number;
+  track_count: number;
+  artist_count: number;
+  formatted_time: string;
+}
+
+export interface RecommendedTrackDetail {
+  track_id: string;
+  title: string;
+  artist_name?: string;
+  album_title?: string;
+  genre_name?: string;
+  duration_secs: number;
+  score: number;
+  reasons: Array<{ factor: string; description: string; weight: number }>;
+  is_discovery: boolean;
+  explanation?: FlowExplanation | null;
+}
+
+export interface HomeOverview {
+  flow_session?: FlowSessionState | null;
+  recent_rotation: RecentTrackItem[];
+  rediscover: RediscoverTrackItem[];
+  for_you: RecommendedTrackDetail[];
+  library_moment?: LibraryMoment | null;
+  your_week?: YourWeekStats | null;
 }

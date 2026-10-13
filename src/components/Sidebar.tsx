@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Home,
   Music,
   Disc,
   ListMusic,
@@ -13,6 +14,7 @@ import {
 import { Playlist } from "../types";
 
 export type ViewType =
+  | "home"
   | "library"
   | "albums"
   | "playlists"
@@ -88,8 +90,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         {!collapsed && <span className="logo-title">KAZE</span>}
       </div>
 
-      {/* Discover */}
+      {/* Home & Discover */}
       <div className="nav-section" style={{ marginTop: "6px" }}>
+        {navBtn("home", <Home size={18} />, "Home")}
         {navBtn("discovery", <Compass size={18} />, "Discover Music")}
       </div>
 

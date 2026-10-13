@@ -56,6 +56,7 @@ pub struct CoreProcessor {
     wishlist_manager: Arc<WishlistManager>,
     discovery_coordinator: Arc<DiscoveryCoordinator>,
     download_service: Arc<DownloadService>,
+    flow_engine: Arc<crate::recommendations::FlowEngine>,
     config: Arc<RwLock<AppConfig>>,
     cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, Option<String>>>>,
 }
@@ -175,6 +176,10 @@ impl CoreProcessor {
         tokio::spawn(async move {
             sm_maint.startup_maintenance().await;
         });
+
+        let flow_engine = Arc::new(crate::recommendations::FlowEngine::new(db_pool.clone()));
+        playback_service.set_flow_engine(flow_engine.clone());
+
 
         let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
         let cloud_client = Arc::new(CloudClient::new());
@@ -443,6 +448,7 @@ impl CoreProcessor {
             wishlist_manager,
             discovery_coordinator,
             download_service,
+            flow_engine,
             config: Arc::new(RwLock::new(config)),
             cover_art_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
@@ -566,6 +572,11 @@ impl CoreProcessor {
     /// Access the SmartMixGenerator handle.
     pub fn smart_mix_generator(&self) -> Arc<SmartMixGenerator> {
         self.smart_mix_generator.clone()
+    }
+
+    /// Access the FlowEngine handle.
+    pub fn flow_engine(&self) -> Arc<crate::recommendations::FlowEngine> {
+        self.flow_engine.clone()
     }
 
     /// Access the ProviderCoordinator handle.
@@ -781,10 +792,31 @@ impl CoreProcessor {
                 })
             }
 
+            Command::StartFlow { familiarity_ratio } => {
+                let user_id = self.current_user_id().await;
+                self.playback_service.start_flow(&self.flow_engine, &user_id, familiarity_ratio).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::ContinueFlow => {
+                let user_id = self.current_user_id().await;
+                self.playback_service.continue_flow(&user_id).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::StopFlow => {
+                self.playback_service.stop_flow().await;
+                Ok(CommandResponse::Ok)
+            }
+            Command::SetFlowSteering { familiarity_ratio } => {
+                let user_id = self.current_user_id().await;
+                self.playback_service.set_flow_steering(&self.flow_engine, &user_id, familiarity_ratio).await?;
+                Ok(CommandResponse::Ok)
+            }
+
             // --- User Feedback & Taste ---
             Command::LikeTrack { track_id } => {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, 1).await?;
+                self.flow_engine.invalidate_home_picks(&user_id).await;
                 // Also add to Liked Songs playlist
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 // Only add if it's a local track (not an online: prefixed id); online tracks use AddTrackToPlaylist
@@ -807,6 +839,7 @@ impl CoreProcessor {
             Command::DislikeTrack { track_id } => {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, -1).await?;
+                self.flow_engine.invalidate_home_picks(&user_id).await;
                 // Remove from Liked Songs if it's there
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
@@ -816,6 +849,7 @@ impl CoreProcessor {
             Command::RemoveTrackFeedback { track_id } => {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, 0).await?;
+                self.flow_engine.invalidate_home_picks(&user_id).await;
                 // Remove from Liked Songs
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
@@ -1221,6 +1255,7 @@ impl CoreProcessor {
                     let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
 
                     // Guest listening retains its original owner on registration.
+                    self.playback_service.stop_flow().await;
                     *self.current_user.write().await = Some(profile.clone());
                     *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
                         user: cloud_user,
@@ -1389,6 +1424,7 @@ impl CoreProcessor {
                     // Reassign orphan playlists to this user
                     let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
 
+                    self.playback_service.stop_flow().await;
                     *self.current_user.write().await = Some(profile.clone());
                     *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
                         user: cloud_user,
@@ -1432,6 +1468,7 @@ impl CoreProcessor {
                     let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
                     let _ = credentials::delete_session_token(&user_id);
                 }
+                self.playback_service.stop_flow().await;
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
 
@@ -1459,6 +1496,7 @@ impl CoreProcessor {
                     let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
                     let _ = credentials::delete_session_token(&user_id);
                 }
+                self.playback_service.stop_flow().await;
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
 
@@ -1481,6 +1519,7 @@ impl CoreProcessor {
                     self.cloud_client.revoke_session(&worker_url, &token, &session_id).await?;
                     if session.session_id == session_id {
                         let _ = SyncManager::delete_session(&self.db_pool, &session.user_id).await;
+                        self.playback_service.stop_flow().await;
                         *self.current_user.write().await = None;
                         *self.session_state.write().await = AuthSessionState::SignedOut;
                     }
@@ -1813,10 +1852,18 @@ impl CoreProcessor {
                 Ok(QueryResponse::SmartMixes(val))
             }
             Query::GetPlaylists => {
+                let is_logged_in = self.current_user.read().await.is_some();
                 let user_id = self.current_user_id().await;
                 let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
-                self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
-                let playlists = self.playlist_repo.get_user_playlists(&user_id).await?;
+                if is_logged_in {
+                    self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                }
+                let raw_playlists = self.playlist_repo.get_user_playlists(&user_id).await?;
+                let playlists: Vec<_> = if is_logged_in {
+                    raw_playlists
+                } else {
+                    raw_playlists.into_iter().filter(|p| p.is_smart_mix == 1).collect()
+                };
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
@@ -2248,6 +2295,7 @@ impl CoreProcessor {
                                 local_user.as_ref().and_then(|u| u.avatar_updated_at),
                                 cached_avatar,
                             );
+                            self.playback_service.stop_flow().await;
                             *self.current_user.write().await = Some(profile.clone());
                             *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
                                 user: CloudUser {
@@ -2374,6 +2422,46 @@ impl CoreProcessor {
                     max_size_bytes: stats.max_size_bytes,
                     partial_file_count: stats.partial_file_count,
                 })
+            }
+            Query::GetHomeOverview => {
+                let user_id = self.current_user_id().await;
+                let mut overview = self.flow_engine.get_home_overview(&user_id).await?;
+                overview.flow_session = self.playback_service.flow_session(&self.flow_engine, &user_id).await?;
+                let val = serde_json::to_value(overview).unwrap_or(serde_json::Value::Null);
+                Ok(QueryResponse::HomeOverview(val))
+            }
+            Query::GetFlowQueue {
+                familiarity_ratio,
+                limit,
+                exclude_track_ids,
+            } => {
+                let user_id = self.current_user_id().await;
+                let ratio = familiarity_ratio.unwrap_or(0.5);
+                let lim = limit.unwrap_or(20) as usize;
+                let exclude = exclude_track_ids.unwrap_or_default();
+                let tracks = self
+                    .flow_engine
+                    .generate_flow_tracks(&user_id, ratio, lim, &exclude)
+                    .await?;
+                let val: Vec<serde_json::Value> = tracks
+                    .into_iter()
+                    .filter_map(|t| serde_json::to_value(t).ok())
+                    .collect();
+                Ok(QueryResponse::FlowQueue(val))
+            }
+            Query::GetFlowTrackReason { track_id } => {
+                let user_id = self.current_user_id().await;
+                let reason = match self.playback_service.flow_reason(&user_id, &track_id).await {
+                    Some(reason) => Some(reason),
+                    None => Some(self.flow_engine.get_track_explanation(&user_id, &track_id).await?),
+                };
+                Ok(QueryResponse::FlowTrackReason(reason))
+            }
+            Query::GetFlowSession => {
+                let user_id = self.current_user_id().await;
+                let session = self.playback_service.flow_session(&self.flow_engine, &user_id).await?;
+                let val = session.and_then(|s| serde_json::to_value(s).ok());
+                Ok(QueryResponse::FlowSession(val))
             }
             _ => {
                 warn!(?query, "Query handler routed to fallback");

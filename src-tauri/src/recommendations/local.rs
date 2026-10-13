@@ -20,6 +20,7 @@ pub struct RecommendedTrackDetail {
     pub score: f64,
     pub reasons: Vec<super::scoring::RecommendationReason>,
     pub is_discovery: bool,
+    pub explanation: Option<super::flow::FlowExplanation>,
 }
 
 #[derive(Debug, FromRow)]
@@ -151,6 +152,7 @@ impl LocalRecommender {
                 duration_secs: candidate.duration_secs,
                 score: score.final_score,
                 reasons: score.reasons,
+                explanation: None,
                 is_discovery: score.is_discovery,
             });
         }

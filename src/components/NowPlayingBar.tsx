@@ -18,6 +18,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { PlaybackState, Track } from "../types";
 import { usePlaybackProgress } from "../services/playbackProgress";
@@ -54,6 +55,7 @@ interface NowPlayingBarProps {
   onToggleLyrics?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  onInspectWhyTrack?: () => void;
 }
 
 const formatTime = (seconds: number): string => {
@@ -142,6 +144,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
   onToggleLyrics,
   isFullscreen = false,
   onToggleFullscreen,
+  onInspectWhyTrack,
 }) => {
   const isOnline = !!currentTrack && (currentTrack.format === "online" || currentTrack.file_path?.startsWith("online://"));
   const activeTitle = currentTrack?.title || "No Track Selected";
@@ -262,6 +265,17 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(({
             >
               <Heart size={16} fill={currentTrack.manual_like === 1 || isOnlineLiked ? "#ef4444" : "none"} />
             </button>
+            {onInspectWhyTrack && (
+              <button
+                className="player-icon-btn"
+                title="Why this track? (Flow recommendation)"
+                aria-label="Why this track?"
+                onClick={onInspectWhyTrack}
+                style={{ color: "var(--accent-secondary, #f3701e)" }}
+              >
+                <Sparkles size={16} />
+              </button>
+            )}
           </div>
         )}
         {isOnline && onDownloadOnlineTrack && currentTrack && (
