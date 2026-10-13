@@ -209,6 +209,14 @@ jobs:
           cat << EOF > release_notes.md
           ## Kaze ${RELEASE_TAG}
 
+          ### Home and Flow
+
+          - Personalized library picks, recent rotation, rediscovery, and a weekly listening summary.
+          - Fresh Flow queues that preserve the current song, with separate Pause, Resume, and Stop actions.
+          - Playback-synchronized For You controls and friendly explanations backed by recorded listening data.
+          - Alt+Left/Right navigation through visited views, collections, and searches.
+          - Safer queue transitions and corrected Arch build dependencies and source checksums.
+
           > ⚠️ **Important Compatibility Notice:**
           > This release includes a statistics/history storage migration and updated cloud sync format. Older builds are no longer compatible with the current sync backend and should be upgraded.
 
