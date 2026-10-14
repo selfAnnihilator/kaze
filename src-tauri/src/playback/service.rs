@@ -1184,8 +1184,11 @@ impl PlaybackService {
     }
 
     pub async fn set_repeat_mode(&self, mode: RepeatMode) {
-        let mut q_guard = self.queue.write().await;
-        q_guard.set_repeat_mode(mode);
+        {
+            let mut q_guard = self.queue.write().await;
+            q_guard.set_repeat_mode(mode);
+        }
+        self.emit_queue_updated().await;
     }
 
     pub async fn get_playback_state(&self) -> PlaybackStateDto {

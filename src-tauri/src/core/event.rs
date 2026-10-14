@@ -51,6 +51,10 @@ pub enum Event {
     PlaybackSeeked {
         position_secs: f64,
     },
+    /// A source capability changed without changing playback state or position.
+    PlaybackCapabilitiesChanged {
+        track_id: String,
+    },
     PlaybackVolumeChanged {
         volume: f32,
         is_muted: bool,

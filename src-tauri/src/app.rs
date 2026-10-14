@@ -120,18 +120,17 @@ pub fn run() {
 
                 #[cfg(target_os = "linux")]
                 {
-                    let mpris_processor = processor.clone();
-                    let mpris_handle = handle.clone();
-                    tauri::async_runtime::spawn(async move {
-                        if let Err(e) = music_player_backend::mpris::start_mpris_service(
-                            mpris_processor,
-                            Some(mpris_handle),
-                        )
-                        .await
-                        {
-                            tracing::warn!("Failed to start Linux MPRIS service: {}", e);
+                    match music_player_backend::mpris::start_mpris_service(
+                        processor.clone(),
+                        Some(handle.clone()),
+                    )
+                    .await
+                    {
+                        Ok(service_handle) => {
+                            handle.manage(service_handle);
                         }
-                    });
+                        Err(e) => tracing::warn!("Failed to start Linux MPRIS service: {}", e),
+                    }
                 }
 
                 handle.manage(processor);
@@ -169,6 +168,14 @@ pub fn run() {
         .build(context)
         .expect("error building tauri application")
         .run(|app_handle, event| {
+            #[cfg(target_os = "linux")]
+            if let tauri::RunEvent::Exit = event {
+                if let Some(service) =
+                    app_handle.try_state::<music_player_backend::mpris::MprisServiceHandle>()
+                {
+                    tauri::async_runtime::block_on(service.shutdown());
+                }
+            }
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 let processor = app_handle.state::<Arc<CoreProcessor>>();
                 let ps = processor.playback_service();

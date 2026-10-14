@@ -170,3 +170,17 @@ async fn test_progressive_cancellation_removes_part_file() {
     manager.cancel_active_stream().await;
     assert!(manager.can_seek_current().await);
 }
+
+#[test]
+fn completed_stream_announces_seekability_without_resuming_playback() {
+    use music_player_backend::core::{event::Event, event_bus::EventBus};
+    let bus = Arc::new(EventBus::new(8));
+    let mut events = bus.subscribe();
+    let state = ProgressiveStreamState::new("paused-track".into(), Some(bus));
+    // This can happen while paused: there are no position ticks to rely on.
+    assert!(!state.is_completed());
+    state.set_completed();
+    assert!(state.is_completed());
+    assert_eq!(events.try_recv().unwrap(), Event::PlaybackCapabilitiesChanged { track_id: "paused-track".into() });
+    assert!(events.try_recv().is_err(), "completion must not emit fake resume/position activity");
+}

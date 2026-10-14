@@ -9,11 +9,11 @@ pub use service::*;
 pub fn playback_status_from_state(
     is_playing: bool,
     is_paused: bool,
-    is_buffering: bool,
+    _is_buffering: bool,
 ) -> &'static str {
     if is_playing {
         "Playing"
-    } else if is_paused || is_buffering {
+    } else if is_paused {
         "Paused"
     } else {
         "Stopped"
@@ -64,24 +64,14 @@ pub fn track_id_to_object_path(track_id: &str) -> String {
         return "/org/mpris/MediaPlayer2/TrackList/NoTrack".to_string();
     }
 
-    let sanitized: String = trimmed
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
+    // Hex encoding is reversible and collision-free for punctuation and Unicode.
+    // The /org/mpris namespace is reserved by the MPRIS specification.
+    let element: String = trimmed
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
         .collect();
-
-    let element = if sanitized.is_empty() {
-        "default".to_string()
-    } else {
-        sanitized
-    };
-
-    format!("/org/mpris/MediaPlayer2/track/{}", element)
+    format!("/com/kaze/track/t{element}")
 }
 
 /// Holds metadata about a track for MPRIS exposure.
@@ -193,7 +183,7 @@ mod tests {
     fn test_playback_status_from_state() {
         assert_eq!(playback_status_from_state(true, false, false), "Playing");
         assert_eq!(playback_status_from_state(false, true, false), "Paused");
-        assert_eq!(playback_status_from_state(false, false, true), "Paused");
+        assert_eq!(playback_status_from_state(false, false, true), "Stopped");
         assert_eq!(playback_status_from_state(false, false, false), "Stopped");
         assert_eq!(playback_status_from_state(true, true, false), "Playing");
         assert_eq!(playback_status_from_state(true, false, true), "Playing");
@@ -239,12 +229,17 @@ mod tests {
         );
         assert_eq!(
             track_id_to_object_path("e3b0c442-98fc-1c14-9afb-4c7220130e38"),
-            "/org/mpris/MediaPlayer2/track/e3b0c442_98fc_1c14_9afb_4c7220130e38"
+            "/com/kaze/track/t65336230633434322d393866632d316331342d396166622d346337323230313330653338"
         );
         assert_eq!(
             track_id_to_object_path("track:123/song.mp3"),
-            "/org/mpris/MediaPlayer2/track/track_123_song_mp3"
+            "/com/kaze/track/t747261636b3a3132332f736f6e672e6d7033"
         );
+        assert_ne!(
+            track_id_to_object_path("a-b"),
+            track_id_to_object_path("a_b")
+        );
+        assert_ne!(track_id_to_object_path("歌"), track_id_to_object_path("曲"));
         // Ensure path starts with valid character and only valid chars
         let path = track_id_to_object_path("simple_123");
         assert!(ObjectPath::try_from(path.as_str()).is_ok());

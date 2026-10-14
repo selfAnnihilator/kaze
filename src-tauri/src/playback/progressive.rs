@@ -66,6 +66,13 @@ impl ProgressiveStreamState {
             *s = StreamStatus::Completed;
         }
         self.condvar.notify_all();
+        // A paused player has no position ticks. Tell controllers that seeking
+        // became available without pretending playback resumed.
+        if let Some(ref bus) = self.event_bus {
+            let _ = bus.publish(Event::PlaybackCapabilitiesChanged {
+                track_id: self.track_id.clone(),
+            });
+        }
         debug!(track_id = %self.track_id, "Progressive stream marked completed");
     }
 
