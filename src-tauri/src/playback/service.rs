@@ -65,6 +65,9 @@ pub struct PlaybackService {
         Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
     pool: Option<SqlitePool>,
     preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    monitor_task: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    shutdown_done: Mutex<bool>,
+    shutting_down: std::sync::atomic::AtomicBool,
     /// Authoritative session token and queue-entry identity for real playback.
     /// Generated fresh at each `play_item` call; cleared on stop/track-finish.
     active_session_id: Arc<RwLock<Option<(String, String)>>>,
@@ -97,6 +100,9 @@ impl PlaybackService {
             active_stream_state: Arc::new(std::sync::RwLock::new(None)),
             pool,
             preresolution_handle: Arc::new(Mutex::new(None)),
+            monitor_task: std::sync::Mutex::new(None),
+            shutdown_done: Mutex::new(false),
+            shutting_down: std::sync::atomic::AtomicBool::new(false),
             active_session_id: Arc::new(RwLock::new(None)),
             play_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             is_resolving: Arc::new(std::sync::atomic::AtomicBool::new(false)),
@@ -108,9 +114,10 @@ impl PlaybackService {
 
         // Spawn periodic position monitor and track finish detector
         let s_clone = service.clone();
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             s_clone.run_playback_monitor_loop().await;
         });
+        *service.monitor_task.lock().unwrap_or_else(|e| e.into_inner()) = Some(task);
 
         service
     }
@@ -629,6 +636,10 @@ impl PlaybackService {
 
     async fn play_item(&self, item: &QueueItem) -> AppResult<()> {
         let operation = self.flow_operation.lock().await;
+        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(AppError::Playback("Kaze is shutting down".into()));
+        }
+
         if self.queue.read().await.current().map(|i| &i.queue_id) != Some(&item.queue_id) {
             return Ok(());
         }
@@ -813,6 +824,10 @@ impl PlaybackService {
 
     pub async fn resume(&self) -> AppResult<()> {
         let mut backend = self.backend.lock().await;
+        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(AppError::Playback("Kaze is shutting down".into()));
+        }
+
         backend.resume()?;
 
         let pos = backend.position().as_secs_f64();
@@ -839,6 +854,18 @@ impl PlaybackService {
         Ok(())
     }
 
+    /// Stop the monitor and invalidate pending resolution before stopping audio.
+    pub async fn shutdown(&self) -> AppResult<()> {
+        let mut done = self.shutdown_done.lock().await;
+        if *done { return Ok(()); }
+        self.shutting_down.store(true, std::sync::atomic::Ordering::Release);
+        let task = self.monitor_task.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(task) = task { task.abort(); let _ = task.await; }
+        let result = self.stop().await;
+        *done = true;
+        result
+    }
+
     pub async fn stop(&self) -> AppResult<()> {
         let _operation = self.flow_operation.lock().await;
         self.stop_inner().await
@@ -852,6 +879,7 @@ impl PlaybackService {
             .store(false, std::sync::atomic::Ordering::SeqCst);
         if let Some(task) = self.preresolution_handle.lock().await.take() {
             task.abort();
+            let _ = task.await;
         }
         self.cancel_active_stream().await;
         let mut backend = self.backend.lock().await;

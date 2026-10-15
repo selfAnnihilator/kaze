@@ -301,6 +301,7 @@ impl StreamPlaybackManager {
         if let Some((handle, state, part_path)) = handle_guard.take() {
             handle.abort();
             state.set_cancelled();
+            let _ = handle.await;
             if part_path.exists() {
                 let _ = tokio::fs::remove_file(&part_path).await;
             }

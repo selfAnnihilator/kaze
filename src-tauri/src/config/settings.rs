@@ -13,6 +13,26 @@ pub struct AppConfig {
     pub recommendation: RecommendationWeightsConfig,
     pub metadata: MetadataConfig,
     pub downloads: DownloadConfig,
+    #[serde(
+        default = "default_close_button_behavior",
+        deserialize_with = "deserialize_close_button_behavior"
+    )]
+    pub close_button_behavior: String,
+}
+
+pub fn default_close_button_behavior() -> String {
+    "minimize_to_tray".to_string()
+}
+
+fn deserialize_close_button_behavior<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<String, D::Error> {
+    let value = String::deserialize(deserializer)?;
+    if matches!(value.as_str(), "minimize_to_tray" | "quit_app") {
+        Ok(value)
+    } else {
+        Err(serde::de::Error::custom("invalid close_button_behavior"))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,10 +174,7 @@ impl AppConfig {
             let cache = proj_dirs.cache_dir().to_path_buf();
             (data_dir.join("music_player.db"), cache)
         } else {
-            (
-                PathBuf::from("music_player.db"),
-                PathBuf::from(".cache"),
-            )
+            (PathBuf::from("music_player.db"), PathBuf::from(".cache"))
         };
 
         Self {
@@ -169,6 +186,7 @@ impl AppConfig {
             recommendation: RecommendationWeightsConfig::default(),
             metadata: MetadataConfig::default(),
             downloads: DownloadConfig::default(),
+            close_button_behavior: default_close_button_behavior(),
         }
     }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { AppSettings, CloudSyncStatus, RemoteAudioCacheStats } from "../../types";
 import { dispatchCommand, executeQuery } from "../../services/api";
 import {
@@ -31,6 +31,7 @@ interface SettingsViewProps {
   onSyncCloud?: () => Promise<void>;
   onSetCloudUrl?: (url: string) => Promise<void>;
   onLogoutAll?: () => Promise<void>;
+  onReloadSettings?: () => Promise<void>;
   isScanning?: boolean;
   isSyncingCloud?: boolean;
 }
@@ -48,6 +49,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSyncCloud,
   onSetCloudUrl,
   onLogoutAll,
+  onReloadSettings,
   isScanning = false,
   isSyncingCloud = false,
 }) => {
@@ -61,6 +63,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cacheStats, setCacheStats] = useState<RemoteAudioCacheStats | null>(null);
   const [clearingCache, setClearingCache] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
+  const [closeBehavior, setCloseBehavior] = useState<"minimize_to_tray" | "quit_app">(
+    settings?.close_button_behavior ?? "minimize_to_tray"
+  );
+  const [savingCloseBehavior, setSavingCloseBehavior] = useState(false);
+  const [closeBehaviorError, setCloseBehaviorError] = useState<string | null>(null);
+  const closeBehaviorRequest = useRef(false);
+
+  useEffect(() => {
+    if (settings?.close_button_behavior) {
+      setCloseBehavior(settings.close_button_behavior);
+    }
+  }, [settings?.close_button_behavior]);
+
+  const handleSetCloseBehavior = async (behavior: "minimize_to_tray" | "quit_app") => {
+    if (closeBehaviorRequest.current) return;
+    closeBehaviorRequest.current = true;
+    setSavingCloseBehavior(true);
+    setCloseBehaviorError(null);
+    try {
+      await dispatchCommand({
+        command: "SetCloseButtonBehavior",
+        payload: { behavior },
+      });
+      setCloseBehavior(behavior);
+      if (onReloadSettings) {
+        try {
+          await onReloadSettings();
+        } catch {
+          setCloseBehaviorError("Your choice was saved, but Settings couldn’t refresh. Reopen Settings to reload it.");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update close button behavior:", err);
+      setCloseBehaviorError("Couldn’t save this choice. Your previous close behavior is still active.");
+    } finally {
+      closeBehaviorRequest.current = false;
+      setSavingCloseBehavior(false);
+    }
+  };
 
   useEffect(() => {
     if (activeSection === "system") {
@@ -486,6 +527,92 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Close Button & Background Tray Behavior */}
+            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
+              <div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
+                  Window Close Behavior
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  Choose what the window’s close button does. If the system tray is unavailable, closing quits Kaze.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "4px" }}>
+                <button
+                  type="button"
+                  onClick={() => handleSetCloseBehavior("minimize_to_tray")}
+                  aria-pressed={closeBehavior === "minimize_to_tray"}
+                  disabled={savingCloseBehavior}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: "4px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    backgroundColor: closeBehavior === "minimize_to_tray" ? "rgba(224, 93, 30, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                    border: `1px solid ${closeBehavior === "minimize_to_tray" ? "var(--accent)" : "rgba(255, 255, 255, 0.08)"}`,
+                    color: closeBehavior === "minimize_to_tray" ? "#fefefe" : "var(--text-muted)",
+                    cursor: savingCloseBehavior ? "not-allowed" : "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "0.88rem", color: closeBehavior === "minimize_to_tray" ? "var(--accent-light, #f08c4a)" : "var(--text-main)" }}>
+                    <span style={{
+                      display: "inline-block",
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: closeBehavior === "minimize_to_tray" ? "var(--accent)" : "rgba(255, 255, 255, 0.2)"
+                    }} />
+                    <span>Minimize to Tray (Default)</span>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", paddingLeft: "16px" }}>
+                    Keeps Kaze running and lets playback continue in the background.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetCloseBehavior("quit_app")}
+                  aria-pressed={closeBehavior === "quit_app"}
+                  disabled={savingCloseBehavior}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: "4px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    backgroundColor: closeBehavior === "quit_app" ? "rgba(224, 93, 30, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                    border: `1px solid ${closeBehavior === "quit_app" ? "var(--accent)" : "rgba(255, 255, 255, 0.08)"}`,
+                    color: closeBehavior === "quit_app" ? "#fefefe" : "var(--text-muted)",
+                    cursor: savingCloseBehavior ? "not-allowed" : "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "0.88rem", color: closeBehavior === "quit_app" ? "var(--accent-light, #f08c4a)" : "var(--text-main)" }}>
+                    <span style={{
+                      display: "inline-block",
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      backgroundColor: closeBehavior === "quit_app" ? "var(--accent)" : "rgba(255, 255, 255, 0.2)"
+                    }} />
+                    <span>Quit Application</span>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", paddingLeft: "16px" }}>
+                    Stops playback, saves your session, and closes Kaze.
+                  </div>
+                </button>
+              </div>
+            </div>
+            {savingCloseBehavior && <p role="status">Saving close behavior…</p>}
+            {closeBehaviorError && <p role="alert">{closeBehaviorError}</p>}
           </div>
         </div>
       )}

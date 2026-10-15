@@ -9,6 +9,10 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
 use tracing::info;
 
+mod lifecycle;
+#[cfg(target_os = "linux")]
+mod linux_activation;
+mod tray;
 #[cfg(target_os = "linux")]
 mod window_chrome;
 
@@ -76,6 +80,11 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            tracing::info!("Second instance launch requested; restoring existing Kaze window");
+            tray::show_main_window_from_launch(app, &args);
+        }))
+        .manage(lifecycle::DesktopLifecycle::default())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -85,7 +94,7 @@ pub fn run() {
                     .await
                     .expect("Failed to initialize SQLite pool");
                 let pool_for_repair = pool.clone();
-                tauri::async_runtime::spawn(async move {
+                handle.state::<lifecycle::DesktopLifecycle>().spawn(async move {
                     let _ =
                         music_player_backend::recommendations::mixes::repair_legacy_online_tracks(
                             &pool_for_repair,
@@ -93,10 +102,11 @@ pub fn run() {
                         .await;
                 });
                 let processor = Arc::new(CoreProcessor::new(pool, config));
+                processor.initialize_close_behavior().await.expect("Failed to load window close setting");
 
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();
-                tauri::async_runtime::spawn(async move {
+                handle.state::<lifecycle::DesktopLifecycle>().spawn(async move {
                     loop {
                         match rx.recv().await {
                             Ok(event) => {
@@ -137,7 +147,7 @@ pub fn run() {
 
                 // Silent background update check — fires 5s after startup
                 let update_handle = handle.clone();
-                tauri::async_runtime::spawn(async move {
+                handle.state::<lifecycle::DesktopLifecycle>().spawn(async move {
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     if let Ok(updater) = update_handle.updater() {
                         match updater.check().await {
@@ -162,31 +172,53 @@ pub fn run() {
                 });
             });
 
+            if let Err(error) = tray::setup_tray(app.handle()) {
+                tracing::warn!(%error, "System tray unavailable; closing the window will quit Kaze");
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Keep the webview alive until either hide succeeds or the
+                    // asynchronous quit drain finishes. Never re-hide on Quit.
+                    api.prevent_close();
+                    lifecycle::close_main_window(window);
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![execute_command, execute_query])
         .build(context)
         .expect("error building tauri application")
         .run(|app_handle, event| {
-            #[cfg(target_os = "linux")]
-            if let tauri::RunEvent::Exit = event {
-                if let Some(service) =
-                    app_handle.try_state::<music_player_backend::mpris::MprisServiceHandle>()
-                {
-                    tauri::async_runtime::block_on(service.shutdown());
+            let lifecycle = app_handle.state::<lifecycle::DesktopLifecycle>();
+            match event {
+                tauri::RunEvent::ExitRequested { api, code, .. } if !lifecycle.is_complete() => {
+                    if let Some(processor) = app_handle.try_state::<Arc<CoreProcessor>>() { processor.begin_quit(); }
+                    // Tauri does not allow preventing its special Restart event.
+                    if code == Some(tauri::RESTART_EXIT_CODE) {
+                        tauri::async_runtime::block_on(lifecycle.shutdown(app_handle));
+                    } else {
+                        api.prevent_exit();
+                        if lifecycle.begin() {
+                            let handle = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                handle.state::<lifecycle::DesktopLifecycle>().shutdown(&handle).await;
+                                handle.exit(code.unwrap_or(0));
+                            });
+                        }
+                    }
                 }
-            }
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                let processor = app_handle.state::<Arc<CoreProcessor>>();
-                let ps = processor.playback_service();
-                tauri::async_runtime::block_on(async {
-                    let _ = ps.stop().await;
-                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                });
+                // Fallback for runtime/session Exit without an interceptable
+                // request. The same completion gate makes this a normal no-op.
+                tauri::RunEvent::Exit => tauri::async_runtime::block_on(lifecycle.shutdown(app_handle)),
+                _ => {}
             }
         });
 }
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    linux_activation::preserve_launcher_token();
     run();
 }

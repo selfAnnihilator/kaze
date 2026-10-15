@@ -5,7 +5,7 @@ use crate::core::event_bus::EventBus;
 use crate::database::models::PlaybackHistoryRecord;
 use crate::database::repositories::{HistoryDetail, HistoryRepository, StatsRepository, UserProfile};
 use chrono::Utc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex, atomic::{AtomicBool, Ordering}};
 use std::time::Instant;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{info, error, warn};
@@ -48,6 +48,10 @@ pub struct HistoryService {
     current_session: Arc<Mutex<Option<ActiveSession>>>,
     current_user: Option<Arc<RwLock<Option<UserProfile>>>>,
     pool: Option<sqlx::SqlitePool>,
+    shutting_down: AtomicBool,
+    shutdown_signal: StdMutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    task: StdMutex<Option<tokio::task::JoinHandle<()>>>,
+    shutdown_lock: Mutex<()>,
 }
 
 impl HistoryService {
@@ -69,6 +73,7 @@ impl HistoryService {
         current_user: Option<Arc<RwLock<Option<UserProfile>>>>,
         pool: Option<sqlx::SqlitePool>,
     ) -> Arc<Self> {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
         let service = Arc::new(Self {
             history_repo,
             stats_repo,
@@ -76,132 +81,177 @@ impl HistoryService {
             current_session: Arc::new(Mutex::new(None)),
             current_user,
             pool,
+            shutting_down: AtomicBool::new(false),
+            shutdown_signal: StdMutex::new(Some(shutdown_tx)),
+            task: StdMutex::new(None),
+            shutdown_lock: Mutex::new(()),
         });
 
         let rx = event_bus.subscribe();
         let s_clone = service.clone();
-        tokio::spawn(async move {
-            s_clone.listen_to_events(rx).await;
+        let task = tokio::spawn(async move {
+            s_clone.listen_to_events(rx, shutdown_rx).await;
         });
+        *service.task.lock().unwrap_or_else(|e| e.into_inner()) = Some(task);
 
         service
     }
 
-    async fn listen_to_events(&self, mut rx: tokio::sync::broadcast::Receiver<Event>) {
-        loop {
-            let event = match rx.recv().await {
-                Ok(event) => event,
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                    warn!(count, "History event receiver lagged; session accuracy may be affected");
-                    continue;
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-            };
-            match event {
-                Event::PlaybackStarted {
-                    session_id,
-                    track_id,
-                    duration_secs,
-                    source,
-                    ..
-                } => {
-                    self.on_playback_started(session_id, track_id, duration_secs, source).await;
-                }
-                // PlaybackPositionChanged: no longer updates max_position_secs.
-                // Journal checkpoints happen here for crash recovery (every 30s of listened time).
-                Event::PlaybackPositionChanged { session_id, .. } => {
-                    self.maybe_checkpoint_journal(&session_id).await;
-                }
-                Event::PlaybackPaused { session_id, .. } => {
-                    let mut guard = self.current_session.lock().await;
-                    if let Some(ref mut session) = *guard {
-                        if session.id == session_id {
-                            // Accumulate elapsed time from the playing_since marker.
-                            if let Some(since) = session.playing_since.take() {
-                                session.listened_secs += since.elapsed().as_secs_f64();
-                            }
-                            // Persist journal entry on pause so crash recovery has an up-to-date value.
-                            self.persist_journal_entry_inner(session).await;
-                        }
-                    }
-                }
-                Event::PlaybackBuffering { session_id, track_id } => {
-                    let mut guard = self.current_session.lock().await;
-                    if let Some(ref mut session) = *guard {
-                        if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
-                            // Pause active listening elapsed time while stream is buffering chunks.
-                            if let Some(since) = session.playing_since.take() {
-                                session.listened_secs += since.elapsed().as_secs_f64();
-                            }
-                        }
-                    }
-                }
-                Event::PlaybackResumed { session_id, track_id, .. } => {
-                    let mut guard = self.current_session.lock().await;
-                    if let Some(ref mut session) = *guard {
-                        if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
-                            if session.playing_since.is_none() {
-                                session.playing_since = Some(Instant::now());
-                            }
-                        }
-                    }
-                }
-                Event::TrackFinished {
-                    session_id,
-                    seconds_listened,
-                    completed,
-                    ..
-                } => {
-                    // Match by session_id, not track_id — prevents stale-completion bugs.
-                    let session_opt = {
-                        let mut guard = self.current_session.lock().await;
-                        if guard.as_ref().map(|s| s.id == session_id).unwrap_or(false) {
-                            guard.take()
-                        } else {
-                            None
-                        }
-                    };
+    /// Switch off skip classification before the real shutdown stop arrives.
+    pub fn begin_shutdown(&self) {
+        self.shutting_down.store(true, Ordering::Release);
+    }
 
-                    if let Some(mut session) = session_opt {
-                        // Finalize any remaining playing interval.
-                        if let Some(since) = session.playing_since.take() {
-                            session.listened_secs += since.elapsed().as_secs_f64();
-                        }
-                        // Use the greater of elapsed monotonic timer or explicit seconds_listened from the finished event.
-                        let listened = if completed {
-                            session.duration_secs.max(session.listened_secs).max(seconds_listened)
-                        } else {
-                            session.listened_secs.max(seconds_listened)
-                        };
-                        self.finalize_active_session(session, listened, completed, false).await;
-                    } else {
-                        // session_id mismatch — silently ignore stale TrackFinished events.
-                        warn!(session_id = %session_id, "TrackFinished session_id mismatch; ignoring");
-                    }
-                }
-                Event::PlaybackStopped { session_id } => {
-                    let session_opt = {
-                        let mut guard = self.current_session.lock().await;
-                        if guard.as_ref().map(|s| s.id == session_id || session_id.is_empty()).unwrap_or(false) {
-                            guard.take()
-                        } else {
-                            // If session_id is non-empty and doesn't match, ignore.
-                            if !session_id.is_empty() {
-                                warn!(session_id = %session_id, "PlaybackStopped session_id mismatch; ignoring");
+    /// Drain the ordered event queue and join the writer; no arbitrary delay.
+    pub async fn shutdown(&self) {
+        let _shutdown = self.shutdown_lock.lock().await;
+        self.begin_shutdown();
+        let signal = self.shutdown_signal.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(signal) = signal { let _ = signal.send(()); }
+        let task = self.task.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(task) = task {
+            if let Err(error) = task.await { error!(%error, "History writer shutdown failed"); }
+        }
+    }
+
+    async fn listen_to_events(&self, mut rx: tokio::sync::broadcast::Receiver<Event>, mut shutdown: tokio::sync::oneshot::Receiver<()>) {
+        loop {
+            tokio::select! {
+                _ = &mut shutdown => {
+                    loop {
+                        match rx.try_recv() {
+                            Ok(event) => self.handle_event(event).await,
+                            Err(tokio::sync::broadcast::error::TryRecvError::Lagged(count)) => {
+                                warn!(count, "History shutdown receiver lagged");
                             }
-                            None
+                            Err(_) => break,
                         }
-                    };
-                    if let Some(mut session) = session_opt {
+                    }
+                    // If an audio backend failed to publish Stop, persist only
+                    // the existing real session, without completion/skip claims.
+                    let remaining = self.current_session.lock().await.take();
+                    if let Some(session) = remaining {
+                        let listened = session.total_listened();
+                        self.finalize_active_session(session, listened, false, false).await;
+                    }
+                    break;
+                }
+                event = rx.recv() => match event {
+                    Ok(event) => self.handle_event(event).await,
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                        warn!(count, "History receiver lagged; accuracy may be affected");
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        }
+    }
+
+    async fn handle_event(&self, event: Event) {
+        match event {
+            Event::PlaybackStarted {
+                session_id,
+                track_id,
+                duration_secs,
+                source,
+                ..
+            } => {
+                self.on_playback_started(session_id, track_id, duration_secs, source).await;
+            }
+            // PlaybackPositionChanged: no longer updates max_position_secs.
+            // Journal checkpoints happen here for crash recovery (every 30s of listened time).
+            Event::PlaybackPositionChanged { session_id, .. } => {
+                self.maybe_checkpoint_journal(&session_id).await;
+            }
+            Event::PlaybackPaused { session_id, .. } => {
+                let mut guard = self.current_session.lock().await;
+                if let Some(ref mut session) = *guard {
+                    if session.id == session_id {
+                        // Accumulate elapsed time from the playing_since marker.
                         if let Some(since) = session.playing_since.take() {
                             session.listened_secs += since.elapsed().as_secs_f64();
                         }
-                        let listened = session.listened_secs;
-                        self.finalize_active_session(session, listened, false, true).await;
+                        // Persist journal entry on pause so crash recovery has an up-to-date value.
+                        self.persist_journal_entry_inner(session).await;
                     }
                 }
-                _ => {}
             }
+            Event::PlaybackBuffering { session_id, track_id } => {
+                let mut guard = self.current_session.lock().await;
+                if let Some(ref mut session) = *guard {
+                    if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
+                        // Pause active listening elapsed time while stream is buffering chunks.
+                        if let Some(since) = session.playing_since.take() {
+                            session.listened_secs += since.elapsed().as_secs_f64();
+                        }
+                    }
+                }
+            }
+            Event::PlaybackResumed { session_id, track_id, .. } => {
+                let mut guard = self.current_session.lock().await;
+                if let Some(ref mut session) = *guard {
+                    if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
+                        if session.playing_since.is_none() {
+                            session.playing_since = Some(Instant::now());
+                        }
+                    }
+                }
+            }
+            Event::TrackFinished {
+                session_id,
+                seconds_listened,
+                completed,
+                ..
+            } => {
+                // Match by session_id, not track_id — prevents stale-completion bugs.
+                let session_opt = {
+                    let mut guard = self.current_session.lock().await;
+                    if guard.as_ref().map(|s| s.id == session_id).unwrap_or(false) {
+                        guard.take()
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(mut session) = session_opt {
+                    // Finalize any remaining playing interval.
+                    if let Some(since) = session.playing_since.take() {
+                        session.listened_secs += since.elapsed().as_secs_f64();
+                    }
+                    // Use the greater of elapsed monotonic timer or explicit seconds_listened from the finished event.
+                    let listened = if completed {
+                        session.duration_secs.max(session.listened_secs).max(seconds_listened)
+                    } else {
+                        session.listened_secs.max(seconds_listened)
+                    };
+                    self.finalize_active_session(session, listened, completed, false).await;
+                } else {
+                    // session_id mismatch — silently ignore stale TrackFinished events.
+                    warn!(session_id = %session_id, "TrackFinished session_id mismatch; ignoring");
+                }
+            }
+            Event::PlaybackStopped { session_id } => {
+                let session_opt = {
+                    let mut guard = self.current_session.lock().await;
+                    if guard.as_ref().map(|s| s.id == session_id || session_id.is_empty()).unwrap_or(false) {
+                        guard.take()
+                    } else {
+                        // If session_id is non-empty and doesn't match, ignore.
+                        if !session_id.is_empty() {
+                            warn!(session_id = %session_id, "PlaybackStopped session_id mismatch; ignoring");
+                        }
+                        None
+                    }
+                };
+                if let Some(mut session) = session_opt {
+                    if let Some(since) = session.playing_since.take() {
+                        session.listened_secs += since.elapsed().as_secs_f64();
+                    }
+                    let listened = session.listened_secs;
+                    self.finalize_active_session(session, listened, false, !self.shutting_down.load(Ordering::Acquire)).await;
+                }
+            }
+            _ => {}
         }
     }
 

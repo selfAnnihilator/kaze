@@ -37,7 +37,7 @@ async fn test_database_initialization_and_migrations() {
 #[tokio::test]
 async fn test_event_bus_broadcast() {
     let pool = create_in_memory_pool().await.expect("DB pool");
-    let processor = CoreProcessor::new(pool, AppConfig::default_with_dirs());
+    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), Box::new(music_player_backend::playback::backend::MockAudioBackend::new()));
     let bus = processor.event_bus();
     let mut rx = bus.subscribe();
 
@@ -64,7 +64,7 @@ async fn test_event_bus_broadcast() {
 #[tokio::test]
 async fn test_core_processor_commands_and_queries() {
     let pool = create_in_memory_pool().await.expect("DB pool");
-    let processor = CoreProcessor::new(pool, AppConfig::default_with_dirs());
+    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), Box::new(music_player_backend::playback::backend::MockAudioBackend::new()));
 
     // Validation error on empty folder path
     let err = processor
@@ -124,4 +124,73 @@ async fn test_core_processor_commands_and_queries() {
         .await
         .expect("Volume command failed");
     assert!(matches!(vol_ok, CommandResponse::Ok));
+}
+
+#[tokio::test]
+async fn test_close_button_behavior_and_lifecycle() {
+    let pool = create_in_memory_pool().await.expect("DB pool");
+    let processor = CoreProcessor::new_with_backend(pool.clone(), AppConfig::default_with_dirs(), Box::new(music_player_backend::playback::backend::MockAudioBackend::new()));
+
+    // 1. Initial state checks
+    assert!(!processor.is_quitting());
+    assert_eq!(processor.close_button_behavior(), "minimize_to_tray");
+
+    // Query GetSettings should return minimize_to_tray by default
+    let res = processor.execute_query(Query::GetSettings).await.unwrap();
+    if let QueryResponse::Settings(val) = res {
+        assert_eq!(
+            val.get("close_button_behavior").and_then(|v| v.as_str()),
+            Some("minimize_to_tray")
+        );
+    } else {
+        panic!("Expected Settings response");
+    }
+
+    // 2. Change setting to quit_app
+    let set_res = processor
+        .dispatch_command(Command::SetCloseButtonBehavior {
+            behavior: "quit_app".to_string(),
+        })
+        .await
+        .unwrap();
+    assert!(matches!(set_res, CommandResponse::Ok));
+    assert_eq!(processor.close_button_behavior(), "quit_app");
+
+    // Query GetSettings should reflect quit_app
+    let res2 = processor.execute_query(Query::GetSettings).await.unwrap();
+    if let QueryResponse::Settings(val) = res2 {
+        assert_eq!(
+            val.get("close_button_behavior").and_then(|v| v.as_str()),
+            Some("quit_app")
+        );
+    } else {
+        panic!("Expected Settings response");
+    }
+
+    // 3. Validation on invalid behavior
+    let invalid_res = processor
+        .dispatch_command(Command::SetCloseButtonBehavior {
+            behavior: "invalid_choice".to_string(),
+        })
+        .await;
+    assert!(invalid_res.is_err());
+
+    // 5. TogglePlayPause command on empty queue
+    let toggle_res = processor.dispatch_command(Command::TogglePlayPause).await;
+    assert!(toggle_res.is_ok());
+
+    // 6. Change back to minimize_to_tray
+    let back_res = processor
+        .dispatch_command(Command::SetCloseButtonBehavior {
+            behavior: "minimize_to_tray".to_string(),
+        })
+        .await
+        .unwrap();
+    assert!(matches!(back_res, CommandResponse::Ok));
+    assert_eq!(processor.close_button_behavior(), "minimize_to_tray");
+    assert!(processor.begin_quit());
+    assert!(!processor.begin_quit());
+    assert!(processor.is_quitting());
+    assert!(processor.dispatch_command(Command::TogglePlayPause).await.is_err());
+    processor.shutdown().await.unwrap();
 }

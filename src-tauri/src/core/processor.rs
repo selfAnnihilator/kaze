@@ -26,8 +26,9 @@ use crate::providers::ProviderCoordinator;
 use crate::ranking::RankingEngine;
 use crate::recommendations::{LocalRecommender, SmartMixGenerator, TasteProfileEngine};
 use sqlx::SqlitePool;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex as StdMutex};
+use tokio::sync::{Mutex, OnceCell, RwLock};
 use tracing::{info, warn};
 use base64::Engine;
 use lofty::file::TaggedFileExt;
@@ -59,6 +60,13 @@ pub struct CoreProcessor {
     flow_engine: Arc<crate::recommendations::FlowEngine>,
     config: Arc<RwLock<AppConfig>>,
     cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, Option<String>>>>,
+    is_quitting: AtomicBool,
+    close_button_quits: AtomicBool,
+    close_behavior_ready: OnceCell<()>,
+    close_behavior_updates: Mutex<()>,
+    command_gate: RwLock<()>,
+    shutdown_done: Mutex<bool>,
+    background_tasks: StdMutex<Vec<tokio::task::JoinHandle<()>>>,
 }
 
 impl CoreProcessor {
@@ -86,6 +94,7 @@ impl CoreProcessor {
         backend: Box<dyn AudioBackend>,
         custom_download_provider: Option<Arc<dyn DownloadProvider>>,
     ) -> Self {
+        let mut background_tasks = Vec::new();
         let event_bus = Arc::new(EventBus::default());
         let library_service = Arc::new(LibraryService::new(db_pool.clone(), event_bus.clone()));
         let playback_service = PlaybackService::new(
@@ -111,9 +120,9 @@ impl CoreProcessor {
         );
 
         let hs_recover = history_service.clone();
-        tokio::spawn(async move {
+        background_tasks.push(tokio::spawn(async move {
             hs_recover.recover_interrupted_sessions().await;
-        });
+        }));
 
         let ranking_engine = Arc::new(RankingEngine::new(
             stats_repo.clone(),
@@ -173,9 +182,9 @@ impl CoreProcessor {
         ));
         playback_service.set_stream_manager(stream_manager.clone());
         let sm_maint = stream_manager.clone();
-        tokio::spawn(async move {
+        background_tasks.push(tokio::spawn(async move {
             sm_maint.startup_maintenance().await;
-        });
+        }));
 
         let flow_engine = Arc::new(crate::recommendations::FlowEngine::new(db_pool.clone()));
         playback_service.set_flow_engine(flow_engine.clone());
@@ -195,7 +204,7 @@ impl CoreProcessor {
         let settings_repo_init = settings_repo.clone();
         let profile_service_init = profile_service.clone();
         let event_bus_init = event_bus.clone();
-        tokio::spawn(async move {
+        background_tasks.push(tokio::spawn(async move {
             let worker_url = settings_repo_init
                 .get_setting("cloud_sync_url")
                 .await
@@ -423,7 +432,7 @@ impl CoreProcessor {
                     }
                 }
             }
-        });
+        }));
 
         Self {
             event_bus,
@@ -451,6 +460,13 @@ impl CoreProcessor {
             flow_engine,
             config: Arc::new(RwLock::new(config)),
             cover_art_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            is_quitting: AtomicBool::new(false),
+            close_button_quits: AtomicBool::new(false),
+            close_behavior_ready: OnceCell::new(),
+            close_behavior_updates: Mutex::new(()),
+            command_gate: RwLock::new(()),
+            shutdown_done: Mutex::new(false),
+            background_tasks: StdMutex::new(background_tasks),
         }
     }
 
@@ -494,6 +510,64 @@ impl CoreProcessor {
             .ok()
             .flatten()
             .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string())
+    }
+
+    pub fn is_quitting(&self) -> bool {
+        self.is_quitting.load(Ordering::Acquire)
+    }
+
+    /// Returns true only for the first request; quitting cannot be undone.
+    pub fn begin_quit(&self) -> bool {
+        !self.is_quitting.swap(true, Ordering::AcqRel)
+    }
+
+    pub fn close_button_behavior(&self) -> &'static str {
+        if self.close_button_quits.load(Ordering::Acquire) { "quit_app" } else { "minimize_to_tray" }
+    }
+
+    /// Awaited at startup and by settings IPC. A late startup read cannot
+    /// overwrite a newer setting. Missing or invalid DB values mean hide-to-tray.
+    pub async fn initialize_close_behavior(&self) -> AppResult<()> {
+        self.close_behavior_ready.get_or_try_init(|| async {
+            let saved = self.settings_repo.get_setting("close_button_behavior").await?;
+            self.close_button_quits.store(saved.as_deref() == Some("quit_app"), Ordering::Release);
+            Ok::<(), AppError>(())
+        }).await?;
+        Ok(())
+    }
+
+    pub async fn set_close_button_behavior(&self, behavior: String) -> AppResult<()> {
+        if behavior != "minimize_to_tray" && behavior != "quit_app" {
+            return Err(AppError::Validation(format!(
+                "Invalid close_button_behavior: '{}'. Allowed: 'minimize_to_tray', 'quit_app'",
+                behavior
+            )));
+        }
+        self.initialize_close_behavior().await?;
+        let _update = self.close_behavior_updates.lock().await;
+        self.settings_repo
+            .set_setting("close_button_behavior", &behavior)
+            .await?;
+        self.close_button_quits.store(behavior == "quit_app", Ordering::Release);
+        self.config.write().await.close_button_behavior = behavior;
+        Ok(())
+    }
+
+    /// Quiesce commands, stop audio once, await history writes, then close SQLite.
+    pub async fn shutdown(&self) -> AppResult<()> {
+        let mut done = self.shutdown_done.lock().await;
+        if *done { return Ok(()); }
+        self.begin_quit();
+        let _commands = self.command_gate.write().await;
+        let tasks = std::mem::take(&mut *self.background_tasks.lock().unwrap_or_else(|e| e.into_inner()));
+        for task in &tasks { task.abort(); }
+        for task in tasks { let _ = task.await; }
+        self.history_service.begin_shutdown();
+        let stopped = self.playback_service.shutdown().await;
+        self.history_service.shutdown().await;
+        self.db_pool.close().await;
+        *done = true;
+        stopped
     }
 
     pub async fn current_user_id(&self) -> String {
@@ -601,6 +675,10 @@ impl CoreProcessor {
 
     /// Dispatches and executes an incoming Command, emitting events and returning the result.
     pub async fn dispatch_command(&self, cmd: Command) -> AppResult<CommandResponse> {
+        let _commands = self.command_gate.read().await;
+        if self.is_quitting() {
+            return Err(AppError::Validation("Kaze is shutting down".into()));
+        }
         info!(?cmd, "Dispatching command");
 
         match cmd {
@@ -703,6 +781,18 @@ impl CoreProcessor {
             }
             Command::Resume => {
                 self.playback_service.resume().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::TogglePlayPause => {
+                let state = self.playback_service.get_playback_state().await;
+                if state.is_playing {
+                    self.playback_service.pause().await?;
+                } else if state.is_paused {
+                    self.playback_service.resume().await?;
+                } else if state.queue_length > 0 {
+                    let idx = state.current_queue_index.unwrap_or(0);
+                    self.playback_service.play_queue_index(idx).await?;
+                }
                 Ok(CommandResponse::Ok)
             }
             Command::Stop => {
@@ -1671,6 +1761,10 @@ impl CoreProcessor {
                 self.settings_repo.set_setting("cloud_sync_url", &trimmed).await?;
                 Ok(CommandResponse::Ok)
             }
+            Command::SetCloseButtonBehavior { behavior } => {
+                self.set_close_button_behavior(behavior).await?;
+                Ok(CommandResponse::Ok)
+            }
         }
     }
 
@@ -1748,8 +1842,10 @@ impl CoreProcessor {
                 })
             }
             Query::GetSettings => {
-                let cfg = self.config.read().await;
-                let val = serde_json::to_value(&*cfg)
+                self.initialize_close_behavior().await?;
+                let mut cfg = self.config.read().await.clone();
+                cfg.close_button_behavior = self.close_button_behavior().to_string();
+                let val = serde_json::to_value(&cfg)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::Settings(val))
             }

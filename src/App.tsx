@@ -3194,6 +3194,7 @@ export const App: React.FC = () => {
                   onSyncCloud={handleSyncCloud}
                   onSetCloudUrl={handleSetCloudUrl}
                   onLogoutAll={handleLogoutAll}
+                  onReloadSettings={fetchSettings}
                   isScanning={isScanning}
                   isSyncingCloud={isSyncingCloud}
                 />

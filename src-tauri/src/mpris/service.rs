@@ -94,6 +94,7 @@ pub struct MprisPlayer {
     playback_service: Arc<PlaybackService>,
     current_track: Arc<RwLock<Option<MprisTrackInfo>>>,
     cached_metadata: Arc<RwLock<HashMap<String, OwnedValue>>>,
+    command_tasks: std::sync::Mutex<Vec<tokio::task::JoinHandle<()>>>,
 }
 
 impl MprisPlayer {
@@ -106,6 +107,36 @@ impl MprisPlayer {
             playback_service,
             current_track,
             cached_metadata,
+            command_tasks: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    fn spawn_command(&self, future: impl std::future::Future<Output = ()> + Send + 'static) {
+        let mut tasks = self.command_tasks.lock().unwrap_or_else(|e| e.into_inner());
+        tasks.retain(|task| !task.is_finished());
+        tasks.push(tokio::spawn(future));
+    }
+
+    async fn cancel_commands(&self) {
+        let tasks =
+            std::mem::take(&mut *self.command_tasks.lock().unwrap_or_else(|e| e.into_inner()));
+        for task in &tasks {
+            task.abort();
+        }
+        for task in tasks {
+            let _ = task.await;
+        }
+    }
+}
+
+impl Drop for MprisPlayer {
+    fn drop(&mut self) {
+        for task in self
+            .command_tasks
+            .get_mut()
+            .unwrap_or_else(|e| e.into_inner())
+        {
+            task.abort();
         }
     }
 }
@@ -117,7 +148,7 @@ impl MprisPlayer {
     /// Skips to the next track in the tracklist.
     async fn next(&self) -> zbus::fdo::Result<()> {
         let ps = self.playback_service.clone();
-        tokio::spawn(async move {
+        self.spawn_command(async move {
             let _ = ps.next().await;
         });
         Ok(())
@@ -126,7 +157,7 @@ impl MprisPlayer {
     /// Skips to the previous track in the tracklist.
     async fn previous(&self) -> zbus::fdo::Result<()> {
         let ps = self.playback_service.clone();
-        tokio::spawn(async move {
+        self.spawn_command(async move {
             let _ = ps.previous().await;
         });
         Ok(())
@@ -150,7 +181,7 @@ impl MprisPlayer {
         } else if state.queue_length > 0 {
             let idx = state.current_queue_index.unwrap_or(0);
             let ps = self.playback_service.clone();
-            tokio::spawn(async move {
+            self.spawn_command(async move {
                 let _ = ps.play_queue_index(idx).await;
             });
         }
@@ -171,7 +202,7 @@ impl MprisPlayer {
         } else if !state.is_playing && state.queue_length > 0 {
             let idx = state.current_queue_index.unwrap_or(0);
             let ps = self.playback_service.clone();
-            tokio::spawn(async move {
+            self.spawn_command(async move {
                 let _ = ps.play_queue_index(idx).await;
             });
         }
@@ -359,20 +390,51 @@ impl MprisPlayer {
 /// Handle to the running MPRIS service task.
 pub struct MprisServiceHandle {
     pub connection: zbus::Connection,
-    pub task_handle: tokio::task::JoinHandle<()>,
+    task_handle: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    shutdown_done: tokio::sync::Mutex<bool>,
 }
 
 impl MprisServiceHandle {
     pub async fn shutdown(&self) {
-        self.task_handle.abort();
+        let mut done = self.shutdown_done.lock().await;
+        if *done {
+            return;
+        }
+        let player = self
+            .connection
+            .object_server()
+            .interface::<_, MprisPlayer>("/org/mpris/MediaPlayer2")
+            .await
+            .ok();
+        // Stop accepting new control calls before joining in-flight commands.
         let _ = self.connection.clone().close().await;
+        let task = self
+            .task_handle
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(task) = task {
+            task.abort();
+            let _ = task.await;
+        }
+        if let Some(player) = player {
+            player.get().await.cancel_commands().await;
+        }
+        *done = true;
     }
 }
 
 impl Drop for MprisServiceHandle {
     fn drop(&mut self) {
         // A JoinHandle otherwise detaches, keeping the cloned connection alive.
-        self.task_handle.abort();
+        if let Some(task) = self
+            .task_handle
+            .get_mut()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+        {
+            task.abort();
+        }
     }
 }
 
@@ -703,7 +765,8 @@ pub async fn start_mpris_service(
     });
     Ok(MprisServiceHandle {
         connection: conn,
-        task_handle,
+        task_handle: std::sync::Mutex::new(Some(task_handle)),
+        shutdown_done: tokio::sync::Mutex::new(false),
     })
 }
 
@@ -1011,6 +1074,7 @@ mod tests {
             "Stopped"
         );
         assert!(!proxy.get_property::<bool>("CanSeek").await.unwrap());
+        tokio::join!(service.shutdown(), service.shutdown());
         service.shutdown().await;
         let bus = zbus::fdo::DBusProxy::new(&conn).await.unwrap();
         assert!(!bus

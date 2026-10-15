@@ -177,6 +177,7 @@ export interface AppSettings {
     auto_import: boolean;
     max_concurrent_downloads: number;
   };
+  close_button_behavior?: "minimize_to_tray" | "quit_app";
 }
 
 // --- Commands & Queries ---
@@ -292,6 +293,8 @@ export type Command =
   | { command: "RemoveAvatar" }
   | { command: "SyncCloudData" }
   | { command: "SetCloudServerUrl"; payload: { url: string } }
+  | { command: "TogglePlayPause" }
+  | { command: "SetCloseButtonBehavior"; payload: { behavior: "minimize_to_tray" | "quit_app" } }
   | {
       command: "RecordPlaybackSession";
       payload: {

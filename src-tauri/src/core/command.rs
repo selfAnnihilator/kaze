@@ -57,6 +57,7 @@ pub enum Command {
     },
     Pause,
     Resume,
+    TogglePlayPause,
     Stop,
     NextTrack,
     PreviousTrack,
@@ -231,6 +232,10 @@ pub enum Command {
     SyncCloudData,
     SetCloudServerUrl {
         url: String,
+    },
+    // --- Window / Lifecycle Settings ---
+    SetCloseButtonBehavior {
+        behavior: String,
     },
 }
 
