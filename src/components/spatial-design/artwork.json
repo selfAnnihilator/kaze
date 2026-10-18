@@ -1,0 +1,110 @@
+[
+  {
+    "id": "migration",
+    "title": "Migration",
+    "artist": "Bonobo",
+    "year": 2017,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/migration.jpg",
+    "source": "https://music.apple.com/us/album/migration/1169245868?uo=4"
+  },
+  {
+    "id": "modal-soul",
+    "title": "Modal Soul",
+    "artist": "Nujabes",
+    "year": 2005,
+    "genre": "Hip-Hop/Rap",
+    "artwork": "/design-lab/artwork/modal-soul.jpg",
+    "source": "https://music.apple.com/us/album/modal-soul/1078914477"
+  },
+  {
+    "id": "con-todo",
+    "title": "Con Todo El Mundo",
+    "artist": "Khruangbin",
+    "year": 2018,
+    "genre": "Indie Rock",
+    "artwork": "/design-lab/artwork/con-todo.jpg",
+    "source": "https://music.apple.com/us/album/con-todo-el-mundo/1299241642?uo=4"
+  },
+  {
+    "id": "in-rainbows",
+    "title": "In Rainbows",
+    "artist": "Radiohead",
+    "year": 2007,
+    "genre": "Alternative",
+    "artwork": "/design-lab/artwork/in-rainbows.jpg",
+    "source": "https://music.apple.com/us/album/in-rainbows/1109714933?uo=4"
+  },
+  {
+    "id": "moon-safari",
+    "title": "Moon Safari",
+    "artist": "Air",
+    "year": 1998,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/moon-safari.jpg",
+    "source": "https://music.apple.com/us/album/moon-safari/693063670?uo=4"
+  },
+  {
+    "id": "mezzanine",
+    "title": "Mezzanine (Deluxe)",
+    "artist": "Massive Attack",
+    "year": 1998,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/mezzanine.jpg",
+    "source": "https://music.apple.com/us/album/mezzanine-deluxe/1428684976?uo=4"
+  },
+  {
+    "id": "dummy",
+    "title": "Dummy",
+    "artist": "Portishead",
+    "year": 1994,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/dummy.jpg",
+    "source": "https://music.apple.com/us/album/dummy/1440653096?uo=4"
+  },
+  {
+    "id": "currents",
+    "title": "Currents",
+    "artist": "Tame Impala",
+    "year": 2015,
+    "genre": "Alternative",
+    "artwork": "/design-lab/artwork/currents.jpg",
+    "source": "https://music.apple.com/us/album/currents/1440838039"
+  },
+  {
+    "id": "bloom",
+    "title": "Bloom",
+    "artist": "Beach House",
+    "year": 2012,
+    "genre": "Alternative",
+    "artwork": "/design-lab/artwork/bloom.jpg",
+    "source": "https://music.apple.com/us/album/bloom/509665145?uo=4"
+  },
+  {
+    "id": "jubilee",
+    "title": "Jubilee",
+    "artist": "Japanese Breakfast",
+    "year": 2021,
+    "genre": "Alternative",
+    "artwork": "/design-lab/artwork/jubilee.jpg",
+    "source": "https://music.apple.com/us/album/jubilee/1553364590?uo=4"
+  },
+  {
+    "id": "black-sands",
+    "title": "Black Sands",
+    "artist": "Bonobo",
+    "year": 2010,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/black-sands.jpg",
+    "source": "https://music.apple.com/us/album/black-sands/416292276?uo=4"
+  },
+  {
+    "id": "awake",
+    "title": "Awake (Deluxe Version)",
+    "artist": "Tycho",
+    "year": 2014,
+    "genre": "Electronic",
+    "artwork": "/design-lab/artwork/awake.jpg",
+    "source": "https://music.apple.com/us/album/awake-deluxe-version/1063455370?uo=4"
+  }
+]

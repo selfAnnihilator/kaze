@@ -1,3 +1,4 @@
+import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState } from "react";
 import { X, Plus, Check, ListMusic, AlertCircle } from "lucide-react";
 import { Playlist } from "../../types";
@@ -16,7 +17,8 @@ interface AddToPlaylistModalProps {
   track: AddToPlaylistModalTrack | null;
   playlists: Playlist[];
   trackPlaylistIds: string[]; // List of playlist IDs this track currently belongs to
-  onTogglePlaylist: (playlistId: string, isCurrentlyMember: boolean) => Promise<void>;
+  onTogglePlaylist: (playlistId: string, isCurrentlyMember: boolean,
+  ) => Promise<void>;
   onCreatePlaylist: (name: string) => Promise<string | null>; // Returns created playlist id or null
 }
 
@@ -129,7 +131,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           }}
         >
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#e8d8c9", margin: 0 }}>
+            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#e8d8c9", margin: 0,
+              }}>
               Add to Playlist
             </h2>
             <p
@@ -214,7 +217,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 style={{
                   flex: 1,
                   backgroundColor: "rgba(0, 0, 0, 0.4)",
-                  border: createError ? "1px solid #ef4444" : "1px solid rgba(255, 255, 255, 0.15)",
+                  border: createError
+                    ? "1px solid #ef4444"
+                    : "1px solid rgba(255, 255, 255, 0.15)",
                   borderRadius: "8px",
                   padding: "8px 12px",
                   color: "#e8d8c9",
@@ -279,105 +284,140 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           }}
         >
           {userPlaylists.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-dim)" }}>
-              <ListMusic size={36} color="var(--text-dim)" style={{ marginBottom: "10px" }} />
-              <p style={{ fontSize: "0.92rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "4px" }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 20px",
+                color: "var(--text-dim)",
+              }}
+            >
+              <ListMusic
+                size={36}
+                color="var(--text-dim)"
+                style={{ marginBottom: "10px" }}
+              />
+              <p
+                style={{
+                  fontSize: "0.92rem",
+                  fontWeight: 600,
+                  color: "#e8d8c9",
+                  marginBottom: "4px",
+                }}
+              >
                 No playlists available
               </p>
               <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                Click &ldquo;+ New Playlist&rdquo; above to create your first playlist.
+                Click &ldquo;+ New Playlist&rdquo; above to create your first
+                playlist.
               </p>
             </div>
           ) : (
-            userPlaylists.map((pl) => {
-              const isMember = trackPlaylistIds.includes(pl.id);
-              const isToggling = togglingIds.has(pl.id);
+            <WindowedList
+              items={userPlaylists}
+              label="Available playlists"
+              rowHeight={64}
+              renderItem={(pl) => {
+                const isMember = trackPlaylistIds.includes(pl.id);
+                const isToggling = togglingIds.has(pl.id);
 
-              return (
-                <div
-                  key={pl.id}
-                  onClick={() => handleToggle(pl.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "14px",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    backgroundColor: isMember ? "rgba(243, 112, 30, 0.08)" : "transparent",
-                    border: isMember
-                      ? "1px solid rgba(243, 112, 30, 0.3)"
-                      : "1px solid transparent",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isMember) {
-                      e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.04)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isMember) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }
-                  }}
-                >
-                  {/* Checkbox indicator */}
+                return (
                   <div
+                    key={pl.id}
+                    onClick={() => handleToggle(pl.id)}
                     style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "6px",
-                      border: isMember
-                        ? "2px solid var(--accent-secondary)"
-                        : "2px solid rgba(255, 255, 255, 0.3)",
-                      backgroundColor: isMember ? "var(--accent-secondary)" : "transparent",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      gap: "14px",
+                      padding: "8px 12px",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      backgroundColor: isMember
+                        ? "rgba(243, 112, 30, 0.08)"
+                        : "transparent",
+                      border: isMember
+                        ? "1px solid rgba(243, 112, 30, 0.3)"
+                        : "1px solid transparent",
                       transition: "all 0.15s ease",
                     }}
+                    onMouseEnter={(e) => {
+                      if (!isMember) {
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(255, 255, 255, 0.04)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isMember) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
                   >
-                    {isMember && <Check size={14} color="#e8d8c9" strokeWidth={3} />}
-                  </div>
-
-                  {/* Playlist details */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Checkbox indicator */}
                     <div
                       style={{
-                        fontWeight: 600,
-                        fontSize: "0.92rem",
-                        color: isMember ? "#e8d8c9" : "var(--text-main)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "6px",
+                        border: isMember
+                          ? "2px solid var(--accent-secondary)"
+                          : "2px solid rgba(255, 255, 255, 0.3)",
+                        backgroundColor: isMember
+                          ? "var(--accent-secondary)"
+                          : "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        transition: "all 0.15s ease",
                       }}
                     >
-                      {pl.name}
+                      {isMember && (
+                        <Check size={14} color="#e8d8c9" strokeWidth={3} />
+                      )}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "0.76rem",
-                        color: "var(--text-muted)",
-                        marginTop: "1px",
-                      }}
-                    >
-                      {pl.track_count !== undefined
-                        ? `${pl.track_count} ${pl.track_count === 1 ? "song" : "songs"}`
-                        : "Playlist"}
-                      {pl.is_smart_mix === 1 ? " • Mix" : ""}
-                    </div>
-                  </div>
 
-                  {/* Loading indicator if toggling */}
-                  {isToggling && (
-                    <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
-                      Saving...
-                    </span>
-                  )}
-                </div>
-              );
-            })
+                    {/* Playlist details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "0.92rem",
+                          color: isMember ? "#e8d8c9" : "var(--text-main)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {pl.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.76rem",
+                          color: "var(--text-muted)",
+                          marginTop: "1px",
+                        }}
+                      >
+                        {pl.track_count !== undefined
+                          ? `${pl.track_count} ${pl.track_count === 1 ? "song" : "songs"}`
+                          : "Playlist"}
+                        {pl.is_smart_mix === 1 ? " • Mix" : ""}
+                      </div>
+                    </div>
+
+                    {/* Loading indicator if toggling */}
+                    {isToggling && (
+                      <span
+                        style={{
+                          fontSize: "0.72rem",
+                          color: "var(--text-dim)",
+                        }}
+                      >
+                        Saving...
+                      </span>
+                    )}
+                  </div>
+                );
+              }}
+            />
           )}
         </div>
 
@@ -402,7 +442,11 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             type="button"
             onClick={onClose}
             className="btn btn-secondary"
-            style={{ padding: "5px 14px", fontSize: "0.8rem", borderRadius: "6px" }}
+            style={{
+              padding: "5px 14px",
+              fontSize: "0.8rem",
+              borderRadius: "6px",
+            }}
           >
             Done
           </button>

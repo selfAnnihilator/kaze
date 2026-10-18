@@ -1,299 +1,197 @@
 import React, { useState } from "react";
-import { WishlistItem } from "../../types";
-import {
-  Bookmark,
-  Search,
-  Plus,
-  DownloadCloud,
-  ExternalLink,
-  CheckCircle2,
-  XCircle,
-  Clock,
-} from "lucide-react";
+import { Bookmark, Plus, Search, ExternalLink } from "lucide-react";
+import type { WishlistItem } from "../../types";
+import { useDebouncedValue } from "../../presentation/useDebouncedValue";
+import { WindowedList } from "../../presentation/WindowedList";
 
 interface WishlistViewProps {
   wishlist: WishlistItem[];
-  onAddToWishlist: (title: string, artist: string, album?: string) => Promise<void>;
+  onAddToWishlist: (title: string, artist: string, album?: string,
+  ) => Promise<void>;
   onUpdateStatus: (
     id: string,
-    status: "want" | "ignore" | "already_own" | "downloaded"
+    status: "want" | "ignore" | "already_own" | "downloaded",
   ) => Promise<void>;
   onSearchDirect: (artist: string, title: string, album?: string) => void;
   onLaunchSoulseek?: (query?: string, filter?: string) => Promise<void>;
 }
+const statuses = ["WANT", "DOWNLOADED", "ALREADY_OWN", "IGNORE"] as const;
+const label = (status: string) => status.toLowerCase().replace(/_/g, " ");
 
-export const WishlistView: React.FC<WishlistViewProps> = ({
+export const WishlistView = React.memo(function WishlistView({
   wishlist,
   onAddToWishlist,
   onUpdateStatus,
   onSearchDirect,
   onLaunchSoulseek,
-}) => {
-  const [filter, setFilter] = useState<string>("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newArtist, setNewArtist] = useState("");
-  const [newAlbum, setNewAlbum] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+}: WishlistViewProps) {
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
+  const query = useDebouncedValue(search).toLowerCase();
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const filteredItems = wishlist.filter((item) => {
-    const matchesFilter =
-      filter === "ALL" ? true : item.status.toUpperCase() === filter.toUpperCase();
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.album && item.album.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesFilter && matchesSearch;
-  });
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newArtist.trim()) return;
-
-    setSubmitting(true);
-    try {
-      await onAddToWishlist(newTitle.trim(), newArtist.trim(), newAlbum.trim() || undefined);
-      setNewTitle("");
-      setNewArtist("");
-      setNewAlbum("");
-      setShowAddForm(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const getStatusBadge = (status: WishlistItem["status"]) => {
-    switch (status) {
-      case "WANT":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
-            <Clock size={12} /> Want
-          </span>
-        );
-      case "DOWNLOADED":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 size={12} /> Downloaded
-          </span>
-        );
-      case "ALREADY_OWN":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            <CheckCircle2 size={12} /> Owned
-          </span>
-        );
-      case "IGNORE":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-500/15 text-zinc-400 border border-zinc-500/30">
-            <XCircle size={12} /> Ignored
-          </span>
-        );
-    }
-  };
-
+  const [error, setError] = useState<string | null>(null);
+  const filtered = wishlist.filter((item) =>
+      (filter === "ALL" || item.status === filter) &&
+      `${item.title} ${item.artist} ${item.album || ""}`
+        .toLowerCase()
+        .includes(query),
+  );
   return (
-    <div className="p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <section className="wishlist-view">
+      <header className="view-header">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Bookmark className="text-amber-400" /> Wishlist & Missing Music
+          <p className="interface-eyebrow">Find your next record</p>
+          <h1 className="view-title">
+            <Bookmark size={26} /> Wishlist
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Tracks you discovered that aren't yet in your local library. Find and acquire them via Soulseek.
-          </p>
+          <p>{wishlist.length} tracks saved for later</p>
         </div>
-
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg shadow transition"
+          className="btn btn-primary"
+          onClick={() => setAdding((value) => !value)}
         >
-          <Plus size={18} />
-          <span>Add Track</span>
+          <Plus size={16} /> Add music
         </button>
-      </div>
-
-      {/* Add track inline modal/box */}
-      {showAddForm && (
+      </header>
+      {error && <p role="alert">{error}</p>}
+      {adding && (
         <form
-          onSubmit={handleAddSubmit}
-          className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 shadow-xl space-y-4 animate-in fade-in duration-200"
+          className="wishlist-form content-card"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const data = new FormData(e.currentTarget);
+            setSaving(true);
+            setError(null);
+            try {
+              await onAddToWishlist(
+                String(data.get("title")).trim(),
+                String(data.get("artist")).trim(),
+                String(data.get("album") || "").trim() || undefined,
+              );
+              setAdding(false);
+            } catch {
+              setError("Couldn’t add this track. Try again.");
+            } finally {
+              setSaving(false);
+            }
+          }}
         >
-          <h3 className="font-semibold text-lg text-white">Add Music to Wishlist</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs text-zinc-400 uppercase font-semibold mb-1">
-                Track Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. Master of Puppets"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-400 uppercase font-semibold mb-1">
-                Artist Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={newArtist}
-                onChange={(e) => setNewArtist(e.target.value)}
-                placeholder="e.g. Metallica"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-400 uppercase font-semibold mb-1">
-                Album (Optional)
-              </label>
-              <input
-                type="text"
-                value={newAlbum}
-                onChange={(e) => setNewAlbum(e.target.value)}
-                placeholder="e.g. Master of Puppets"
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-sm transition disabled:opacity-50"
-            >
-              {submitting ? "Saving..." : "Save to Wishlist"}
-            </button>
-          </div>
+          <label>
+            Title
+            <input name="title" required className="input-field" />
+          </label>
+          <label>
+            Artist
+            <input name="artist" required className="input-field" />
+          </label>
+          <label>
+            Album
+            <input name="album" className="input-field" />
+          </label>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setAdding(false)}
+          >
+            Cancel
+          </button>
+          <button className="btn btn-primary" disabled={saving}>
+            Save to wishlist
+          </button>
         </form>
       )}
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1">
-          {["ALL", "WANT", "DOWNLOADED", "ALREADY_OWN", "IGNORE"].map((tab) => (
+      <div className="wishlist-filters">
+        <div className="tab-bar">
+          {["ALL", ...statuses].map((status) => (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${
-                filter === tab
-                  ? "bg-zinc-200 text-black"
-                  : "bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white"
-              }`}
+              className={`tab-btn ${filter === status ? "active" : ""}`}
+              key={status}
+              onClick={() => setFilter(status)}
             >
-              {tab.replace("_", " ")}
+              {label(status)}
             </button>
           ))}
         </div>
-
-        <div className="relative w-full sm:w-72">
-          <Search size={16} className="absolute left-3 top-2.5 text-zinc-500" />
+        <label className="wishlist-search">
+          <Search size={16} />
           <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search wishlist..."
-            className="w-full pl-9 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
+            aria-label="Search wishlist"
+            className="input-field"
+            placeholder="Search your wishlist"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-        </div>
+        </label>
       </div>
-
-      {/* Wishlist Items List / Table */}
-      {filteredItems.length === 0 ? (
-        <div className="text-center py-16 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl">
-          <Bookmark size={48} className="mx-auto text-zinc-600 mb-3" />
-          <p className="text-zinc-400 font-medium text-lg">No wishlist items found</p>
-          <p className="text-zinc-600 text-sm mt-1">
-            Explore recommendations in Discovery or add tracks you want to find!
-          </p>
-        </div>
+      {!filtered.length ? (
+        <p className="interface-empty">
+          No wishlist items found. Save missing music from Discovery or add a
+          track here.
+        </p>
       ) : (
-        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-semibold uppercase">
-                <th className="py-3.5 px-4">Track & Artist</th>
-                <th className="py-3.5 px-4 hidden md:table-cell">Album</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/60">
-              {filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-zinc-800/40 transition group">
-                  <td className="py-3.5 px-4">
-                    <div className="font-medium text-zinc-100">{item.title}</div>
-                    <div className="text-xs text-zinc-400">{item.artist}</div>
-                  </td>
-                  <td className="py-3.5 px-4 hidden md:table-cell text-zinc-400">
-                    {item.album || "—"}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(item.status)}
-                      <select
-                        value={item.status.toLowerCase()}
-                        onChange={(e) =>
-                          onUpdateStatus(
-                            item.id,
-                            e.target.value as "want" | "ignore" | "already_own" | "downloaded"
-                          )
-                        }
-                        className="opacity-0 group-hover:opacity-100 transition bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 rounded px-1 py-0.5 focus:opacity-100"
-                      >
-                        <option value="want">Want</option>
-                        <option value="downloaded">Downloaded</option>
-                        <option value="already_own">Already Own</option>
-                        <option value="ignore">Ignore</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-                      <button
-                        onClick={() => onSearchDirect(item.artist, item.title, item.album)}
-                        className="btn btn-primary"
-                        style={{ fontSize: "0.8rem", padding: "5px 12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                        title="Search & download directly in-app"
-                      >
-                        <DownloadCloud size={14} />
-                        <span>Direct Download</span>
-                      </button>
-                      {onLaunchSoulseek && (
-                        <button
-                          onClick={() => {
-                            const query = item.title.trim() || item.artist.trim();
-                            const filter = item.title.trim() && item.artist.trim() ? item.artist.trim() : undefined;
-                            onLaunchSoulseek(query, filter);
-                          }}
-                          className="btn btn-secondary"
-                          style={{ fontSize: "0.78rem", padding: "5px 10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                          title="Optional: search in external SoulseekQt app"
-                        >
-                          <ExternalLink size={12} />
-                          <span>Soulseek</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <WindowedList
+          items={filtered}
+          rowHeight={100}
+          label="Wishlist tracks"
+          renderItem={(item) => (
+            <div className="wishlist-row" key={item.id}>
+              <div className="wishlist-song">
+                <strong>{item.title}</strong>
+                <span>
+                  {item.artist}
+                  {item.album ? ` · ${item.album}` : ""}
+                </span>
+              </div>
+              <select
+                aria-label={`Status for ${item.title}`}
+                value={item.status}
+                onChange={async (e) => {
+                  setError(null);
+                  try {
+                    await onUpdateStatus(
+                      item.id,
+                      e.target.value.toLowerCase() as
+                        "want" | "ignore" | "already_own" | "downloaded",
+                    );
+                  } catch {
+                    setError("Couldn’t update this track’s status. Try again.");
+                  }
+                }}
+              >
+                {statuses.map((status) => (
+                  <option key={status} value={status}>
+                    {label(status)}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-secondary"
+                title={`Search downloads for ${item.title}`}
+                onClick={() =>
+                  onSearchDirect(item.artist, item.title, item.album)
+                }
+              >
+                <Search size={15} /> Find
+              </button>
+              {onLaunchSoulseek && (
+                <button
+                  className="player-icon-btn"
+                  aria-label={`Find ${item.title} in Soulseek`}
+                  onClick={() =>
+                    void onLaunchSoulseek(item.title, item.artist).catch(() =>
+                      setError("Couldn’t launch Soulseek. Check Settings."),
+                    )
+                  }
+                >
+                  <ExternalLink size={16} />
+                </button>
+              )}
+            </div>
+          )}
+        />
       )}
-    </div>
+    </section>
   );
-};
+});

@@ -518,7 +518,9 @@ impl CoreProcessor {
 
     /// Returns true only for the first request; quitting cannot be undone.
     pub fn begin_quit(&self) -> bool {
-        !self.is_quitting.swap(true, Ordering::AcqRel)
+        let first = !self.is_quitting.swap(true, Ordering::AcqRel);
+        self.playback_service.request_shutdown();
+        first
     }
 
     pub fn close_button_behavior(&self) -> &'static str {
@@ -679,6 +681,7 @@ impl CoreProcessor {
         if self.is_quitting() {
             return Err(AppError::Validation("Kaze is shutting down".into()));
         }
+        self.playback_service.initialize_saved_playback().await;
         info!(?cmd, "Dispatching command");
 
         match cmd {
@@ -1576,16 +1579,16 @@ impl CoreProcessor {
             }
             Command::LogoutAll => {
                 let worker_url = self.get_cloud_worker_url().await;
-                if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
-                    let client = self.cloud_client.clone();
-                    let user_id = session.user_id.clone();
-                    let token = credentials::get_session_token(&user_id);
-                    if let Some(tok) = token {
-                        let _ = client.logout_all(&worker_url, &tok).await;
-                    }
-                    let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
-                    let _ = credentials::delete_session_token(&user_id);
-                }
+                let session = SyncManager::get_active_session(&self.db_pool).await?
+                    .ok_or_else(|| AppError::Validation("No active session. Sign in again to log out all devices.".to_string()))?;
+                let user_id = session.user_id.clone();
+                let token = credentials::get_session_token(&user_id)
+                    .ok_or_else(|| AppError::Validation("Session credentials unavailable. Sign in again to log out all devices.".to_string()))?;
+                // Require server confirmation before clearing this device. Otherwise
+                // an offline/failed request would falsely report global revocation.
+                self.cloud_client.logout_all(&worker_url, &token).await?;
+                let _ = SyncManager::delete_session(&self.db_pool, &user_id).await;
+                let _ = credentials::delete_session_token(&user_id);
                 self.playback_service.stop_flow().await;
                 *self.current_user.write().await = None;
                 *self.session_state.write().await = AuthSessionState::SignedOut;
@@ -1765,6 +1768,13 @@ impl CoreProcessor {
                 self.set_close_button_behavior(behavior).await?;
                 Ok(CommandResponse::Ok)
             }
+            Command::SetInterfaceStyle { style } => {
+                if !matches!(style.as_str(), "spatial" | "brutalist") {
+                    return Err(AppError::Validation("Unknown interface style".to_string()));
+                }
+                self.settings_repo.set_setting("interface_style", &style).await?;
+                Ok(CommandResponse::Ok)
+            }
         }
     }
 
@@ -1774,6 +1784,7 @@ impl CoreProcessor {
 
         match query {
             Query::GetPlaybackState => {
+                self.playback_service.initialize_saved_playback().await;
                 let state = self.playback_service.get_playback_state().await;
                 let mut val = serde_json::to_value(&state)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -1845,8 +1856,13 @@ impl CoreProcessor {
                 self.initialize_close_behavior().await?;
                 let mut cfg = self.config.read().await.clone();
                 cfg.close_button_behavior = self.close_button_behavior().to_string();
-                let val = serde_json::to_value(&cfg)
+                let mut val = serde_json::to_value(&cfg)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
+                let style = self.settings_repo.get_setting("interface_style").await?;
+                val["interface_style"] = serde_json::json!(match style.as_deref() {
+                    Some("brutalist") => "brutalist",
+                    _ => "spatial",
+                });
                 Ok(QueryResponse::Settings(val))
             }
             Query::GetLibraryOverview => {

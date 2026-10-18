@@ -53,8 +53,11 @@ export interface Playlist {
 }
 
 export interface PlaybackState {
+  current_track_id?: string | null;
+  current_queue_index?: number | null;
   current_track?: Track;
   is_playing: boolean;
+  is_paused?: boolean;
   position_secs: number;
   duration_secs: number;
   volume: number;
@@ -140,9 +143,12 @@ export interface OnlinePlayingTrack {
 }
 
 export interface TasteProfile {
-  top_artists: Array<{ id_or_name: string; display_name: string; affinity: number }>;
-  top_genres: Array<{ id_or_name: string; display_name: string; affinity: number }>;
-  top_eras: Array<{ id_or_name: string; display_name: string; affinity: number }>;
+  top_artists: Array<{ id_or_name: string; display_name: string; affinity: number;
+  }>;
+  top_genres: Array<{ id_or_name: string; display_name: string; affinity: number;
+  }>;
+  top_eras: Array<{ id_or_name: string; display_name: string; affinity: number;
+  }>;
 }
 
 export interface OnboardingStatus {
@@ -152,6 +158,7 @@ export interface OnboardingStatus {
 }
 
 export interface AppSettings {
+  interface_style?: "spatial" | "brutalist";
   database_path: string;
   cache_dir: string;
   audio: {
@@ -215,7 +222,8 @@ export type Command =
   | { command: "ToggleMute" }
   | { command: "SetRepeatMode"; payload: { mode: "off" | "one" | "all" } }
   | { command: "SetShuffle"; payload: { enabled: boolean } }
-  | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean } }
+  | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean };
+    }
   | {
       command: "PlayOnlineTrack";
       payload: {
@@ -249,15 +257,19 @@ export type Command =
   | { command: "ContinueFlow" }
   | { command: "StopFlow" }
   | { command: "SetFlowSteering"; payload: { familiarity_ratio: number } }
-  | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean } }
+  | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean };
+    }
   | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
   | { command: "RemoveLibraryFolder"; payload: { folder_id: string } }
-  | { command: "ScanLibrary"; payload: { folder_id?: string; incremental: boolean } }
+  | { command: "ScanLibrary"; payload: { folder_id?: string; incremental: boolean };
+    }
   | { command: "GenerateSmartMix"; payload: { mix_type: string } }
-  | { command: "CreatePlaylist"; payload: { name: string; description?: string } }
+  | { command: "CreatePlaylist"; payload: { name: string; description?: string };
+    }
   | { command: "DeletePlaylist"; payload: { playlist_id: string } }
-  | { command: "RenamePlaylist"; payload: { playlist_id: string; name: string } }
+  | { command: "RenamePlaylist"; payload: { playlist_id: string; name: string };
+    }
   | { command: "EnsureLikedSongsPlaylist" }
   | {
       command: "AddTrackToPlaylist";
@@ -272,17 +284,25 @@ export type Command =
         preview_url?: string;
       };
     }
-  | { command: "RemoveTrackFromPlaylist"; payload: { playlist_id: string; track_id: string } }
+  | { command: "RemoveTrackFromPlaylist"; payload: { playlist_id: string; track_id: string };
+    }
   | { command: "LikeTrack"; payload: { track_id: string } }
   | { command: "DislikeTrack"; payload: { track_id: string } }
   | { command: "RemoveTrackFeedback"; payload: { track_id: string } }
-  | { command: "AddToWishlist"; payload: { title: string; artist: string; album?: string; external_id?: string } }
+  | { command: "AddToWishlist"; payload: { title: string; artist: string; album?: string; external_id?: string;
+      };
+    }
   | { command: "AddMissingToWishlist"; payload: { tracks: any[] } }
-  | { command: "UpdateWishlistStatus"; payload: { wishlist_id: string; status: "want" | "ignore" | "already_own" | "downloaded" } }
-  | { command: "SearchSoulseek"; payload: { artist: string; title: string; album?: string } }
-  | { command: "LaunchSoulseek"; payload: { search_query?: string; filter_query?: string } }
+  | { command: "UpdateWishlistStatus"; payload: { wishlist_id: string; status: "want" | "ignore" | "already_own" | "downloaded";
+      };
+    }
+  | { command: "SearchSoulseek"; payload: { artist: string; title: string; album?: string };
+    }
+  | { command: "LaunchSoulseek"; payload: { search_query?: string; filter_query?: string };
+    }
   | { command: "ImportSoulseekDownloads" }
-  | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string } }
+  | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string };
+    }
   | { command: "CancelDownload"; payload: { task_id: string } }
   | { command: "SignUp"; payload: { username: string; password: string } }
   | { command: "Login"; payload: { username: string; password: string } }
@@ -294,7 +314,12 @@ export type Command =
   | { command: "SyncCloudData" }
   | { command: "SetCloudServerUrl"; payload: { url: string } }
   | { command: "TogglePlayPause" }
-  | { command: "SetCloseButtonBehavior"; payload: { behavior: "minimize_to_tray" | "quit_app" } }
+  | { command: "SetCloseButtonBehavior"; payload: { behavior: "minimize_to_tray" | "quit_app" };
+    }
+  | {
+      command: "SetInterfaceStyle";
+      payload: { style: "spatial" | "brutalist" };
+    }
   | {
       command: "RecordPlaybackSession";
       payload: {
@@ -313,7 +338,9 @@ export type Command =
 export type Query =
   | { query: "GetOnboardingStatus" }
   | { query: "GetPlaybackState" }
-  | { query: "GetTracks"; payload: { offset: number; limit: number; sort_by?: string; ascending: boolean } }
+  | { query: "GetTracks"; payload: { offset: number; limit: number; sort_by?: string; ascending: boolean;
+      };
+    }
   | { query: "GetArtists"; payload: { offset: number; limit: number } }
   | { query: "GetAlbums"; payload: { offset: number; limit: number } }
   | { query: "GetPlaylists" }
@@ -321,19 +348,25 @@ export type Query =
   | { query: "GetSmartMixes" }
   | { query: "GetTasteProfile" }
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
-  | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean } }
-  | { query: "GetWorldTrending"; payload: { limit: number; force_refresh?: boolean } }
+  | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean };
+    }
+  | { query: "GetWorldTrending"; payload: { limit: number; force_refresh?: boolean };
+    }
   | { query: "GetChartSongs"; payload: { chart_id: string; limit: number } }
   | { query: "GetWishlist" }
-  | { query: "GetDownloads"; payload: { status_filter?: string; limit: number } }
+  | { query: "GetDownloads"; payload: { status_filter?: string; limit: number };
+    }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
   | { query: "GetSettings" }
   | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
-  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string } }
+  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string };
+    }
   | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }
   | { query: "GetTrackPlaylistMemberships" }
-  | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number } }
+  | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number;
+      };
+    }
   | { query: "GetStatsOverview"; payload?: { year?: number; month?: number } }
   | { query: "GetCurrentUser" }
   | { query: "GetProfile" }
@@ -343,7 +376,9 @@ export type Query =
   | { query: "ListSessions" }
   | { query: "GetRemoteAudioCacheStats" }
   | { query: "GetHomeOverview" }
-  | { query: "GetFlowQueue"; payload?: { familiarity_ratio?: number; limit?: number; exclude_track_ids?: string[] } }
+  | { query: "GetFlowQueue"; payload?: { familiarity_ratio?: number; limit?: number; exclude_track_ids?: string[];
+      };
+    }
   | { query: "GetFlowTrackReason"; payload: { track_id: string } }
   | { query: "GetFlowSession" };
 
@@ -359,8 +394,10 @@ export type SessionExpiredReason = "idle_timeout" | "absolute_timeout" | "revoke
 export type AuthSessionState =
   | { type: "SignedOut" }
   | { type: "Authenticating" }
-  | { type: "OnlineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string }
-  | { type: "OfflineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string }
+  | { type: "OnlineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string;
+    }
+  | { type: "OfflineAuthenticated"; user: { id: string; username: string; created_at: number }; session_id: string;
+    }
   | { type: "SessionExpired"; reason: SessionExpiredReason }
   | { type: "CloudUnavailable" }
   | { type: "SyncPaused" };

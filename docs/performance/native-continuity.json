@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-16",
+  "target": "native WebKitGTK with actual Rust playback, private D-Bus and disposable data",
+  "passed": true,
+  "groups": [
+    "native WebKitGTK split Discovery, large artwork, fitted panes and adjustable icon rail",
+    "native rapid vertical wheel bursts change one chapter per gesture without outer scrolling",
+    "native five-destination preview rail and circular familiarity dial update actual Flow steering",
+    "brutalist: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved",
+    "spatial: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved",
+    "brutalist: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved",
+    "ten native hide/restore cycles suspend visual mutations and restore current progress, route, DOM and Flow",
+    "paused switching preserves exact position and history/journal session identity",
+    "cold native relaunch loads saved Brutalist via existing SQLite settings"
+  ],
+  "binary": "final embedded frontend build including lyrics unmount cleanup",
+  "source": "scripts/test-dual-interface-native.py"
+}

@@ -237,6 +237,9 @@ pub enum Command {
     SetCloseButtonBehavior {
         behavior: String,
     },
+    SetInterfaceStyle {
+        style: String,
+    },
 }
 
 /// Result returned from command execution.

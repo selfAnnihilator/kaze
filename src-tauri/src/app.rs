@@ -12,6 +12,8 @@ use tracing::info;
 mod lifecycle;
 #[cfg(target_os = "linux")]
 mod linux_activation;
+#[cfg(target_os = "linux")]
+mod linux_rendering;
 mod tray;
 #[cfg(target_os = "linux")]
 mod window_chrome;
@@ -103,6 +105,7 @@ pub fn run() {
                 });
                 let processor = Arc::new(CoreProcessor::new(pool, config));
                 processor.initialize_close_behavior().await.expect("Failed to load window close setting");
+                processor.playback_service().initialize_saved_playback().await;
 
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();
@@ -219,6 +222,9 @@ pub fn run() {
 
 fn main() {
     #[cfg(target_os = "linux")]
-    linux_activation::preserve_launcher_token();
+    {
+        linux_rendering::configure();
+        linux_activation::preserve_launcher_token();
+    }
     run();
 }

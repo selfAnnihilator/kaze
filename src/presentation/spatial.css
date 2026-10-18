@@ -1,0 +1,889 @@
+/* The accepted Spatial shell, applied only to the production presentation.
+   The rail, fixed discovery panes and transport share one viewport height budget. */
+:root[data-interface="spatial"] {
+  --bg-main: oklch(18.2% 0.006 65);
+  --bg-sidebar: var(--bg-main);
+  --bg-card: oklch(23% 0.009 65);
+  --bg-player: var(--bg-card);
+  --bg-card-hover: oklch(27% 0.009 65);
+  --text-main: oklch(94% 0.014 75);
+  --text-muted: oklch(72% 0.015 75);
+  --text-dim: oklch(64% 0.014 75);
+  --border: oklch(35% 0.012 65);
+  --ui-radius: 6px;
+  color-scheme: dark;
+}
+:root[data-interface="spatial"] .kaze-interface {
+  display: grid;
+  grid-template-columns: var(--spatial-rail-width, 72px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100dvh;
+  overflow: hidden;
+}
+:root[data-interface="spatial"] .app-body {
+  display: contents;
+}
+/* Missing covers remain visible beside real artwork on the charcoal surface. */
+:root[data-interface="spatial"] .music-artwork--placeholder {
+  position: relative;
+  background: oklch(86% 0.037 77);
+  color: oklch(29% 0.019 65);
+  box-shadow: inset 0 0 0 1px oklch(73% 0.04 77);
+}
+:root[data-interface="spatial"] .music-artwork--placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid oklch(66% 0.047 77);
+  border-radius: 50%;
+  pointer-events: none;
+}
+:root[data-interface="spatial"] .music-artwork--placeholder::after {
+  content: "";
+  position: absolute;
+  width: 7%;
+  aspect-ratio: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: oklch(68% 0.15 52);
+  pointer-events: none;
+}
+:root[data-interface="spatial"] .music-artwork--placeholder > svg {
+  width: 46%;
+  height: 46%;
+  stroke-width: 1.35;
+}
+:root[data-interface="spatial"] button:disabled:has(.music-artwork--placeholder) {
+  opacity: 1;
+}
+:root[data-interface="spatial"] .kaze-interface .spatial-navigation {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  padding: 28px 0 20px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-main);
+  overflow: visible;
+}
+.spatial-logo {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 35px;
+}
+.spatial-logo img {
+  display: block;
+  border-radius: 8px;
+}
+.spatial-navigation-scroll {
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 4px 0 20px;
+}
+.spatial-navigation-scroll::-webkit-scrollbar {
+  display: none;
+}
+.spatial-navigation nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.spatial-navigation-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.spatial-navigation nav.spatial-secondary-navigation {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  gap: 6px;
+}
+:root[data-interface="spatial"] .spatial-navigation .nav-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+  padding: 10px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+:root[data-interface="spatial"] .spatial-navigation .nav-button.active {
+  color: var(--accent);
+  background: var(--bg-card);
+}
+:root[data-interface="spatial"] .spatial-navigation .nav-button:hover {
+  color: var(--text-main);
+  background: var(--bg-card);
+}
+.spatial-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.spatial-unread {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.spatial-rail-resizer {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 10px;
+  z-index: 15;
+  cursor: col-resize;
+  touch-action: none;
+}
+.spatial-rail-resizer::after {
+  content: "";
+  position: absolute;
+  top: 43%;
+  bottom: 43%;
+  width: 2px;
+  left: 4px;
+  background: var(--border);
+}
+.spatial-rail-resizer:focus-visible::after,
+.spatial-navigation[data-resizing] .spatial-rail-resizer::after {
+  background: var(--accent);
+}
+:root[data-interface="spatial"] .kaze-interface .main-content {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  --content-gutter: 40px;
+  padding: 0 40px 28px;
+  overflow-x: hidden;
+}
+:root[data-interface="spatial"] .interface-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--bg-main);
+  min-height: 82px;
+  height: 82px;
+  gap: 20px;
+  margin: 0 -40px 26px;
+  padding: 0 40px;
+}
+:root[data-interface="spatial"] .interface-name {
+  display: none;
+}
+:root[data-interface="spatial"] .interface-route {
+  order: 1;
+  margin: 0;
+  font-size: 12px;
+  width: 160px;
+  max-width: 25%;
+}
+:root[data-interface="spatial"] .history-controls {
+  order: 0;
+  gap: 0;
+}
+:root[data-interface="spatial"] .history-controls button {
+  width: 30px;
+}
+:root[data-interface="spatial"] .kaze-interface .global-search {
+  order: 2;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 auto !important;
+  min-width: 80px;
+}
+:root[data-interface="spatial"] .kaze-interface .global-search form {
+  gap: 4px;
+}
+:root[data-interface="spatial"] .kaze-interface .global-search form > div {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 8px 4px !important;
+}
+:root[data-interface="spatial"] .kaze-interface .global-search input {
+  font-size: 12px !important;
+  color: var(--text-main) !important;
+}
+:root[data-interface="spatial"] .kaze-interface .global-search .btn-primary {
+  order: -1;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--text-muted) !important;
+}
+:root[data-interface="brutalist"] .interface-toolbar .global-search {
+  flex: 1;
+  margin: 0 0 0 20px !important;
+}
+/* Fixed music stages. Search results and other routes keep native vertical scrolling. */
+:root[data-interface="spatial"]
+  .main-content[data-view="discovery"][data-fixed-stage],
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+:root[data-interface="spatial"]
+  .main-content[data-fixed-stage]
+  > .interface-toolbar {
+  margin: 0;
+  flex-shrink: 0;
+}
+:root[data-interface="spatial"] .kaze-interface .discovery-view {
+  flex: 1;
+  min-height: 0;
+  height: 0;
+  gap: 0 !important;
+  padding-bottom: 0 !important;
+  container-type: size;
+}
+:root[data-interface="spatial"]
+  .kaze-interface
+  .discovery-view.discovery-search-active {
+  overflow-y: auto;
+  padding: 24px 40px !important;
+}
+:root[data-interface="spatial"] .discovery-hero {
+  display: none;
+}
+:root[data-interface="spatial"] .spatial-discovery-fixed {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 6%;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  max-width: 1700px;
+  margin: 0 auto;
+  padding: 40px 58px 34px 48px;
+  overflow: hidden;
+  outline: none;
+}
+.spatial-discovery-artwork {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 26px;
+  align-items: center;
+  justify-items: center;
+  padding: 18px 0 0;
+}
+.spatial-discovery-cover {
+  display: block;
+  width: min(100%, 65cqh);
+  aspect-ratio: 1;
+  max-height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  transform: rotate(-4deg);
+}
+.spatial-discovery-cover .music-artwork {
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+}
+.spatial-discovery-caption {
+  width: min(100%, 65cqh);
+  height: 64px;
+  min-width: 0;
+}
+.spatial-discovery-caption h2 {
+  font-size: 22px;
+  font-weight: 500 !important;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spatial-discovery-caption p {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 8px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spatial-chart-art {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--accent);
+  background: var(--bg-card);
+  font-size: clamp(30px, 5cqw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+}
+.spatial-discovery-panel {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 24px;
+  min-width: 0;
+  min-height: 0;
+  padding-top: 4px;
+}
+:root[data-interface="spatial"] .chapter-nav {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 0;
+}
+:root[data-interface="spatial"] .chapter-nav button {
+  padding: 6px 0;
+  gap: 7px;
+  font-size: 10px;
+}
+:root[data-interface="spatial"] .chapter-nav button[aria-current] {
+  color: var(--accent);
+}
+.spatial-discovery-copy {
+  align-self: end;
+}
+.spatial-discovery-copy h1 {
+  margin: 14px 0 10px;
+  font-size: 48px;
+  letter-spacing: -0.065em;
+  line-height: 1.03;
+  font-weight: 600 !important;
+}
+.spatial-discovery-copy > p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 55ch;
+}
+.spatial-discovery-detail {
+  border-top: 1px solid var(--border);
+  padding: 18px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  min-width: 0;
+}
+.spatial-discovery-detail > div {
+  min-width: 0;
+}
+.spatial-discovery-detail h2,
+.spatial-preview-title {
+  font-size: 21px;
+  font-weight: 400 !important;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.spatial-preview-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  color: var(--text-main);
+  border: 0;
+  text-align: left;
+}
+.spatial-preview-title svg {
+  flex-shrink: 0;
+}
+.spatial-discovery-detail p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.spatial-preview-play {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--text-main);
+  color: var(--bg-main);
+  border-radius: 50%;
+  border: 0;
+}
+.spatial-discovery-scroll-cue {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 40px;
+  height: 100px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+}
+.spatial-discovery-scroll-cue span {
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+:root[data-interface="spatial"] .spatial-discovery-panel .chapter-stage {
+  min-height: 0;
+  min-width: 0;
+}
+:root[data-interface="spatial"] .spatial-chapter-content {
+  height: 100%;
+  min-height: 0;
+}
+:root[data-interface="spatial"] .spatial-chapter-content > :is(div, section) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+:root[data-interface="spatial"]
+  .spatial-chapter-content
+  .discovery-shelf-header {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-end !important;
+  margin-bottom: 0 !important;
+}
+:root[data-interface="spatial"] .discovery-shelf-header > div:first-child {
+  display: none;
+}
+:root[data-interface="spatial"]
+  .spatial-chapter-content
+  .discovery-shelf-filters {
+  grid-column: 1;
+  grid-row: 1;
+  flex-wrap: nowrap !important;
+  min-width: 0;
+  overflow: auto;
+  margin: 0 !important;
+}
+:root[data-interface="spatial"] .discovery-shelf-filters button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+:root[data-interface="spatial"]
+  .spatial-chapter-content
+  > :is(div, section)
+  > :not(.discovery-shelf-header, .discovery-shelf-filters) {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  min-height: 0;
+}
+:root[data-interface="spatial"]
+  .spatial-chapter-content
+  .horizontal-scroll-row {
+  --strip-item-width: 155px;
+  --strip-item-gap: 20px;
+  padding: 0 0 8px !important;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  gap: 20px;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .windowed-sleeve {
+  transform: none;
+}
+:root[data-interface="spatial"] .discovery-preview-target {
+  width: 100%;
+  height: 100%;
+}
+:root[data-interface="spatial"]
+  .discovery-track-card.discovery-preview-target
+  > div {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+:root[data-interface="spatial"]
+  .discovery-track-card.discovery-preview-target
+  > div
+  > div:first-child {
+  aspect-ratio: 1 !important;
+  height: auto !important;
+  border-radius: 2px !important;
+}
+:root[data-interface="spatial"]
+  .discovery-track-card.discovery-preview-target
+  > div
+  > div:nth-child(2) {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+:root[data-interface="spatial"]
+  .discovery-track-card.discovery-preview-target
+  > div
+  > div:nth-child(3) {
+  font-size: 11px !important;
+}
+:root[data-interface="spatial"] .discovery-track-card .btn {
+  min-height: 30px;
+  font-size: 10px !important;
+  padding: 3px 5px !important;
+}
+:root[data-interface="spatial"] .discovery-track-card:focus-within button {
+  opacity: 1 !important;
+  transform: none !important;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .subtab-btn {
+  font-size: 10px;
+  padding: 5px 7px;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .scroll-arrow-btn {
+  background: transparent;
+  border: 0;
+}
+/* The detached transport mirrors the study, retaining every real action. */
+:root[data-interface="spatial"] .kaze-interface > .player-bar {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 12px 30px 20px;
+  height: 104px;
+  min-height: 104px;
+  padding: 16px 22px;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 1.25fr) minmax(0, 1fr);
+  gap: 28px;
+}
+:root[data-interface="spatial"] .kaze-interface .player-track-info {
+  min-width: 0;
+  width: 100%;
+  gap: 12px;
+}
+:root[data-interface="spatial"] .kaze-interface .player-track-title {
+  font-size: 12px !important;
+}
+:root[data-interface="spatial"]
+  .kaze-interface
+  .player-track-metadata
+  > div:last-child {
+  font-size: 11px !important;
+  margin-top: 5px;
+}
+:root[data-interface="spatial"] .kaze-interface .player-controls {
+  min-width: 0;
+  width: 100%;
+  gap: 10px;
+  max-width: none;
+}
+:root[data-interface="spatial"] .kaze-interface .player-buttons {
+  gap: 18px;
+}
+:root[data-interface="spatial"]
+  .kaze-interface
+  .player-buttons
+  .play-pause-btn {
+  background: var(--text-main) !important;
+  border-color: var(--text-main) !important;
+  color: var(--bg-main) !important;
+  width: 46px;
+  height: 46px;
+}
+:root[data-interface="spatial"] .kaze-interface .player-volume {
+  justify-content: flex-end;
+  width: 100%;
+}
+:root[data-interface="spatial"] .kaze-interface .player-volume .scrubber {
+  max-width: 75px;
+  min-width: 25px;
+  width: 20% !important;
+}
+:root[data-interface="spatial"] .progress-container {
+  gap: 12px;
+}
+:root[data-interface="spatial"] .time-label {
+  font-size: 9px;
+}
+:root[data-interface="spatial"] .scrubber {
+  --accent: var(--text-main);
+  height: 3px;
+}
+/* Keep the Now Playing sleeves inside the available pane at every desktop height. */
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  > .playback-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  flex: 1;
+  min-height: 0;
+  padding: 24px 40px;
+  overflow: hidden;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-heading {
+  height: 40px;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-index {
+  font-size: 30px;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-sequence {
+  height: 100%;
+  min-height: 0;
+  container-type: size;
+  overflow: hidden;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-sleeve {
+  width: min(360px, 66cqh, 40cqw);
+  top: 50%;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-past {
+  transform: translate(calc(-50% - min(280px, 25cqw)), calc(-50% + 30px))
+    rotate(-10deg) scale(0.55);
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-future {
+  transform: translate(calc(-50% + min(280px, 25cqw)), calc(-50% + 30px))
+    rotate(10deg) scale(0.55);
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-caption
+  h1 {
+  font-size: 36px;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-caption {
+  width: 100%;
+  max-width: 500px;
+}
+:root[data-interface="spatial"]
+  .main-content[data-view="now_playing"][data-fixed-stage]
+  .stage-caption
+  p {
+  font-size: 13px;
+  margin-top: 8px;
+}
+@media (min-width: 1600px) and (min-height: 850px) {
+  :root[data-interface="spatial"]
+    .spatial-chapter-content
+    .horizontal-scroll-row {
+    --strip-item-width: 174px;
+  }
+  .spatial-discovery-copy h1 {
+    font-size: 58px;
+  }
+}
+@media (max-height: 760px) {
+  :root[data-interface="spatial"] .interface-toolbar {
+    height: 64px;
+    min-height: 64px;
+  }
+  :root[data-interface="spatial"] .kaze-interface .spatial-navigation {
+    padding-top: 16px;
+    padding-bottom: 12px;
+  }
+  .spatial-logo {
+    margin-bottom: 18px;
+  }
+  .spatial-navigation nav {
+    gap: 6px;
+  }
+  :root[data-interface="spatial"] .spatial-discovery-fixed {
+    padding: 20px 44px 18px 32px;
+    gap: 5%;
+  }
+  .spatial-discovery-panel {
+    gap: 12px;
+  }
+  .spatial-discovery-copy h1 {
+    font-size: 32px;
+    margin: 8px 0;
+  }
+  .spatial-discovery-copy > p {
+    font-size: 12px;
+  }
+  .spatial-discovery-detail {
+    padding-top: 10px;
+    min-height: 52px;
+  }
+  .spatial-discovery-detail h2,
+  .spatial-preview-title {
+    font-size: 17px;
+  }
+  .spatial-discovery-detail p {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  :root[data-interface="spatial"]
+    .spatial-chapter-content
+    .horizontal-scroll-row {
+    --strip-item-width: 112px;
+    --strip-item-gap: 16px;
+  }
+  :root[data-interface="spatial"] .chapter-nav {
+    gap: 2px 12px;
+  }
+  :root[data-interface="spatial"] .chapter-nav button {
+    font-size: 9px;
+  }
+  .spatial-discovery-caption {
+    height: 50px;
+  }
+  .spatial-discovery-caption h2 {
+    font-size: 18px;
+  }
+  :root[data-interface="spatial"] .kaze-interface > .player-bar {
+    min-height: 90px;
+    height: 90px;
+    margin: 8px 20px 12px;
+    padding: 10px 16px;
+    gap: 16px;
+  }
+  :root[data-interface="spatial"]
+    .kaze-interface
+    .player-buttons
+    .play-pause-btn {
+    width: 38px;
+    height: 38px;
+  }
+}
+@media (max-width: 1100px) {
+  :root[data-interface="spatial"] .interface-route {
+    width: 100px;
+  }
+  :root[data-interface="spatial"] .kaze-interface > .player-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 1fr) auto;
+    gap: 12px;
+  }
+  :root[data-interface="spatial"] .kaze-interface .player-volume {
+    gap: 0 !important;
+  }
+  :root[data-interface="spatial"] .kaze-interface .player-buttons {
+    gap: 12px;
+  }
+  :root[data-interface="spatial"] .kaze-interface .player-track-info {
+    gap: 8px;
+  }
+  .spatial-discovery-copy h1 {
+    font-size: 38px;
+  }
+}
+@media (max-width: 860px) {
+  :root[data-interface="spatial"] .kaze-interface .main-content {
+    --content-gutter: 24px;
+    padding-inline: 24px;
+  }
+  :root[data-interface="spatial"] .interface-toolbar {
+    margin-inline: -24px;
+    padding-inline: 20px;
+    gap: 10px;
+  }
+  :root[data-interface="spatial"] .main-content[data-fixed-stage] {
+    padding: 0;
+  }
+  :root[data-interface="spatial"] .spatial-discovery-fixed {
+    padding: 24px 36px 16px 24px;
+    gap: 6%;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+  .spatial-discovery-copy h1 {
+    font-size: 30px;
+  }
+  :root[data-interface="spatial"] .chapter-nav {
+    gap: 0 10px;
+  }
+  .spatial-discovery-caption h2 {
+    font-size: 18px;
+  }
+  :root[data-interface="spatial"] .kaze-interface > .player-bar {
+    margin-inline: 14px;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 1fr);
+    height: 122px;
+    min-height: 122px;
+    gap: 8px 14px;
+  }
+  :root[data-interface="spatial"] .kaze-interface .player-volume {
+    grid-column: 1 / 3;
+    justify-content: flex-end;
+  }
+  :root[data-interface="spatial"] .kaze-interface .player-volume .scrubber {
+    width: 75px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-interface="spatial"] .kaze-interface * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-height: 660px) {
+  .spatial-discovery-panel {
+    gap: 10px;
+  }
+  .spatial-discovery-copy h1 {
+    font-size: 30px;
+    margin: 6px 0 0;
+  }
+  .spatial-discovery-copy > p {
+    display: none;
+  }
+  .spatial-discovery-detail {
+    min-height: 44px;
+    padding-top: 8px;
+  }
+  :root[data-interface="spatial"]
+    .spatial-chapter-content
+    .horizontal-scroll-row {
+    --strip-item-width: 104px;
+  }
+}

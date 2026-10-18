@@ -116,6 +116,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           opacity: 0.6,
           width: "100%",
           animation: "toastProgressBar 3s linear forwards",
+          transformOrigin: "left",
         }}
       />
     </div>

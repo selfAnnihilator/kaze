@@ -44,12 +44,23 @@ export function usePlaybackProgress(fallbackDuration = 0) {
   }));
 
   useEffect(() => {
-    return playbackProgress.subscribe((position, duration) => {
-      setProgress({
-        position,
-        duration: duration || fallbackDuration,
-      });
-    });
+    const update = (position: number, duration: number) => {
+      if (document.hidden) return;
+      const nextDuration = duration || fallbackDuration;
+      setProgress((current) =>
+        current.position === position && current.duration === nextDuration
+          ? current
+          : { position, duration: nextDuration },
+      );
+    };
+    const unsubscribe = playbackProgress.subscribe(update);
+    const restore = () =>
+      update(playbackProgress.getPosition(), playbackProgress.getDuration());
+    document.addEventListener("visibilitychange", restore);
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", restore);
+    };
   }, [fallbackDuration]);
 
   return progress;

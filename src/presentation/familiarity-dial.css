@@ -1,0 +1,86 @@
+.familiarity-control {
+  width: 150px;
+  display: grid;
+  justify-items: center;
+  color: var(--text-main);
+}
+.familiarity-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.familiarity-dial {
+  width: 112px;
+  height: 112px;
+  position: relative;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.familiarity-dial:active {
+  cursor: grabbing;
+}
+.familiarity-dial:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
+.familiarity-dial > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.dial-track {
+  stroke: var(--border);
+}
+.dial-fill {
+  stroke: var(--accent);
+}
+.dial-knob {
+  position: absolute;
+  inset: 17px;
+  border-radius: 50%;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  transform: rotate(var(--dial-angle));
+}
+.dial-knob > span {
+  position: absolute;
+  width: 2px;
+  height: 12px;
+  top: 7px;
+  left: calc(50% - 1px);
+  border-radius: 2px;
+  background: var(--accent);
+}
+.dial-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 4px;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.dial-value small {
+  font-size: 10px;
+  margin: 5px 0 0 2px;
+  color: var(--text-muted);
+}
+.dial-endpoints {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+.home-steering .familiarity-control {
+  margin: 0 auto;
+}

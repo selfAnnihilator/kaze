@@ -43,11 +43,9 @@ export const ArtistsView: React.FC<ArtistsViewProps> = ({ artists, onSelectArtis
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "var(--bg-card-hover)";
-              e.currentTarget.style.transform = "translateY(-4px)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "var(--bg-card)";
-              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
             <div

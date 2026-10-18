@@ -131,10 +131,17 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
                         }))
                     }
                 } else if first_line.contains("/api/auth/logout-all") {
-                    (200, serde_json::json!({
-                        "success": true,
-                        "revoked_count": 2
-                    }))
+                    if first_line.contains("/reject/") {
+                        (503, serde_json::json!({
+                            "success": false,
+                            "error": "Session service unavailable"
+                        }))
+                    } else {
+                        (200, serde_json::json!({
+                            "success": true,
+                            "revoked_count": 2
+                        }))
+                    }
                 } else if first_line.contains("/api/auth/sessions/") && first_line.starts_with("DELETE") {
                     (200, serde_json::json!({
                         "success": true
@@ -585,7 +592,23 @@ async fn test_session_management_lifecycle_and_hybrid_expiry() {
         _ => panic!("Expected Playlists"),
     }
 
-    // 7. LogoutAll
+    // A rejected global revocation must not become a successful local logout.
+    processor.dispatch_command(Command::SetCloudServerUrl {
+        url: format!("{}/reject", mock_url),
+    }).await.expect("set rejecting server url");
+    assert!(processor.dispatch_command(Command::LogoutAll).await.is_err());
+    let retained = processor.execute_query(Query::GetSessionState).await.expect("session retained");
+    match retained {
+        QueryResponse::SessionState(val) => assert_eq!(val["state"], "online_authenticated"),
+        _ => panic!("Expected SessionState"),
+    }
+    assert!(music_player_backend::cloud::SyncManager::get_active_session(&pool).await.unwrap().is_some());
+    assert!(music_player_backend::cloud::credentials::get_session_token("user_cf_session_test").is_some());
+    processor.dispatch_command(Command::SetCloudServerUrl {
+        url: mock_url.clone(),
+    }).await.expect("restore server url");
+
+    // 7. Successful LogoutAll still clears this device after server confirmation.
     let logout_all_res = processor.dispatch_command(Command::LogoutAll).await.expect("logout-all ok");
     assert!(matches!(logout_all_res, CommandResponse::Ok));
 

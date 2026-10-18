@@ -1,4 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from "react";
+import { useRouteScroll } from "./presentation/useRouteScroll";
+import { ViewMemoryProvider } from "./presentation/ViewMemory";
+import { useVisualActivity } from "./presentation/useVisualActivity";
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy,
+} from "react";
 import {
   Track,
   Album,
@@ -12,11 +16,13 @@ import {
   OnboardingStatus,
   SpotifyPlaylistImport,
   AppNotification,
-  CloudSyncStatus,
   HomeOverview, FlowExplanation,
 } from "./types";
-import { dispatchCommand, executeQuery, subscribeBackendEvents } from "./services/api";
+import { dispatchCommand, executeQuery, subscribeBackendEvents,
+} from "./services/api";
 import { playbackProgress } from "./services/playbackProgress";
+import { downloadProgress } from "./services/downloadProgress";
+import { loadCoverArt, clearCoverArtCache } from "./services/coverArt";
 import { viewDestination } from "./navigationHistory";
 import { useNavigationHistory } from "./hooks/useNavigationHistory";
 import { Sidebar } from "./components/Sidebar";
@@ -27,6 +33,7 @@ import { HomeView } from "./components/views/HomeView";
 import { LibraryView } from "./components/views/LibraryView";
 import { AlbumsView } from "./components/views/AlbumsView";
 import { PlaylistsView } from "./components/views/PlaylistsView";
+import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
@@ -41,17 +48,62 @@ import {
 } from "./components/views/CollectionDetailView";
 import { StatsOverview, UserProfile } from "./types";
 import { X, Sparkles } from "lucide-react";
+import { InterfaceContext } from "./presentation/InterfaceContext";
+import { useInterfacePreference } from "./presentation/useInterfacePreference";
+import { PlaybackStage } from "./presentation/PlaybackStage";
+import { QueueView } from "./presentation/QueueView";
+import {
+  upcomingFromEvent,
+  upcomingFromPlayback,
+  type QueueEntry,
+  type PlaybackArtworkTrack,
+} from "./presentation/queuePresentation";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import "./presentation/interfaces.css";
+import "./presentation/spatial.css";
+import "./presentation/familiarity-dial.css";
+import "./presentation/spatial-preview.css";
+import "./presentation/brutalist.css";
+import { BrutalistNavigation, BrutalistLibraryHeader } from "./presentation/BrutalistNavigation";
+import { BrutalistDeck } from "./presentation/BrutalistDeck";
+import { BrutalistPoster } from "./presentation/BrutalistPoster";
+import { SpatialUtilities, SpatialLibraryHeader } from "./presentation/SpatialUtilities";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
-const DiscoveryView = lazy(() => import("./components/views/DiscoveryView").then(m => ({ default: m.DiscoveryView })));
-const NotificationsView = lazy(() => import("./components/views/NotificationsView").then(m => ({ default: m.NotificationsView })));
-const SettingsView = lazy(() => import("./components/views/SettingsView").then(m => ({ default: m.SettingsView })));
-const StatsView = lazy(() => import("./components/views/StatsView").then(m => ({ default: m.StatsView })));
-const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then(m => ({ default: m.FullScreenPlayerView })));
-const LyricsView = lazy(() => import("./components/views/LyricsView").then(m => ({ default: m.LyricsView })));
-const AuthModal = lazy(() => import("./components/modals/AuthModal").then(m => ({ default: m.AuthModal })));
-const DownloadOptionsModal = lazy(() => import("./components/modals/DownloadOptionsModal").then(m => ({ default: m.DownloadOptionsModal })));
-const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistModal").then(m => ({ default: m.AddToPlaylistModal })));
+const DownloadsView = lazy(() =>
+  import("./components/views/DownloadsView").then((m) => ({
+    default: m.DownloadsView,
+  })),
+);
+const WishlistView = lazy(() =>
+  import("./components/views/WishlistView").then((m) => ({
+    default: m.WishlistView,
+  })),
+);
+const DiscoveryView = lazy(() => import("./components/views/DiscoveryView").then((m) => ({ default: m.DiscoveryView,
+  })),
+);
+const NotificationsView = lazy(() => import("./components/views/NotificationsView").then((m) => ({ default: m.NotificationsView,
+  })),
+);
+const StatsView = lazy(() => import("./components/views/StatsView").then((m) => ({ default: m.StatsView,
+  })),
+);
+const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then((m) => ({ default: m.FullScreenPlayerView,
+  })),
+);
+const LyricsView = lazy(() => import("./components/views/LyricsView").then((m) => ({ default: m.LyricsView,
+  })),
+);
+const AuthModal = lazy(() => import("./components/modals/AuthModal").then((m) => ({ default: m.AuthModal,
+  })),
+);
+const DownloadOptionsModal = lazy(() => import("./components/modals/DownloadOptionsModal").then((m) => ({ default: m.DownloadOptionsModal,
+  })),
+);
+const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistModal").then((m) => ({ default: m.AddToPlaylistModal,
+  })),
+);
 
 interface PromptModalProps {
   title: string;
@@ -91,22 +143,26 @@ const PromptModal: React.FC<PromptModalProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px",
+          }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Sparkles size={20} color="var(--accent-secondary, #f3701e)" />
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#e8d8c9" }}>
+            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#e8d8c9",
+              }}>
               {title}
             </h3>
           </div>
           <button
             onClick={onCancel}
-            style={{ background: "none", border: "none", color: "var(--text-muted, #a89f91)", cursor: "pointer", padding: "4px" }}
+            style={{ background: "none", border: "none", color: "var(--text-muted, #a89f91)", cursor: "pointer", padding: "4px",
+            }}
           >
             <X size={18} />
           </button>
         </div>
 
-        <p style={{ fontSize: "0.88rem", color: "var(--text-dim, #8c8273)", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+        <p style={{ fontSize: "0.88rem", color: "var(--text-dim, #8c8273)", margin: "0 0 16px 0", lineHeight: 1.5,
+          }}>
           {message}
         </p>
 
@@ -133,23 +189,34 @@ const PromptModal: React.FC<PromptModalProps> = ({
   );
 };
 
-export const App: React.FC = () => {
+export const App: React.FC<{ initialSettings: AppSettings }> = ({
+  initialSettings,
+}) => {
   // Navigation
-  const { destination, navigate, updateDestination, back: navigateBack } = useNavigationHistory();
+  const { destination, navigate, updateDestination, back: navigateBack,
+    forward: navigateForward,
+    canGoBack,
+    canGoForward,
+  } = useNavigationHistory();
+  const mainScrollRef = useRef<HTMLElement>(null);
+  useRouteScroll(mainScrollRef, destination);
+  useVisualActivity(mainScrollRef);
   const currentView = destination.view;
   const activeCollection = destination.collection;
   const isLyricsActive = destination.lyrics;
   // Collection edits and asynchronous hydration replace the current entry.
   const setActiveCollection = useCallback((value: React.SetStateAction<CollectionData | null>) => {
-    updateDestination(current => {
+    updateDestination((current) => {
       const collection = typeof value === "function" ? value(current.collection) : value;
       return collection === current.collection ? current : { ...current, collection };
     });
-  }, [updateDestination]);
+  }, [updateDestination],
+  );
   const setIsLyricsActive = useCallback((value: React.SetStateAction<boolean>) => {
     const lyrics = typeof value === "function" ? value(destination.lyrics) : value;
     navigate({ ...destination, lyrics });
-  }, [destination, navigate]);
+  }, [destination, navigate],
+  );
   const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
 
   // Home & Flow State
@@ -204,17 +271,26 @@ export const App: React.FC = () => {
   tracksRef.current = tracks;
   const [albums, setAlbums] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null);
-  const [, setWishlist] = useState<WishlistItem[]>([]);
+  const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null,
+  );
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
-  const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([]);
-  const [worldTrending, setWorldTrending] = useState<DiscoveryRecommendation[]>([]);
+  const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([],
+  );
+  const [worldTrending, setWorldTrending] = useState<DiscoveryRecommendation[]>([],
+  );
   const discoveryRecsRef = useRef<DiscoveryRecommendation[]>([]);
   discoveryRecsRef.current = discoveryRecs;
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settings, setSettings] = useState<AppSettings>(initialSettings);
+  const interfacePreference = useInterfacePreference(settings);
+  const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
+  const previousTrackRef = useRef<Track | undefined>(undefined);
+  const observedTrackRef = useRef<Track | undefined>(undefined);
+  if (!playbackState.is_buffering && (playbackState.current_track?.duration_secs || 0) > 0 && playbackState.current_track?.id !== observedTrackRef.current?.id) {
+    previousTrackRef.current = observedTrackRef.current;
+    observedTrackRef.current = playbackState.current_track;
+  }
   const [isScanning, setIsScanning] = useState(false);
-  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus | null>(null);
-  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   // Notifications & Toasts System
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -229,20 +305,22 @@ export const App: React.FC = () => {
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const globalSearchResults = destination.searchResults;
   const setGlobalSearchResults = useCallback((results: React.SetStateAction<DiscoveryRecommendation[] | null>) => {
-    updateDestination(current => ({ ...current, searchResults: typeof results === "function" ? results(current.searchResults) : results }));
-  }, [updateDestination]);
+    updateDestination((current) => ({ ...current, searchResults: typeof results === "function" ? results(current.searchResults) : results,
+      }));
+  }, [updateDestination],
+  );
   const destinationRef = useRef(destination);
   destinationRef.current = destination;
   useEffect(() => { setGlobalSearchQuery(destination.searchQuery); }, [destination.searchQuery]);
   const [downloadTargets, setDownloadTargets] = useState<Record<string, { title: string; artist: string }>>({});
   const currentSearchResults = useMemo(
     () => attachLocalSearchMatches(globalSearchResults, tracks),
-    [globalSearchResults, tracks]
+    [globalSearchResults, tracks],
   );
 
   // Online / Offline Connectivity State
   const [isOnline, setIsOnline] = useState<boolean>(
-    typeof navigator !== "undefined" ? navigator.onLine : true
+    typeof navigator !== "undefined" ? navigator.onLine : true,
   );
 
   useEffect(() => {
@@ -277,7 +355,8 @@ export const App: React.FC = () => {
     resolve: (val: string | null) => void;
   } | null>(null);
 
-  const requestPrompt = useCallback((title: string, message: string, defaultValue: string = ""): Promise<string | null> => {
+  const requestPrompt = useCallback((title: string, message: string, defaultValue: string = "",
+    ): Promise<string | null> => {
     return new Promise((resolve) => {
       setPromptDialog({
         isOpen: true,
@@ -287,33 +366,21 @@ export const App: React.FC = () => {
         resolve,
       });
     });
-  }, []);
+  }, [],
+  );
 
-  // Local track cover art cache
-  const [currentTrackCoverUrl, setCurrentTrackCoverUrl] = useState<string | null>(null);
-
+  // Resolve once per track and share cached artwork with the mounted views.
+  const [resolvedTrackCover, setResolvedTrackCover] = useState<{ id: string; url: string | null } | null>(null);
+  const coverTrack = playbackState.current_track;
+  const currentTrackCoverUrl = coverTrack?.cover_art_url || (resolvedTrackCover?.id === coverTrack?.id ? resolvedTrackCover?.url : null);
   useEffect(() => {
-    if (playbackState.current_track?.id) {
-      if (playbackState.current_track.cover_art_url) {
-        setCurrentTrackCoverUrl(playbackState.current_track.cover_art_url);
-      }
-      let isMounted = true;
-      executeQuery({
-        query: "GetTrackCoverArt",
-        payload: { track_id: playbackState.current_track.id },
-      })
-        .then((res) => {
-          if (isMounted && res.data) {
-            setCurrentTrackCoverUrl(res.data);
-          }
-        })
-        .catch(() => {});
-      return () => {
-        isMounted = false;
-      };
-    } else {
-      setCurrentTrackCoverUrl(null);
-    }
+    const track = playbackState.current_track;
+    if (!track || track.cover_art_url || track.id.startsWith("online:") || track.id.startsWith("itunes:")) return;
+    const controller = new AbortController();
+    loadCoverArt(track.id, controller.signal).then(url => {
+      if (!controller.signal.aborted) setResolvedTrackCover({ id: track.id, url });
+    });
+    return () => controller.abort();
   }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url]);
 
   const handleToggleFullscreen = useCallback(
@@ -345,7 +412,7 @@ export const App: React.FC = () => {
         // Ignore fallback errors
       }
     },
-    [isFullscreen]
+    [isFullscreen],
   );
 
   const handlePlayPauseRef = useRef<(() => void) | null>(null);
@@ -355,6 +422,26 @@ export const App: React.FC = () => {
       if ((e.key === "Escape" && isFullscreen) || e.key === "F11") {
         e.preventDefault();
         handleToggleFullscreen(e.key === "Escape" ? false : undefined);
+        return;
+      }
+
+      if (
+        e.key.toLowerCase() === "f" &&
+        !e.defaultPrevented && !e.repeat && !e.isComposing &&
+        !e.ctrlKey && !e.altKey && !e.metaKey
+      ) {
+        const editing = e.composedPath().some(target =>
+          target instanceof Element && Boolean(target.closest(
+            "input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox'], [role='searchbox'], [role='combobox'], [role='menu'], [role='listbox']",
+          )),
+        );
+        const dialog = document.querySelector(
+          ".modal-overlay, [role='dialog']:not(.fullscreen-player), [aria-modal='true']:not(.fullscreen-player)",
+        );
+        if (!editing && !dialog) {
+          e.preventDefault();
+          handleToggleFullscreen();
+        }
         return;
       }
 
@@ -372,8 +459,12 @@ export const App: React.FC = () => {
           (target.tagName === "INPUT" ||
             target.tagName === "TEXTAREA" ||
             target.tagName === "SELECT" ||
+            target.tagName === "BUTTON" ||
+            Boolean(target.closest?.("button, [role='button']")) ||
             target.isContentEditable ||
-            Boolean(target.closest?.("[contenteditable='true'], [contenteditable='']")))
+            Boolean(target.closest?.("[contenteditable='true'], [contenteditable='']",
+              ),
+            ))
         ) {
           return;
         }
@@ -399,7 +490,8 @@ export const App: React.FC = () => {
 
   // --- Notification Handlers ---
   const addAppNotification = useCallback(
-    (type: "success" | "error" | "info" | "warning", title: string, message: string) => {
+    (type: "success" | "error" | "info" | "warning", title: string, message: string,
+    ) => {
       const newNotification: AppNotification = {
         id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
         type,
@@ -416,7 +508,7 @@ export const App: React.FC = () => {
         setToasts((prev) => prev.filter((t) => t.id !== newNotification.id));
       }, 3000);
     },
-    []
+    [],
   );
 
   const dismissToast = useCallback((id: string) => {
@@ -425,7 +517,7 @@ export const App: React.FC = () => {
 
   const markNotificationAsRead = useCallback((id: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
   }, []);
 
@@ -464,18 +556,27 @@ export const App: React.FC = () => {
     try {
       const res = await executeQuery({ query: "GetPlaybackState" });
       if (res.data) {
+        playbackProgress.update(
+          res.data.position_secs ?? 0,
+          res.data.duration_secs ?? 0,
+        );
         setPlaybackState((prev) => {
-          const updated = { ...prev, ...res.data };
+          const updated = { ...prev, ...res.data,
+            is_shuffled:
+              res.data.is_shuffle ?? res.data.is_shuffled ?? prev.is_shuffled,
+          };
           if (res.data.current_track) {
             updated.current_track = res.data.current_track;
           } else if (res.data.current_track_id) {
-            const found = tracksRef.current.find((t) => t.id === res.data.current_track_id);
+            const found = tracksRef.current.find((t) => t.id === res.data.current_track_id,
+            );
             if (found) updated.current_track = found;
           }
           return updated;
         });
         if (Array.isArray(res.data.queue_track_ids)) {
           setQueuedTrackIds(new Set(res.data.queue_track_ids));
+          setQueueEntries(upcomingFromPlayback(res.data));
         }
       }
     } catch (err) {
@@ -551,6 +652,7 @@ export const App: React.FC = () => {
         payload: { limit: 50 },
       });
       if (Array.isArray(res.data)) {
+        downloadProgress.replace(res.data);
         setDownloads(res.data);
       }
     } catch (err) {
@@ -570,7 +672,10 @@ export const App: React.FC = () => {
       setIsHomeLoading(true);
       const res = await executeQuery({ query: "GetHomeOverview" });
       if (res.type === "HomeOverview" && res.data && request === homeRequestRef.current) {
-        setHomeOverview(prev => ({ ...res.data, flow_session: flowRevision === flowSessionRequestRef.current ? res.data.flow_session : prev?.flow_session } as HomeOverview));
+        setHomeOverview(
+          (prev) => ({ ...res.data, flow_session: flowRevision === flowSessionRequestRef.current ? res.data.flow_session : prev?.flow_session,
+            }) as HomeOverview,
+        );
         if (res.data.flow_session && !steeringPendingRef.current && steeringRevision === steeringRevisionRef.current) {
           setFlowSteering(res.data.flow_session.familiarity_ratio);
         }
@@ -586,8 +691,10 @@ export const App: React.FC = () => {
     const request = ++flowSessionRequestRef.current;
     const res = await executeQuery({ query: "GetFlowSession" });
     if (res.type === "FlowSession" && request === flowSessionRequestRef.current) {
-      setHomeOverview(prev => ({ ...(prev || { recent_rotation: [], rediscover: [], for_you: [] }), flow_session: res.data }));
-      setPlayingOrigin(prev => res.data?.is_active ? { type: "flow", name: "Flow" } : prev?.type === "flow" ? null : prev);
+      setHomeOverview((prev) => ({ ...(prev || { recent_rotation: [], rediscover: [], for_you: [] }), flow_session: res.data,
+      }));
+      setPlayingOrigin((prev) => res.data?.is_active ? { type: "flow", name: "Flow" } : prev?.type === "flow" ? null : prev,
+      );
     }
   }, []);
 
@@ -595,7 +702,8 @@ export const App: React.FC = () => {
     if (currentView !== "home") return;
     const timer = setTimeout(() => { void fetchHomeOverview(); }, 250);
     return () => clearTimeout(timer);
-  }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview]);
+  }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview,
+  ]);
 
   const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
     const [discovery, charts] = await Promise.allSettled([
@@ -605,17 +713,20 @@ export const App: React.FC = () => {
       }).then((res) => {
         if (Array.isArray(res.data)) setDiscoveryRecs(res.data);
       }),
-      executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts } }).then((res) => {
+      executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts },
+        }).then((res) => {
         if (Array.isArray(res.data)) setWorldTrending(res.data);
       }),
     ]);
     if (discovery.status === "rejected") {
-      console.error("Failed to fetch discovery recommendations:", discovery.reason);
+      console.error("Failed to fetch discovery recommendations:", discovery.reason,
+        );
     }
     if (charts.status === "rejected") {
       console.error("Failed to fetch world charts:", charts.reason);
     }
-  }, []);
+  }, [],
+  );
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -641,94 +752,55 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const fetchCloudSyncStatus = useCallback(async () => {
-    try {
-      const res = await executeQuery({ query: "GetCloudSyncStatus" });
-      if (res && res.type === "CloudSyncStatus" && res.data) {
-        setCloudSyncStatus(res.data);
-      }
-    } catch (err) {
-      console.warn("Failed to fetch cloud sync status:", err);
-    }
-  }, []);
-
-  const handleSyncCloud = async () => {
-    setIsSyncingCloud(true);
-    try {
-      await dispatchCommand({ command: "SyncCloudData" });
-      addAppNotification("success", "Cloud Synchronized", "Your playlists, songs, and stats have been synchronized with Cloudflare D1.");
-      await fetchCloudSyncStatus();
-      await fetchPlaylists();
-      await fetchTracks();
-    } catch (err: any) {
-      addAppNotification("error", "Sync Failed", err?.message || "Failed to synchronize with cloud.");
-    } finally {
-      setIsSyncingCloud(false);
-    }
-  };
-
-  const handleSetCloudUrl = async (url: string) => {
-    try {
-      await dispatchCommand({ command: "SetCloudServerUrl", payload: { url } });
-      addAppNotification("success", "Cloud Endpoint Updated", `Configured worker URL: ${url}`);
-      await fetchCloudSyncStatus();
-    } catch (err: any) {
-      addAppNotification("error", "Failed to update URL", err?.message || "Could not save cloud server URL.");
-    }
-  };
-
-  const handleLogin = async (username: string, password: string): Promise<UserProfile | null> => {
+  const handleLogin = async (
+    username: string,
+    password: string,
+  ): Promise<UserProfile | null> => {
     const res = await dispatchCommand({
       command: "Login",
       payload: { username, password },
     });
     if (res && res.status === "UserProfile" && res.data) {
       setCurrentUser(res.data);
-      addAppNotification("success", "Logged In", `Welcome back, ${res.data.username}!`);
+      addAppNotification(
+        "success",
+        "Logged In",
+        `Welcome back, ${res.data.username}!`,
+      );
       await fetchTracks();
       await fetchPlaylists();
       await fetchDiscovery(true);
-      await fetchCloudSyncStatus();
       return res.data;
     }
     return null;
   };
 
-  const handleSignUp = async (username: string, password: string): Promise<UserProfile | null> => {
+  const handleSignUp = async (
+    username: string,
+    password: string,
+  ): Promise<UserProfile | null> => {
     const res = await dispatchCommand({
       command: "SignUp",
       payload: { username, password },
     });
     if (res && res.status === "UserProfile" && res.data) {
       setCurrentUser(res.data);
-      addAppNotification("success", "Account Created", `Welcome to Kaze, ${res.data.username}!`);
+      addAppNotification(
+        "success",
+        "Account Created",
+        `Welcome to Kaze, ${res.data.username}!`,
+      );
       await fetchTracks();
       await fetchPlaylists();
       await fetchDiscovery(true);
-      await fetchCloudSyncStatus();
       return res.data;
     }
     return null;
   };
 
-  const handleLogout = async () => {
-    try {
-      await dispatchCommand({ command: "Logout" });
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      window.location.reload();
-    }
-  };
-
-  const handleLogoutAll = async () => {
-    try {
-      await dispatchCommand({ command: "LogoutAll" });
-    } catch (err) {
-      console.error("Logout all failed:", err);
-    } finally {
-      window.location.reload();
-    }
+  const handleLogout = async (scope: "device" | "all") => {
+    await dispatchCommand({ command: scope === "all" ? "LogoutAll" : "Logout" });
+    window.location.reload();
   };
 
   const fetchStatsOverview = useCallback(
@@ -749,7 +821,7 @@ export const App: React.FC = () => {
       }
       return null;
     },
-    []
+    [],
   );
 
   // Initial load
@@ -764,9 +836,7 @@ export const App: React.FC = () => {
     fetchDownloads();
     fetchDiscovery();
     fetchHomeOverview();
-    fetchSettings();
     fetchCurrentUser();
-    fetchCloudSyncStatus();
   }, [
     fetchOnboardingStatus,
     fetchPlaybackState,
@@ -778,50 +848,56 @@ export const App: React.FC = () => {
     fetchDownloads,
     fetchDiscovery,
     fetchHomeOverview,
-    fetchSettings,
     fetchCurrentUser,
-    fetchCloudSyncStatus,
   ]);
 
   // Backend Event Subscriptions
   useEffect(() => {
     let unlistenFn: (() => void) | null = null;
+    let subscriptionDisposed = false;
 
     subscribeBackendEvents((event: any) => {
       if (!event || !event.event) return;
-      console.log("[Backend Event]", event.event, event.payload);
 
       switch (event.event) {
         case "PlaybackStarted": {
+          playbackProgress.update(0, event.payload?.duration_secs || 0);
           const trackId = event.payload?.track_id;
           const found = tracksRef.current.find((t) => t.id === trackId);
           const currentTrackDetail = event.payload?.current_track;
-          const track: Track = found || (currentTrackDetail ? {
-            id: currentTrackDetail.id,
-            file_path: currentTrackDetail.file_path,
-            title: currentTrackDetail.title,
-            artist_name: currentTrackDetail.artist_name,
-            album_title: currentTrackDetail.album_title,
-            duration_secs: currentTrackDetail.duration_secs,
-            format: currentTrackDetail.format,
-            has_cover_art: currentTrackDetail.cover_art_url ? 1 : 0,
-            cover_art_url: currentTrackDetail.cover_art_url,
-          } : {
-            id: trackId,
-            file_path: "",
-            title: event.payload?.title || "Unknown Track",
-            artist_name: event.payload?.artist || "Unknown Artist",
-            duration_secs: event.payload?.duration_secs || 0,
-            format: "online",
-            has_cover_art: 0,
-          });
+          const track: Track =
+            found ||
+            (currentTrackDetail
+              ? {
+                  id: currentTrackDetail.id,
+                  file_path: currentTrackDetail.file_path,
+                  title: currentTrackDetail.title,
+                  artist_name: currentTrackDetail.artist_name,
+                  album_title: currentTrackDetail.album_title,
+                  duration_secs: currentTrackDetail.duration_secs,
+                  format: currentTrackDetail.format,
+                  has_cover_art: currentTrackDetail.cover_art_url ? 1 : 0,
+                  cover_art_url: currentTrackDetail.cover_art_url,
+                }
+              : {
+                  id: trackId,
+                  file_path: "",
+                  title: event.payload?.title || "Unknown Track",
+                  artist_name: event.payload?.artist || "Unknown Artist",
+                  duration_secs: event.payload?.duration_secs || 0,
+                  format: "online",
+                  has_cover_art: 0,
+                });
           setPlaybackState((prev) => ({
             ...prev,
             current_track: track,
             is_playing: true,
             is_buffering: false,
             position_secs: 0,
-            duration_secs: event.payload?.duration_secs || track.duration_secs || prev.duration_secs,
+            duration_secs:
+              event.payload?.duration_secs ||
+              track.duration_secs ||
+              prev.duration_secs,
           }));
           break;
         }
@@ -831,15 +907,28 @@ export const App: React.FC = () => {
           const found = tracksRef.current.find((t) => t.id === trackId);
           setPlaybackState((prev) => ({
             ...prev,
-            current_track: found || (trackId ? {
-              id: trackId,
-              file_path: "",
-              title: (prev.current_track?.id === trackId ? prev.current_track?.title : undefined) || "Resolving Audio...",
-              artist_name: (prev.current_track?.id === trackId ? prev.current_track?.artist_name : undefined) || "Please wait",
-              duration_secs: (prev.current_track?.id === trackId ? prev.current_track?.duration_secs : undefined) || 0,
-              format: "online",
-              has_cover_art: 0,
-            } : prev.current_track),
+            current_track:
+              found ||
+              (trackId
+                ? {
+                    id: trackId,
+                    file_path: "",
+                    title:
+                      (prev.current_track?.id === trackId
+                        ? prev.current_track?.title
+                        : undefined) || "Resolving Audio...",
+                    artist_name:
+                      (prev.current_track?.id === trackId
+                        ? prev.current_track?.artist_name
+                        : undefined) || "Please wait",
+                    duration_secs:
+                      (prev.current_track?.id === trackId
+                        ? prev.current_track?.duration_secs
+                        : undefined) || 0,
+                    format: "online",
+                    has_cover_art: 0,
+                  }
+                : prev.current_track),
             is_buffering: true,
             position_secs: 0,
           }));
@@ -847,34 +936,45 @@ export const App: React.FC = () => {
         }
 
         case "PlaybackError":
-          setPlaybackState((prev) => ({
-            ...prev,
-            is_buffering: false,
-          }));
+          setPlaybackState((prev) => ({ ...prev, is_buffering: false }));
+          addAppNotification("error", "Playback unavailable", event.payload?.message || "This track couldn’t be played. Try another track or retry playback.");
+          void fetchPlaybackState();
           break;
 
         case "PlaybackPaused":
+          playbackProgress.update(
+            event.payload?.position_secs ?? playbackProgress.getPosition(),
+            playbackProgress.getDuration(),
+          );
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: false,
+            is_paused: true,
             is_buffering: false,
             position_secs: event.payload?.position_secs ?? prev.position_secs,
           }));
           break;
 
         case "PlaybackResumed":
+          playbackProgress.update(
+            event.payload?.position_secs ?? playbackProgress.getPosition(),
+            playbackProgress.getDuration(),
+          );
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: true,
+            is_paused: false,
             is_buffering: false,
             position_secs: event.payload?.position_secs ?? prev.position_secs,
           }));
           break;
 
         case "PlaybackStopped":
+          playbackProgress.update(0, playbackProgress.getDuration());
           setPlaybackState((prev) => ({
             ...prev,
             is_playing: false,
+            is_paused: false,
             is_buffering: false,
             position_secs: 0,
           }));
@@ -904,12 +1004,27 @@ export const App: React.FC = () => {
 
         case "QueueUpdated": {
           void fetchFlowSession().catch(console.error);
+          if (Array.isArray(event.payload?.items)) {
+            setQueueEntries(
+              upcomingFromEvent(
+                event.payload.items,
+                event.payload.current_index ?? null,
+              ),
+            );
+            setPlaybackState((prev) => ({
+              ...prev,
+              current_queue_index: event.payload.current_index ?? null,
+            }));
+          }
           if (Array.isArray(event.payload?.queue_track_ids)) {
             setQueuedTrackIds(new Set(event.payload.queue_track_ids));
           } else {
             const items: any[] = event.payload?.items || [];
             const curr = event.payload?.current_index;
-            const upcoming = (curr !== null && curr !== undefined) ? items.slice(curr + 1) : items;
+            const upcoming =
+              curr !== null && curr !== undefined
+                ? items.slice(curr + 1)
+                : items;
             setQueuedTrackIds(new Set(upcoming.map((i: any) => i.track_id)));
           }
           break;
@@ -952,8 +1067,13 @@ export const App: React.FC = () => {
 
         case "LibraryScanCompleted":
         case "ScanCompleted":
+          clearCoverArtCache();
           setIsScanning(false);
-          addAppNotification("info", "Library Scan Complete", "Your local music library has been updated with the latest tracks.");
+          addAppNotification(
+            "info",
+            "Library Scan Complete",
+            "Your local music library has been updated with the latest tracks.",
+          );
           fetchTracks();
           fetchAlbums();
           fetchOnboardingStatus();
@@ -962,7 +1082,11 @@ export const App: React.FC = () => {
 
         case "LibraryScanFailed":
           setIsScanning(false);
-          addAppNotification("error", "Library Scan Failed", "An error occurred while scanning your music folders.");
+          addAppNotification(
+            "error",
+            "Library Scan Failed",
+            "An error occurred while scanning your music folders.",
+          );
           break;
 
         case "DownloadQueued":
@@ -971,23 +1095,20 @@ export const App: React.FC = () => {
 
         case "DownloadProgress":
         case "DownloadProgressChanged":
-          setDownloads((prev) =>
-            prev.map((t) =>
-              t.id === event.payload?.task_id
-                ? {
-                    ...t,
-                    bytes_downloaded: event.payload.bytes_downloaded,
-                    file_size: event.payload.total_bytes || event.payload.file_size || t.file_size,
-                  }
-                : t
-            )
-          );
+          downloadProgress.update(event.payload?.task_id, event.payload?.bytes_downloaded,
+            event.payload?.total_bytes || event.payload?.file_size);
           break;
 
         case "DownloadCompleted": {
           const trackTitle = event.payload?.title || "Track";
-          const artist = event.payload?.artist ? ` by ${event.payload.artist}` : "";
-          addAppNotification("success", "Download Complete", `"${trackTitle}"${artist} has been downloaded and added to your library.`);
+          const artist = event.payload?.artist
+            ? ` by ${event.payload.artist}`
+            : "";
+          addAppNotification(
+            "success",
+            "Download Complete",
+            `"${trackTitle}"${artist} has been downloaded and added to your library.`,
+          );
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
@@ -998,8 +1119,15 @@ export const App: React.FC = () => {
 
         case "DownloadFailed": {
           const trackTitle = event.payload?.title || "Track";
-          const errReason = event.payload?.error || event.payload?.message || "Connection timed out or peer unavailable.";
-          addAppNotification("error", "Download Failed", `Failed downloading "${trackTitle}": ${errReason}`);
+          const errReason =
+            event.payload?.error ||
+            event.payload?.message ||
+            "Connection timed out or peer unavailable.";
+          addAppNotification(
+            "error",
+            "Download Failed",
+            `Failed downloading "${trackTitle}": ${errReason}`,
+          );
           fetchDownloads();
           fetchWishlist();
           fetchTracks();
@@ -1022,12 +1150,10 @@ export const App: React.FC = () => {
             setCurrentUser(user);
             fetchPlaylists();
             fetchTrackPlaylistMemberships();
-            fetchCloudSyncStatus();
           } else {
             setCurrentUser(null);
             setPlaylists((prev) => prev.filter((p) => p.is_smart_mix === 1));
             setTrackPlaylistMap({});
-            fetchCloudSyncStatus();
           }
           break;
         }
@@ -1056,14 +1182,27 @@ export const App: React.FC = () => {
           break;
       }
     }).then((fn) => {
-      unlistenFn = fn;
+      if (subscriptionDisposed) fn();
+      else unlistenFn = fn;
     });
 
     return () => {
+      subscriptionDisposed = true;
       if (unlistenFn) unlistenFn();
     };
-  }, [fetchTracks, fetchAlbums, fetchOnboardingStatus, fetchDownloads, fetchWishlist, addAppNotification, fetchPlaylists, fetchTrackPlaylistMemberships, fetchCloudSyncStatus, fetchFlowSession, fetchHomeOverview]);
-
+  }, [
+    fetchTracks,
+    fetchAlbums,
+    fetchOnboardingStatus,
+    fetchDownloads,
+    fetchWishlist,
+    addAppNotification,
+    fetchPlaylists,
+    fetchTrackPlaylistMemberships,
+    fetchFlowSession,
+    fetchHomeOverview,
+    fetchPlaybackState,
+  ]);
 
   // --- Actions & Commands ---
 
@@ -1078,6 +1217,13 @@ export const App: React.FC = () => {
 
   const handlePlayTrack = useCallback(
     async (trackId: string) => {
+      if (playbackState.current_track?.id === trackId && (playbackState.is_playing || playbackState.is_paused)) {
+        await dispatchCommand({
+          command: playbackState.is_playing ? "Pause" : "Resume",
+        });
+        await fetchPlaybackState();
+        return;
+      }
       const requestId = beginPlaybackLoading(trackId);
       try {
         const found = tracks.find((t) => t.id === trackId);
@@ -1102,14 +1248,22 @@ export const App: React.FC = () => {
         endPlaybackLoading(requestId);
       }
     },
-    [tracks, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
+    [
+      tracks,
+      playbackState.current_track?.id,
+      playbackState.is_playing,
+      playbackState.is_paused,
+      fetchPlaybackState,
+      beginPlaybackLoading,
+      endPlaybackLoading,
+    ],
   );
 
   const handlePlayOnlineTrack = useCallback(
     async (
       rec: DiscoveryRecommendation,
       _fromBackendQueue = false,
-      playbackSource: "online" | "collection" | "playlist" = "online"
+      playbackSource: "online" | "collection" | "playlist" = "online",
     ) => {
       const hasRealLocalMatch =
         !!rec.matched_local_track_id &&
@@ -1118,17 +1272,22 @@ export const App: React.FC = () => {
 
       // 1. Check if this track is currently playing
       const isCurrentlyPlaying =
-        playbackState.is_playing &&
+        (playbackState.is_playing || playbackState.is_paused) &&
         playbackState.current_track &&
-        ((hasRealLocalMatch && playbackState.current_track.id === rec.matched_local_track_id) ||
+        ((hasRealLocalMatch &&
+          playbackState.current_track.id === rec.matched_local_track_id) ||
           rec.external_track_id === playbackState.current_track.id ||
-          (rec.title.toLowerCase().trim() === playbackState.current_track.title.toLowerCase().trim() &&
+          (rec.title.toLowerCase().trim() ===
+            playbackState.current_track.title.toLowerCase().trim() &&
             playbackState.current_track.artist_name &&
-            rec.artist.toLowerCase().trim() === playbackState.current_track.artist_name.toLowerCase().trim()));
+            rec.artist.toLowerCase().trim() ===
+              playbackState.current_track.artist_name.toLowerCase().trim()));
 
       if (isCurrentlyPlaying) {
-        await dispatchCommand({ command: "Pause" });
-        setPlaybackState((prev) => ({ ...prev, is_playing: false }));
+        await dispatchCommand({
+          command: playbackState.is_playing ? "Pause" : "Resume",
+        });
+        setPlaybackState((prev) => ({ ...prev, is_playing: !playbackState.is_playing }));
         return;
       }
 
@@ -1143,7 +1302,7 @@ export const App: React.FC = () => {
         addAppNotification(
           "warning",
           "No Internet Connection",
-          `Cannot play "${rec.title}". Connect to the internet to stream online songs.`
+          `Cannot play "${rec.title}". Connect to the internet to stream online songs.`,
         );
         return;
       }
@@ -1170,13 +1329,22 @@ export const App: React.FC = () => {
         addAppNotification(
           "error",
           "Playback Failed",
-          `Could not stream "${rec.title}": ${String(err)}`
+          `Could not stream "${rec.title}": ${String(err)}`,
         );
       } finally {
         endPlaybackLoading(requestId);
       }
     },
-    [playbackState.is_playing, playbackState.current_track, handlePlayTrack, addAppNotification, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading]
+    [
+      playbackState.is_playing,
+      playbackState.is_paused,
+      playbackState.current_track,
+      handlePlayTrack,
+      addAppNotification,
+      fetchPlaybackState,
+      beginPlaybackLoading,
+      endPlaybackLoading,
+    ],
   );
 
   const handlePlayPause = useCallback(async () => {
@@ -1195,13 +1363,13 @@ export const App: React.FC = () => {
 
   const handleUnifiedPlayPause = handlePlayPause;
 
-  const handleNextTrack = async () => {
+  const handleNextTrack = useCallback(async () => {
     await dispatchCommand({ command: "NextTrack" });
-  };
+  }, []);
 
-  const handlePreviousTrack = async () => {
+  const handlePreviousTrack = useCallback(async () => {
     await dispatchCommand({ command: "PreviousTrack" });
-  };
+  }, []);
 
   const handleSeek = async (position_secs: number) => {
     playbackProgress.update(position_secs, playbackProgress.getDuration());
@@ -1247,26 +1415,33 @@ export const App: React.FC = () => {
 
   const handleLike = async (trackId: string) => {
     setTracks((prev) =>
-      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t))
+      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t)),
     );
     setPlaybackState((prev) =>
       prev.current_track?.id === trackId
         ? { ...prev, current_track: { ...prev.current_track, manual_like: 1 } }
-        : prev
+        : prev,
     );
     try {
       await dispatchCommand({
         command: "LikeTrack",
         payload: { track_id: trackId },
       });
-      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships(), fetchHomeOverview()]);
+      await Promise.all([
+        fetchPlaylists(),
+        fetchTrackPlaylistMemberships(),
+        fetchHomeOverview(),
+      ]);
       // If Liked Songs is the active collection, refresh its tracks
       if (
         activeCollection &&
         (activeCollection.title === "Liked Songs" ||
-          (likedPlaylistId && (activeCollection.playlistId === likedPlaylistId || activeCollection.id === likedPlaylistId)))
+          (likedPlaylistId &&
+            (activeCollection.playlistId === likedPlaylistId ||
+              activeCollection.id === likedPlaylistId)))
       ) {
-        const plId = activeCollection.playlistId || activeCollection.id || likedPlaylistId;
+        const plId =
+          activeCollection.playlistId || activeCollection.id || likedPlaylistId;
         if (plId) {
           const res = await executeQuery({
             query: "GetPlaylistTracks",
@@ -1293,48 +1468,63 @@ export const App: React.FC = () => {
             };
           });
           setActiveCollection((prev) =>
-            prev ? { ...prev, tracks: items, subtitle: `${items.length} tracks` } : prev
+            prev
+              ? { ...prev, tracks: items, subtitle: `${items.length} tracks` }
+              : prev,
           );
         }
       }
     } catch (err: any) {
       console.error("Failed to like track:", err);
       setTracks((prev) =>
-        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t))
+        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t)),
       );
       setPlaybackState((prev) =>
         prev.current_track?.id === trackId
-          ? { ...prev, current_track: { ...prev.current_track, manual_like: 0 } }
-          : prev
+          ? {
+              ...prev,
+              current_track: { ...prev.current_track, manual_like: 0 },
+            }
+          : prev,
       );
-      addAppNotification("error", "Like Failed", err?.message || "Could not like track.");
+      addAppNotification(
+        "error",
+        "Like Failed",
+        err?.message || "Could not like track.",
+      );
     }
   };
 
   const handleRemoveFeedback = async (trackId: string) => {
     setTracks((prev) =>
-      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t))
+      prev.map((t) => (t.id === trackId ? { ...t, manual_like: 0 } : t)),
     );
     setPlaybackState((prev) =>
       prev.current_track?.id === trackId
         ? { ...prev, current_track: { ...prev.current_track, manual_like: 0 } }
-        : prev
+        : prev,
     );
     try {
       await dispatchCommand({
         command: "RemoveTrackFeedback",
         payload: { track_id: trackId },
       });
-      await Promise.all([fetchPlaylists(), fetchTrackPlaylistMemberships(), fetchHomeOverview()]);
+      await Promise.all([
+        fetchPlaylists(),
+        fetchTrackPlaylistMemberships(),
+        fetchHomeOverview(),
+      ]);
       // If Liked Songs is the active collection, remove the unliked track immediately
       setActiveCollection((prev) => {
         if (!prev || !prev.tracks) return prev;
         const isLikedSongs =
           prev.title === "Liked Songs" ||
-          (likedPlaylistId && (prev.playlistId === likedPlaylistId || prev.id === likedPlaylistId));
+          (likedPlaylistId &&
+            (prev.playlistId === likedPlaylistId ||
+              prev.id === likedPlaylistId));
         if (!isLikedSongs) return prev;
         const updatedTracks = prev.tracks.filter(
-          (t) => t.id !== trackId && t.matched_local_track_id !== trackId
+          (t) => t.id !== trackId && t.matched_local_track_id !== trackId,
         );
         return {
           ...prev,
@@ -1345,20 +1535,31 @@ export const App: React.FC = () => {
     } catch (err: any) {
       console.error("Failed to remove feedback:", err);
       setTracks((prev) =>
-        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t))
+        prev.map((t) => (t.id === trackId ? { ...t, manual_like: 1 } : t)),
       );
       setPlaybackState((prev) =>
         prev.current_track?.id === trackId
-          ? { ...prev, current_track: { ...prev.current_track, manual_like: 1 } }
-          : prev
+          ? {
+              ...prev,
+              current_track: { ...prev.current_track, manual_like: 1 },
+            }
+          : prev,
       );
-      addAppNotification("error", "Action Failed", err?.message || "Could not update track rating.");
+      addAppNotification(
+        "error",
+        "Action Failed",
+        err?.message || "Could not update track rating.",
+      );
     }
   };
 
   const handleEnqueueTrack = async (trackId: string) => {
     if (queuedTrackIds.has(trackId)) {
-      addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+      addAppNotification(
+        "info",
+        "Already in Queue",
+        "This song is already waiting in the queue.",
+      );
       return;
     }
     try {
@@ -1368,12 +1569,24 @@ export const App: React.FC = () => {
       });
       setQueuedTrackIds((prev) => new Set(prev).add(trackId));
     } catch (err: any) {
-      if (String(err?.message || err).toLowerCase().includes("already in the queue")) {
+      if (
+        String(err?.message || err)
+          .toLowerCase()
+          .includes("already in the queue")
+      ) {
         setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-        addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+        addAppNotification(
+          "info",
+          "Already in Queue",
+          "This song is already waiting in the queue.",
+        );
         return;
       }
-      addAppNotification("error", "Queue Failed", err?.message || "Could not add this song to the queue.");
+      addAppNotification(
+        "error",
+        "Queue Failed",
+        err?.message || "Could not add this song to the queue.",
+      );
     }
   };
 
@@ -1382,10 +1595,16 @@ export const App: React.FC = () => {
       !!rec.matched_local_track_id &&
       !rec.matched_local_track_id.startsWith("online:") &&
       !rec.matched_local_track_id.startsWith("itunes:");
-    const trackId = hasLocalMatch ? rec.matched_local_track_id! : rec.external_track_id;
+    const trackId = hasLocalMatch
+      ? rec.matched_local_track_id!
+      : rec.external_track_id;
     if (!hasLocalMatch) {
       if (queuedTrackIds.has(trackId)) {
-        addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+        addAppNotification(
+          "info",
+          "Already in Queue",
+          "This song is already waiting in the queue.",
+        );
         return;
       }
       try {
@@ -1404,11 +1623,23 @@ export const App: React.FC = () => {
         });
         setQueuedTrackIds((prev) => new Set(prev).add(trackId));
       } catch (err: any) {
-        if (String(err?.message || err).toLowerCase().includes("already in the queue")) {
+        if (
+          String(err?.message || err)
+            .toLowerCase()
+            .includes("already in the queue")
+        ) {
           setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-          addAppNotification("info", "Already in Queue", "This song is already waiting in the queue.");
+          addAppNotification(
+            "info",
+            "Already in Queue",
+            "This song is already waiting in the queue.",
+          );
         } else {
-          addAppNotification("error", "Queue Failed", err?.message || "Could not add this song to the queue.");
+          addAppNotification(
+            "error",
+            "Queue Failed",
+            err?.message || "Could not add this song to the queue.",
+          );
         }
       }
       return;
@@ -1416,29 +1647,67 @@ export const App: React.FC = () => {
     await handleEnqueueTrack(trackId);
   };
 
-  const handleSearchLibrary = useCallback((queryText: string) => {
-    updateDestination(current => ({ ...current, libraryQuery: queryText.trim(), libraryAlbumId: undefined }));
-  }, [updateDestination]);
+  const handleSearchLibrary = useCallback(
+    (queryText: string) => {
+      updateDestination((current) => ({
+        ...current,
+        libraryQuery: queryText.trim(),
+        libraryAlbumId: undefined,
+      }));
+    },
+    [updateDestination],
+  );
 
   useEffect(() => {
-    if (destination.view !== "library" || destination.collection || destination.lyrics) return;
+    if (
+      destination.view !== "library" ||
+      destination.collection ||
+      destination.lyrics
+    )
+      return;
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await executeQuery(destination.libraryQuery
-          ? { query: "SearchLibrary", payload: { query_text: destination.libraryQuery, limit: 100 } }
-          : { query: "GetTracks", payload: { limit: 1000, offset: 0, ascending: true } });
+        const res = await executeQuery(
+          destination.libraryQuery
+            ? {
+                query: "SearchLibrary",
+                payload: { query_text: destination.libraryQuery, limit: 100 },
+              }
+            : {
+                query: "GetTracks",
+                payload: { limit: 1000, offset: 0, ascending: true },
+              },
+        );
         if (!cancelled && Array.isArray(res.data)) setTracks(res.data);
-      } catch (err) { console.error("Library navigation failed:", err); }
+      } catch (err) {
+        console.error("Library navigation failed:", err);
+      }
     };
     void load();
-    return () => { cancelled = true; };
-  }, [destination.view, destination.collection, destination.lyrics, destination.libraryQuery, destination.libraryAlbumId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    destination.view,
+    destination.collection,
+    destination.lyrics,
+    destination.libraryQuery,
+    destination.libraryAlbumId,
+  ]);
 
-  const handleSelectAlbum = useCallback((albumId: string) => {
-    const album = albums.find(al => al.id === albumId);
-    if (album) navigate({ ...viewDestination("library"), libraryQuery: album.title, libraryAlbumId: album.id });
-  }, [albums, navigate]);
+  const handleSelectAlbum = useCallback(
+    (albumId: string) => {
+      const album = albums.find((al) => al.id === albumId);
+      if (album)
+        navigate({
+          ...viewDestination("library"),
+          libraryQuery: album.title,
+          libraryAlbumId: album.id,
+        });
+    },
+    [albums, navigate],
+  );
 
   const handleStartFlow = useCallback(
     async (familiarityRatio: number) => {
@@ -1456,15 +1725,19 @@ export const App: React.FC = () => {
         addAppNotification(
           "error",
           "Flow Error",
-          "Failed to start Flow: " + String(err)
+          "Failed to start Flow: " + String(err),
         );
       } finally {
         setIsHomeLoading(false);
       }
     },
-    [fetchPlaybackState, fetchHomeOverview, fetchFlowSession, addAppNotification]
+    [
+      fetchPlaybackState,
+      fetchHomeOverview,
+      fetchFlowSession,
+      addAppNotification,
+    ],
   );
-
 
   const handleToggleFlowPlayback = useCallback(async () => {
     if (playbackState.is_playing) {
@@ -1475,7 +1748,9 @@ export const App: React.FC = () => {
     }
   }, [playbackState.is_playing, handleUnifiedPlayPause, fetchPlaybackState]);
 
-  const steeringDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const steeringDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const handleFlowSteeringChange = useCallback((val: number) => {
     const revision = ++steeringRevisionRef.current;
     steeringPendingRef.current = true;
@@ -1489,17 +1764,23 @@ export const App: React.FC = () => {
           command: "SetFlowSteering",
           payload: { familiarity_ratio: val },
         });
-        if (revision === steeringRevisionRef.current) steeringPendingRef.current = false;
+        if (revision === steeringRevisionRef.current)
+          steeringPendingRef.current = false;
       } catch (err) {
         console.error("Failed to update Flow steering:", err);
-        if (revision === steeringRevisionRef.current) steeringPendingRef.current = false;
+        if (revision === steeringRevisionRef.current)
+          steeringPendingRef.current = false;
       }
     }, 250);
   }, []);
 
-  useEffect(() => () => {
-    if (steeringDebounceRef.current) clearTimeout(steeringDebounceRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (steeringDebounceRef.current)
+        clearTimeout(steeringDebounceRef.current);
+    },
+    [],
+  );
 
   const handleStopFlow = useCallback(async () => {
     try {
@@ -1531,7 +1812,10 @@ export const App: React.FC = () => {
   }, [playbackState.current_track]);
 
   // Onboarding completion
-  const handleCompleteOnboarding = async (folders: string[], startScan: boolean) => {
+  const handleCompleteOnboarding = async (
+    folders: string[],
+    startScan: boolean,
+  ) => {
     setShowOnboarding(false);
     await dispatchCommand({
       command: "CompleteOnboarding",
@@ -1563,41 +1847,60 @@ export const App: React.FC = () => {
 
   const handleRescanLibrary = async () => {
     setIsScanning(true);
-    await dispatchCommand({
-      command: "ScanLibrary",
-      payload: { incremental: false },
-    });
-  };
-
-  const handleRerunOnboarding = async () => {
-    await dispatchCommand({ command: "ResetOnboarding" });
-    await fetchOnboardingStatus();
-    setShowOnboarding(true);
+    try {
+      await dispatchCommand({
+        command: "ScanLibrary",
+        payload: { incremental: false },
+      });
+    } catch (error) {
+      setIsScanning(false);
+      throw error;
+    }
   };
 
   // Playlists & Smart Mixes
   const handleRenamePlaylist = async (playlistId: string, name: string) => {
-    await dispatchCommand({ command: "RenamePlaylist", payload: { playlist_id: playlistId, name } });
+    await dispatchCommand({
+      command: "RenamePlaylist",
+      payload: { playlist_id: playlistId, name },
+    });
     setActiveCollection((current) =>
-      current && (current.playlistId === playlistId || current.id === playlistId)
+      current &&
+      (current.playlistId === playlistId || current.id === playlistId)
         ? { ...current, title: name.trim() }
-        : current
+        : current,
     );
     await fetchPlaylists();
   };
 
   const handleDeletePlaylist = async (playlistId: string) => {
-    await dispatchCommand({ command: "DeletePlaylist", payload: { playlist_id: playlistId } });
+    await dispatchCommand({
+      command: "DeletePlaylist",
+      payload: { playlist_id: playlistId },
+    });
     await fetchPlaylists();
-    if (activeCollection?.playlistId === playlistId || activeCollection?.id === playlistId) {
+    if (
+      activeCollection?.playlistId === playlistId ||
+      activeCollection?.id === playlistId
+    ) {
       setActiveCollection(null);
     }
   };
 
   // Online likes are represented by membership in the account's Liked Songs playlist.
-  const handleLikeOnline = async (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => {
+  const handleLikeOnline = async (track: {
+    id: string;
+    title: string;
+    artist: string;
+    album?: string;
+    cover_art_url?: string;
+    preview_url?: string;
+    duration_secs?: number;
+  }) => {
     try {
-      const res = await dispatchCommand({ command: "EnsureLikedSongsPlaylist" });
+      const res = await dispatchCommand({
+        command: "EnsureLikedSongsPlaylist",
+      });
       const likedId = (res as any)?.data;
       if (likedId) {
         const isLiked = (trackPlaylistMap[track.id] || []).includes(likedId);
@@ -1655,26 +1958,35 @@ export const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to toggle online like:", err);
-      addAppNotification("error", "Like Failed", err?.message || "Could not update online track like.");
+      addAppNotification(
+        "error",
+        "Like Failed",
+        err?.message || "Could not update online track like.",
+      );
     }
   };
 
-  const handleToggleCollectionLike = async (track: CollectionTrackItem, isLiked: boolean) => {
+  const handleToggleCollectionLike = async (
+    track: CollectionTrackItem,
+    isLiked: boolean,
+  ) => {
     const localId =
       (track.matched_local_track_id &&
-        !track.matched_local_track_id.startsWith("online:") &&
-        !track.matched_local_track_id.startsWith("itunes:")
+      !track.matched_local_track_id.startsWith("online:") &&
+      !track.matched_local_track_id.startsWith("itunes:")
         ? track.matched_local_track_id
         : undefined) ||
       (!track.id.startsWith("online:") &&
-        !track.id.startsWith("itunes:") &&
-        tracks.some((t) => t.id === track.id)
+      !track.id.startsWith("itunes:") &&
+      tracks.some((t) => t.id === track.id)
         ? track.id
         : undefined);
 
     const isLikedSongsView =
       activeCollection?.title === "Liked Songs" ||
-      (likedPlaylistId && (activeCollection?.playlistId === likedPlaylistId || activeCollection?.id === likedPlaylistId));
+      (likedPlaylistId &&
+        (activeCollection?.playlistId === likedPlaylistId ||
+          activeCollection?.id === likedPlaylistId));
 
     try {
       if (localId) {
@@ -1701,7 +2013,8 @@ export const App: React.FC = () => {
           const updatedTracks = prev.tracks.filter(
             (t) =>
               t.id !== track.id &&
-              (!localId || (t.matched_local_track_id !== localId && t.id !== localId))
+              (!localId ||
+                (t.matched_local_track_id !== localId && t.id !== localId)),
           );
           return {
             ...prev,
@@ -1712,20 +2025,29 @@ export const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to toggle collection like:", err);
-      addAppNotification("error", "Like Failed", err?.message || "Could not update track like state.");
+      addAppNotification(
+        "error",
+        "Like Failed",
+        err?.message || "Could not update track like state.",
+      );
     }
   };
 
-  const handleCreatePlaylist = async (name: string, description?: string): Promise<string | null> => {
+  const handleCreatePlaylist = async (
+    name: string,
+    description?: string,
+  ): Promise<string | null> => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
       return null;
     }
     let targetName = name.trim();
-    while (playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)) {
+    while (
+      playlists.some((p) => p.is_smart_mix !== 1 && p.name === targetName)
+    ) {
       const prompted = window.prompt(
         `A playlist named "${targetName}" already exists.\nPlease enter a new name for this playlist:`,
-        `${targetName} (1)`
+        `${targetName} (1)`,
       );
       if (prompted === null) {
         return null;
@@ -1749,7 +2071,10 @@ export const App: React.FC = () => {
     return null;
   };
 
-  const handleToggleTrackInPlaylist = async (playlistId: string, isCurrentlyMember: boolean) => {
+  const handleToggleTrackInPlaylist = async (
+    playlistId: string,
+    isCurrentlyMember: boolean,
+  ) => {
     if (!playlistModalTrack) return;
     const trackId = playlistModalTrack.id;
     try {
@@ -1760,7 +2085,10 @@ export const App: React.FC = () => {
         });
         setTrackPlaylistMap((prev) => {
           const current = prev[trackId] || [];
-          return { ...prev, [trackId]: current.filter((id) => id !== playlistId) };
+          return {
+            ...prev,
+            [trackId]: current.filter((id) => id !== playlistId),
+          };
         });
       } else {
         await dispatchCommand({
@@ -1813,7 +2141,9 @@ export const App: React.FC = () => {
       const plTracks: Track[] = (res.data as any) || [];
       if (plTracks.length > 0) {
         const playlistTrackIds = new Set(plTracks.map((track) => track.id));
-        const preservedQueue = Array.from(queuedTrackIds).filter((trackId) => !playlistTrackIds.has(trackId));
+        const preservedQueue = Array.from(queuedTrackIds).filter(
+          (trackId) => !playlistTrackIds.has(trackId),
+        );
         const first = plTracks[0];
         const isOnline =
           first.format === "online" ||
@@ -1826,7 +2156,7 @@ export const App: React.FC = () => {
             addAppNotification(
               "warning",
               "No Internet Connection",
-              `Cannot play "${first.title}". Connect to the internet to stream online songs.`
+              `Cannot play "${first.title}". Connect to the internet to stream online songs.`,
             );
             return;
           }
@@ -1848,7 +2178,10 @@ export const App: React.FC = () => {
           await handlePlayOnlineTrack(rec, false, "playlist");
           for (let i = 1; i < plTracks.length; i++) {
             const nextTrack = plTracks[i];
-            if (nextTrack.format === "online" || nextTrack.file_path?.startsWith("online://")) {
+            if (
+              nextTrack.format === "online" ||
+              nextTrack.file_path?.startsWith("online://")
+            ) {
               await dispatchCommand({
                 command: "EnqueueOnlineTrack",
                 payload: {
@@ -1911,7 +2244,10 @@ export const App: React.FC = () => {
               payload: { track_id: queuedId, play_next: false },
             });
           } catch (err) {
-            console.warn("Could not preserve queued track after playlist:", err);
+            console.warn(
+              "Could not preserve queued track after playlist:",
+              err,
+            );
           }
         }
       }
@@ -1920,7 +2256,9 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleFetchPlaylistTracks = async (playlistId: string): Promise<Track[]> => {
+  const handleFetchPlaylistTracks = async (
+    playlistId: string,
+  ): Promise<Track[]> => {
     try {
       const res = await executeQuery({
         query: "GetPlaylistTracks",
@@ -1934,12 +2272,20 @@ export const App: React.FC = () => {
   };
 
   // --- Collection Detail Handlers (Mixes, Top Charts, Playlists) ---
-  const handleOpenCollection = useCallback((collection: CollectionData) => {
-    navigate({ ...destinationRef.current, view: collection.playlistId ? "playlists" : destinationRef.current.view, collection, lyrics: false });
-    if (collection.playlistId || collection.type === "playlist") {
-      setPlayingPlaylistId(collection.playlistId || collection.id);
-    }
-  }, [navigate]);
+  const handleOpenCollection = useCallback(
+    (collection: CollectionData) => {
+      navigate({
+        ...destinationRef.current,
+        view: collection.playlistId ? "playlists" : destinationRef.current.view,
+        collection,
+        lyrics: false,
+      });
+      if (collection.playlistId || collection.type === "playlist") {
+        setPlayingPlaylistId(collection.playlistId || collection.id);
+      }
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     const collection = activeCollection;
@@ -1993,12 +2339,22 @@ export const App: React.FC = () => {
             };
           });
           setActiveCollection((prev) =>
-            !cancelled && prev === collection ? { ...prev, tracks: items } : prev
+            !cancelled && prev === collection
+              ? { ...prev, tracks: items }
+              : prev,
           );
         } else if (collection.type === "chart" || collection.searchQuery) {
-          const res = await executeQuery(collection.type === "chart"
-            ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
-            : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
+          const res = await executeQuery(
+            collection.type === "chart"
+              ? {
+                  query: "GetChartSongs",
+                  payload: { chart_id: collection.id, limit: 50 },
+                }
+              : {
+                  query: "SearchOnlineMusic",
+                  payload: { query: collection.searchQuery!, limit: 50 },
+                },
+          );
           const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
           const items: CollectionTrackItem[] = onlineRecs.map((r) => {
             const validLocalId =
@@ -2021,7 +2377,9 @@ export const App: React.FC = () => {
             };
           });
           setActiveCollection((prev) =>
-            !cancelled && prev === collection ? { ...prev, tracks: items } : prev
+            !cancelled && prev === collection
+              ? { ...prev, tracks: items }
+              : prev,
           );
         }
       } catch (err) {
@@ -2031,141 +2389,182 @@ export const App: React.FC = () => {
       }
     };
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [activeCollection, setActiveCollection]);
 
-  const handlePlayDiscoveredCollection = useCallback(async (collection: CollectionData) => {
-    if (collection.type !== "chart" && !collection.searchQuery) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      addAppNotification(
-        "warning",
-        "No Internet Connection",
-        `Cannot load ${collection.title}. Connect to the internet to stream this collection.`
-      );
-      return;
-    }
-
-    try {
-      const response = await executeQuery(collection.type === "chart"
-        ? { query: "GetChartSongs", payload: { chart_id: collection.id, limit: 50 } }
-        : { query: "SearchOnlineMusic", payload: { query: collection.searchQuery!, limit: 50 } });
-      const results = ((response?.data as DiscoveryRecommendation[]) || []).filter(
-        (track, index, all) =>
-          all.findIndex((candidate) => candidate.external_track_id === track.external_track_id) === index
-      );
-      if (results.length === 0) {
-        addAppNotification("warning", "No Songs Found", `${collection.title} did not return any playable songs.`);
+  const handlePlayDiscoveredCollection = useCallback(
+    async (collection: CollectionData) => {
+      if (collection.type !== "chart" && !collection.searchQuery) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        addAppNotification(
+          "warning",
+          "No Internet Connection",
+          `Cannot load ${collection.title}. Connect to the internet to stream this collection.`,
+        );
         return;
       }
 
-      const localIdFor = (track: DiscoveryRecommendation) => {
-        const localId = track.matched_local_track_id;
-        return localId && !localId.startsWith("online:") && !localId.startsWith("itunes:") ? localId : null;
-      };
-      const resolvedId = (track: DiscoveryRecommendation) => localIdFor(track) || track.external_track_id;
-      const isLocal = (track: DiscoveryRecommendation) => localIdFor(track) !== null;
-      const collectionIds = new Set(results.map(resolvedId));
-      const preservedQueue = Array.from(queuedTrackIds).filter((trackId) => !collectionIds.has(trackId));
-      const first = results[0];
-      const firstId = resolvedId(first);
+      try {
+        const response = await executeQuery(
+          collection.type === "chart"
+            ? {
+                query: "GetChartSongs",
+                payload: { chart_id: collection.id, limit: 50 },
+              }
+            : {
+                query: "SearchOnlineMusic",
+                payload: { query: collection.searchQuery!, limit: 50 },
+              },
+        );
+        const results = (
+          (response?.data as DiscoveryRecommendation[]) || []
+        ).filter(
+          (track, index, all) =>
+            all.findIndex(
+              (candidate) =>
+                candidate.external_track_id === track.external_track_id,
+            ) === index,
+        );
+        if (results.length === 0) {
+          addAppNotification(
+            "warning",
+            "No Songs Found",
+            `${collection.title} did not return any playable songs.`,
+          );
+          return;
+        }
 
-      setPlayingOrigin({
-        type: collection.type === "chart" ? "chart" : "mix",
-        id: collection.id,
-        name: collection.title,
-        collectionData: {
-          ...collection,
-          tracks: results.map((track) => ({
-            id: track.external_track_id,
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            duration_secs: track.duration_secs || 210,
-            cover_art_url: track.cover_art_url,
-            preview_url: track.preview_url,
-            is_downloaded: isLocal(track),
-            matched_local_track_id: isLocal(track) ? resolvedId(track) : undefined,
-            rawRecommendation: track,
-          })),
-        },
-      });
+        const localIdFor = (track: DiscoveryRecommendation) => {
+          const localId = track.matched_local_track_id;
+          return localId &&
+            !localId.startsWith("online:") &&
+            !localId.startsWith("itunes:")
+            ? localId
+            : null;
+        };
+        const resolvedId = (track: DiscoveryRecommendation) =>
+          localIdFor(track) || track.external_track_id;
+        const isLocal = (track: DiscoveryRecommendation) =>
+          localIdFor(track) !== null;
+        const collectionIds = new Set(results.map(resolvedId));
+        const preservedQueue = Array.from(queuedTrackIds).filter(
+          (trackId) => !collectionIds.has(trackId),
+        );
+        const first = results[0];
+        const firstId = resolvedId(first);
 
-      if (!isLocal(first)) {
-        try {
-          await dispatchCommand({
-            command: "EnqueueOnlineTrack",
-            payload: {
-              track_id: firstId,
-              title: first.title,
-              artist: first.artist,
-              album: first.album,
-              duration_secs: first.duration_secs,
-              cover_art_url: first.cover_art_url,
-              preview_url: first.preview_url,
-              play_next: false,
-            },
-          });
-        } catch (error: any) {
-          if (!String(error?.message || error).toLowerCase().includes("already in the queue")) {
-            throw error;
+        setPlayingOrigin({
+          type: collection.type === "chart" ? "chart" : "mix",
+          id: collection.id,
+          name: collection.title,
+          collectionData: {
+            ...collection,
+            tracks: results.map((track) => ({
+              id: track.external_track_id,
+              title: track.title,
+              artist: track.artist,
+              album: track.album,
+              duration_secs: track.duration_secs || 210,
+              cover_art_url: track.cover_art_url,
+              preview_url: track.preview_url,
+              is_downloaded: isLocal(track),
+              matched_local_track_id: isLocal(track)
+                ? resolvedId(track)
+                : undefined,
+              rawRecommendation: track,
+            })),
+          },
+        });
+
+        if (!isLocal(first)) {
+          try {
+            await dispatchCommand({
+              command: "EnqueueOnlineTrack",
+              payload: {
+                track_id: firstId,
+                title: first.title,
+                artist: first.artist,
+                album: first.album,
+                duration_secs: first.duration_secs,
+                cover_art_url: first.cover_art_url,
+                preview_url: first.preview_url,
+                play_next: false,
+              },
+            });
+          } catch (error: any) {
+            if (
+              !String(error?.message || error)
+                .toLowerCase()
+                .includes("already in the queue")
+            ) {
+              throw error;
+            }
           }
         }
-      }
 
-      await dispatchCommand({
-        command: "PlayTrack",
-        payload: { track_id: firstId, source: "collection" },
-      });
+        await dispatchCommand({
+          command: "PlayTrack",
+          payload: { track_id: firstId, source: "collection" },
+        });
 
-      for (const track of results.slice(1)) {
-        const trackId = resolvedId(track);
-        try {
-          if (isLocal(track)) {
+        for (const track of results.slice(1)) {
+          const trackId = resolvedId(track);
+          try {
+            if (isLocal(track)) {
+              await dispatchCommand({
+                command: "EnqueueTrack",
+                payload: { track_id: trackId, play_next: false },
+              });
+            } else {
+              await dispatchCommand({
+                command: "EnqueueOnlineTrack",
+                payload: {
+                  track_id: trackId,
+                  title: track.title,
+                  artist: track.artist,
+                  album: track.album,
+                  duration_secs: track.duration_secs,
+                  cover_art_url: track.cover_art_url,
+                  preview_url: track.preview_url,
+                  play_next: false,
+                },
+              });
+            }
+          } catch (error) {
+            console.warn("Could not enqueue chart track:", error);
+          }
+        }
+
+        for (const trackId of preservedQueue) {
+          try {
             await dispatchCommand({
               command: "EnqueueTrack",
               payload: { track_id: trackId, play_next: false },
             });
-          } else {
-            await dispatchCommand({
-              command: "EnqueueOnlineTrack",
-              payload: {
-                track_id: trackId,
-                title: track.title,
-                artist: track.artist,
-                album: track.album,
-                duration_secs: track.duration_secs,
-                cover_art_url: track.cover_art_url,
-                preview_url: track.preview_url,
-                play_next: false,
-              },
-            });
+          } catch (error) {
+            console.warn("Could not preserve queued track after chart:", error);
           }
-        } catch (error) {
-          console.warn("Could not enqueue chart track:", error);
         }
-      }
 
-      for (const trackId of preservedQueue) {
-        try {
-          await dispatchCommand({
-            command: "EnqueueTrack",
-            payload: { track_id: trackId, play_next: false },
-          });
-        } catch (error) {
-          console.warn("Could not preserve queued track after chart:", error);
-        }
+        fetchPlaybackState();
+      } catch (error: any) {
+        console.error("Failed to play discovered collection:", error);
+        addAppNotification(
+          "error",
+          "Collection Playback Failed",
+          error?.message || `Could not play ${collection.title}.`,
+        );
       }
-
-      fetchPlaybackState();
-    } catch (error: any) {
-      console.error("Failed to play discovered collection:", error);
-      addAppNotification(
-        "error",
-        "Collection Playback Failed",
-        error?.message || `Could not play ${collection.title}.`
-      );
-    }
-  }, [queuedTrackIds, addAppNotification, handleStopOnlineAudio, fetchPlaybackState]);
+    },
+    [
+      queuedTrackIds,
+      addAppNotification,
+      handleStopOnlineAudio,
+      fetchPlaybackState,
+    ],
+  );
 
   const handleOpenPlayingOrigin = useCallback(() => {
     if (!playingOrigin) return;
@@ -2209,9 +2608,10 @@ export const App: React.FC = () => {
         !item.matched_local_track_id.startsWith("itunes:");
 
       const isCurrentlyPlaying =
-        playbackState.is_playing &&
+        (playbackState.is_playing || playbackState.is_paused) &&
         playbackState.current_track &&
-        ((hasRealLocalMatch && playbackState.current_track.id === item.matched_local_track_id) ||
+        ((hasRealLocalMatch &&
+          playbackState.current_track.id === item.matched_local_track_id) ||
           playbackState.current_track.id === item.id);
 
       if (isCurrentlyPlaying) {
@@ -2221,8 +2621,14 @@ export const App: React.FC = () => {
 
       const enqueueCollectionRemainder = async () => {
         const collectionTracks = activeCollection?.tracks || [];
-        const itemIdx = collectionTracks.findIndex((track) => track.id === item.id);
-        const collectionIds = new Set(collectionTracks.map((track) => track.matched_local_track_id || track.id));
+        const itemIdx = collectionTracks.findIndex(
+          (track) => track.id === item.id,
+        );
+        const collectionIds = new Set(
+          collectionTracks.map(
+            (track) => track.matched_local_track_id || track.id,
+          ),
+        );
         for (let i = itemIdx + 1; i < collectionTracks.length; i++) {
           const queuedTrack = collectionTracks[i];
           const queuedId = queuedTrack.matched_local_track_id || queuedTrack.id;
@@ -2250,7 +2656,10 @@ export const App: React.FC = () => {
             }
           } else {
             try {
-              await dispatchCommand({ command: "EnqueueTrack", payload: { track_id: queuedId, play_next: false } });
+              await dispatchCommand({
+                command: "EnqueueTrack",
+                payload: { track_id: queuedId, play_next: false },
+              });
             } catch (err) {
               console.warn("Could not enqueue collection track:", err);
             }
@@ -2259,9 +2668,15 @@ export const App: React.FC = () => {
         for (const queuedId of queuedTrackIds) {
           if (collectionIds.has(queuedId)) continue;
           try {
-            await dispatchCommand({ command: "EnqueueTrack", payload: { track_id: queuedId, play_next: false } });
+            await dispatchCommand({
+              command: "EnqueueTrack",
+              payload: { track_id: queuedId, play_next: false },
+            });
           } catch (err) {
-            console.warn("Could not preserve queued track after collection:", err);
+            console.warn(
+              "Could not preserve queued track after collection:",
+              err,
+            );
           }
         }
       };
@@ -2271,7 +2686,10 @@ export const App: React.FC = () => {
         try {
           await dispatchCommand({
             command: "PlayTrack",
-            payload: { track_id: item.matched_local_track_id!, source: "collection" },
+            payload: {
+              track_id: item.matched_local_track_id!,
+              source: "collection",
+            },
           });
           await fetchPlaybackState();
         } finally {
@@ -2286,13 +2704,17 @@ export const App: React.FC = () => {
         addAppNotification(
           "warning",
           "No Internet Connection",
-          `Cannot play "${item.title}". Connect to the internet to stream online songs.`
+          `Cannot play "${item.title}". Connect to the internet to stream online songs.`,
         );
         return;
       }
 
       if (item.rawRecommendation) {
-        await handlePlayOnlineTrack(item.rawRecommendation, false, "collection");
+        await handlePlayOnlineTrack(
+          item.rawRecommendation,
+          false,
+          "collection",
+        );
         await enqueueCollectionRemainder();
         return;
       }
@@ -2308,42 +2730,71 @@ export const App: React.FC = () => {
         cover_art_url: item.cover_art_url,
         preview_url: item.preview_url,
         match_status: hasRealLocalMatch ? "EXACT_MATCH" : "NOT_FOUND",
-        matched_local_track_id: hasRealLocalMatch ? item.matched_local_track_id : undefined,
+        matched_local_track_id: hasRealLocalMatch
+          ? item.matched_local_track_id
+          : undefined,
         recommendation_reason: "From collection",
         in_wishlist: false,
       };
       await handlePlayOnlineTrack(rec, false, "collection");
       await enqueueCollectionRemainder();
     },
-    [playbackState.is_playing, playbackState.current_track, activeCollection, queuedTrackIds, handleUnifiedPlayPause, handlePlayOnlineTrack, fetchPlaybackState, addAppNotification, beginPlaybackLoading, endPlaybackLoading]
+    [
+      playbackState.is_playing,
+      playbackState.is_paused,
+      playbackState.current_track,
+      activeCollection,
+      queuedTrackIds,
+      handleUnifiedPlayPause,
+      handlePlayOnlineTrack,
+      fetchPlaybackState,
+      addAppNotification,
+      beginPlaybackLoading,
+      endPlaybackLoading,
+    ],
   );
 
   const isPlayingThisCollection = useMemo(() => {
-    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+    if (
+      !activeCollection ||
+      !activeCollection.tracks ||
+      activeCollection.tracks.length === 0
+    ) {
       return false;
     }
-    const currentId = playbackState.is_playing ? playbackState.current_track?.id : null;
+    const currentId = playbackState.is_playing
+      ? playbackState.current_track?.id
+      : null;
     if (!currentId) return false;
 
     return activeCollection.tracks.some(
-      (t) => t.id === currentId || t.matched_local_track_id === currentId
+      (t) => t.id === currentId || t.matched_local_track_id === currentId,
     );
-  }, [activeCollection, playbackState.is_playing, playbackState.current_track?.id]);
+  }, [
+    activeCollection,
+    playbackState.is_playing,
+    playbackState.current_track?.id,
+  ]);
 
   const isCollectionSaved = useMemo(() => {
     if (!activeCollection) return false;
-    if (activeCollection.type === "playlist" || activeCollection.playlistId) return true;
+    if (activeCollection.type === "playlist" || activeCollection.playlistId)
+      return true;
     return playlists.some(
       (p) =>
         p.is_smart_mix !== 1 &&
         (p.id === activeCollection.id ||
           p.id === activeCollection.playlistId ||
-          p.name === activeCollection.title.trim())
+          p.name === activeCollection.title.trim()),
     );
   }, [activeCollection, playlists]);
 
   const handlePlayAllCollection = useCallback(async () => {
-    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+    if (
+      !activeCollection ||
+      !activeCollection.tracks ||
+      activeCollection.tracks.length === 0
+    ) {
       return;
     }
 
@@ -2353,10 +2804,19 @@ export const App: React.FC = () => {
     }
 
     await handlePlayCollectionTrack(activeCollection.tracks[0]);
-  }, [activeCollection, isPlayingThisCollection, handleUnifiedPlayPause, handlePlayCollectionTrack]);
+  }, [
+    activeCollection,
+    isPlayingThisCollection,
+    handleUnifiedPlayPause,
+    handlePlayCollectionTrack,
+  ]);
 
   const handleShuffleCollection = useCallback(async () => {
-    if (!activeCollection || !activeCollection.tracks || activeCollection.tracks.length === 0) {
+    if (
+      !activeCollection ||
+      !activeCollection.tracks ||
+      activeCollection.tracks.length === 0
+    ) {
       return;
     }
 
@@ -2374,10 +2834,11 @@ export const App: React.FC = () => {
 
     // Otherwise, start playing this collection in shuffle mode
     const tracks = activeCollection.tracks;
-    const localTracks = tracks.filter((t) =>
-      !!t.matched_local_track_id &&
-      !t.matched_local_track_id.startsWith("online:") &&
-      !t.matched_local_track_id.startsWith("itunes:")
+    const localTracks = tracks.filter(
+      (t) =>
+        !!t.matched_local_track_id &&
+        !t.matched_local_track_id.startsWith("online:") &&
+        !t.matched_local_track_id.startsWith("itunes:"),
     );
 
     if (localTracks.length > 0) {
@@ -2386,7 +2847,10 @@ export const App: React.FC = () => {
       await dispatchCommand({ command: "ClearQueue" });
       await dispatchCommand({
         command: "PlayTrack",
-        payload: { track_id: localTracks[0].matched_local_track_id!, source: "collection" },
+        payload: {
+          track_id: localTracks[0].matched_local_track_id!,
+          source: "collection",
+        },
       });
       for (let i = 1; i < localTracks.length; i++) {
         const tid = localTracks[i].matched_local_track_id;
@@ -2435,7 +2899,9 @@ export const App: React.FC = () => {
     fetchPlaybackState,
   ]);
 
-  const handleInspectSpotifyPlaylist = async (urlOrId: string): Promise<SpotifyPlaylistImport | null> => {
+  const handleInspectSpotifyPlaylist = async (
+    urlOrId: string,
+  ): Promise<SpotifyPlaylistImport | null> => {
     const res = await executeQuery({
       query: "ImportSpotifyPlaylist",
       payload: { url_or_id: urlOrId },
@@ -2455,21 +2921,31 @@ export const App: React.FC = () => {
         duration_secs?: number;
         cover_art_url?: string;
         preview_url?: string;
-      }>
+      }>,
     ) => {
       let targetName = name.trim();
-      while (playlists.some((p) => p.is_smart_mix !== 1 && p.name.toLowerCase() === targetName.toLowerCase())) {
+      while (
+        playlists.some(
+          (p) =>
+            p.is_smart_mix !== 1 &&
+            p.name.toLowerCase() === targetName.toLowerCase(),
+        )
+      ) {
         const prompted = await requestPrompt(
           "Playlist Name Already Taken",
           `A playlist named "${targetName}" already exists in your library. Please enter a new name for this playlist:`,
-          `${targetName} (1)`
+          `${targetName} (1)`,
         );
         if (prompted === null) {
           return;
         }
         const trimmed = prompted.trim();
         if (!trimmed) {
-          addAppNotification("warning", "Name Required", "Playlist name cannot be empty.");
+          addAppNotification(
+            "warning",
+            "Name Required",
+            "Playlist name cannot be empty.",
+          );
           continue;
         }
         targetName = trimmed;
@@ -2501,25 +2977,35 @@ export const App: React.FC = () => {
         fetchPlaylists();
       }
     },
-    [playlists, fetchPlaylists]
+    [playlists, fetchPlaylists],
   );
 
   const handleSaveCollectionToPlaylists = useCallback(
     async (collection: CollectionData) => {
       try {
         let targetName = collection.title.trim();
-        while (playlists.some((p) => p.is_smart_mix !== 1 && p.name.toLowerCase() === targetName.toLowerCase())) {
+        while (
+          playlists.some(
+            (p) =>
+              p.is_smart_mix !== 1 &&
+              p.name.toLowerCase() === targetName.toLowerCase(),
+          )
+        ) {
           const prompted = await requestPrompt(
             "Playlist Name Already Taken",
             `A playlist named "${targetName}" already exists in your library. Please enter a new name for this playlist:`,
-            `${targetName} (1)`
+            `${targetName} (1)`,
           );
           if (prompted === null) {
             return;
           }
           const trimmed = prompted.trim();
           if (!trimmed) {
-            addAppNotification("warning", "Name Required", "Playlist name cannot be empty.");
+            addAppNotification(
+              "warning",
+              "Name Required",
+              "Playlist name cannot be empty.",
+            );
             continue;
           }
           targetName = trimmed;
@@ -2531,20 +3017,24 @@ export const App: React.FC = () => {
           !t.matched_local_track_id.startsWith("online:") &&
           !t.matched_local_track_id.startsWith("itunes:")
             ? t.matched_local_track_id
-            : t.id
+            : t.id,
         );
 
         if (trackIds.length > 0) {
           await handleSaveImportedPlaylist(targetName, trackIds, allTracks);
         } else {
           await handleCreatePlaylist(targetName, collection.subtitle);
-          addAppNotification("info", "Playlist Created", `Playlist "${targetName}" created.`);
+          addAppNotification(
+            "info",
+            "Playlist Created",
+            `Playlist "${targetName}" created.`,
+          );
         }
       } catch (err) {
         console.error("Failed to save collection to playlists:", err);
       }
     },
-    [playlists, handleSaveImportedPlaylist, handleCreatePlaylist]
+    [playlists, handleSaveImportedPlaylist, handleCreatePlaylist],
   );
 
   const handleAddMissingToWishlist = async (missingTracks: any[]) => {
@@ -2556,7 +3046,11 @@ export const App: React.FC = () => {
   };
 
   // Wishlist
-  const handleAddToWishlist = async (title: string, artist: string, album?: string) => {
+  const handleAddToWishlist = async (
+    title: string,
+    artist: string,
+    album?: string,
+  ) => {
     await dispatchCommand({
       command: "AddToWishlist",
       payload: { title, artist, album },
@@ -2591,7 +3085,7 @@ export const App: React.FC = () => {
   const handleSearchSoulseek = async (
     artist: string,
     title: string,
-    album?: string
+    album?: string,
   ): Promise<DownloadSearchResult[]> => {
     const res = await dispatchCommand({
       command: "SearchSoulseek",
@@ -2605,11 +3099,18 @@ export const App: React.FC = () => {
   };
 
   // Navigation shortcut to search & download directly via centered modal popup
-  const handleInitiateDirectDownloadSearch = (artist: string, title: string, album?: string) => {
+  const handleInitiateDirectDownloadSearch = (
+    artist: string,
+    title: string,
+    album?: string,
+  ) => {
     setDownloadModalTrack({ artist, title, album });
   };
 
-  const handleModalStartDownload = async (searchResultId: string, track: DownloadModalTrack) => {
+  const handleModalStartDownload = async (
+    searchResultId: string,
+    track: DownloadModalTrack,
+  ) => {
     const response = await dispatchCommand({
       command: "StartDownload",
       payload: {
@@ -2625,7 +3126,7 @@ export const App: React.FC = () => {
     addAppNotification(
       "info",
       "Download Queued",
-      `"${track.title}" by ${track.artist} has been queued for download.`
+      `"${track.title}" by ${track.artist} has been queued for download.`,
     );
     fetchDownloads();
   };
@@ -2635,14 +3136,18 @@ export const App: React.FC = () => {
       addAppNotification(
         "info",
         "Direct Download",
-        `Locating audio stream for "${track.title}" by ${track.artist}...`
+        `Locating audio stream for "${track.title}" by ${track.artist}...`,
       );
-      const searchResults = await handleSearchSoulseek(track.artist, track.title, track.album);
+      const searchResults = await handleSearchSoulseek(
+        track.artist,
+        track.title,
+        track.album,
+      );
       if (!searchResults || searchResults.length === 0) {
         addAppNotification(
           "error",
           "Download Error",
-          `No streamable audio found for "${track.title}".`
+          `No streamable audio found for "${track.title}".`,
         );
         return;
       }
@@ -2651,14 +3156,20 @@ export const App: React.FC = () => {
         (r) =>
           (r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) &&
           !r.id.startsWith("ytdlp_stream_mp3_") &&
-          rankResultMatch(r, track.artist, track.title) >= 40
+          rankResultMatch(r, track.artist, track.title) >= 40,
       );
-      const chosen = goodDirect || searchResults.find((r) =>
-        !r.id.startsWith("ytdlp_stream_mp3_") &&
-        rankResultMatch(r, track.artist, track.title) >= 30
-      );
+      const chosen =
+        goodDirect ||
+        searchResults.find(
+          (r) =>
+            !r.id.startsWith("ytdlp_stream_mp3_") &&
+            rankResultMatch(r, track.artist, track.title) >= 30,
+        );
 
-      if (!chosen && searchResults.some((r) => r.id.startsWith("ytdlp_stream_mp3_"))) {
+      if (
+        !chosen &&
+        searchResults.some((r) => r.id.startsWith("ytdlp_stream_mp3_"))
+      ) {
         setDownloadModalTrack(track);
         return;
       }
@@ -2669,7 +3180,7 @@ export const App: React.FC = () => {
         addAppNotification(
           "error",
           "Download Error",
-          `No confident audio match found for "${track.title}".`
+          `No confident audio match found for "${track.title}".`,
         );
       }
     } catch (err: any) {
@@ -2677,21 +3188,28 @@ export const App: React.FC = () => {
       addAppNotification(
         "error",
         "Download Error",
-        `Could not start direct stream download for "${track.title}".`
+        `Could not start direct stream download for "${track.title}".`,
       );
     }
   };
 
   const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
   const handleGlobalOnlineSearch = async (queryOverride?: string) => {
-    const q = (typeof queryOverride === "string" ? queryOverride : globalSearchQuery).trim();
+    const q = (
+      typeof queryOverride === "string" ? queryOverride : globalSearchQuery
+    ).trim();
     navigate({ ...viewDestination("discovery"), searchQuery: q });
-    setSearchRefreshRevision(revision => revision + 1);
+    setSearchRefreshRevision((revision) => revision + 1);
   };
 
   useEffect(() => {
     const q = destination.searchQuery;
-    if (!q || destination.view !== "discovery" || destination.collection || destination.lyrics) {
+    if (
+      !q ||
+      destination.view !== "discovery" ||
+      destination.collection ||
+      destination.lyrics
+    ) {
       setIsGlobalSearching(false);
       return;
     }
@@ -2718,25 +3236,55 @@ export const App: React.FC = () => {
           const albumLower = r.album ? r.album.toLowerCase() : "";
 
           // Direct substring match
-          if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
+          if (
+            titleLower.includes(qLower) ||
+            artistLower.includes(qLower) ||
+            albumLower.includes(qLower)
+          ) {
             return true;
           }
 
           // Token match: title or artist contains any significant token
-          return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
+          return qTokens.some(
+            (tok) => titleLower.includes(tok) || artistLower.includes(tok),
+          );
         });
 
-        updateDestination(current => !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: relevant.length > 0 ? relevant : incoming } : current);
+        updateDestination((current) =>
+          !cancelled &&
+          current.view === "discovery" &&
+          current.searchQuery === q
+            ? {
+                ...current,
+                searchResults: relevant.length > 0 ? relevant : incoming,
+              }
+            : current,
+        );
       } catch (err) {
         console.error("Global online music search failed:", err);
-        updateDestination(current => !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: [] } : current);
+        updateDestination((current) =>
+          !cancelled &&
+          current.view === "discovery" &&
+          current.searchQuery === q
+            ? { ...current, searchResults: [] }
+            : current,
+        );
       } finally {
         if (!cancelled) setIsGlobalSearching(false);
       }
     };
     void load();
-    return () => { cancelled = true; };
-  }, [destination.searchQuery, destination.view, destination.collection, destination.lyrics, searchRefreshRevision, updateDestination]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    destination.searchQuery,
+    destination.view,
+    destination.collection,
+    destination.lyrics,
+    searchRefreshRevision,
+    updateDestination,
+  ]);
 
   const handleGlobalClearSearch = () => {
     navigate(viewDestination("discovery"));
@@ -2761,11 +3309,23 @@ export const App: React.FC = () => {
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
-  const activePlayingTitle = playbackState.current_track?.title || "No Track Selected";
+  const activePlayingTitle =
+    playbackState.current_track?.title || "No Track Selected";
+  const nextQueuedTrack = useMemo<PlaybackArtworkTrack | undefined>(() => {
+    const entry = queueEntries[0];
+    if (!entry) return undefined;
+    return tracks.find((track) => track.id === entry.trackId) || {
+      id: entry.trackId,
+      title: entry.title || "Up next",
+      artist_name: entry.artist,
+    };
+  }, [queueEntries, tracks]);
   const activePlayingArtist = playbackState.current_track?.artist_name || "";
   const activePlayingTrackId = playbackState.current_track?.id;
   const activePlayingDuration =
-    playbackState.duration_secs || playbackState.current_track?.duration_secs || 0;
+    playbackState.duration_secs ||
+    playbackState.current_track?.duration_secs ||
+    0;
   const activePlayingArtwork = useMemo(() => {
     // 1. Direct local cover extracted from audio file or cache
     if (currentTrackCoverUrl) {
@@ -2777,7 +3337,9 @@ export const App: React.FC = () => {
     }
     // 3. Track in loaded library tracks
     if (playbackState.current_track?.id) {
-      const matchInLibrary = tracks.find((t) => t.id === playbackState.current_track?.id);
+      const matchInLibrary = tracks.find(
+        (t) => t.id === playbackState.current_track?.id,
+      );
       if (matchInLibrary?.cover_art_url) {
         return matchInLibrary.cover_art_url;
       }
@@ -2788,8 +3350,10 @@ export const App: React.FC = () => {
         (t) =>
           t.matched_local_track_id === playbackState.current_track?.id ||
           t.id === playbackState.current_track?.id ||
-          (t.title.toLowerCase().trim() === playbackState.current_track?.title.toLowerCase().trim() &&
-            t.artist.toLowerCase().trim() === playbackState.current_track?.artist_name?.toLowerCase().trim())
+          (t.title.toLowerCase().trim() ===
+            playbackState.current_track?.title.toLowerCase().trim() &&
+            t.artist.toLowerCase().trim() ===
+              playbackState.current_track?.artist_name?.toLowerCase().trim()),
       );
       if (matchInCollection?.cover_art_url) {
         return matchInCollection.cover_art_url;
@@ -2801,8 +3365,10 @@ export const App: React.FC = () => {
         (r) =>
           r.matched_local_track_id === playbackState.current_track?.id ||
           r.external_track_id === playbackState.current_track?.id ||
-          (r.title.toLowerCase().trim() === playbackState.current_track?.title.toLowerCase().trim() &&
-            r.artist.toLowerCase().trim() === playbackState.current_track?.artist_name?.toLowerCase().trim())
+          (r.title.toLowerCase().trim() ===
+            playbackState.current_track?.title.toLowerCase().trim() &&
+            r.artist.toLowerCase().trim() ===
+              playbackState.current_track?.artist_name?.toLowerCase().trim()),
       );
       if (matchInDiscovery?.cover_art_url) {
         return matchInDiscovery.cover_art_url;
@@ -2812,7 +3378,8 @@ export const App: React.FC = () => {
     if (playbackState.current_track?.album_title) {
       const matchAlbum = albums.find(
         (a) =>
-          a.title.toLowerCase().trim() === playbackState.current_track?.album_title?.toLowerCase().trim()
+          a.title.toLowerCase().trim() ===
+          playbackState.current_track?.album_title?.toLowerCase().trim(),
       );
       if (matchAlbum?.cover_art_path) {
         return matchAlbum.cover_art_path;
@@ -2828,7 +3395,9 @@ export const App: React.FC = () => {
     albums,
   ]);
 
-  const likedPlaylistId = playlists.find((playlist) => playlist.name === "Liked Songs")?.id;
+  const likedPlaylistId = playlists.find(
+    (playlist) => playlist.name === "Liked Songs",
+  )?.id;
   const likedTrackIds = useMemo(() => {
     const set = new Set<string>();
     if (likedPlaylistId) {
@@ -2849,22 +3418,30 @@ export const App: React.FC = () => {
   const isCurrentTrackLiked = useMemo(() => {
     if (!playbackState.current_track) return false;
     const tid = playbackState.current_track.id;
-    return likedTrackIds.has(tid) || playbackState.current_track.manual_like === 1;
+    return (
+      likedTrackIds.has(tid) || playbackState.current_track.manual_like === 1
+    );
   }, [playbackState.current_track, likedTrackIds]);
 
   const regularPlaylistIds = useMemo(
-    () => new Set(
-      playlists
-        .filter((playlist) => playlist.is_smart_mix !== 1 && playlist.name !== "Liked Songs")
-        .map((playlist) => playlist.id)
-    ),
-    [playlists]
+    () =>
+      new Set(
+        playlists
+          .filter(
+            (playlist) =>
+              playlist.is_smart_mix !== 1 && playlist.name !== "Liked Songs",
+          )
+          .map((playlist) => playlist.id),
+      ),
+    [playlists],
   );
 
   const regularTrackPlaylistMap = useMemo(() => {
     const filtered: Record<string, string[]> = {};
     for (const [trackId, playlistIds] of Object.entries(trackPlaylistMap)) {
-      filtered[trackId] = playlistIds.filter((playlistId) => regularPlaylistIds.has(playlistId));
+      filtered[trackId] = playlistIds.filter((playlistId) =>
+        regularPlaylistIds.has(playlistId),
+      );
     }
     return filtered;
   }, [trackPlaylistMap, regularPlaylistIds]);
@@ -2874,392 +3451,565 @@ export const App: React.FC = () => {
     const tid = playbackState.current_track.id;
     const altId = `online:${playbackState.current_track.artist_name || ""}-${playbackState.current_track.title}`;
     return (
-      (tid && regularTrackPlaylistMap[tid] && regularTrackPlaylistMap[tid].length > 0) ||
-      (altId && regularTrackPlaylistMap[altId] && regularTrackPlaylistMap[altId].length > 0) ||
+      (tid &&
+        regularTrackPlaylistMap[tid] &&
+        regularTrackPlaylistMap[tid].length > 0) ||
+      (altId &&
+        regularTrackPlaylistMap[altId] &&
+        regularTrackPlaylistMap[altId].length > 0) ||
       false
     );
   }, [playbackState.current_track, regularTrackPlaylistMap]);
 
+  const handleSelectView = useCallback(
+    (view: import("./components/Sidebar").ViewType) => {
+      if (view === "stats") setStatsRefreshTrigger((prev) => prev + 1);
+      navigate(viewDestination(view));
+    },
+    [navigate],
+  );
+  const handleSelectSidebarPlaylist = useCallback(
+    (playlist: Playlist) => {
+      handleOpenCollection({
+        id: playlist.id,
+        type: playlist.is_smart_mix === 1 ? "mix" : "playlist",
+        title: playlist.name,
+        subtitle:
+          playlist.description ||
+          (playlist.is_smart_mix === 1
+            ? "Custom algorithmic smart mix"
+            : "User Playlist"),
+        tag: playlist.is_smart_mix === 1 ? "SMART MIX" : "PUBLIC PLAYLIST",
+        playlistId: playlist.id,
+        cover_art_url: playlist.cover_art_url,
+      });
+    },
+    [handleOpenCollection],
+  );
+  const runQueueCommand = useCallback(
+    async (command: Parameters<typeof dispatchCommand>[0]) => {
+      try {
+        await dispatchCommand(command);
+      } catch (error) {
+        addAppNotification("error", "Queue action failed", String(error));
+      }
+    },
+    [addAppNotification],
+  );
+  const handlePlayQueueIndex = useCallback(
+    (index: number) => {
+      void runQueueCommand({ command: "PlayQueueIndex", payload: { index } });
+    },
+    [runQueueCommand],
+  );
+  const handleDequeueTrack = useCallback(
+    (track_id: string) => {
+      void runQueueCommand({ command: "DequeueTrack", payload: { track_id } });
+    },
+    [runQueueCommand],
+  );
+  const handleClearQueue = useCallback(() => {
+    void runQueueCommand({ command: "ClearQueue" });
+  }, [runQueueCommand]);
+  const handleOpenQueue = useCallback(() => {
+    handleToggleFullscreen(false);
+    navigate(viewDestination("queue"));
+  }, [handleToggleFullscreen, navigate]);
+  const handleOpenNowPlaying = useCallback(
+    () => navigate(viewDestination("now_playing")),
+    [navigate],
+  );
+  const handleStartDownload = async (
+    search_result_id: string,
+    wishlist_id?: string,
+  ) => {
+    await dispatchCommand({
+      command: "StartDownload",
+      payload: { search_result_id, wishlist_id },
+    });
+    await fetchDownloads();
+  };
+  const handleCancelDownload = async (task_id: string) => {
+    await dispatchCommand({ command: "CancelDownload", payload: { task_id } });
+    await fetchDownloads();
+  };
+  const handleUpdateWishlistStatus = async (
+    wishlist_id: string,
+    status: "want" | "ignore" | "already_own" | "downloaded",
+  ) => {
+    await dispatchCommand({
+      command: "UpdateWishlistStatus",
+      payload: { wishlist_id, status },
+    });
+    await fetchWishlist();
+  };
+
+  const likedSongs = playlists.find(playlist => playlist.name === "Liked Songs" && !playlist.is_smart_mix);
+  const handleHomeLiked = useCallback(() => { if (likedSongs) handleSelectSidebarPlaylist(likedSongs); }, [likedSongs, handleSelectSidebarPlaylist]);
+  const handleHomeDiscover = useCallback(() => handleSelectView("discovery"), [handleSelectView]);
+  const isArchiveLiked =
+    interfacePreference.style === "brutalist" &&
+    activeCollection?.type === "playlist" &&
+    (activeCollection.title === "Liked Songs" ||
+      (!!likedSongs &&
+        (activeCollection.playlistId === likedSongs.id ||
+          activeCollection.id === likedSongs.id)));
+  const isArchiveSurface =
+    !isLyricsActive &&
+    (isArchiveLiked ||
+      (!activeCollection && ["library", "albums", "playlists"].includes(currentView)));
+
+  const handleDeckFlow = useCallback(() => {
+    if (homeOverview?.flow_session?.is_active) handleStopFlow();
+    else handleStartFlow(flowSteering);
+  }, [homeOverview?.flow_session?.is_active, handleStopFlow, handleStartFlow, flowSteering]);
+  const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
-    <div className="app-container">
-      <div className="app-body">
-        {/* Left Sidebar Navigation */}
-        <Sidebar
-          currentView={currentView}
-          onSelectView={(view) => {
-
-            if (view === "stats") {
-              setStatsRefreshTrigger((prev) => prev + 1);
+    <InterfaceContext.Provider value={interfacePreference.style}>
+      <div
+        className="app-container kaze-interface"
+        data-interface={interfacePreference.style}
+      >
+        {interfacePreference.style === "brutalist" && <BrutalistNavigation view={currentView} onNavigate={handleSelectView} />}
+        <div className="app-body">
+          {/* Left Sidebar Navigation */}
+          {interfacePreference.style === "spatial" && <Sidebar
+            currentView={currentView}
+            currentUser={currentUser}
+            onSelectView={handleSelectView}
+            unreadNotificationsCount={unreadNotificationsCount}
+            playlists={playlists}
+            activePlaylistId={
+              activeCollection?.type === "playlist"
+                ? activeCollection.playlistId || activeCollection.id
+                : null
             }
-            navigate(viewDestination(view));
-          }}
-          unreadNotificationsCount={unreadNotificationsCount}
-          playlists={playlists}
-          activePlaylistId={activeCollection?.type === "playlist" ? (activeCollection.playlistId || activeCollection.id) : null}
-          onSelectPlaylist={(playlist) => {
-            handleOpenCollection({
-              id: playlist.id,
-              type: playlist.is_smart_mix === 1 ? "mix" : "playlist",
-              title: playlist.name,
-              subtitle: playlist.description || (playlist.is_smart_mix === 1 ? "Custom algorithmic smart mix" : "User Playlist"),
-              tag: playlist.is_smart_mix === 1 ? "SMART MIX" : "PUBLIC PLAYLIST",
-              playlistId: playlist.id,
-              cover_art_url: playlist.cover_art_url,
-            });
-          }}
-        />
+            onSelectPlaylist={handleSelectSidebarPlaylist}
+          />}
 
-        {/* Main Content Area */}
-        <main className="main-content">
-          {/* Persistent Global Top Search Bar (hidden on stats/profile view, lyrics active, or offline discovery) */}
-          {((!activeCollection && currentView === "discovery" && !isOnline) || isLyricsActive || currentView === "stats") ? null : (
-            <GlobalTopSearchBar
-              searchQuery={globalSearchQuery}
-              setSearchQuery={setGlobalSearchQuery}
-              onSearch={handleGlobalOnlineSearch}
-              onRefresh={handleGlobalRefresh}
-              isSearching={isGlobalSearching}
-              isRefreshing={isGlobalRefreshing}
-            />
-          )}
-
-          <Suspense fallback={null}>
-          {isLyricsActive ? (
-            <div style={{ flex: 1, minHeight: 0, height: "100%", width: "100%", position: "relative" }}>
-              <LyricsView
-                trackId={activePlayingTrackId}
-                artist={activePlayingArtist}
-                title={activePlayingTitle}
-                durationSecs={activePlayingDuration}
-                onSeek={handleUnifiedSeek}
-                isFullScreen={false}
+          {/* Main Content Area */}
+          <main ref={mainScrollRef} className="main-content" data-view={currentView}
+            data-library-surface={isArchiveSurface ? "true" : undefined}
+            data-lyrics-active={isLyricsActive ? "true" : undefined}
+            data-fixed-stage={!activeCollection && !isLyricsActive && (currentView === "discovery" || currentView === "now_playing") ? "true" : undefined}>
+            <div className="interface-toolbar">
+              <div className="history-controls">
+                <button
+                  className="player-icon-btn"
+                  aria-label="Go back"
+                  disabled={!canGoBack}
+                  onClick={navigateBack}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <button
+                  className="player-icon-btn"
+                  aria-label="Go forward"
+                  disabled={!canGoForward}
+                  onClick={navigateForward}
+                >
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+              <span className="interface-name">
+                {interfacePreference.style === "spatial"
+                  ? "Spatial"
+                  : "Brutalist"}
+              </span>
+              <span className="interface-route">
+                {!isLyricsActive && (isArchiveLiked ? "Library" : activeCollection?.title ||
+                  (currentView === "discovery" ? "Discover" : ["library", "albums", "playlists"].includes(currentView) ? "Library" : currentView === "stats" ? "Profile" : currentView.replace(/_/g, " ")))}
+              </span>
+            {/* Persistent Global Top Search Bar (hidden on stats/profile view, lyrics active, or offline discovery) */}
+            {(!activeCollection && currentView === "discovery" && !isOnline) ||
+            isLyricsActive ||
+            currentView === "stats" ? null : (
+              <GlobalTopSearchBar
+                placeholder={interfacePreference.style === "spatial" ? "Find your next favourite" : undefined}
+                searchQuery={globalSearchQuery}
+                setSearchQuery={setGlobalSearchQuery}
+                onSearch={handleGlobalOnlineSearch}
+                onRefresh={handleGlobalRefresh}
+                isSearching={isGlobalSearching}
+                isRefreshing={isGlobalRefreshing}
               />
+            )}
+              {interfacePreference.style === "spatial" && <SpatialUtilities onNavigate={handleSelectView} unread={unreadNotificationsCount} />}
             </div>
-          ) : activeCollection ? (
-            <CollectionDetailView
-              key={`${activeCollection.type}:${activeCollection.id}`}
-              collection={activeCollection}
-              isLoadingTracks={isLoadingCollectionTracks}
-              loadingTrackId={loadingTrackId}
-              onBack={() => { if (!navigateBack()) navigate({ ...destination, collection: null }); }}
-              onPlayTrack={handlePlayCollectionTrack}
-              onPlayAll={handlePlayAllCollection}
-              onShuffleAll={handleShuffleCollection}
-              onAddToWishlist={(track) =>
-                handleAddToWishlist(track.title, track.artist, track.album)
-              }
-              onDownload={(artist, title) =>
-                handleInitiateDirectDownloadSearch(artist, title)
-              }
-              onSaveToPlaylists={handleSaveCollectionToPlaylists}
-              currentPlayingTrackId={
-                playbackState.is_playing ? playbackState.current_track?.id : undefined
-              }
-              isPlaying={isPlayingThisCollection}
-              isSaved={isCollectionSaved}
-              isShuffled={playbackState.is_shuffled}
-              downloads={downloads}
-              trackPlaylistMap={regularTrackPlaylistMap}
-              userPlaylistIds={regularPlaylistIds}
-              onAddToPlaylist={(track) =>
-                handleOpenAddToPlaylistModal({
-                  id:
-                    track.matched_local_track_id &&
-                    !track.matched_local_track_id.startsWith("online:") &&
-                    !track.matched_local_track_id.startsWith("itunes:")
-                      ? track.matched_local_track_id
-                      : track.id,
-                  title: track.title,
-                  artist: track.artist,
-                  album: track.album,
-                  cover_art_url: track.cover_art_url,
-                })
-              }
-              onRenamePlaylist={handleRenamePlaylist}
-              onDeletePlaylist={handleDeletePlaylist}
-              likedTrackIds={likedTrackIds}
-              onToggleLike={handleToggleCollectionLike}
-              queuedTrackIds={queuedTrackIds}
-              onEnqueueTrack={(track) => handleEnqueueRecommendation(track.rawRecommendation || {
-                external_track_id: track.id,
-                provider: track.matched_local_track_id ? "library" : "online",
-                provider_id: track.id,
-                title: track.title,
-                artist: track.artist,
-                album: track.album,
-                duration_secs: track.duration_secs,
-                cover_art_url: track.cover_art_url,
-                preview_url: track.preview_url,
-                matched_local_track_id: track.matched_local_track_id,
-                match_status: track.matched_local_track_id ? "EXACT_MATCH" : "NOT_FOUND",
-                recommendation_reason: "From collection",
-                in_wishlist: false,
-              })}
-            />
-          ) : (
-            <>
-              {currentView === "home" && (
-                <HomeView
-                  overview={homeOverview}
-                  isLoading={isHomeLoading}
-                  onRefresh={fetchHomeOverview}
-                  onStartFlow={handleStartFlow}
-                  onTogglePlayback={handleUnifiedPlayPause}
-                  onToggleFlowPlayback={handleToggleFlowPlayback}
-                  currentTrack={playbackState.current_track}
-                  onStopFlow={handleStopFlow}
-                  onPlayTrack={handlePlayTrack}
-                  onEnqueueTrack={handleEnqueueTrack}
-                  onOpenAlbum={handleSelectAlbum}
-                  loadingTrackId={loadingTrackId}
-                  activeTrackId={playbackState.current_track?.id}
-                  isPlaying={playbackState.is_playing}
-                  flowSteering={flowSteering}
-                  onFlowSteeringChange={handleFlowSteeringChange}
-                  queuedTrackIds={queuedTrackIds}
-                />
-              )}
+            {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albums.length} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
-              {currentView === "library" && (
-                <LibraryView
-                  tracks={tracks}
-                  queuedTrackIds={queuedTrackIds}
-                  onPlayTrack={handlePlayTrack}
+            {interfacePreference.style === "brutalist" && isArchiveSurface && <BrutalistLibraryHeader view={currentView} count={albums.length} likedSelected={isArchiveLiked} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
+
+            <ViewMemoryProvider>
+            <Suspense fallback={null}>
+              {isLyricsActive ? (
+                <div className="lyrics-stage">
+                  <LyricsView
+                    trackId={activePlayingTrackId}
+                    artist={activePlayingArtist}
+                    title={activePlayingTitle}
+                    durationSecs={activePlayingDuration}
+                    onSeek={handleUnifiedSeek}
+                    isFullScreen={false}
+                  />
+                </div>
+              ) : activeCollection ? (
+                <CollectionDetailView
+                  key={`${activeCollection.type}:${activeCollection.id}`}
+                  collection={activeCollection}
+                  withinArchive={isArchiveLiked}
+                  isLoadingTracks={isLoadingCollectionTracks}
                   loadingTrackId={loadingTrackId}
-                  onEnqueueTrack={handleEnqueueTrack}
-                  onLikeTrack={handleLike}
-                  onRemoveFeedback={handleRemoveFeedback}
-                  onRescan={handleRescanLibrary}
-                  onSearch={handleSearchLibrary}
-                  searchQuery={destination.libraryQuery}
-                  trackPlaylistMap={regularTrackPlaylistMap}
-                  likedTrackIds={likedTrackIds}
-                  onOpenAddToPlaylistModal={(t) =>
-                    handleOpenAddToPlaylistModal({
-                      id: t.id,
-                      title: t.title,
-                      artist: t.artist_name,
-                      album: t.album_title,
-                    })
+                  onBack={() => {
+                    if (!navigateBack())
+                      navigate({ ...destination, collection: null });
+                  }}
+                  onPlayTrack={handlePlayCollectionTrack}
+                  onPlayAll={handlePlayAllCollection}
+                  onShuffleAll={handleShuffleCollection}
+                  onAddToWishlist={(track) =>
+                    handleAddToWishlist(track.title, track.artist, track.album)
                   }
-                />
-              )}
-
-              {currentView === "albums" && (
-                <AlbumsView
-                  albums={albums}
-                  onSelectAlbum={handleSelectAlbum}
-                />
-              )}
-
-              {currentView === "playlists" && (
-                <PlaylistsView
-                  viewMode="playlists"
-                  playlists={playlists}
-                  currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  activePlaylistId={playingPlaylistId}
-                  onSelectPlaylist={() => {}}
-                  onPlayPlaylist={handlePlayPlaylist}
-                  onCreatePlaylist={handleCreatePlaylist}
-                  onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-                  onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                  onAddMissingToWishlist={handleAddMissingToWishlist}
-                  onLaunchSoulseek={handleLaunchSoulseek}
-                  onSearchDirect={handleInitiateDirectDownloadSearch}
-                  onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                  onPlayTrack={handlePlayTrack}
-                  loadingTrackId={loadingTrackId}
-                  queuedTrackIds={queuedTrackIds}
-                  onEnqueueTrack={handleEnqueueTrack}
-                  onOpenCollection={handleOpenCollection}
-                  onRenamePlaylist={handleRenamePlaylist}
-                  onDeletePlaylist={handleDeletePlaylist}
-                />
-              )}
-
-              {currentView === "smart_mixes" && (
-                <PlaylistsView
-                  viewMode="smart_mixes"
-                  playlists={playlists}
-                  currentUser={currentUser}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  activePlaylistId={playingPlaylistId}
-                  onSelectPlaylist={() => {}}
-                  onPlayPlaylist={handlePlayPlaylist}
-                  onCreatePlaylist={handleCreatePlaylist}
-                  onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
-                  onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                  onAddMissingToWishlist={handleAddMissingToWishlist}
-                  onLaunchSoulseek={handleLaunchSoulseek}
-                  onSearchDirect={handleInitiateDirectDownloadSearch}
-                  onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                  onPlayTrack={handlePlayTrack}
-                  loadingTrackId={loadingTrackId}
-                  queuedTrackIds={queuedTrackIds}
-                  onEnqueueTrack={handleEnqueueTrack}
-                  onOpenCollection={handleOpenCollection}
-                  onRenamePlaylist={handleRenamePlaylist}
-                  onDeletePlaylist={handleDeletePlaylist}
-                />
-              )}
-
-              {currentView === "discovery" && (
-                <DiscoveryView
-                  recommendations={discoveryRecs}
-                  worldTrending={worldTrending}
-                  localTracks={tracks}
-                  playlists={playlists}
-                  onPlayPlaylist={handlePlayPlaylist}
-                  onAddToWishlist={(rec) =>
-                    handleAddToWishlist(rec.title, rec.artist, rec.album)
-                  }
-                  onSearchDirect={(artist, title) =>
+                  onDownload={(artist, title) =>
                     handleInitiateDirectDownloadSearch(artist, title)
                   }
-                  onRefresh={() => fetchDiscovery(true, true)}
-                  onPlayOnlineTrack={handlePlayOnlineTrack}
-                  onStopTrack={handleStopTrack}
-                  activeOnlineTrackId={playbackState.current_track?.id || null}
-                  isOnlinePlaying={playbackState.is_playing}
-                  loadingTrackId={loadingTrackId}
-                  currentLocalTrack={playbackState.current_track}
-                  isLocalPlaying={playbackState.is_playing}
-                  onOpenCollection={handleOpenCollection}
-                  onPlayCollection={handlePlayDiscoveredCollection}
+                  onSaveToPlaylists={handleSaveCollectionToPlaylists}
+                  currentPlayingTrackId={
+                    playbackState.is_playing
+                      ? playbackState.current_track?.id
+                      : undefined
+                  }
+                  isPlaying={isPlayingThisCollection}
+                  isSaved={isCollectionSaved}
+                  isShuffled={playbackState.is_shuffled}
                   downloads={downloads}
-                  searchQuery={globalSearchQuery}
-                  setSearchQuery={setGlobalSearchQuery}
-                  searchResults={currentSearchResults}
-                  downloadTargets={downloadTargets}
-                  setSearchResults={setGlobalSearchResults}
-                  isSearchingOnline={isGlobalSearching}
-                  onSearchOnline={handleGlobalOnlineSearch}
-                  onClearSearch={handleGlobalClearSearch}
                   trackPlaylistMap={regularTrackPlaylistMap}
-                  onAddToPlaylist={(rec) =>
+                  userPlaylistIds={regularPlaylistIds}
+                  onAddToPlaylist={(track) =>
                     handleOpenAddToPlaylistModal({
                       id:
-                        rec.matched_local_track_id &&
-                        !rec.matched_local_track_id.startsWith("online:") &&
-                        !rec.matched_local_track_id.startsWith("itunes:")
-                          ? rec.matched_local_track_id
-                          : rec.external_track_id,
-                      title: rec.title,
-                      artist: rec.artist,
-                      album: rec.album,
-                      cover_art_url: rec.cover_art_url,
+                        track.matched_local_track_id &&
+                        !track.matched_local_track_id.startsWith("online:") &&
+                        !track.matched_local_track_id.startsWith("itunes:")
+                          ? track.matched_local_track_id
+                          : track.id,
+                      title: track.title,
+                      artist: track.artist,
+                      album: track.album,
+                      cover_art_url: track.cover_art_url,
                     })
                   }
-                  onGoToLibrary={() => navigate(viewDestination("library"))}
-                  queuedTrackIds={queuedTrackIds}
-                  onEnqueueTrack={handleEnqueueRecommendation}
+                  onRenamePlaylist={handleRenamePlaylist}
+                  onDeletePlaylist={handleDeletePlaylist}
                   likedTrackIds={likedTrackIds}
+                  onToggleLike={handleToggleCollectionLike}
+                  queuedTrackIds={queuedTrackIds}
+                  onEnqueueTrack={(track) =>
+                    handleEnqueueRecommendation(
+                      track.rawRecommendation || {
+                        external_track_id: track.id,
+                        provider: track.matched_local_track_id
+                          ? "library"
+                          : "online",
+                        provider_id: track.id,
+                        title: track.title,
+                        artist: track.artist,
+                        album: track.album,
+                        duration_secs: track.duration_secs,
+                        cover_art_url: track.cover_art_url,
+                        preview_url: track.preview_url,
+                        matched_local_track_id: track.matched_local_track_id,
+                        match_status: track.matched_local_track_id
+                          ? "EXACT_MATCH"
+                          : "NOT_FOUND",
+                        recommendation_reason: "From collection",
+                        in_wishlist: false,
+                      },
+                    )
+                  }
                 />
+              ) : (
+                <>
+                  {currentView === "home" && (
+                    <HomeView
+                      overview={homeOverview}
+                      isLoading={isHomeLoading}
+                      onRefresh={fetchHomeOverview}
+                      onStartFlow={handleStartFlow}
+                      onTogglePlayback={handleUnifiedPlayPause}
+                      onToggleFlowPlayback={handleToggleFlowPlayback}
+                      currentTrack={playbackState.current_track}
+                      currentCover={activePlayingArtwork}
+                      previousTrack={previousTrackRef.current}
+                      nextTrack={nextQueuedTrack}
+                      onPreviousTrack={handlePreviousTrack}
+                      onNextTrack={handleNextTrack}
+                      onStopFlow={handleStopFlow}
+                      onPlayTrack={handlePlayTrack}
+                      onEnqueueTrack={handleEnqueueTrack}
+                      onOpenAlbum={handleSelectAlbum}
+                      loadingTrackId={loadingTrackId}
+                      activeTrackId={playbackState.current_track?.id}
+                      isPlaying={playbackState.is_playing}
+                      flowSteering={flowSteering}
+                      onFlowSteeringChange={handleFlowSteeringChange}
+                      onDiscover={handleHomeDiscover}
+                      queuedTrackIds={queuedTrackIds}
+                    />
+                  )}
+
+                  {currentView === "library" && (
+                    <LibraryView
+                      tracks={tracks}
+                      currentTrackId={playbackState.current_track?.id}
+                      isPlaying={playbackState.is_playing}
+                      queuedTrackIds={queuedTrackIds}
+                      onPlayTrack={handlePlayTrack}
+                      loadingTrackId={loadingTrackId}
+                      onEnqueueTrack={handleEnqueueTrack}
+                      onLikeTrack={handleLike}
+                      onRemoveFeedback={handleRemoveFeedback}
+                      onRescan={handleRescanLibrary}
+                      onSearch={handleSearchLibrary}
+                      searchQuery={destination.libraryQuery}
+                      trackPlaylistMap={regularTrackPlaylistMap}
+                      likedTrackIds={likedTrackIds}
+                      onOpenAddToPlaylistModal={(t) =>
+                        handleOpenAddToPlaylistModal({
+                          id: t.id,
+                          title: t.title,
+                          artist: t.artist_name,
+                          album: t.album_title,
+                        })
+                      }
+                    />
+                  )}
+
+                  {currentView === "albums" && (
+                    <AlbumsView
+                      albums={albums}
+                      onSelectAlbum={handleSelectAlbum}
+                    />
+                  )}
+
+                  {currentView === "playlists" && (
+                    <PlaylistsView
+                      viewMode="playlists"
+                      playlists={playlists}
+                      currentUser={currentUser}
+                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                      activePlaylistId={playingPlaylistId}
+                      onSelectPlaylist={() => {}}
+                      onPlayPlaylist={handlePlayPlaylist}
+                      onCreatePlaylist={handleCreatePlaylist}
+                      onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                      onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                      onAddMissingToWishlist={handleAddMissingToWishlist}
+                      onLaunchSoulseek={handleLaunchSoulseek}
+                      onSearchDirect={handleInitiateDirectDownloadSearch}
+                      onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                      onPlayTrack={handlePlayTrack}
+                      loadingTrackId={loadingTrackId}
+                      queuedTrackIds={queuedTrackIds}
+                      onEnqueueTrack={handleEnqueueTrack}
+                      onOpenCollection={handleOpenCollection}
+                      onRenamePlaylist={handleRenamePlaylist}
+                      onDeletePlaylist={handleDeletePlaylist}
+                    />
+                  )}
+
+                  {currentView === "smart_mixes" && (
+                    <PlaylistsView
+                      viewMode="smart_mixes"
+                      playlists={playlists}
+                      currentUser={currentUser}
+                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                      activePlaylistId={playingPlaylistId}
+                      onSelectPlaylist={() => {}}
+                      onPlayPlaylist={handlePlayPlaylist}
+                      onCreatePlaylist={handleCreatePlaylist}
+                      onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                      onSaveImportedPlaylist={handleSaveImportedPlaylist}
+                      onAddMissingToWishlist={handleAddMissingToWishlist}
+                      onLaunchSoulseek={handleLaunchSoulseek}
+                      onSearchDirect={handleInitiateDirectDownloadSearch}
+                      onFetchPlaylistTracks={handleFetchPlaylistTracks}
+                      onPlayTrack={handlePlayTrack}
+                      loadingTrackId={loadingTrackId}
+                      queuedTrackIds={queuedTrackIds}
+                      onEnqueueTrack={handleEnqueueTrack}
+                      onOpenCollection={handleOpenCollection}
+                      onRenamePlaylist={handleRenamePlaylist}
+                      onDeletePlaylist={handleDeletePlaylist}
+                    />
+                  )}
+
+                  {currentView === "discovery" && (
+                    <DiscoveryView
+                      recommendations={discoveryRecs}
+                      worldTrending={worldTrending}
+                      localTracks={tracks}
+                      playlists={playlists}
+                      onPlayPlaylist={handlePlayPlaylist}
+                      onAddToWishlist={(rec) =>
+                        handleAddToWishlist(rec.title, rec.artist, rec.album)
+                      }
+                      onSearchDirect={(artist, title) =>
+                        handleInitiateDirectDownloadSearch(artist, title)
+                      }
+                      onRefresh={() => fetchDiscovery(true, true)}
+                      onPlayOnlineTrack={handlePlayOnlineTrack}
+                      onStopTrack={handleStopTrack}
+                      activeOnlineTrackId={
+                        playbackState.current_track?.id || null
+                      }
+                      isOnlinePlaying={playbackState.is_playing}
+                      loadingTrackId={loadingTrackId}
+                      currentLocalTrack={playbackState.current_track}
+                      isLocalPlaying={playbackState.is_playing}
+                      onOpenCollection={handleOpenCollection}
+                      onPlayCollection={handlePlayDiscoveredCollection}
+                      downloads={downloads}
+                      searchQuery={globalSearchQuery}
+                      setSearchQuery={setGlobalSearchQuery}
+                      searchResults={currentSearchResults}
+                      downloadTargets={downloadTargets}
+                      setSearchResults={setGlobalSearchResults}
+                      isSearchingOnline={isGlobalSearching}
+                      onSearchOnline={handleGlobalOnlineSearch}
+                      onClearSearch={handleGlobalClearSearch}
+                      trackPlaylistMap={regularTrackPlaylistMap}
+                      onAddToPlaylist={(rec) =>
+                        handleOpenAddToPlaylistModal({
+                          id:
+                            rec.matched_local_track_id &&
+                            !rec.matched_local_track_id.startsWith("online:") &&
+                            !rec.matched_local_track_id.startsWith("itunes:")
+                              ? rec.matched_local_track_id
+                              : rec.external_track_id,
+                          title: rec.title,
+                          artist: rec.artist,
+                          album: rec.album,
+                          cover_art_url: rec.cover_art_url,
+                        })
+                      }
+                      onGoToLibrary={() => navigate(viewDestination("library"))}
+                      queuedTrackIds={queuedTrackIds}
+                      onEnqueueTrack={handleEnqueueRecommendation}
+                      likedTrackIds={likedTrackIds}
+                    />
+                  )}
+
+                  {currentView === "now_playing" && (interfacePreference.style === "brutalist" ? <BrutalistPoster albumId={albums.find(a => a.title === playbackState.current_track?.album_title && a.artist_name === playbackState.current_track?.artist_name)?.id} track={playbackState.current_track} cover={activePlayingArtwork} index={playbackState.current_queue_index} playing={playbackState.is_playing} loading={loadingTrackId !== null || playbackState.is_buffering} entries={queueEntries} tracks={tracks} onPlayIndex={handlePlayQueueIndex} onOpenAlbum={handleSelectAlbum} /> :
+                    <PlaybackStage
+                      track={playbackState.current_track}
+                      cover={activePlayingArtwork}
+                      previous={previousTrackRef.current}
+                      next={nextQueuedTrack}
+                      index={playbackState.current_queue_index}
+                      playing={playbackState.is_playing}
+                      loading={
+                        loadingTrackId !== null || playbackState.is_buffering
+                      }
+                      onPrevious={handlePreviousTrack}
+                      onNext={handleNextTrack}
+                    />
+                  )}
+                  {currentView === "queue" && (
+                    <QueueView
+                      entries={queueEntries}
+                      tracks={tracks}
+                      currentTrack={playbackState.current_track}
+                      onPlayIndex={handlePlayQueueIndex}
+                      onRemove={handleDequeueTrack}
+                      onClear={handleClearQueue}
+                    />
+                  )}
+                  {currentView === "downloads" && (
+                    <DownloadsView
+                      downloads={downloads}
+                      onSearchSoulseek={handleSearchSoulseek}
+                      onStartDownload={handleStartDownload}
+                      onCancelDownload={handleCancelDownload}
+                      onRefreshDownloads={fetchDownloads}
+                      onLaunchSoulseek={handleLaunchSoulseek}
+                      onImportSoulseek={handleImportSoulseekDownloads}
+                    />
+                  )}
+                  {currentView === "wishlist" && (
+                    <WishlistView
+                      wishlist={wishlist}
+                      onAddToWishlist={handleAddToWishlist}
+                      onUpdateStatus={handleUpdateWishlistStatus}
+                      onSearchDirect={handleInitiateDirectDownloadSearch}
+                      onLaunchSoulseek={handleLaunchSoulseek}
+                    />
+                  )}
+
+                  {currentView === "notifications" && (
+                    <NotificationsView
+                      notifications={notifications}
+                      onClearAll={clearAllNotifications}
+                      onRemoveNotification={deleteNotification}
+                      onMarkAllRead={markAllNotificationsAsRead}
+                      onMarkAsRead={markNotificationAsRead}
+                    />
+                  )}
+
+                  {currentView === "stats" && (
+                    <StatsView
+                      currentUser={currentUser}
+                      onPlayTrack={handlePlayTrack}
+                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                      fetchStatsOverview={fetchStatsOverview}
+                      refreshTrigger={statsRefreshTrigger}
+                      onUpdateUser={(u) => setCurrentUser(u)}
+                    />
+                  )}
+
+                  {currentView === "settings" && (
+                    <SettingsView
+                      settings={settings}
+                      currentUser={currentUser}
+                      onLogout={handleLogout}
+                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                      interfaceStyle={interfacePreference.style}
+                      onSelectInterfaceStyle={interfacePreference.select}
+                      isSavingInterfaceStyle={interfacePreference.saving}
+                      interfaceStyleError={interfacePreference.error}
+                      configuredFolders={
+                        onboardingStatus?.configured_folders || []
+                      }
+                      onAddFolder={handleAddFolder}
+                      onRemoveFolder={handleRemoveFolder}
+                      onRescanLibrary={handleRescanLibrary}
+                      onReloadSettings={fetchSettings}
+                      isScanning={isScanning}
+                    />
+                  )}
+                </>
               )}
+            </Suspense>
+            </ViewMemoryProvider>
+          </main>
+        </div>
 
-              {currentView === "notifications" && (
-                <NotificationsView
-                  notifications={notifications}
-                  onClearAll={clearAllNotifications}
-                  onRemoveNotification={deleteNotification}
-                  onMarkAllRead={markAllNotificationsAsRead}
-                  onMarkAsRead={markNotificationAsRead}
-                />
-              )}
-
-              {currentView === "stats" && (
-                <StatsView
-                  currentUser={currentUser}
-                  onPlayTrack={handlePlayTrack}
-                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                  onLogout={handleLogout}
-                  fetchStatsOverview={fetchStatsOverview}
-                  refreshTrigger={statsRefreshTrigger}
-                  onUpdateUser={(u) => setCurrentUser(u)}
-                />
-              )}
-
-              {currentView === "settings" && (
-                <SettingsView
-                  settings={settings}
-                  configuredFolders={onboardingStatus?.configured_folders || []}
-                  cloudSyncStatus={cloudSyncStatus}
-                  onAddFolder={handleAddFolder}
-                  onRemoveFolder={handleRemoveFolder}
-                  onRescanLibrary={handleRescanLibrary}
-                  onRerunOnboarding={handleRerunOnboarding}
-                  onLaunchSoulseek={handleLaunchSoulseek}
-                  onImportSoulseek={handleImportSoulseekDownloads}
-                  onSyncCloud={handleSyncCloud}
-                  onSetCloudUrl={handleSetCloudUrl}
-                  onLogoutAll={handleLogoutAll}
-                  onReloadSettings={fetchSettings}
-                  isScanning={isScanning}
-                  isSyncingCloud={isSyncingCloud}
-                />
-              )}
-            </>
-          )}
-          </Suspense>
-        </main>
-      </div>
-
-      {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
-      <NowPlayingBar
-        playbackState={playbackState}
-        isLoading={loadingTrackId !== null || !!playbackState.is_buffering}
-        currentTrack={playbackState.current_track}
-        coverArtUrl={activePlayingArtwork}
-        onPlayPause={handleUnifiedPlayPause}
-        onNext={handleNextTrack}
-        onPrevious={handlePreviousTrack}
-        onSeek={handleUnifiedSeek}
-        onVolumeChange={handleVolumeChange}
-        onToggleMute={handleToggleMute}
-        onToggleRepeat={handleToggleRepeat}
-        onToggleShuffle={handleToggleShuffle}
-        onLike={handleLike}
-        onLikeOnline={handleLikeOnline}
-        isOnlineLiked={isCurrentTrackLiked}
-        onRemoveFeedback={handleRemoveFeedback}
-        onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
-        isInPlaylist={isCurrentTrackInPlaylist}
-        onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
-        onOpenOrigin={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
-            ? handleOpenPlayingOrigin
-            : undefined
-        }
-        originName={
-          playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
-            ? playingOrigin.name
-            : undefined
-        }
-        onInspectWhyTrack={
-          playingOrigin?.type === "flow" && playbackState.current_track
-            ? handleInspectWhyCurrentTrack
-            : undefined
-        }
-        isLyricsActive={isLyricsActive}
-        onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => handleToggleFullscreen()}
-      />
-
-      {/* Full Screen Player View (matching user uploaded images) */}
-      <Suspense fallback={null}>
-      {isFullscreen && (
-        <FullScreenPlayerView
+        {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
+        <MainPlayer
+          flowActive={!!homeOverview?.flow_session?.is_active}
+          onToggleFlow={handleDeckFlow}
+          entries={queueEntries}
+          tracks={tracks}
+          onPlayIndex={handlePlayQueueIndex}
+          currentUser={currentUser}
+          view={currentView}
+          onNavigate={handleSelectView}
           playbackState={playbackState}
           isLoading={loadingTrackId !== null || !!playbackState.is_buffering}
           currentTrack={playbackState.current_track}
           coverArtUrl={activePlayingArtwork}
-          isInPlaylist={isCurrentTrackInPlaylist}
-          onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
-          isLyricsActive={isLyricsActive}
-          onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
-          onToggleFullscreen={() => handleToggleFullscreen(false)}
+          onOpenQueue={handleOpenQueue}
+          onOpenNowPlaying={handleOpenNowPlaying}
           onPlayPause={handleUnifiedPlayPause}
           onNext={handleNextTrack}
           onPrevious={handlePreviousTrack}
@@ -3273,170 +4023,289 @@ export const App: React.FC = () => {
           isOnlineLiked={isCurrentTrackLiked}
           onRemoveFeedback={handleRemoveFeedback}
           onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
+          isInPlaylist={isCurrentTrackInPlaylist}
+          onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
           onOpenOrigin={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
-              ? () => {
-                  handleToggleFullscreen(false);
-                  handleOpenPlayingOrigin();
-                }
+            playingOrigin?.type === "playlist" ||
+            playingOrigin?.type === "mix" ||
+            playingOrigin?.type === "chart" ||
+            playingOrigin?.type === "flow"
+              ? handleOpenPlayingOrigin
               : undefined
           }
           originName={
-            playingOrigin?.type === "playlist" || playingOrigin?.type === "mix" || playingOrigin?.type === "chart" || playingOrigin?.type === "flow"
+            playingOrigin?.type === "playlist" ||
+            playingOrigin?.type === "mix" ||
+            playingOrigin?.type === "chart" ||
+            playingOrigin?.type === "flow"
               ? playingOrigin.name
               : undefined
           }
+          onInspectWhyTrack={
+            playingOrigin?.type === "flow" && playbackState.current_track
+              ? handleInspectWhyCurrentTrack
+              : undefined
+          }
+          isLyricsActive={isLyricsActive}
+          onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => handleToggleFullscreen()}
         />
-      )}
 
-      {/* Top-Right Floating Toast Notifications */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        {/* Full Screen Player View (matching user uploaded images) */}
+        <Suspense fallback={null}>
+          {isFullscreen && (
+            <FullScreenPlayerView
+              brutalist={interfacePreference.style === "brutalist" ? { entries: queueEntries, tracks, onPlayIndex: handlePlayQueueIndex, currentUser, view: currentView, onNavigate: handleSelectView, flowActive: !!homeOverview?.flow_session?.is_active, onToggleFlow: handleDeckFlow, albumId: albums.find(a => a.title === playbackState.current_track?.album_title && a.artist_name === playbackState.current_track?.artist_name)?.id, onOpenAlbum: handleSelectAlbum } : undefined}
+              onOpenNowPlaying={() => { handleToggleFullscreen(false); handleOpenNowPlaying(); }}
+              playbackState={playbackState}
+              previousTrack={previousTrackRef.current}
+              nextTrack={nextQueuedTrack}
+              onOpenQueue={handleOpenQueue}
+              onInspectWhyTrack={
+                playingOrigin?.type === "flow"
+                  ? handleInspectWhyCurrentTrack
+                  : undefined
+              }
+              isLoading={
+                loadingTrackId !== null || !!playbackState.is_buffering
+              }
+              currentTrack={playbackState.current_track}
+              coverArtUrl={activePlayingArtwork}
+              isInPlaylist={isCurrentTrackInPlaylist}
+              onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
+              isLyricsActive={isLyricsActive}
+              onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
+              onToggleFullscreen={() => handleToggleFullscreen(false)}
+              onPlayPause={handleUnifiedPlayPause}
+              onNext={handleNextTrack}
+              onPrevious={handlePreviousTrack}
+              onSeek={handleUnifiedSeek}
+              onVolumeChange={handleVolumeChange}
+              onToggleMute={handleToggleMute}
+              onToggleRepeat={handleToggleRepeat}
+              onToggleShuffle={handleToggleShuffle}
+              onLike={handleLike}
+              onLikeOnline={handleLikeOnline}
+              isOnlineLiked={isCurrentTrackLiked}
+              onRemoveFeedback={handleRemoveFeedback}
+              onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
+              onOpenOrigin={
+                playingOrigin?.type === "playlist" ||
+                playingOrigin?.type === "mix" ||
+                playingOrigin?.type === "chart" ||
+                playingOrigin?.type === "flow"
+                  ? () => {
+                      handleToggleFullscreen(false);
+                      handleOpenPlayingOrigin();
+                    }
+                  : undefined
+              }
+              originName={
+                playingOrigin?.type === "playlist" ||
+                playingOrigin?.type === "mix" ||
+                playingOrigin?.type === "chart" ||
+                playingOrigin?.type === "flow"
+                  ? playingOrigin.name
+                  : undefined
+              }
+            />
+          )}
 
-      {/* Auto-update notification banner */}
-      <UpdateBanner />
+          {/* Top-Right Floating Toast Notifications */}
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Center Modal Popup for Playlist Management */}
-      <AddToPlaylistModal
-        isOpen={isPlaylistModalOpen}
-        onClose={() => {
-          setIsPlaylistModalOpen(false);
-          setPlaylistModalTrack(null);
-        }}
-        track={playlistModalTrack}
-        playlists={playlists.filter((p) => p.is_smart_mix === 0 && p.name !== "Liked Songs")}
-        trackPlaylistIds={
-          playlistModalTrack && regularTrackPlaylistMap[playlistModalTrack.id]
-            ? regularTrackPlaylistMap[playlistModalTrack.id]
-            : []
-        }
-        onTogglePlaylist={handleToggleTrackInPlaylist}
-        onCreatePlaylist={handleCreatePlaylist}
-      />
+          {/* Auto-update notification banner */}
+          <UpdateBanner />
 
-      {/* Auth Modal (Login / Sign Up) */}
-      {isAuthModalOpen && (
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          onLogin={handleLogin}
-          onSignUp={handleSignUp}
-        />
-      )}
+          {/* Center Modal Popup for Playlist Management */}
+          <AddToPlaylistModal
+            isOpen={isPlaylistModalOpen}
+            onClose={() => {
+              setIsPlaylistModalOpen(false);
+              setPlaylistModalTrack(null);
+            }}
+            track={playlistModalTrack}
+            playlists={playlists.filter(
+              (p) => p.is_smart_mix === 0 && p.name !== "Liked Songs",
+            )}
+            trackPlaylistIds={
+              playlistModalTrack &&
+              regularTrackPlaylistMap[playlistModalTrack.id]
+                ? regularTrackPlaylistMap[playlistModalTrack.id]
+                : []
+            }
+            onTogglePlaylist={handleToggleTrackInPlaylist}
+            onCreatePlaylist={handleCreatePlaylist}
+          />
 
-      {/* Center Modal Popup for Track Download */}
-      <DownloadOptionsModal
-        isOpen={!!downloadModalTrack}
-        track={downloadModalTrack}
-        onClose={() => setDownloadModalTrack(null)}
-        onSearchSoulseek={handleSearchSoulseek}
-        onStartDownload={handleModalStartDownload}
-        onDirectAudioDownload={handleDirectAudioDownload}
-      />
-      </Suspense>
+          {/* Auth Modal (Login / Sign Up) */}
+          {isAuthModalOpen && (
+            <AuthModal
+              isOpen={isAuthModalOpen}
+              onClose={() => setIsAuthModalOpen(false)}
+              onLogin={handleLogin}
+              onSignUp={handleSignUp}
+            />
+          )}
 
-      {/* Onboarding Modal */}
-      {showOnboarding && onboardingStatus && (
-        <OnboardingModal
-          defaultMusicDir={onboardingStatus.default_music_dir}
-          onComplete={handleCompleteOnboarding}
-        />
-      )}
+          {/* Center Modal Popup for Track Download */}
+          <DownloadOptionsModal
+            isOpen={!!downloadModalTrack}
+            track={downloadModalTrack}
+            onClose={() => setDownloadModalTrack(null)}
+            onSearchSoulseek={handleSearchSoulseek}
+            onStartDownload={handleModalStartDownload}
+            onDirectAudioDownload={handleDirectAudioDownload}
+          />
+        </Suspense>
 
-      {/* Themed In-App Prompt Dialog */}
-      {promptDialog && promptDialog.isOpen && (
-        <PromptModal
-          title={promptDialog.title}
-          message={promptDialog.message}
-          defaultValue={promptDialog.defaultValue}
-          onConfirm={(val) => {
-            promptDialog.resolve(val);
-            setPromptDialog(null);
-          }}
-          onCancel={() => {
-            promptDialog.resolve(null);
-            setPromptDialog(null);
-          }}
-        />
-      )}
+        {/* Onboarding Modal */}
+        {showOnboarding && onboardingStatus && (
+          <OnboardingModal
+            defaultMusicDir={onboardingStatus.default_music_dir}
+            onComplete={handleCompleteOnboarding}
+          />
+        )}
 
-      {/* Flow Why This Track Modal */}
-      {whyTrackModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setWhyTrackModal(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.72)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
+        {/* Themed In-App Prompt Dialog */}
+        {promptDialog && promptDialog.isOpen && (
+          <PromptModal
+            title={promptDialog.title}
+            message={promptDialog.message}
+            defaultValue={promptDialog.defaultValue}
+            onConfirm={(val) => {
+              promptDialog.resolve(val);
+              setPromptDialog(null);
+            }}
+            onCancel={() => {
+              promptDialog.resolve(null);
+              setPromptDialog(null);
+            }}
+          />
+        )}
+
+        {/* Flow Why This Track Modal */}
+        {whyTrackModal && (
           <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={() => setWhyTrackModal(null)}
             style={{
-              maxWidth: "420px",
-              width: "90%",
-              padding: "24px",
-              borderRadius: "14px",
-              backgroundColor: "var(--bg-card, #1a1714)",
-              border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
-              boxShadow: "0 20px 48px rgba(0, 0, 0, 0.65)",
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.72)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Sparkles size={18} color="var(--accent-secondary, #f3701e)" />
-                <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "var(--text-main, #e8d8c9)" }}>
-                  Why This Track?
-                </h3>
-              </div>
-              <button
-                onClick={() => setWhyTrackModal(null)}
-                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-main, #e8d8c9)" }}>
-                {whyTrackModal.title}
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-dim, #948779)" }}>
-                {whyTrackModal.artist}
-              </div>
-            </div>
-
             <div
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
               style={{
-                padding: "12px 14px",
-                borderRadius: "8px",
-                backgroundColor: "rgba(243, 112, 30, 0.08)",
-                border: "1px solid rgba(243, 112, 30, 0.2)",
-                fontSize: "0.88rem",
-                color: "var(--accent-light, #ff9b60)",
-                lineHeight: 1.45,
+                maxWidth: "420px",
+                width: "90%",
+                padding: "24px",
+                borderRadius: "14px",
+                backgroundColor: "var(--bg-card, #1a1714)",
+                border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
+                boxShadow: "0 20px 48px rgba(0, 0, 0, 0.65)",
               }}
             >
-              <TrackExplanation evidence={whyTrackModal.explanation} />
-            </div>
-
-            <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setWhyTrackModal(null)}
-                style={{ fontSize: "0.85rem", padding: "6px 16px" }}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "16px",
+                }}
               >
-                Got it
-              </button>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <Sparkles
+                    size={18}
+                    color="var(--accent-secondary, #f3701e)"
+                  />
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: 700,
+                      margin: 0,
+                      color: "var(--text-main, #e8d8c9)",
+                    }}
+                  >
+                    Why This Track?
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setWhyTrackModal(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    padding: "4px",
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ marginBottom: "12px" }}>
+                <div
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    color: "var(--text-main, #e8d8c9)",
+                  }}
+                >
+                  {whyTrackModal.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.82rem",
+                    color: "var(--text-dim, #948779)",
+                  }}
+                >
+                  {whyTrackModal.artist}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(243, 112, 30, 0.08)",
+                  border: "1px solid rgba(243, 112, 30, 0.2)",
+                  fontSize: "0.88rem",
+                  color: "var(--accent-light, #ff9b60)",
+                  lineHeight: 1.45,
+                }}
+              >
+                <TrackExplanation evidence={whyTrackModal.explanation} />
+              </div>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setWhyTrackModal(null)}
+                  style={{ fontSize: "0.85rem", padding: "6px 16px" }}
+                >
+                  Got it
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </InterfaceContext.Provider>
   );
 };

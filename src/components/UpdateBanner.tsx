@@ -16,19 +16,27 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
     if (!isTauri()) return;
 
     let unlisten: (() => void) | undefined;
+    let disposed = false;
 
     (async () => {
       try {
         const { listen } = await import("@tauri-apps/api/event");
-        unlisten = await listen<{ version: string }>("update-available", (e) => {
-          setUpdateVersion(e.payload.version);
-        });
+        const release = await listen<{ version: string }>(
+          "update-available",
+          (e) => {
+            if (disposed) return;
+            setUpdateVersion(e.payload.version);
+          },
+        );
+        if (disposed) release();
+        else unlisten = release;
       } catch {
         // Not in Tauri context, ignore
       }
     })();
 
     return () => {
+      disposed = true;
       unlisten?.();
     };
   }, []);

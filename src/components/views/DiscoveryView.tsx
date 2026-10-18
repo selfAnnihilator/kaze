@@ -1,4 +1,9 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import { DiscoveryChapters, DiscoveryPreviewTarget, type DiscoveryPreview } from "../../presentation/DiscoveryChapters";
+import { WindowedStrip } from "../../presentation/WindowedStrip";
+import { Artwork } from "../../presentation/Artwork";
+import { useDiscoveryMemory } from "../../presentation/ViewMemory";
+import React, { useState, useRef, useEffect, useMemo,
+} from "react";
 import {
   DownloadCloud,
   Sparkles,
@@ -19,7 +24,8 @@ import {
   Check,
   Heart,
 } from "lucide-react";
-import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
+import { DiscoveryRecommendation, Track, Playlist, DownloadTask,
+} from "../../types";
 import { executeQuery } from "../../services/api";
 import { CollectionData } from "./CollectionDetailView";
 import { OnlineSearchResultsSection } from "./OnlineSearchResultsSection";
@@ -96,7 +102,9 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
 
   const downloadPercent =
     activeDownload?.file_size && activeDownload.file_size > 0
-      ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100))
+      ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100,
+          ),
+        )
       : activeDownload?.status === "DOWNLOADING"
       ? 50
       : 0;
@@ -121,6 +129,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
 
   return (
     <div
+      className="discovery-card-body"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
@@ -144,7 +153,6 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         cursor: "pointer",
         position: "relative",
         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-4px)" : "none",
         boxShadow: isPlaying
           ? "0 0 20px rgba(139, 124, 246, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
           : isHovered
@@ -155,7 +163,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       }}
     >
       {/* 1. Thumbnail (Biggest element, passport aspect ratio) */}
-      <div
+      <div className="discovery-card-art"
         style={{
           position: "relative",
           width: "100%",
@@ -168,27 +176,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           justifyContent: "center",
         }}
       >
-        {rec.cover_art_url ? (
-          <img
-            src={rec.cover_art_url}
-            alt={rec.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            loading="lazy"
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(232, 216, 201, 0.15))",
-            }}
-          >
-            <Music2 size={36} color="var(--text-dim)" />
-          </div>
-        )}
+        <Artwork src={rec.cover_art_url} alt={rec.title} />
 
         {/* Downloaded Symbol (tick in circle icon) on top right of thumbnail */}
         {isDownloaded && (
@@ -235,7 +223,8 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
             </div>
-            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#e8d8c9", letterSpacing: "0.4px" }}>
+            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#e8d8c9", letterSpacing: "0.4px",
+              }}>
               PLAYING
             </span>
           </div>
@@ -310,7 +299,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       </div>
 
       {/* 2. Name (Below thumbnail, bold, smaller than thumbnail) */}
-      <div
+      <div className="discovery-card-title"
         style={{
           marginTop: "10px",
           fontWeight: 700,
@@ -395,10 +384,18 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               fontWeight: 600,
               color: "var(--accent-secondary)",
             }}
-            title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
+            title={
+              activeDownload.status === "QUEUED"
+                ? "Download queued..."
+                : `Downloading ${downloadPercent}%`
+            }
           >
             <RefreshCw size={11} className="spin-animation" />
-            <span>{activeDownload.status === "QUEUED" ? "Queued" : `${downloadPercent}%`}</span>
+            <span>
+              {activeDownload.status === "QUEUED"
+                ? "Queued"
+                : `${downloadPercent}%`}
+            </span>
           </div>
         ) : (
           <button
@@ -422,7 +419,9 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           </button>
         )}
 
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+        <div
+          style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}
+        >
           {isLiked && (
             <span
               title="Liked song"
@@ -444,7 +443,9 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
+              color: isInPlaylist
+                ? "var(--accent-secondary)"
+                : "var(--text-dim)",
               padding: "4px",
               display: "flex",
               alignItems: "center",
@@ -458,7 +459,9 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
                 onAddToWishlist(rec);
               }
             }}
-            title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+            title={
+              isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"
+            }
           >
             {isInPlaylist ? (
               <BookmarkCheck size={16} color="var(--accent-secondary)" />
@@ -483,11 +486,11 @@ interface MixItem {
   cover_art_url?: string;
 }
 
-const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void }> = ({
-  mix,
-  onPlay,
-  onOpen,
-}) => {
+const MixCard: React.FC<{
+  mix: MixItem;
+  onPlay: () => void;
+  onOpen?: () => void;
+}> = ({ mix, onPlay, onOpen }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -498,7 +501,9 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
       onClick={onOpen || onPlay}
       style={{
         backgroundColor: "var(--bg-card)",
-        border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
+        border: isHovered
+          ? "1px solid rgba(255, 255, 255, 0.22)"
+          : "1px solid var(--border)",
         borderRadius: "12px",
         padding: "10px",
         display: "flex",
@@ -506,8 +511,9 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
         cursor: "pointer",
         position: "relative",
         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-4px)" : "none",
-        boxShadow: isHovered ? "0 10px 24px rgba(0, 0, 0, 0.4)" : "0 2px 8px rgba(0, 0, 0, 0.15)",
+        boxShadow: isHovered
+          ? "0 10px 24px rgba(0, 0, 0, 0.4)"
+          : "0 2px 8px rgba(0, 0, 0, 0.15)",
         width: "100%",
         height: "100%",
       }}
@@ -528,11 +534,16 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
           textAlign: "center",
         }}
       >
-          <img
-            src={mix.cover_art_url || "/kaze-playlist-default.svg"}
-            alt={mix.name}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
+        <img decoding="async" loading="lazy" src={mix.cover_art_url || "/kaze-playlist-default.svg"}
+          alt={mix.name}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
 
         <button
           type="button"
@@ -557,7 +568,8 @@ const MixCard: React.FC<{ mix: MixItem; onPlay: () => void; onOpen?: () => void 
             cursor: "pointer",
             opacity: isHovered ? 1 : 0,
             transform: isHovered ? "scale(1)" : "scale(0.85)",
-            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            transition:
+              "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
             zIndex: 3,
           }}
           title={`Play ${mix.name}`}
@@ -611,21 +623,24 @@ interface ChartItem {
   badgeBg: string;
 }
 
-const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () => void }> = ({
-  chart,
-  onPlay,
-  onOpen,
-}) => {
+const ChartCard: React.FC<{
+  chart: ChartItem;
+  onPlay: () => void;
+  onOpen?: () => void;
+}> = ({ chart, onPlay, onOpen }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
+      className="chart-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onOpen || onPlay}
       style={{
         backgroundColor: "var(--bg-card)",
-        border: isHovered ? "1px solid rgba(255, 255, 255, 0.22)" : "1px solid var(--border)",
+        border: isHovered
+          ? "1px solid rgba(255, 255, 255, 0.22)"
+          : "1px solid var(--border)",
         borderRadius: "12px",
         padding: "10px",
         display: "flex",
@@ -633,13 +648,15 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
         cursor: "pointer",
         position: "relative",
         transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-4px)" : "none",
-        boxShadow: isHovered ? "0 10px 24px rgba(0, 0, 0, 0.4)" : "0 2px 8px rgba(0, 0, 0, 0.15)",
+        boxShadow: isHovered
+          ? "0 10px 24px rgba(0, 0, 0, 0.4)"
+          : "0 2px 8px rgba(0, 0, 0, 0.15)",
         width: "100%",
         height: "100%",
       }}
     >
       <div
+        className="chart-card-art"
         style={{
           position: "relative",
           width: "100%",
@@ -656,6 +673,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
         }}
       >
         <div
+          className="chart-card-badge"
           style={{
             backgroundColor: "rgba(0,0,0,0.6)",
             padding: "3px 8px",
@@ -670,6 +688,7 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
           TOP 50
         </div>
         <div
+          className="chart-card-region"
           style={{
             fontSize: "1.05rem",
             fontWeight: 900,
@@ -704,7 +723,8 @@ const ChartCard: React.FC<{ chart: ChartItem; onPlay: () => void; onOpen?: () =>
             cursor: "pointer",
             opacity: isHovered ? 1 : 0,
             transform: isHovered ? "scale(1)" : "scale(0.85)",
-            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            transition:
+              "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
             zIndex: 3,
           }}
           title={`Play ${chart.title}`}
@@ -783,7 +803,7 @@ interface DiscoveryViewProps {
   likedTrackIds?: Set<string>;
 }
 
-export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
+export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   recommendations,
   worldTrending,
   localTracks,
@@ -817,11 +837,14 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   onEnqueueTrack,
   likedTrackIds,
 }) => {
-  const [forYouFilter, setForYouFilter] = useState<"ALL" | "GENRE" | "SIMILAR">("ALL");
-  const [visibleCount, setVisibleCount] = useState(15);
+  const viewMemory = useDiscoveryMemory();
+  const [forYouFilter, setForYouFilter] = useState<"ALL" | "GENRE" | "SIMILAR">(
+    viewMemory.filter,
+  );
+  const [, setVisibleCount] = useState(15);
   const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
   const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
+    typeof navigator !== "undefined" ? navigator.onLine : true,
   );
 
   const handleRefreshTrending = async () => {
@@ -833,6 +856,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       if (songsScrollRef.current) {
         songsScrollRef.current.scrollLeft = 0;
       }
+      viewMemory.shelves.set(0, 0);
     } catch (err) {
       console.error("Failed to refresh trending:", err);
     } finally {
@@ -841,19 +865,33 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   };
 
   const playlistTrackIds = useMemo(
-    () => new Set(Object.entries(trackPlaylistMap || {})
-      .filter(([, playlistIds]) => playlistIds.length > 0)
-      .map(([trackId]) => trackId)),
-    [trackPlaylistMap]
+    () =>
+      new Set(
+        Object.entries(trackPlaylistMap || {})
+          .filter(([, playlistIds]) => playlistIds.length > 0)
+          .map(([trackId]) => trackId),
+      ),
+    [trackPlaylistMap],
   );
-  const { forYou } = useMemo(() => splitDiscoveryRecommendations({
-    recommendations,
-    playlistTrackIds,
-    likedTrackIds: likedTrackIds || new Set<string>(),
-    downloads,
-    downloadTargets,
-    localTracks,
-  }), [recommendations, playlistTrackIds, likedTrackIds, downloads, downloadTargets, localTracks]);
+  const { forYou } = useMemo(
+    () =>
+      splitDiscoveryRecommendations({
+        recommendations,
+        playlistTrackIds,
+        likedTrackIds: likedTrackIds || new Set<string>(),
+        downloads,
+        downloadTargets,
+        localTracks,
+      }),
+    [
+      recommendations,
+      playlistTrackIds,
+      likedTrackIds,
+      downloads,
+      downloadTargets,
+      localTracks,
+    ],
+  );
   const trending = worldTrending;
 
   const handleSongsScroll = () => {
@@ -883,11 +921,15 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   // Online Search State (fallback if not controlled by parent)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [, setInternalIsSearching] = useState(false);
-  const [internalSearchResults, setInternalSearchResults] = useState<DiscoveryRecommendation[] | null>(null);
+  const [internalSearchResults, setInternalSearchResults] = useState<
+    DiscoveryRecommendation[] | null
+  >(null);
 
-  const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const searchQuery =
+    propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
   const setSearchQuery = propSetSearchQuery || setInternalSearchQuery;
-  const searchResults = propSearchResults !== undefined ? propSearchResults : internalSearchResults;
+  const searchResults =
+    propSearchResults !== undefined ? propSearchResults : internalSearchResults;
   const setSearchResults = propSetSearchResults || setInternalSearchResults;
 
   const handleSearchOnline = async (queryOverride?: string) => {
@@ -895,7 +937,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       await propOnSearchOnline(queryOverride);
       return;
     }
-    const q = (typeof queryOverride === "string" ? queryOverride : searchQuery).trim();
+    const q = (
+      typeof queryOverride === "string" ? queryOverride : searchQuery
+    ).trim();
     if (!q) {
       setSearchResults(null);
       return;
@@ -921,10 +965,16 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         const titleLower = r.title.toLowerCase();
         const artistLower = r.artist.toLowerCase();
         const albumLower = r.album ? r.album.toLowerCase() : "";
-        if (titleLower.includes(qLower) || artistLower.includes(qLower) || albumLower.includes(qLower)) {
+        if (
+          titleLower.includes(qLower) ||
+          artistLower.includes(qLower) ||
+          albumLower.includes(qLower)
+        ) {
           return true;
         }
-        return qTokens.some((tok) => titleLower.includes(tok) || artistLower.includes(tok));
+        return qTokens.some(
+          (tok) => titleLower.includes(tok) || artistLower.includes(tok),
+        );
       });
 
       setSearchResults(relevant.length > 0 ? relevant : incoming);
@@ -949,37 +999,57 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     () =>
       forYou.filter((r) => {
         const s = r.recommendation_reason.toLowerCase();
-        return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
+        return (
+          s.includes("genre") ||
+          s.includes("popular in") ||
+          s.includes("trending in")
+        );
       }).length,
-    [forYou]
+    [forYou],
   );
 
   const forYouSimilarCount = useMemo(
     () =>
       forYou.filter((r) => {
         const s = r.recommendation_reason.toLowerCase();
-        return s.includes("similar") || s.includes("listening") || s.includes("library artist");
+        return (
+          s.includes("similar") ||
+          s.includes("listening") ||
+          s.includes("library artist")
+        );
       }).length,
-    [forYou]
+    [forYou],
   );
 
   const filteredForYou = useMemo(() => {
     if (forYouFilter === "GENRE") {
       return forYou.filter((r) => {
         const s = r.recommendation_reason.toLowerCase();
-        return s.includes("genre") || s.includes("popular in") || s.includes("trending in");
+        return (
+          s.includes("genre") ||
+          s.includes("popular in") ||
+          s.includes("trending in")
+        );
       });
     }
     if (forYouFilter === "SIMILAR") {
       return forYou.filter((r) => {
         const s = r.recommendation_reason.toLowerCase();
-        return s.includes("similar") || s.includes("listening") || s.includes("library artist");
+        return (
+          s.includes("similar") ||
+          s.includes("listening") ||
+          s.includes("library artist")
+        );
       });
     }
     return forYou;
   }, [forYou, forYouFilter]);
 
-  const handleForYouFilterChange = (nextFilter: "ALL" | "GENRE" | "SIMILAR") => {
+  const handleForYouFilterChange = (
+    nextFilter: "ALL" | "GENRE" | "SIMILAR",
+  ) => {
+    viewMemory.filter = nextFilter;
+    viewMemory.shelves.set(1, 0);
     setForYouFilter(nextFilter);
     if (forYouScrollRef.current) {
       forYouScrollRef.current.scrollLeft = 0;
@@ -992,26 +1062,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const chartsScrollRef = useRef<HTMLDivElement>(null);
   const discoveryRef = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
-    const discovery = discoveryRef.current;
-    const scroller = discovery?.closest<HTMLElement>(".main-content");
-    if (!discovery || !scroller) return;
-
-    // Pin to the hero's original position, including wrapped search suggestions.
-    const updateBackdropPosition = () => {
-      const top = discovery.getBoundingClientRect().top
-        - scroller.getBoundingClientRect().top + scroller.scrollTop;
-      discovery.style.setProperty("--backdrop-top", `${top}px`);
-    };
-    updateBackdropPosition();
-    const observer = new ResizeObserver(updateBackdropPosition);
-    observer.observe(scroller);
-    const search = scroller.querySelector(".global-search");
-    if (search) observer.observe(search);
-    return () => observer.disconnect();
-  }, [isOnline, searchResults !== null]);
-
-  const handleScroll = (ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") => {
+  const handleScroll = (
+    ref: React.RefObject<HTMLDivElement | null>,
+    direction: "left" | "right",
+  ) => {
     if (ref.current) {
       const amount = direction === "left" ? -500 : 500;
       ref.current.scrollBy({ left: amount, behavior: "smooth" });
@@ -1038,7 +1092,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       return {
         id: p.id,
         name: p.name,
-        subtitle: p.description || p.generation_reason || `${p.track_count || 0} tracks`,
+        subtitle:
+          p.description ||
+          p.generation_reason ||
+          `${p.track_count || 0} tracks`,
         bgGradient: gradients[idx % gradients.length],
         accentColor: "var(--accent-light)",
         playlistId: p.id,
@@ -1057,7 +1114,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Popular across 12 country charts",
       chartNumber: "WORLD",
       region: "Worldwide",
-      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 55%, #8b7cf6 100%)",
+      bgGradient:
+        "linear-gradient(135deg, #1a1714 0%, #4b607f 55%, #8b7cf6 100%)",
       badgeBg: "#8b7cf6",
     },
     {
@@ -1075,7 +1133,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Current top songs in the US chart",
       chartNumber: "USA",
       region: "United States",
-      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #8b7cf6 100%)",
+      bgGradient:
+        "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #8b7cf6 100%)",
       badgeBg: "#4b607f",
     },
     {
@@ -1084,7 +1143,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Current top songs in the UK chart",
       chartNumber: "UK",
       region: "United Kingdom",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
+      bgGradient:
+        "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
       badgeBg: "#8b7cf6",
     },
     {
@@ -1093,7 +1153,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Current top songs in the Japan chart",
       chartNumber: "JAPAN",
       region: "Japan",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 58%, #8b7cf6 100%)",
+      bgGradient:
+        "linear-gradient(135deg, #2a211b 0%, #f3701e 58%, #8b7cf6 100%)",
       badgeBg: "#f3701e",
     },
     {
@@ -1102,7 +1163,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       subtitle: "Current top songs in the Brazil chart",
       chartNumber: "BRAZIL",
       region: "Brazil",
-      bgGradient: "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #f3701e 100%)",
+      bgGradient:
+        "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #f3701e 100%)",
       badgeBg: "#8b7cf6",
     },
   ];
@@ -1161,30 +1223,69 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     onOpenCollection?.(chartToCollection(chart));
   };
 
-  const renderSongCard = (rec: DiscoveryRecommendation) => {
-    const isLoading = loadingTrackId === rec.external_track_id ||
-      (!!rec.matched_local_track_id && loadingTrackId === rec.matched_local_track_id);
-    const hasRealLocalMatch = !!rec.matched_local_track_id &&
+  const songPlayback = (rec: DiscoveryRecommendation) => {
+    const isLoading =
+      loadingTrackId === rec.external_track_id ||
+      (!!rec.matched_local_track_id &&
+        loadingTrackId === rec.matched_local_track_id);
+    const hasRealLocalMatch =
+      !!rec.matched_local_track_id &&
       !rec.matched_local_track_id.startsWith("itunes:") &&
       !rec.matched_local_track_id.startsWith("online:");
-    const isPlayingLocal = isLocalPlaying && !!currentLocalTrack &&
+    const isPlayingLocal =
+      isLocalPlaying &&
+      !!currentLocalTrack &&
       currentLocalTrack.format !== "online" &&
       !currentLocalTrack.file_path.startsWith("online://") &&
-      ((hasRealLocalMatch && rec.matched_local_track_id === currentLocalTrack.id) ||
+      ((hasRealLocalMatch &&
+        rec.matched_local_track_id === currentLocalTrack.id) ||
         rec.external_track_id === currentLocalTrack.id ||
-        (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
+        (rec.title.toLowerCase().trim() ===
+          currentLocalTrack.title.toLowerCase().trim() &&
           !!currentLocalTrack.artist_name &&
-          rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
-    const isPlayingOnline = activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
+          rec.artist.toLowerCase().trim() ===
+            currentLocalTrack.artist_name.toLowerCase().trim()));
+    const isPlayingOnline =
+      activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
     const isPlaying = isPlayingLocal || isPlayingOnline;
 
+    return { isLoading, isPlaying };
+  };
+
+  const songPreview = (rec: DiscoveryRecommendation): DiscoveryPreview => {
+    const { isLoading, isPlaying } = songPlayback(rec);
+    return {
+      id: rec.external_track_id, title: rec.title, artist: rec.artist, album: rec.album,
+      cover: rec.cover_art_url, loading: isLoading, playing: isPlaying,
+      onPlay: () => {
+        if (isLoading) return;
+        if (isPlaying) (onStopTrack || onPlayOnlineTrack)(rec);
+        else onPlayOnlineTrack(rec);
+      },
+    };
+  };
+  const mixPreview = (mix: MixItem): DiscoveryPreview => ({
+    id: mix.id, title: mix.name, artist: mix.subtitle, cover: mix.cover_art_url,
+    artworkLabel: "MIX", onPlay: () => handlePlayMixItem(mix), onOpen: () => handleOpenMix(mix),
+  });
+  const chartPreview = (chart: ChartItem): DiscoveryPreview => ({
+    id: chart.id, title: chart.title, artist: chart.subtitle, artworkLabel: chart.chartNumber,
+    onPlay: () => handlePlayChartItem(chart), onOpen: () => handleOpenChart(chart),
+  });
+
+  const renderSongCard = (rec: DiscoveryRecommendation) => {
+    const { isLoading, isPlaying } = songPlayback(rec);
     return (
-      <div key={rec.external_track_id} style={{ flex: "0 0 174px", width: "174px" }}>
+      <DiscoveryPreviewTarget key={rec.external_track_id} preview={songPreview(rec)} className="discovery-track-card">
         <DiscoveryTrackCard
           rec={rec}
           isPlaying={isPlaying}
           isLoading={isLoading}
-          isSelected={isPlaying || isLoading || activeOnlineTrackId === rec.external_track_id}
+          isSelected={
+            isPlaying ||
+            isLoading ||
+            activeOnlineTrackId === rec.external_track_id
+          }
           onPlay={onPlayOnlineTrack}
           onStop={onStopTrack || onPlayOnlineTrack}
           onArtistClick={(artist) => {
@@ -1196,11 +1297,18 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           downloads={downloads}
           trackPlaylistMap={trackPlaylistMap}
           onAddToPlaylist={onAddToPlaylist}
-          isQueued={queuedTrackIds?.has(rec.matched_local_track_id || rec.external_track_id)}
+          isQueued={queuedTrackIds?.has(
+            rec.matched_local_track_id || rec.external_track_id,
+          )}
           onEnqueue={onEnqueueTrack}
-          isLiked={Boolean((rec.matched_local_track_id && likedTrackIds?.has(rec.matched_local_track_id)) || (rec.external_track_id && likedTrackIds?.has(rec.external_track_id)))}
+          isLiked={Boolean(
+            (rec.matched_local_track_id &&
+              likedTrackIds?.has(rec.matched_local_track_id)) ||
+            (rec.external_track_id &&
+              likedTrackIds?.has(rec.external_track_id)),
+          )}
         />
-      </div>
+      </DiscoveryPreviewTarget>
     );
   };
 
@@ -1248,10 +1356,25 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           >
             <WifiOff size={28} color="#ef4444" />
           </div>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#e8d8c9", margin: 0 }}>
+          <h2
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#e8d8c9",
+              margin: 0,
+            }}
+          >
             No internet connection
           </h2>
-          <p style={{ fontSize: "0.92rem", color: "var(--text-muted)", margin: 0, maxWidth: "420px", lineHeight: 1.5 }}>
+          <p
+            style={{
+              fontSize: "0.92rem",
+              color: "var(--text-muted)",
+              margin: 0,
+              maxWidth: "420px",
+              lineHeight: 1.5,
+            }}
+          >
             No internet connection. Listen to local songs.
           </p>
           {onGoToLibrary && (
@@ -1282,7 +1405,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   return (
     <div
       ref={discoveryRef}
-      className="discovery-view"
+      className={`discovery-view${searchResults !== null ? " discovery-search-active" : ""}`}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -1290,7 +1413,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         paddingBottom: "40px",
       }}
     >
-
       {/* SEPARATE SEARCH SECTION (Displayed exclusively when search results are active) */}
       {searchResults !== null ? (
         <OnlineSearchResultsSection
@@ -1322,316 +1444,467 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           <section className="discovery-hero" aria-label="Welcome to Kaze">
             <div className="discovery-hero-copy">
               <p className="hero-eyebrow">A DIFFERENT KIND OF FEELING</p>
-              <h1>Let<br />the music<br />take you<br />somewhere else.</h1>
-              <p className="hero-japanese" lang="ja">どこかへ、音楽と。</p>
+              <h1>
+                Let
+                <br />{" "}
+                the music
+                <br />{" "}
+                take you
+                <br />{" "}
+                somewhere else.
+              </h1>
+              <p className="hero-japanese" lang="ja">
+                どこかへ、音楽と。
+              </p>
             </div>
-            <div className="hero-signature" aria-hidden="true"><span lang="ja">音で、呼吸する。</span></div>
+            <div className="hero-signature" aria-hidden="true">
+              <span lang="ja">音で、呼吸する。</span>
+            </div>
           </section>
-          <div className="discovery-scroll-content">
-          {/* SECTION 1: Trending Songs */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: "1.18rem",
-                fontWeight: 700,
-                color: "#e8d8c9",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <Music2 size={18} color="var(--accent-light)" />
-              <span>Trending Songs</span>
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Popular songs across world charts
-            </p>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {_onRefresh && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleRefreshTrending}
-                disabled={isRefreshingTrending}
+          <DiscoveryChapters selections={[
+            { title: "Trending songs", subtitle: "Popular songs across world charts.", previews: trending.map(songPreview) },
+            { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: filteredForYou.map(songPreview) },
+            { title: "Mixes for you", subtitle: "Personal blends shaped by your listening.", previews: allMixes.map(mixPreview) },
+            { title: "Top charts", subtitle: "Follow the sound around the world.", previews: topCharts.map(chartPreview) },
+          ]}>
+            {/* SECTION 1: Trending Songs */}
+            <div>
+              <div
+                className="discovery-shelf-header"
                 style={{
-                  padding: "5px 12px",
-                  fontSize: "0.82rem",
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  gap: "6px",
-                  borderRadius: "8px",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
                 }}
-                title="Refresh trending songs"
               >
-                <RefreshCw
-                  size={14}
-                  className={isRefreshingTrending ? "spin-animation" : ""}
+                <div>
+                  <h2
+                    style={{
+                      fontSize: "1.18rem",
+                      fontWeight: 700,
+                      color: "#e8d8c9",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Music2 size={18} color="var(--accent-light)" />
+                    <span>Trending Songs</span>
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Popular songs across world charts
+                  </p>
+                </div>
+
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  {_onRefresh && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleRefreshTrending}
+                      disabled={isRefreshingTrending}
+                      style={{
+                        padding: "5px 12px",
+                        fontSize: "0.82rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        borderRadius: "8px",
+                      }}
+                      title="Refresh trending songs"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={isRefreshingTrending ? "spin-animation" : ""}
+                      />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(songsScrollRef, "left")}
+                    title="Scroll left"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(songsScrollRef, "right")}
+                    title="Scroll right"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {trending.length === 0 ? (
+                <div
+                  className="content-card"
+                  style={{
+                    textAlign: "center",
+                    padding: "45px 20px",
+                    color: "var(--text-dim)",
+                    borderStyle: "dashed",
+                  }}
+                >
+                  <Sparkles
+                    size={36}
+                    color="var(--accent-light)"
+                    style={{ marginBottom: "10px" }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "1.05rem",
+                      fontWeight: 600,
+                      color: "var(--text-main)",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    No trending songs found
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "var(--text-muted)",
+                      maxWidth: "480px",
+                      margin: "0 auto",
+                    }}
+                  >
+                    Click Refresh to discover fresh trending tracks.
+                  </p>
+                </div>
+              ) : (
+                <WindowedStrip
+                  items={trending}
+                  scrollRef={songsScrollRef}
+                  onScroll={handleSongsScroll}
+                  label="Trending Songs"
+                  initialScrollLeft={viewMemory.shelves.get(0) || 0}
+                  renderItem={renderSongCard}
                 />
-              </button>
-            )}
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(songsScrollRef, "left")}
-              title="Scroll left"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(songsScrollRef, "right")}
-              title="Scroll right"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-        {trending.length === 0 ? (
-          <div
-            className="content-card"
-            style={{ textAlign: "center", padding: "45px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
-          >
-            <Sparkles size={36} color="var(--accent-light)" style={{ marginBottom: "10px" }} />
-            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
-              No trending songs found
-            </p>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "480px", margin: "0 auto" }}>
-              Click Refresh to discover fresh trending tracks.
-            </p>
-          </div>
-        ) : (
-          <div
-            ref={songsScrollRef}
-            className="horizontal-scroll-row"
-            onScroll={handleSongsScroll}
-          >
-            {trending.slice(0, visibleCount).map(renderSongCard)}
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: For You (new songs based on listening taste) */}
-      <section aria-labelledby="for-you-heading">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-          <div>
-            <h2
-              id="for-you-heading"
-              style={{ fontSize: "1.18rem", fontWeight: 700, color: "#e8d8c9", display: "flex", alignItems: "center", gap: "8px" }}
-            >
-              <Sparkles size={18} color="var(--accent-secondary)" />
-              <span>For You</span>
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Songs picked from your taste that you have not saved or downloaded
-            </p>
-          </div>
-          {forYou.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <button type="button" className="scroll-arrow-btn" onClick={() => handleScroll(forYouScrollRef, "left")} title="Scroll For You left" aria-label="Scroll For You left">
-                <ChevronLeft size={16} />
-              </button>
-              <button type="button" className="scroll-arrow-btn" onClick={() => handleScroll(forYouScrollRef, "right")} title="Scroll For You right" aria-label="Scroll For You right">
-                <ChevronRight size={16} />
-              </button>
+              )}
             </div>
-          )}
-        </div>
 
-        {forYou.length > 0 && (forYouGenreCount > 0 || forYouSimilarCount > 0) && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-            <button
-              type="button"
-              onClick={() => handleForYouFilterChange("ALL")}
-              className={`subtab-btn ${forYouFilter === "ALL" ? "active" : ""}`}
-            >
-              All For You ({forYou.length})
-            </button>
-            {forYouGenreCount > 0 && (
-              <button
-                type="button"
-                onClick={() => handleForYouFilterChange("GENRE")}
-                className={`subtab-btn ${forYouFilter === "GENRE" ? "active" : ""}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+            {/* SECTION 2: For You (new songs based on listening taste) */}
+            <section aria-labelledby="for-you-heading">
+              <div
+                className="discovery-shelf-header"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}
               >
-                <Radio size={12} color="var(--accent-light)" />
-                <span>Top Genres ({forYouGenreCount})</span>
-              </button>
-            )}
-            {forYouSimilarCount > 0 && (
-              <button
-                type="button"
-                onClick={() => handleForYouFilterChange("SIMILAR")}
-                className={`subtab-btn ${forYouFilter === "SIMILAR" ? "active" : ""}`}
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+                <div>
+                  <h2
+                    id="for-you-heading"
+                    style={{
+                      fontSize: "1.18rem",
+                      fontWeight: 700,
+                      color: "#e8d8c9",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Sparkles size={18} color="var(--accent-secondary)" />
+                    <span>For You</span>
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Songs picked from your taste that you have not saved or
+                    downloaded
+                  </p>
+                </div>
+                {forYou.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="scroll-arrow-btn"
+                      onClick={() => handleScroll(forYouScrollRef, "left")}
+                      title="Scroll For You left"
+                      aria-label="Scroll For You left"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="scroll-arrow-btn"
+                      onClick={() => handleScroll(forYouScrollRef, "right")}
+                      title="Scroll For You right"
+                      aria-label="Scroll For You right"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {forYou.length > 0 &&
+                (forYouGenreCount > 0 || forYouSimilarCount > 0) && (
+                  <div
+                    className="discovery-shelf-filters"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                      marginBottom: "14px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleForYouFilterChange("ALL")}
+                      className={`subtab-btn ${forYouFilter === "ALL" ? "active" : ""}`}
+                    >
+                      All For You ({forYou.length})
+                    </button>
+                    {forYouGenreCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleForYouFilterChange("GENRE")}
+                        className={`subtab-btn ${forYouFilter === "GENRE" ? "active" : ""}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <Radio size={12} color="var(--accent-light)" />
+                        <span>Top Genres ({forYouGenreCount})</span>
+                      </button>
+                    )}
+                    {forYouSimilarCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleForYouFilterChange("SIMILAR")}
+                        className={`subtab-btn ${forYouFilter === "SIMILAR" ? "active" : ""}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <Sparkles size={12} color="var(--accent-light)" />
+                        <span>Similar Artists ({forYouSimilarCount})</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+              {forYou.length > 0 ? (
+                filteredForYou.length === 0 ? (
+                  <div
+                    className="content-card"
+                    style={{
+                      padding: "24px",
+                      color: "var(--text-muted)",
+                      borderStyle: "dashed",
+                      textAlign: "center",
+                    }}
+                  >
+                    No songs found matching this filter.
+                  </div>
+                ) : (
+                  <WindowedStrip
+                    items={filteredForYou}
+                    scrollRef={forYouScrollRef}
+                    label="For You"
+                    initialScrollLeft={viewMemory.shelves.get(1) || 0}
+                    renderItem={renderSongCard}
+                  />
+                )
+              ) : (
+                <div
+                  className="content-card"
+                  style={{
+                    padding: "24px",
+                    color: "var(--text-muted)",
+                    borderStyle: "dashed",
+                  }}
+                >
+                  Play or add more music to your library to shape new
+                  recommendations.
+                </div>
+              )}
+            </section>
+
+            {/* SECTION 3: Mixes For You (Horizontal Scroll) */}
+            <div>
+              <div
+                className="discovery-shelf-header"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}
               >
-                <Sparkles size={12} color="var(--accent-light)" />
-                <span>Similar Artists ({forYouSimilarCount})</span>
-              </button>
-            )}
-          </div>
-        )}
+                <div>
+                  <h2
+                    style={{
+                      fontSize: "1.18rem",
+                      fontWeight: 700,
+                      color: "#e8d8c9",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Sparkles size={18} color="var(--accent-secondary)" />
+                    <span>Mixes For You</span>
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Personalized blends and custom smart mixes curated for your
+                    listening style
+                  </p>
+                </div>
 
-        {forYou.length > 0 ? (
-          filteredForYou.length === 0 ? (
-            <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed", textAlign: "center" }}>
-              No songs found matching this filter.
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(mixesScrollRef, "left")}
+                    title="Scroll left"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(mixesScrollRef, "right")}
+                    title="Scroll right"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                {allMixes.length === 0 && (
+                  <div
+                    className="content-card"
+                    style={{
+                      padding: "24px",
+                      color: "var(--text-muted)",
+                      borderStyle: "dashed",
+                    }}
+                  >
+                    Play more of your library to build mixes for your taste.
+                  </div>
+                )}
+                {allMixes.length > 0 && <WindowedStrip items={allMixes} scrollRef={mixesScrollRef} label="Mixes For You" initialScrollLeft={viewMemory.shelves.get(2) || 0} renderItem={mix => <DiscoveryPreviewTarget preview={mixPreview(mix)}><MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} onOpen={() => handleOpenMix(mix)} /></DiscoveryPreviewTarget>} />}
+              </div>
             </div>
-          ) : (
-            <div ref={forYouScrollRef} className="horizontal-scroll-row">
-              {filteredForYou.map(renderSongCard)}
+
+            {/* SECTION 3: Top Charts (Horizontal Scroll) */}
+            <div>
+              <div
+                className="discovery-shelf-header"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}
+              >
+                <div>
+                  <h2
+                    style={{
+                      fontSize: "1.18rem",
+                      fontWeight: 700,
+                      color: "#e8d8c9",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <TrendingUp size={18} color="#f3701e" />
+                    <span>Top Charts</span>
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    Current world and country top-song charts
+                  </p>
+                </div>
+
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(chartsScrollRef, "left")}
+                    title="Scroll left"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="scroll-arrow-btn"
+                    onClick={() => handleScroll(chartsScrollRef, "right")}
+                    title="Scroll right"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div ref={chartsScrollRef} className="horizontal-scroll-row">
+                {topCharts.map((chart) => (
+                  <div
+                    key={chart.id}
+                    style={{ flex: "0 0 174px", width: "174px" }}
+                  >
+                    <DiscoveryPreviewTarget preview={chartPreview(chart)}>
+                    <ChartCard
+                      chart={chart}
+                      onPlay={() => handlePlayChartItem(chart)}
+                      onOpen={() => handleOpenChart(chart)}
+                    />
+                    </DiscoveryPreviewTarget>
+                  </div>
+                ))}
+              </div>
             </div>
-          )
-        ) : (
-          <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed" }}>
-            Play or add more music to your library to shape new recommendations.
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 3: Mixes For You (Horizontal Scroll) */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: "1.18rem",
-                fontWeight: 700,
-                color: "#e8d8c9",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <Sparkles size={18} color="var(--accent-secondary)" />
-              <span>Mixes For You</span>
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Personalized blends and custom smart mixes curated for your listening style
-            </p>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(mixesScrollRef, "left")}
-              title="Scroll left"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(mixesScrollRef, "right")}
-              title="Scroll right"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div ref={mixesScrollRef} className="horizontal-scroll-row">
-          {allMixes.length === 0 && (
-            <div className="content-card" style={{ padding: "24px", color: "var(--text-muted)", borderStyle: "dashed" }}>
-              Play more of your library to build mixes for your taste.
-            </div>
-          )}
-          {allMixes.map((mix) => (
-            <div key={mix.id} style={{ flex: "0 0 174px", width: "174px" }}>
-              <MixCard
-                mix={mix}
-                onPlay={() => handlePlayMixItem(mix)}
-                onOpen={() => handleOpenMix(mix)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* SECTION 3: Top Charts (Horizontal Scroll) */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: "1.18rem",
-                fontWeight: 700,
-                color: "#e8d8c9",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <TrendingUp size={18} color="#f3701e" />
-              <span>Top Charts</span>
-            </h2>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Current world and country top-song charts
-            </p>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(chartsScrollRef, "left")}
-              title="Scroll left"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              className="scroll-arrow-btn"
-              onClick={() => handleScroll(chartsScrollRef, "right")}
-              title="Scroll right"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div ref={chartsScrollRef} className="horizontal-scroll-row">
-          {topCharts.map((chart) => (
-            <div key={chart.id} style={{ flex: "0 0 174px", width: "174px" }}>
-              <ChartCard
-                chart={chart}
-                onPlay={() => handlePlayChartItem(chart)}
-                onOpen={() => handleOpenChart(chart)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-          </div>
+          </DiscoveryChapters>
         </>
       )}
     </div>
   );
-};
+});

@@ -62,6 +62,10 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollTimeoutRef = useRef<any>(null);
 
+  useEffect(() => () => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+  }, []);
+
   // Fetch lyrics whenever artist or title changes
   useEffect(() => {
     if (!artist && !title) return;
@@ -343,6 +347,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
       {/* Floating Sync Button - Only appears when lyrics and playing song are out of sync */}
       {parsedLines.length > 0 && isOutOfSync && (
         <button
+          className="lyrics-sync-button"
           type="button"
           onClick={handleSyncClick}
           title="Lyrics out of sync — click to sync lyrics to song"
@@ -365,12 +370,6 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             cursor: "pointer",
             transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             zIndex: 10,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateX(-50%) scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateX(-50%) scale(1)";
           }}
         >
           <Radio size={15} color="#0f172a" />

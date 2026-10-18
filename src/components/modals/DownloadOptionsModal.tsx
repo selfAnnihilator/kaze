@@ -1,3 +1,4 @@
+import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState, useEffect } from "react";
 import {
   DownloadCloud,
@@ -401,7 +402,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
               </p>
 
               {/* Items List */}
-              {displayedResults.map((res) => {
+              <WindowedList items={displayedResults} label="Download sources" rowHeight={180} renderItem={(res) => {
                 const isSelected = selectedId === res.id && isStartingDownload;
                 const isDirect = res.provider === "yt-dlp" || res.id.startsWith("ytdlp_");
                 const isArchive = res.provider === "internet-archive";
@@ -560,7 +561,7 @@ export const DownloadOptionsModal: React.FC<DownloadOptionsModalProps> = ({
                     </button>
                   </div>
                 );
-              })}
+              }} />
             </div>
           ) : hasSearched ? (
             <div

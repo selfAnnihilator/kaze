@@ -1,3 +1,7 @@
+import { Artwork } from "../../presentation/Artwork";
+import { useInterfaceStyle } from "../../presentation/InterfaceContext";
+import { useDebouncedValue } from "../../presentation/useDebouncedValue";
+import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState, useMemo } from "react";
 import {
   Play,
@@ -55,6 +59,7 @@ export interface CollectionData {
 
 interface CollectionDetailViewProps {
   collection: CollectionData;
+  withinArchive?: boolean;
   isLoadingTracks?: boolean;
   loadingTrackId?: string | null;
   onBack: () => void;
@@ -84,6 +89,7 @@ interface CollectionDetailViewProps {
 
 export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   collection,
+  withinArchive = false,
   isLoadingTracks = false,
   loadingTrackId = null,
   onBack,
@@ -111,6 +117,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const filteredQuery = useDebouncedValue(searchQuery);
+
   const isInCollection = isSaved || collection.type === "playlist";
   const isLikedSongs = collection.type === "playlist" && collection.title === "Liked Songs";
 
@@ -135,7 +143,9 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   };
 
   const rawTracks = collection.tracks || [];
-  const visibleTrackEntries = useMemo(() => filterPlaylistEntries(rawTracks, searchQuery), [rawTracks, searchQuery]);
+  const visibleTrackEntries = useMemo(() => filterPlaylistEntries(rawTracks, filteredQuery),
+    [rawTracks, filteredQuery],
+  );
   const tracks = visibleTrackEntries.map(({ track }) => track);
 
   const activeDownloadMap = useMemo(() => {
@@ -151,7 +161,10 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     return map;
   }, [downloads]);
 
-  const totalDurationSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
+  const totalDurationSecs = tracks.reduce(
+    (acc, t) => acc + (t.duration_secs || 0),
+    0,
+  );
 
   const formatTotalDuration = (totalSecs: number) => {
     if (totalSecs <= 0) return "";
@@ -170,17 +183,18 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  // 3 hero circular images
+  // Artwork occupies each presentation's record region.
+  const interfaceStyle = useInterfaceStyle();
   const heroImage1 = collection.cover_art_url || tracks[0]?.cover_art_url;
-  const heroImage2 = tracks[1]?.cover_art_url || heroImage1;
-  const heroImage3 = tracks[2]?.cover_art_url || tracks[1]?.cover_art_url || heroImage1;
-
   const bgGradient =
     collection.bgGradient ||
     "linear-gradient(180deg, rgba(180, 130, 40, 0.85) 0%, rgba(18, 20, 28, 0.98) 100%)";
 
   return (
     <div
+      className={`collection-view${isLikedSongs ? " collection-view--liked" : ""}${withinArchive ? " collection-view--archive" : ""}`}
+      role={withinArchive ? "tabpanel" : undefined}
+      aria-label={withinArchive ? collection.title : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -190,7 +204,20 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
       }}
     >
       {/* 1. Hero Header Banner */}
+      {withinArchive ? (
+        <div className="press-archive-liked-heading">
+          <h2>
+            <Heart size={24} />{collection.title}
+          </h2>
+          <p>
+            {isLoadingTracks
+              ? "Loading your liked tracks…"
+              : `${rawTracks.length} liked ${rawTracks.length === 1 ? "track" : "tracks"}`}
+          </p>
+        </div>
+      ) : (
       <div
+        className="collection-hero"
         style={{
           position: "relative",
           borderRadius: "14px",
@@ -241,7 +268,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
         </button>
 
         {/* Left: Text Metadata */}
-        <div style={{ flex: 1, marginTop: "24px", zIndex: 2 }}>
+        <div className="collection-copy" style={{ flex: 1, marginTop: "24px", zIndex: 2 }}>
           <div
             style={{
               fontSize: "0.8rem",
@@ -308,94 +335,16 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Right: 3 Overlapping Circular Hero Portraits (Spotify cutout style) */}
-        <div
-          style={{
-            position: "relative",
-            width: "320px",
-            height: "220px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            zIndex: 2,
-          }}
-        >
-          {/* Left circle */}
-          <div
-            style={{
-              position: "absolute",
-              left: "10px",
-              width: "135px",
-              height: "135px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              border: "3px solid rgba(255, 255, 255, 0.2)",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-              backgroundColor: "rgba(0,0,0,0.3)",
-              zIndex: 1,
-            }}
-          >
-            {heroImage1 ? (
-              <img src={heroImage1} alt="Cover 1" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Music2 size={40} color="rgba(255,255,255,0.4)" />
-              </div>
-            )}
-          </div>
-
-          {/* Right circle */}
-          <div
-            style={{
-              position: "absolute",
-              right: "10px",
-              width: "135px",
-              height: "135px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              border: "3px solid rgba(255, 255, 255, 0.2)",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-              backgroundColor: "rgba(0,0,0,0.3)",
-              zIndex: 1,
-            }}
-          >
-            {heroImage3 ? (
-              <img src={heroImage3} alt="Cover 3" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Music2 size={40} color="rgba(255,255,255,0.4)" />
-              </div>
-            )}
-          </div>
-
-          {/* Center circle (Largest, on top) */}
-          <div
-            style={{
-              position: "relative",
-              width: "165px",
-              height: "165px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              border: "4px solid rgba(255, 255, 255, 0.3)",
-              boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
-              backgroundColor: "rgba(0,0,0,0.4)",
-              zIndex: 2,
-            }}
-          >
-            {heroImage2 ? (
-              <img src={heroImage2} alt="Cover 2" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Music2 size={50} color="rgba(255,255,255,0.5)" />
-              </div>
-            )}
-          </div>
+        <div className={interfaceStyle === "spatial" ? "spatial-collection-art" : "press-collection-art"}>
+          <Artwork src={heroImage1} alt={collection.title} />
+          <p>{collection.subtitle}</p>
         </div>
       </div>
+      )}
 
       {/* 2. Action Toolbar */}
       <div
+        className="collection-toolbar"
         style={{
           display: "flex",
           alignItems: "center",
@@ -424,8 +373,6 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               boxShadow: "0 6px 20px rgba(139, 124, 246, 0.4)",
               transition: "transform 0.15s ease, background-color 0.15s ease",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             title={isPlaying ? "Pause Collection" : "Play Collection"}
           >
             {isPlaying ? (
@@ -442,11 +389,15 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               onClick={onShuffleAll}
               style={{
                 background: isShuffled ? "rgba(139, 124, 246, 0.15)" : "none",
-                border: isShuffled ? "1px solid rgba(139, 124, 246, 0.4)" : "1px solid transparent",
+                border: isShuffled
+                  ? "1px solid rgba(139, 124, 246, 0.4)"
+                  : "1px solid transparent",
                 borderRadius: "50%",
                 width: "40px",
                 height: "40px",
-                color: isShuffled ? "var(--accent-secondary)" : "var(--text-muted)",
+                color: isShuffled
+                  ? "var(--accent-secondary)"
+                  : "var(--text-muted)",
                 cursor: "pointer",
                 padding: "8px",
                 display: "flex",
@@ -459,11 +410,19 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 if (!isShuffled) e.currentTarget.style.color = "#e8d8c9";
               }}
               onMouseLeave={(e) => {
-                if (!isShuffled) e.currentTarget.style.color = "var(--text-muted)";
+                if (!isShuffled)
+                  e.currentTarget.style.color = "var(--text-muted)";
               }}
-              title={isShuffled ? "Shuffle is active (Click to deactivate)" : "Shuffle collection"}
+              title={
+                isShuffled
+                  ? "Shuffle is active (Click to deactivate)"
+                  : "Shuffle collection"
+              }
             >
-              <Shuffle size={20} color={isShuffled ? "var(--accent-secondary)" : undefined} />
+              <Shuffle
+                size={20}
+                color={isShuffled ? "var(--accent-secondary)" : undefined}
+              />
               {isShuffled && (
                 <span
                   style={{
@@ -541,15 +500,53 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               >
                 <MoreVertical size={20} />
               </summary>
-              <div style={{ position: "absolute", top: "46px", left: 0, zIndex: 20, minWidth: "160px", padding: "6px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-sidebar)", boxShadow: "0 12px 30px rgba(0,0,0,0.45)" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "46px",
+                  left: 0,
+                  zIndex: 20,
+                  minWidth: "160px",
+                  padding: "6px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-sidebar)",
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+                }}
+              >
                 {isLikedSongs ? (
-                  <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: "0.78rem" }}>Default playlist</div>
+                  <div
+                    style={{
+                      padding: "8px 10px",
+                      color: "var(--text-dim)",
+                      fontSize: "0.78rem",
+                    }}
+                  >
+                    Default playlist
+                  </div>
                 ) : (
                   <>
-                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0 }} onClick={handleRenamePlaylist}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        border: 0,
+                      }}
+                      onClick={handleRenamePlaylist}
+                    >
                       <Pencil size={14} /> Rename
                     </button>
-                    <button className="btn btn-secondary" style={{ width: "100%", justifyContent: "flex-start", border: 0, color: "var(--danger, #ef4444)" }} onClick={handleDeletePlaylist}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{
+                        width: "100%",
+                        justifyContent: "flex-start",
+                        border: 0,
+                        color: "var(--danger, #ef4444)",
+                      }}
+                      onClick={handleDeletePlaylist}
+                    >
                       <Trash2 size={14} /> Delete
                     </button>
                   </>
@@ -561,11 +558,21 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
         {/* Search inside Playlist */}
         {rawTracks.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              position: "relative",
+            }}
+          >
             <Search
               size={15}
               color="var(--text-muted)"
-              style={{ position: "absolute", left: "12px", pointerEvents: "none" }}
+              style={{
+                position: "absolute",
+                left: "12px",
+                pointerEvents: "none",
+              }}
             />
             <input
               type="text"
@@ -610,23 +617,66 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
       {/* 3. Track Table */}
       {isLoadingTracks ? (
-        <div key="collection-search-loading" style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-dim)" }}>
-          <RefreshCw size={36} className="animate-spin" color="var(--accent-light)" style={{ margin: "0 auto 12px" }} />
-          <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-main)" }}>Loading collection songs...</p>
+        <div
+          key="collection-search-loading"
+          style={{
+            textAlign: "center",
+            padding: "60px 20px",
+            color: "var(--text-dim)",
+          }}
+        >
+          <RefreshCw
+            size={36}
+            className="animate-spin"
+            color="var(--accent-light)"
+            style={{ margin: "0 auto 12px" }}
+          />
+          <p
+            style={{
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: "var(--text-main)",
+            }}
+          >
+            Loading collection songs...
+          </p>
         </div>
       ) : tracks.length === 0 ? (
         rawTracks.length > 0 ? (
           <div
             key="collection-search-empty"
             className="content-card"
-            style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
+            style={{
+              textAlign: "center",
+              padding: "50px 20px",
+              color: "var(--text-dim)",
+              borderStyle: "dashed",
+            }}
           >
-            <Search size={36} color="var(--accent-light)" style={{ margin: "0 auto 12px" }} />
-            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+            <Search
+              size={36}
+              color="var(--accent-light)"
+              style={{ margin: "0 auto 12px" }}
+            />
+            <p
+              style={{
+                fontSize: "1.05rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "6px",
+              }}
+            >
               No songs found matching "{searchQuery}"
             </p>
-            <p style={{ fontSize: "0.84rem", color: "var(--text-muted)", marginBottom: "16px" }}>
-              Check your spelling or try searching for a different track title or artist.
+            <p
+              style={{
+                fontSize: "0.84rem",
+                color: "var(--text-muted)",
+                marginBottom: "16px",
+              }}
+            >
+              Check your spelling or try searching for a different track title
+              or artist.
             </p>
             <button
               type="button"
@@ -641,10 +691,26 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           <div
             key="collection-empty"
             className="content-card"
-            style={{ textAlign: "center", padding: "50px 20px", color: "var(--text-dim)", borderStyle: "dashed" }}
+            style={{
+              textAlign: "center",
+              padding: "50px 20px",
+              color: "var(--text-dim)",
+              borderStyle: "dashed",
+            }}
           >
-            <Music2 size={36} color="var(--accent-light)" style={{ marginBottom: "12px" }} />
-            <p style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "6px" }}>
+            <Music2
+              size={36}
+              color="var(--accent-light)"
+              style={{ marginBottom: "12px" }}
+            />
+            <p
+              style={{
+                fontSize: "1.05rem",
+                fontWeight: 600,
+                color: "var(--text-main)",
+                marginBottom: "6px",
+              }}
+            >
               No songs in this collection yet
             </p>
           </div>
@@ -652,6 +718,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
       ) : (
         <div
           key="collection-search-results"
+          className="collection-track-sheet"
           style={{
             backgroundColor: "var(--bg-card)",
             borderRadius: "12px",
@@ -683,276 +750,382 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           </div>
 
           {/* Table Rows */}
-          {tracks.map((track, idx) => {
-            const isHovered = hoveredRowId === track.id;
-            const isPlayingThis =
-              isPlaying &&
-              (currentPlayingTrackId === track.id ||
-                currentPlayingTrackId === track.matched_local_track_id);
-            const isLoadingThis = loadingTrackId === track.id ||
-              (!!track.matched_local_track_id && loadingTrackId === track.matched_local_track_id);
+          <WindowedList
+            items={tracks}
+            rowHeight={72}
+            label="Collection tracks"
+            renderItem={(track, idx) => {
+              const isHovered = hoveredRowId === track.id;
+              const isPlayingThis =
+                isPlaying &&
+                (currentPlayingTrackId === track.id ||
+                  currentPlayingTrackId === track.matched_local_track_id);
+              const isLoadingThis =
+                loadingTrackId === track.id ||
+                (!!track.matched_local_track_id &&
+                  loadingTrackId === track.matched_local_track_id);
 
-            const activeDownload =
-              activeDownloadMap.get(`${(track.artist || "").toLowerCase().trim()}:::${track.title.toLowerCase().trim()}`) ||
-              activeDownloadMap.get(`t:::${track.title.toLowerCase().trim()}`);
+              const activeDownload =
+                activeDownloadMap.get(
+                  `${(track.artist || "").toLowerCase().trim()}:::${track.title.toLowerCase().trim()}`,
+                ) ||
+                activeDownloadMap.get(
+                  `t:::${track.title.toLowerCase().trim()}`,
+                );
 
-            const isDownloaded = track.is_downloaded || activeDownload?.status === "COMPLETED";
-            const isDownloading =
-              activeDownload &&
-              (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
-            const downloadPercent =
-              activeDownload?.file_size && activeDownload.file_size > 0
-                ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100))
-                : activeDownload?.status === "DOWNLOADING"
-                ? 50
-                : 0;
-            const effectiveTrackId = track.matched_local_track_id || track.id;
-            const isLiked = likedTrackIds
-              ? (likedTrackIds.has(effectiveTrackId) || likedTrackIds.has(track.id))
-              : isLikedSongs;
-            const isQueued = queuedTrackIds?.has(effectiveTrackId) || false;
-
-            return (
-              <div
-                key={visibleTrackEntries[idx].rowKey}
-                onMouseEnter={() => setHoveredRowId(track.id)}
-                onMouseLeave={() => setHoveredRowId(null)}
-                onClick={() => onPlayTrack(track)}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "48px 1fr 1fr 70px 150px",
-                  padding: "10px 18px",
-                  alignItems: "center",
-                  fontSize: "0.88rem",
-                  color: isPlayingThis || isLoadingThis ? "var(--accent-secondary)" : "var(--text-main)",
-                  backgroundColor: isPlayingThis || isLoadingThis
-                    ? "rgba(139, 124, 246, 0.08)"
-                    : isHovered
-                    ? "rgba(255, 255, 255, 0.04)"
-                    : "transparent",
-                  borderBottom: "1px solid rgba(255, 255, 255, 0.03)",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s ease",
-                }}
-              >
-                {/* Index / Play icon */}
-                <div style={{ color: isPlayingThis || isLoadingThis ? "var(--accent-secondary)" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 500 }}>
-                  {isLoadingThis ? (
-                    <RefreshCw size={15} className="spin-animation" aria-label="Loading song" />
-                  ) : isPlayingThis ? (
-                    isHovered ? (
-                      <Pause size={15} fill="var(--accent-secondary)" />
-                    ) : (
-                      <div className="discovery-eq-container" style={{ height: "13px" }}>
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
-                        <div className="discovery-eq-bar" style={{ width: "2.5px", backgroundColor: "var(--accent-secondary)" }} />
-                      </div>
+              const isDownloaded =
+                track.is_downloaded || activeDownload?.status === "COMPLETED";
+              const isDownloading =
+                activeDownload &&
+                (activeDownload.status === "DOWNLOADING" ||
+                  activeDownload.status === "QUEUED");
+              const downloadPercent =
+                activeDownload?.file_size && activeDownload.file_size > 0
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        (activeDownload.bytes_downloaded /
+                          activeDownload.file_size) *
+                          100,
+                      ),
                     )
-                  ) : isHovered ? (
-                    <Play size={15} fill="#e8d8c9" />
-                  ) : (
-                    idx + 1
-                  )}
-                </div>
+                  : activeDownload?.status === "DOWNLOADING"
+                    ? 50
+                    : 0;
+              const effectiveTrackId = track.matched_local_track_id || track.id;
+              const isLiked = likedTrackIds
+                ? likedTrackIds.has(effectiveTrackId) ||
+                  likedTrackIds.has(track.id)
+                : isLikedSongs;
+              const isQueued = queuedTrackIds?.has(effectiveTrackId) || false;
 
-                {/* Title & Artist & Artwork */}
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+              return (
+                <div
+                  className="collection-track-row"
+                  key={visibleTrackEntries[idx].rowKey}
+                  onMouseEnter={() => setHoveredRowId(track.id)}
+                  onMouseLeave={() => setHoveredRowId(null)}
+                  onClick={() => onPlayTrack(track)}
+                  style={{
+                    height: "100%",
+                    display: "grid",
+                    gridTemplateColumns: "48px 1fr 1fr 70px 150px",
+                    padding: "10px 18px",
+                    alignItems: "center",
+                    fontSize: "0.88rem",
+                    color:
+                      isPlayingThis || isLoadingThis
+                        ? "var(--accent-secondary)"
+                        : "var(--text-main)",
+                    backgroundColor:
+                      isPlayingThis || isLoadingThis
+                        ? "rgba(139, 124, 246, 0.08)"
+                        : isHovered
+                          ? "rgba(255, 255, 255, 0.04)"
+                          : "transparent",
+                    borderBottom: "1px solid rgba(255, 255, 255, 0.03)",
+                    cursor: "pointer",
+                    transition: "background-color 0.15s ease",
+                  }}
+                >
+                  {/* Index / Play icon */}
                   <div
                     style={{
-                      width: "42px",
-                      height: "42px",
-                      borderRadius: "6px",
-                      overflow: "hidden",
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                      flexShrink: 0,
+                      color:
+                        isPlayingThis || isLoadingThis
+                          ? "var(--accent-secondary)"
+                          : "var(--text-dim)",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
                     }}
                   >
-                    {track.cover_art_url ? (
-                      <img
-                        src={track.cover_art_url}
-                        alt={track.title}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    {isLoadingThis ? (
+                      <RefreshCw
+                        size={15}
+                        className="spin-animation"
+                        aria-label="Loading song"
                       />
+                    ) : isPlayingThis ? (
+                      isHovered ? (
+                        <Pause size={15} fill="var(--accent-secondary)" />
+                      ) : (
+                        <div
+                          className="discovery-eq-container"
+                          style={{ height: "13px" }}
+                        >
+                          <div
+                            className="discovery-eq-bar"
+                            style={{
+                              width: "2.5px",
+                              backgroundColor: "var(--accent-secondary)",
+                            }}
+                          />
+                          <div
+                            className="discovery-eq-bar"
+                            style={{
+                              width: "2.5px",
+                              backgroundColor: "var(--accent-secondary)",
+                            }}
+                          />
+                          <div
+                            className="discovery-eq-bar"
+                            style={{
+                              width: "2.5px",
+                              backgroundColor: "var(--accent-secondary)",
+                            }}
+                          />
+                        </div>
+                      )
+                    ) : isHovered ? (
+                      <Play size={15} fill="#e8d8c9" />
                     ) : (
-                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Music2 size={20} color="var(--text-dim)" />
-                      </div>
+                      idx + 1
                     )}
                   </div>
 
-                  <div style={{ overflow: "hidden", minWidth: 0 }}>
+                  {/* Title & Artist & Artwork */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      minWidth: 0,
+                    }}
+                  >
                     <div
                       style={{
-                        fontWeight: 600,
-                        fontSize: "0.92rem",
-                        whiteSpace: "nowrap",
+                        width: "42px",
+                        height: "42px",
+                        borderRadius: "6px",
                         overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        color: isPlayingThis ? "var(--accent-secondary)" : "#e8d8c9",
+                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                        flexShrink: 0,
                       }}
                     >
-                      {track.title}
+                      <Artwork src={track.cover_art_url} alt={track.title} />
                     </div>
-                    <div
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "var(--text-muted)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        marginTop: "2px",
-                      }}
-                    >
-                      {track.artist}
+
+                    <div style={{ overflow: "hidden", minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "0.92rem",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          color: isPlayingThis
+                            ? "var(--accent-secondary)"
+                            : "#e8d8c9",
+                        }}
+                      >
+                        {track.title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--text-muted)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {track.artist}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Album */}
-                <div
-                  style={{
-                    color: "var(--text-muted)",
-                    fontSize: "0.84rem",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    paddingRight: "16px",
-                  }}
-                >
-                  {track.album || "—"}
-                </div>
-
-                {/* Duration */}
-                <div style={{ textAlign: "right", color: "var(--text-dim)", fontSize: "0.82rem" }}>
-                  {formatDuration(track.duration_secs)}
-                </div>
-
-                {/* Action Buttons */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                    gap: "6px",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {isDownloaded ? (
-                    <span title="Downloaded in local library" style={{ color: "var(--accent-secondary)", display: "inline-flex" }}>
-                      <CheckCircle2 size={16} />
-                    </span>
-                  ) : isDownloading ? (
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        padding: "2px 7px",
-                        borderRadius: "12px",
-                        background: "rgba(243, 112, 30, 0.15)",
-                        border: "1px solid rgba(243, 112, 30, 0.35)",
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
-                        color: "#8b7cf6",
-                      }}
-                      title={activeDownload.status === "QUEUED" ? "Download queued..." : `Downloading ${downloadPercent}%`}
-                    >
-                      <RefreshCw size={11} className="spin-animation" />
-                      <span>{activeDownload.status === "QUEUED" ? "Queued" : `${downloadPercent}%`}</span>
-                    </div>
-                  ) : onDownload ? (
-                    <button
-                      type="button"
-                      onClick={() => onDownload(track.artist, track.title)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-dim)",
-                        cursor: "pointer",
-                        padding: "4px",
-                        display: "flex",
-                      }}
-                      title="Download track"
-                    >
-                      <DownloadCloud size={15} />
-                    </button>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEnqueueTrack?.(track);
-                    }}
-                    style={{ background: isQueued ? "rgba(139,124,246,0.16)" : "none", border: isQueued ? "1px solid rgba(139,124,246,0.4)" : "1px solid transparent", borderRadius: "50%", color: isQueued ? "var(--accent-secondary)" : "var(--text-dim)", cursor: "pointer", padding: "4px", display: "flex" }}
-                    title={isQueued ? "Already in queue" : "Add to queue"}
-                  >
-                    {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLike?.(track, !!isLiked);
-                    }}
+                  {/* Album */}
+                  <div
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: isLiked ? "#ec4899" : "var(--text-dim)",
-                      cursor: "pointer",
-                      padding: "4px",
-                      display: "flex",
+                      color: "var(--text-muted)",
+                      fontSize: "0.84rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      paddingRight: "16px",
                     }}
-                    title={isLiked ? "Unlike track" : "Like track"}
-                    aria-label={isLiked ? "Unlike track" : "Like track"}
                   >
-                    <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
-                  </button>
+                    {track.album || "—"}
+                  </div>
 
-                  {(() => {
-                    const trackId = track.matched_local_track_id || track.id;
-                    const allPlaylistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
-                    // Only count user-created playlists (exclude smart mixes and the current collection itself)
-                    const playlistIds = userPlaylistIds
-                      ? allPlaylistIds.filter((pid) => userPlaylistIds.has(pid))
-                      : allPlaylistIds;
-                    const isInPlaylist = playlistIds.length > 0;
+                  {/* Duration */}
+                  <div
+                    style={{
+                      textAlign: "right",
+                      color: "var(--text-dim)",
+                      fontSize: "0.82rem",
+                    }}
+                  >
+                    {formatDuration(track.duration_secs)}
+                  </div>
 
-                    return (
+                  {/* Action Buttons */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      gap: "6px",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isDownloaded ? (
+                      <span
+                        title="Downloaded in local library"
+                        style={{
+                          color: "var(--accent-secondary)",
+                          display: "inline-flex",
+                        }}
+                      >
+                        <CheckCircle2 size={16} />
+                      </span>
+                    ) : isDownloading ? (
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "2px 7px",
+                          borderRadius: "12px",
+                          background: "rgba(243, 112, 30, 0.15)",
+                          border: "1px solid rgba(243, 112, 30, 0.35)",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          color: "#8b7cf6",
+                        }}
+                        title={
+                          activeDownload.status === "QUEUED"
+                            ? "Download queued..."
+                            : `Downloading ${downloadPercent}%`
+                        }
+                      >
+                        <RefreshCw size={11} className="spin-animation" />
+                        <span>
+                          {activeDownload.status === "QUEUED"
+                            ? "Queued"
+                            : `${downloadPercent}%`}
+                        </span>
+                      </div>
+                    ) : onDownload ? (
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onAddToPlaylist) {
-                            onAddToPlaylist(track);
-                          } else if (onAddToWishlist) {
-                            onAddToWishlist(track);
-                          }
-                        }}
+                        onClick={() => onDownload(track.artist, track.title)}
                         style={{
                           background: "none",
                           border: "none",
-                          color: isInPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
+                          color: "var(--text-dim)",
                           cursor: "pointer",
                           padding: "4px",
                           display: "flex",
                         }}
-                        title={isInPlaylist ? "In playlist (click to manage)" : "Add to playlist"}
+                        title="Download track"
                       >
-                        {isInPlaylist ? (
-                          <BookmarkCheck size={15} color="var(--accent-secondary)" />
-                        ) : (
-                          <Bookmark size={15} />
-                        )}
+                        <DownloadCloud size={15} />
                       </button>
-                    );
-                  })()}
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEnqueueTrack?.(track);
+                      }}
+                      style={{
+                        background: isQueued
+                          ? "rgba(139,124,246,0.16)"
+                          : "none",
+                        border: isQueued
+                          ? "1px solid rgba(139,124,246,0.4)"
+                          : "1px solid transparent",
+                        borderRadius: "50%",
+                        color: isQueued
+                          ? "var(--accent-secondary)"
+                          : "var(--text-dim)",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                      }}
+                      title={isQueued ? "Already in queue" : "Add to queue"}
+                    >
+                      {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleLike?.(track, !!isLiked);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: isLiked ? "#ec4899" : "var(--text-dim)",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                      }}
+                      title={isLiked ? "Unlike track" : "Like track"}
+                      aria-label={isLiked ? "Unlike track" : "Like track"}
+                    >
+                      <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
+                    </button>
+
+                    {(() => {
+                      const trackId = track.matched_local_track_id || track.id;
+                      const allPlaylistIds =
+                        (trackId && trackPlaylistMap?.[trackId]) || [];
+                      // Only count user-created playlists (exclude smart mixes and the current collection itself)
+                      const playlistIds = userPlaylistIds
+                        ? allPlaylistIds.filter((pid) =>
+                            userPlaylistIds.has(pid),
+                          )
+                        : allPlaylistIds;
+                      const isInPlaylist = playlistIds.length > 0;
+
+                      return (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onAddToPlaylist) {
+                              onAddToPlaylist(track);
+                            } else if (onAddToWishlist) {
+                              onAddToWishlist(track);
+                            }
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: isInPlaylist
+                              ? "var(--accent-secondary)"
+                              : "var(--text-dim)",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                          }}
+                          title={
+                            isInPlaylist
+                              ? "In playlist (click to manage)"
+                              : "Add to playlist"
+                          }
+                        >
+                          {isInPlaylist ? (
+                            <BookmarkCheck
+                              size={15}
+                              color="var(--accent-secondary)"
+                            />
+                          ) : (
+                            <Bookmark size={15} />
+                          )}
+                        </button>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            }}
+          />
         </div>
       )}
     </div>

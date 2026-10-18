@@ -1,3 +1,4 @@
+import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState, useMemo } from "react";
 import {
   Play,
@@ -12,7 +13,8 @@ import {
   ListMusic,
   RefreshCw,
 } from "lucide-react";
-import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
+import { DiscoveryRecommendation, Track, Playlist, DownloadTask,
+} from "../../types";
 import { sameSongMetadata } from "../../localTrackMatch";
 
 interface OnlineSearchResultsSectionProps {
@@ -81,11 +83,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
       !!currentLocalTrack &&
       currentLocalTrack.format !== "online" &&
       !currentLocalTrack.file_path.startsWith("online://") &&
-      ((hasRealLocalMatch && rec.matched_local_track_id === currentLocalTrack.id) ||
+      ((hasRealLocalMatch &&
+        rec.matched_local_track_id === currentLocalTrack.id) ||
         rec.external_track_id === currentLocalTrack.id ||
-        (rec.title.toLowerCase().trim() === currentLocalTrack.title.toLowerCase().trim() &&
+        (rec.title.toLowerCase().trim() ===
+          currentLocalTrack.title.toLowerCase().trim() &&
           currentLocalTrack.artist_name &&
-          rec.artist.toLowerCase().trim() === currentLocalTrack.artist_name.toLowerCase().trim()));
+          rec.artist.toLowerCase().trim() ===
+            currentLocalTrack.artist_name.toLowerCase().trim()));
 
     const isPlayingOnline =
       activeOnlineTrackId === rec.external_track_id && isOnlinePlaying;
@@ -94,25 +99,37 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   };
 
   const isTrackLoading = (rec: DiscoveryRecommendation) => {
-    return isOnlineLoading && (loadingTrackId === rec.external_track_id ||
-      (!!rec.matched_local_track_id && loadingTrackId === rec.matched_local_track_id));
+    return (
+      isOnlineLoading &&
+      (loadingTrackId === rec.external_track_id ||
+        (!!rec.matched_local_track_id &&
+          loadingTrackId === rec.matched_local_track_id))
+    );
   };
 
   const getDownloadStatus = (rec: DiscoveryRecommendation) => {
-    const inLibrary = !!rec.matched_local_track_id &&
+    const inLibrary =
+      !!rec.matched_local_track_id &&
       rec.match_status === "EXACT_MATCH" &&
       !rec.matched_local_track_id.startsWith("itunes:") &&
       !rec.matched_local_track_id.startsWith("online:");
     const activeDownload = downloads?.find((d) => {
       if (d.status === "FAILED" || d.status === "CANCELLED") return false;
       const target = downloadTargets?.[d.id];
-      if (target) return sameSongMetadata(target.title, target.artist, rec.title, rec.artist);
+      if (target)
+        return sameSongMetadata(
+          target.title,
+          target.artist,
+          rec.title,
+          rec.artist,
+        );
       return sameSongMetadata(d.title, d.artist, rec.title, rec.artist);
     });
 
     const isDownloading =
       activeDownload &&
-      (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
+      (activeDownload.status === "DOWNLOADING" ||
+        activeDownload.status === "QUEUED");
     const isCompleted = inLibrary || activeDownload?.status === "COMPLETED";
 
     return { isDownloading, isCompleted };
@@ -138,7 +155,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
   // Extract distinct artists
   const distinctArtists = useMemo(() => {
-    const map = new Map<string, { artist: string; cover?: string; count: number }>();
+    const map = new Map<
+      string,
+      { artist: string; cover?: string; count: number }
+    >();
     for (const r of searchResults) {
       const lower = r.artist.toLowerCase().trim();
       if (!map.has(lower)) {
@@ -154,12 +174,19 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
   // Extract distinct albums
   const distinctAlbums = useMemo(() => {
-    const map = new Map<string, { album: string; artist: string; cover?: string }>();
+    const map = new Map<
+      string,
+      { album: string; artist: string; cover?: string }
+    >();
     for (const r of searchResults) {
       if (r.album && r.album.trim()) {
         const key = `${r.artist.toLowerCase().trim()}:${r.album.toLowerCase().trim()}`;
         if (!map.has(key)) {
-          map.set(key, { album: r.album, artist: r.artist, cover: r.cover_art_url });
+          map.set(key, {
+            album: r.album,
+            artist: r.artist,
+            cover: r.cover_art_url,
+          });
         }
       }
     }
@@ -173,7 +200,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
     return playlists.filter(
       (p) =>
         p.name.toLowerCase().includes(qLower) ||
-        (p.description && p.description.toLowerCase().includes(qLower))
+        (p.description && p.description.toLowerCase().includes(qLower)),
     );
   }, [playlists, searchQuery]);
 
@@ -204,7 +231,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         }}
       >
         {/* Category Filter Pills (Spotify Desktop style) */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             type="button"
             onClick={() => setActiveTab("all")}
@@ -215,7 +249,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               fontWeight: 600,
               cursor: "pointer",
               border: "none",
-              backgroundColor: activeTab === "all" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+              backgroundColor:
+                activeTab === "all" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
               color: activeTab === "all" ? "#1a1714" : "#e8d8c9",
               transition: "all 0.15s ease",
             }}
@@ -232,7 +267,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               fontWeight: 600,
               cursor: "pointer",
               border: "none",
-              backgroundColor: activeTab === "songs" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+              backgroundColor:
+                activeTab === "songs" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
               color: activeTab === "songs" ? "#1a1714" : "#e8d8c9",
               transition: "all 0.15s ease",
             }}
@@ -250,7 +286,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "artists" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                backgroundColor:
+                  activeTab === "artists"
+                    ? "#e8d8c9"
+                    : "rgba(255, 255, 255, 0.08)",
                 color: activeTab === "artists" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
@@ -269,7 +308,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "albums" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                backgroundColor:
+                  activeTab === "albums"
+                    ? "#e8d8c9"
+                    : "rgba(255, 255, 255, 0.08)",
                 color: activeTab === "albums" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
@@ -288,7 +330,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 fontWeight: 600,
                 cursor: "pointer",
                 border: "none",
-                backgroundColor: activeTab === "playlists" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
+                backgroundColor:
+                  activeTab === "playlists"
+                    ? "#e8d8c9"
+                    : "rgba(255, 255, 255, 0.08)",
                 color: activeTab === "playlists" ? "#1a1714" : "#e8d8c9",
                 transition: "all 0.15s ease",
               }}
@@ -301,7 +346,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         {/* Clear Search & Results info */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
-            Search results for &ldquo;<span style={{ color: "#e8d8c9" }}>{searchQuery}</span>&rdquo;
+            Search results for &ldquo;
+            <span style={{ color: "#e8d8c9" }}>{searchQuery}</span>&rdquo;
           </span>
           <button
             type="button"
@@ -339,16 +385,24 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>
             No relevant results found for &ldquo;{searchQuery}&rdquo;
           </h3>
-          <p style={{ fontSize: "0.86rem", color: "var(--text-muted)", maxWidth: "420px" }}>
-            Please check your spelling, try another artist or song title, or explore the trending
-            music and mixes below.
+          <p
+            style={{
+              fontSize: "0.86rem",
+              color: "var(--text-muted)",
+              maxWidth: "420px",
+            }}
+          >
+            Please check your spelling, try another artist or song title, or
+            explore the trending music and mixes below.
           </p>
         </div>
       ) : (
         <>
           {/* TAB: ALL */}
           {activeTab === "all" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+            >
               <div
                 style={{
                   display: "grid",
@@ -373,12 +427,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     <div
                       onClick={() => handleTogglePlay(topResult)}
                       style={{
-                        backgroundColor: isTrackPlaying(topResult) || isTrackLoading(topResult)
-                          ? "rgba(139, 124, 246, 0.14)"
-                          : "var(--bg-card)",
-                        border: isTrackPlaying(topResult) || isTrackLoading(topResult)
-                          ? "1.5px solid var(--accent-secondary)"
-                          : "1px solid var(--border)",
+                        backgroundColor:
+                          isTrackPlaying(topResult) || isTrackLoading(topResult)
+                            ? "rgba(139, 124, 246, 0.14)"
+                            : "var(--bg-card)",
+                        border:
+                          isTrackPlaying(topResult) || isTrackLoading(topResult)
+                            ? "1.5px solid var(--accent-secondary)"
+                            : "1px solid var(--border)",
                         borderRadius: "12px",
                         padding: "20px",
                         cursor: "pointer",
@@ -404,10 +460,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         }}
                       >
                         {topResult.cover_art_url ? (
-                          <img
+                          <img decoding="async"
                             src={topResult.cover_art_url}
                             alt={topResult.title}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
                           />
                         ) : (
                           <div
@@ -431,7 +491,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           fontSize: "1.45rem",
                           fontWeight: 700,
-                          color: isTrackPlaying(topResult) ? "var(--accent-secondary)" : "#e8d8c9",
+                          color: isTrackPlaying(topResult)
+                            ? "var(--accent-secondary)"
+                            : "#e8d8c9",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -475,8 +537,12 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             color: "var(--text-main)",
                             fontWeight: 500,
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.textDecoration = "underline")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.textDecoration = "none")
+                          }
                         >
                           {topResult.artist}
                         </span>
@@ -491,7 +557,13 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           marginTop: "12px",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
                           {onAddToPlaylist && (
                             <button
                               type="button"
@@ -520,10 +592,16 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           {onSearchDirect && (
                             <button
                               type="button"
-                              disabled={!!getDownloadStatus(topResult).isCompleted || !!getDownloadStatus(topResult).isDownloading}
+                              disabled={
+                                !!getDownloadStatus(topResult).isCompleted ||
+                                !!getDownloadStatus(topResult).isDownloading
+                              }
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSearchDirect(topResult.artist, topResult.title);
+                                onSearchDirect(
+                                  topResult.artist,
+                                  topResult.title,
+                                );
                               }}
                               style={{
                                 width: "34px",
@@ -534,8 +612,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 color: getDownloadStatus(topResult).isCompleted
                                   ? "var(--accent-secondary)"
                                   : getDownloadStatus(topResult).isDownloading
-                                  ? "var(--accent-light)"
-                                  : "var(--text-muted)",
+                                    ? "var(--accent-light)"
+                                    : "var(--text-muted)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -546,8 +624,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 getDownloadStatus(topResult).isCompleted
                                   ? "Downloaded"
                                   : getDownloadStatus(topResult).isDownloading
-                                  ? "Downloading..."
-                                  : "Download track"
+                                    ? "Downloading..."
+                                    : "Download track"
                               }
                             >
                               {getDownloadStatus(topResult).isCompleted ? (
@@ -578,10 +656,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             justifyContent: "center",
                             cursor: "pointer",
                             boxShadow: "0 8px 18px rgba(139, 124, 246, 0.35)",
-                            transition: "transform 0.15s ease, background-color 0.15s ease",
+                            transition:
+                              "transform 0.15s ease, background-color 0.15s ease",
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                           title={isTrackPlaying(topResult) ? "Pause" : "Play"}
                         >
                           {isTrackLoading(topResult) ? (
@@ -598,7 +675,11 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           ) : isTrackPlaying(topResult) ? (
                             <Pause size={22} fill="#e8d8c9" />
                           ) : (
-                            <Play size={22} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
+                            <Play
+                              size={22}
+                              fill="#e8d8c9"
+                              style={{ marginLeft: "2px" }}
+                            />
                           )}
                         </button>
                       </div>
@@ -618,20 +699,32 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   >
                     Songs
                   </h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
                     {songsList.map((rec) => {
                       const isPlaying = isTrackPlaying(rec);
                       const isLoading = isTrackLoading(rec);
-                      const isHovered = hoveredTrackId === rec.external_track_id;
+                      const isHovered =
+                        hoveredTrackId === rec.external_track_id;
 
-                      const trackId = rec.matched_local_track_id || rec.external_track_id;
+                      const trackId =
+                        rec.matched_local_track_id || rec.external_track_id;
                       const inPlaylist =
-                        trackId && trackPlaylistMap?.[trackId]?.length ? true : false;
+                        trackId && trackPlaylistMap?.[trackId]?.length
+                          ? true
+                          : false;
 
                       return (
                         <div
                           key={rec.external_track_id}
-                          onMouseEnter={() => setHoveredTrackId(rec.external_track_id)}
+                          onMouseEnter={() =>
+                            setHoveredTrackId(rec.external_track_id)
+                          }
                           onMouseLeave={() => setHoveredTrackId(null)}
                           onClick={() => handleTogglePlay(rec)}
                           style={{
@@ -640,11 +733,12 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             gap: "12px",
                             padding: "8px 12px",
                             borderRadius: "8px",
-                            backgroundColor: isPlaying || isLoading
-                              ? "rgba(139, 124, 246, 0.1)"
-                              : isHovered
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : "transparent",
+                            backgroundColor:
+                              isPlaying || isLoading
+                                ? "rgba(139, 124, 246, 0.1)"
+                                : isHovered
+                                  ? "rgba(255, 255, 255, 0.06)"
+                                  : "transparent",
                             cursor: "pointer",
                             transition: "background-color 0.15s ease",
                           }}
@@ -662,10 +756,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             }}
                           >
                             {rec.cover_art_url ? (
-                              <img
+                              <img decoding="async"
                                 src={rec.cover_art_url}
                                 alt={rec.title}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
                               />
                             ) : (
                               <div
@@ -706,9 +804,17 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                     }}
                                   />
                                 ) : isPlaying ? (
-                                  <Pause size={16} fill="var(--accent-secondary)" color="var(--accent-secondary)" />
+                                  <Pause
+                                    size={16}
+                                    fill="var(--accent-secondary)"
+                                    color="var(--accent-secondary)"
+                                  />
                                 ) : (
-                                  <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
+                                  <Play
+                                    size={16}
+                                    fill="#e8d8c9"
+                                    color="#e8d8c9"
+                                  />
                                 )}
                               </div>
                             )}
@@ -720,7 +826,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 fontSize: "0.93rem",
                                 fontWeight: 600,
-                                color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
+                                color: isPlaying
+                                  ? "var(--accent-secondary)"
+                                  : "#e8d8c9",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -771,7 +879,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 background: "none",
                                 border: "none",
-                                color: inPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
+                                color: inPlaylist
+                                  ? "var(--accent-secondary)"
+                                  : "var(--text-dim)",
                                 cursor: "pointer",
                                 padding: "6px",
                                 display: "flex",
@@ -779,9 +889,17 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 justifyContent: "center",
                                 transition: "color 0.15s ease",
                               }}
-                              title={inPlaylist ? "Added to playlist" : "Add to playlist"}
+                              title={
+                                inPlaylist
+                                  ? "Added to playlist"
+                                  : "Add to playlist"
+                              }
                             >
-                              {inPlaylist ? <Check size={16} /> : <Plus size={16} />}
+                              {inPlaylist ? (
+                                <Check size={16} />
+                              ) : (
+                                <Plus size={16} />
+                              )}
                             </button>
                           )}
 
@@ -789,7 +907,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           {onSearchDirect && (
                             <button
                               type="button"
-                              disabled={!!getDownloadStatus(rec).isCompleted || !!getDownloadStatus(rec).isDownloading}
+                              disabled={
+                                !!getDownloadStatus(rec).isCompleted ||
+                                !!getDownloadStatus(rec).isDownloading
+                              }
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSearchDirect(rec.artist, rec.title);
@@ -800,8 +921,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 color: getDownloadStatus(rec).isCompleted
                                   ? "var(--accent-secondary)"
                                   : getDownloadStatus(rec).isDownloading
-                                  ? "var(--accent-light)"
-                                  : "var(--text-dim)",
+                                    ? "var(--accent-light)"
+                                    : "var(--text-dim)",
                                 cursor: "pointer",
                                 padding: "6px",
                                 display: "flex",
@@ -813,8 +934,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 getDownloadStatus(rec).isCompleted
                                   ? "Downloaded"
                                   : getDownloadStatus(rec).isDownloading
-                                  ? "Downloading..."
-                                  : "Download track"
+                                    ? "Downloading..."
+                                    : "Download track"
                               }
                             >
                               {getDownloadStatus(rec).isCompleted ? (
@@ -854,7 +975,13 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       marginBottom: "12px",
                     }}
                   >
-                    <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#e8d8c9" }}>
+                    <h4
+                      style={{
+                        fontSize: "1.05rem",
+                        fontWeight: 700,
+                        color: "#e8d8c9",
+                      }}
+                    >
                       More Matching Results ({remainingSongs.length})
                     </h4>
                     <button
@@ -876,7 +1003,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(280px, 1fr))",
                       gap: "10px",
                     }}
                   >
@@ -893,9 +1021,10 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             gap: "10px",
                             padding: "8px 12px",
                             borderRadius: "8px",
-                            backgroundColor: isPlaying || isLoading
-                              ? "rgba(139, 124, 246, 0.1)"
-                              : "rgba(255, 255, 255, 0.03)",
+                            backgroundColor:
+                              isPlaying || isLoading
+                                ? "rgba(139, 124, 246, 0.1)"
+                                : "rgba(255, 255, 255, 0.03)",
                             border: "1px solid rgba(255, 255, 255, 0.05)",
                             cursor: "pointer",
                             transition: "background-color 0.15s ease",
@@ -912,10 +1041,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             }}
                           >
                             {rec.cover_art_url ? (
-                              <img
+                              <img decoding="async"
                                 src={rec.cover_art_url}
                                 alt={rec.title}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
                               />
                             ) : (
                               <div
@@ -932,8 +1065,21 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               </div>
                             )}
                             {isLoading && (
-                              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0, 0, 0, 0.55)" }}>
-                                <RefreshCw size={16} className="spin-animation" aria-label="Loading song" />
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backgroundColor: "rgba(0, 0, 0, 0.55)",
+                                }}
+                              >
+                                <RefreshCw
+                                  size={16}
+                                  className="spin-animation"
+                                  aria-label="Loading song"
+                                />
                               </div>
                             )}
                           </div>
@@ -942,7 +1088,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               style={{
                                 fontSize: "0.88rem",
                                 fontWeight: 600,
-                                color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
+                                color: isPlaying
+                                  ? "var(--accent-secondary)"
+                                  : "#e8d8c9",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -992,7 +1140,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
           {/* TAB: SONGS (Full List) */}
           {activeTab === "songs" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -1002,180 +1152,239 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   padding: "0 12px",
                 }}
               >
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)" }}>
+                <span
+                  style={{
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-dim)",
+                  }}
+                >
                   TRACK
                 </span>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)" }}>
+                <span
+                  style={{
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-dim)",
+                  }}
+                >
                   DURATION
                 </span>
               </div>
 
-              {searchResults.map((rec) => {
-                const isPlaying = isTrackPlaying(rec);
-                const isLoading = isTrackLoading(rec);
-                const isHovered = hoveredTrackId === rec.external_track_id;
-                const trackId = rec.matched_local_track_id || rec.external_track_id;
-                const inPlaylist = trackId && trackPlaylistMap?.[trackId]?.length ? true : false;
+              <WindowedList
+                items={searchResults}
+                label="searchResults"
+                rowHeight={80}
+                renderItem={(rec) => {
+                  const isPlaying = isTrackPlaying(rec);
+                  const isLoading = isTrackLoading(rec);
+                  const isHovered = hoveredTrackId === rec.external_track_id;
+                  const trackId =
+                    rec.matched_local_track_id || rec.external_track_id;
+                  const inPlaylist =
+                    trackId && trackPlaylistMap?.[trackId]?.length
+                      ? true
+                      : false;
 
-                return (
-                  <div
-                    key={rec.external_track_id}
-                    onMouseEnter={() => setHoveredTrackId(rec.external_track_id)}
-                    onMouseLeave={() => setHoveredTrackId(null)}
-                    onClick={() => handleTogglePlay(rec)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      backgroundColor: isPlaying || isLoading
-                        ? "rgba(139, 124, 246, 0.1)"
-                        : isHovered
-                        ? "rgba(255, 255, 255, 0.06)"
-                        : "transparent",
-                      cursor: "pointer",
-                      transition: "background-color 0.15s ease",
-                    }}
-                  >
+                  return (
                     <div
+                      key={rec.external_track_id}
+                      onMouseEnter={() =>
+                        setHoveredTrackId(rec.external_track_id)
+                      }
+                      onMouseLeave={() => setHoveredTrackId(null)}
+                      onClick={() => handleTogglePlay(rec)}
                       style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "6px",
-                        overflow: "hidden",
-                        backgroundColor: "rgba(255, 255, 255, 0.05)",
-                        position: "relative",
-                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        backgroundColor:
+                          isPlaying || isLoading
+                            ? "rgba(139, 124, 246, 0.1)"
+                            : isHovered
+                              ? "rgba(255, 255, 255, 0.06)"
+                              : "transparent",
+                        cursor: "pointer",
+                        transition: "background-color 0.15s ease",
                       }}
                     >
-                      {rec.cover_art_url ? (
-                        <img
-                          src={rec.cover_art_url}
-                          alt={rec.title}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "rgba(255, 255, 255, 0.05)",
-                          }}
-                        >
-                          <Disc size={18} color="var(--accent-light)" />
-                        </div>
-                      )}
-
-                      {(isHovered || isPlaying || isLoading) && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            backgroundColor: "rgba(0, 0, 0, 0.55)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {isLoading ? (
-                            <RefreshCw size={16} className="spin-animation" />
-                          ) : isPlaying ? (
-                            <Pause size={16} fill="var(--accent-secondary)" color="var(--accent-secondary)" />
-                          ) : (
-                            <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontSize: "0.93rem",
-                          fontWeight: 600,
-                          color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
-                          whiteSpace: "nowrap",
+                          width: "40px",
+                          height: "40px",
+                          borderRadius: "6px",
                           overflow: "hidden",
-                          textOverflow: "ellipsis",
+                          backgroundColor: "rgba(255, 255, 255, 0.05)",
+                          position: "relative",
+                          flexShrink: 0,
                         }}
                       >
-                        {rec.title}
+                        {rec.cover_art_url ? (
+                          <img decoding="async"
+                            src={rec.cover_art_url}
+                            alt={rec.title}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(255, 255, 255, 0.05)",
+                            }}
+                          >
+                            <Disc size={18} color="var(--accent-light)" />
+                          </div>
+                        )}
+
+                        {(isHovered || isPlaying || isLoading) && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              backgroundColor: "rgba(0, 0, 0, 0.55)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {isLoading ? (
+                              <RefreshCw size={16} className="spin-animation" />
+                            ) : isPlaying ? (
+                              <Pause
+                                size={16}
+                                fill="var(--accent-secondary)"
+                                color="var(--accent-secondary)"
+                              />
+                            ) : (
+                              <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
+                            )}
+                          </div>
+                        )}
                       </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: "0.93rem",
+                            fontWeight: 600,
+                            color: isPlaying
+                              ? "var(--accent-secondary)"
+                              : "#e8d8c9",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {rec.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--text-muted)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {rec.artist} {rec.album ? `• ${rec.album}` : ""}
+                        </div>
+                      </div>
+
+                      {onAddToPlaylist && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToPlaylist(rec);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: inPlaylist
+                              ? "var(--accent-secondary)"
+                              : "var(--text-dim)",
+                            cursor: "pointer",
+                            padding: "6px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                          title={
+                            inPlaylist ? "Added to playlist" : "Add to playlist"
+                          }
+                        >
+                          {inPlaylist ? (
+                            <Check size={16} />
+                          ) : (
+                            <Plus size={16} />
+                          )}
+                        </button>
+                      )}
+
+                      {onSearchDirect && (
+                        <button
+                          type="button"
+                          disabled={
+                            !!getDownloadStatus(rec).isCompleted ||
+                            !!getDownloadStatus(rec).isDownloading
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSearchDirect(rec.artist, rec.title);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: getDownloadStatus(rec).isCompleted
+                              ? "var(--accent-secondary)"
+                              : "var(--text-dim)",
+                            cursor: getDownloadStatus(rec).isCompleted
+                              ? "default"
+                              : "pointer",
+                            padding: "6px",
+                          }}
+                          title={
+                            getDownloadStatus(rec).isCompleted
+                              ? "In your library"
+                              : getDownloadStatus(rec).isDownloading
+                                ? "Downloading..."
+                                : "Download track"
+                          }
+                        >
+                          {getDownloadStatus(rec).isCompleted ? (
+                            <Check size={16} />
+                          ) : (
+                            <DownloadCloud size={16} />
+                          )}
+                        </button>
+                      )}
+
                       <div
                         style={{
                           fontSize: "0.8rem",
-                          color: "var(--text-muted)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          marginTop: "2px",
+                          color: "var(--text-dim)",
+                          minWidth: "38px",
+                          textAlign: "right",
                         }}
                       >
-                        {rec.artist} {rec.album ? `• ${rec.album}` : ""}
+                        {formatDuration(rec.duration_secs)}
                       </div>
                     </div>
-
-                    {onAddToPlaylist && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddToPlaylist(rec);
-                        }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: inPlaylist ? "var(--accent-secondary)" : "var(--text-dim)",
-                          cursor: "pointer",
-                          padding: "6px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                        title={inPlaylist ? "Added to playlist" : "Add to playlist"}
-                      >
-                        {inPlaylist ? <Check size={16} /> : <Plus size={16} />}
-                      </button>
-                    )}
-
-                    {onSearchDirect && (
-                      <button
-                        type="button"
-                        disabled={!!getDownloadStatus(rec).isCompleted || !!getDownloadStatus(rec).isDownloading}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSearchDirect(rec.artist, rec.title);
-                        }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: getDownloadStatus(rec).isCompleted ? "var(--accent-secondary)" : "var(--text-dim)",
-                          cursor: getDownloadStatus(rec).isCompleted ? "default" : "pointer",
-                          padding: "6px",
-                        }}
-                        title={getDownloadStatus(rec).isCompleted ? "In your library" : getDownloadStatus(rec).isDownloading ? "Downloading..." : "Download track"}
-                      >
-                        {getDownloadStatus(rec).isCompleted ? <Check size={16} /> : <DownloadCloud size={16} />}
-                      </button>
-                    )}
-
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--text-dim)",
-                        minWidth: "38px",
-                        textAlign: "right",
-                      }}
-                    >
-                      {formatDuration(rec.duration_secs)}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                }}
+              />
             </div>
           )}
 
@@ -1202,11 +1411,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     transition: "transform 0.18s ease, border-color 0.18s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.borderColor = "var(--accent-light)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "none";
                     e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
@@ -1224,10 +1431,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     }}
                   >
                     {a.cover ? (
-                      <img
+                      <img decoding="async"
                         src={a.cover}
                         alt={a.artist}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
                       />
                     ) : (
                       <User size={36} color="var(--accent-light)" />
@@ -1245,7 +1456,13 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   >
                     {a.artist}
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  <div
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "var(--text-muted)",
+                      marginTop: "4px",
+                    }}
+                  >
                     Artist • {a.count} track{a.count === 1 ? "" : "s"}
                   </div>
                 </div>
@@ -1275,11 +1492,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     transition: "transform 0.18s ease, border-color 0.18s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.borderColor = "var(--accent-light)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "none";
                     e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
@@ -1294,10 +1509,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                     }}
                   >
                     {alb.cover ? (
-                      <img
+                      <img decoding="async"
                         src={alb.cover}
                         alt={alb.album}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
                       />
                     ) : (
                       <div
@@ -1377,10 +1596,22 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                   >
                     <ListMusic size={40} color="var(--accent-light)" />
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#e8d8c9" }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                      color: "#e8d8c9",
+                    }}
+                  >
                     {pl.name}
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                      marginTop: "4px",
+                    }}
+                  >
                     {pl.track_count || 0} tracks
                   </div>
                 </div>

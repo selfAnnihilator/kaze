@@ -2,9 +2,10 @@ use crate::core::command::RepeatMode;
 use crate::core::event::QueueItem;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use serde::{Deserialize, Serialize};
 
 /// Manages the playback track sequence, history pointer, shuffle map, and repeat state.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlaybackQueue {
     items: Vec<QueueItem>,
     current_index: Option<usize>,
@@ -14,6 +15,17 @@ pub struct PlaybackQueue {
 }
 
 impl PlaybackQueue {
+    pub(super) fn valid_snapshot(&self) -> bool {
+        let mut order = self.shuffle_indices.clone();
+        order.sort_unstable();
+        self.current_index.is_none_or(|index| index < self.items.len())
+            && order == (0..self.items.len()).collect::<Vec<_>>()
+            && self.items.iter().all(|item| {
+                !item.queue_id.is_empty() && !item.track_id.is_empty()
+                    && item.duration_secs.is_finite() && item.duration_secs >= 0.0
+            })
+    }
+
     pub fn new() -> Self {
         Self::default()
     }

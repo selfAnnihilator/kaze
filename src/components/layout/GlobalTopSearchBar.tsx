@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Search, X, RefreshCw } from "lucide-react";
 
 interface GlobalTopSearchBarProps {
+  placeholder?: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onSearch: (queryOverride?: string) => void;
@@ -12,13 +13,25 @@ interface GlobalTopSearchBarProps {
 
 export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(({
   searchQuery,
+  placeholder = "Search any music online (artist, song title, album, or genre)...",
   setSearchQuery,
   onSearch,
   onRefresh: _onRefresh,
   isSearching = false,
   isRefreshing: _isRefreshing = false,
 }) => {
-  return (
+    const [draft, setDraft] = useState(searchQuery);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+      setDraft(searchQuery);
+    }, [searchQuery]);
+    useEffect(
+      () => () => {
+        if (timer.current) clearTimeout(timer.current);
+      },
+      [],
+    );
+    return (
     <div
       className="content-card global-search"
       style={{
@@ -36,9 +49,12 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSearch();
+            if (timer.current) clearTimeout(timer.current);
+            setSearchQuery(draft);
+            onSearch(draft);
         }}
-        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
+        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%",
+          }}
       >
         <div
           style={{
@@ -55,9 +71,15 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
         >
           <input
             type="text"
-            placeholder="Search any music online (artist, song title, album, or genre)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={placeholder}
+            value={draft}
+              aria-label="Search music online"
+              onChange={(e) => {
+                const value = e.target.value;
+                setDraft(value);
+                if (timer.current) clearTimeout(timer.current);
+                timer.current = setTimeout(() => setSearchQuery(value), 200);
+              }}
             style={{
               background: "transparent",
               border: "none",
@@ -67,11 +89,13 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
               width: "100%",
             }}
           />
-          {searchQuery && (
+          {draft && (
             <button
               type="button"
               onClick={() => {
-                setSearchQuery("");
+                  if (timer.current) clearTimeout(timer.current);
+                  setDraft("");
+                  setSearchQuery("");
                 onSearch("");
               }}
               style={{
@@ -113,4 +137,5 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
 
     </div>
   );
-});
+},
+);

@@ -1,0 +1,127 @@
+{
+  "passed": true,
+  "target": "native WebKitGTK",
+  "rounds": [
+    {
+      "iteration": 0,
+      "destination": "Queue",
+      "frames": 12,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 11,
+      "rows": 10
+    },
+    {
+      "iteration": 0,
+      "destination": "Home",
+      "frames": 40,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 19,
+      "rows": 0
+    },
+    {
+      "iteration": 1,
+      "destination": "Queue",
+      "frames": 11,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 26,
+      "rows": 10
+    },
+    {
+      "iteration": 1,
+      "destination": "Home",
+      "frames": 33,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 39,
+      "rows": 0
+    },
+    {
+      "iteration": 2,
+      "destination": "Queue",
+      "frames": 32,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 44,
+      "rows": 10
+    },
+    {
+      "iteration": 2,
+      "destination": "Home",
+      "frames": 20,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 57,
+      "rows": 0
+    },
+    {
+      "iteration": 3,
+      "destination": "Queue",
+      "frames": 7,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 61,
+      "rows": 10
+    },
+    {
+      "iteration": 3,
+      "destination": "Home",
+      "frames": 25,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 74,
+      "rows": 0
+    },
+    {
+      "iteration": 4,
+      "destination": "Queue",
+      "frames": 27,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 79,
+      "rows": 10
+    },
+    {
+      "iteration": 4,
+      "destination": "Home",
+      "frames": 38,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 92,
+      "rows": 0
+    },
+    {
+      "iteration": 5,
+      "destination": "Queue",
+      "frames": 32,
+      "scroll_top": null,
+      "view": "queue",
+      "errors": [],
+      "coverReads": 97,
+      "rows": 10
+    },
+    {
+      "iteration": 5,
+      "destination": "Home",
+      "frames": 32,
+      "scroll_top": 400,
+      "view": "home",
+      "errors": [],
+      "coverReads": 109,
+      "rows": 0
+    }
+  ],
+  "tracks": 21
+}

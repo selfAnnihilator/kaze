@@ -1,815 +1,649 @@
-import React, { useState, useEffect, useRef } from "react";
-import { AppSettings, CloudSyncStatus, RemoteAudioCacheStats } from "../../types";
-import { dispatchCommand, executeQuery } from "../../services/api";
 import {
-  Settings as SettingsIcon,
-  FolderPlus,
-  Trash2,
-  RefreshCw,
-  Folder,
-  Volume2,
-  Globe,
-  DownloadCloud,
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
   Database,
-  CheckCircle,
-  Sparkles,
-  ExternalLink,
-  Cloud,
-  ShieldCheck,
+  Folder,
+  FolderPlus,
+  LogOut,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
+import type {
+  AppSettings,
+  RemoteAudioCacheStats,
+  UserProfile,
+} from "../../types";
+import { dispatchCommand, executeQuery } from "../../services/api";
+import type { InterfaceStyle } from "../../presentation/InterfaceContext";
+import { WindowedList } from "../../presentation/WindowedList";
+import { useViewMemory } from "../../presentation/ViewMemory";
 
+type Section = "main" | "folders" | "system";
+type MusicFolder = { id: string; path: string; track_count?: number };
 interface SettingsViewProps {
+  interfaceStyle: InterfaceStyle;
+  onSelectInterfaceStyle: (style: InterfaceStyle) => Promise<void>;
+  isSavingInterfaceStyle?: boolean;
+  interfaceStyleError?: string | null;
   settings: AppSettings | null;
-  configuredFolders: Array<{ id: string; path: string; track_count?: number }>;
-  cloudSyncStatus?: CloudSyncStatus | null;
+  configuredFolders: MusicFolder[];
+  currentUser: UserProfile | null;
   onAddFolder: (path: string) => Promise<void>;
   onRemoveFolder: (folderId: string) => Promise<void>;
   onRescanLibrary: () => Promise<void>;
-  onRerunOnboarding: () => void;
-  onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
-  onImportSoulseek: () => Promise<void>;
-  onSyncCloud?: () => Promise<void>;
-  onSetCloudUrl?: (url: string) => Promise<void>;
-  onLogoutAll?: () => Promise<void>;
   onReloadSettings?: () => Promise<void>;
+  onLogout: (scope: "device" | "all") => Promise<void>;
+  onOpenAuthModal: () => void;
   isScanning?: boolean;
-  isSyncingCloud?: boolean;
 }
+function cacheSnapshot(response: unknown): RemoteAudioCacheStats {
+  const raw = response as {
+    data?: RemoteAudioCacheStats;
+    total_size_bytes?: number;
+  } | null;
+  const value = (raw?.data || raw) as RemoteAudioCacheStats | null;
+  if (
+    !value ||
+    typeof value.total_size_bytes !== "number" ||
+    typeof value.file_count !== "number"
+  )
+    throw new Error("Cache information unavailable");
+  return value;
+}
+const size = (bytes: number) =>
+  bytes >= 1024 ** 3
+    ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
+    : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
-export const SettingsView: React.FC<SettingsViewProps> = ({
+export const SettingsView = memo(function SettingsView({
+  interfaceStyle,
+  onSelectInterfaceStyle,
+  isSavingInterfaceStyle,
+  interfaceStyleError,
   settings,
   configuredFolders,
-  cloudSyncStatus,
+  currentUser,
   onAddFolder,
   onRemoveFolder,
   onRescanLibrary,
-  onRerunOnboarding,
-  onLaunchSoulseek,
-  onImportSoulseek,
-  onSyncCloud,
-  onSetCloudUrl,
-  onLogoutAll,
   onReloadSettings,
+  onLogout,
+  onOpenAuthModal,
   isScanning = false,
-  isSyncingCloud = false,
-}) => {
+}: SettingsViewProps) {
+  const memory = useViewMemory("settings", () => ({
+    section: "main" as Section,
+  }));
+  const [section, setSection] = useState<Section>(memory.section);
   const [newFolderPath, setNewFolderPath] = useState("");
-  const [addingFolder, setAddingFolder] = useState(false);
-  const [workerUrlInput, setWorkerUrlInput] = useState(
-    cloudSyncStatus?.worker_url || "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
+  const [folderBusy, setFolderBusy] = useState<string | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [closeBehavior, setCloseBehavior] = useState(
+    settings?.close_button_behavior ?? "minimize_to_tray",
   );
-  const [savingUrl, setSavingUrl] = useState(false);
-  const [activeSection, setActiveSection] = useState<"folders" | "audio" | "metadata" | "soulseek" | "system" | "cloud">("folders");
-  const [cacheStats, setCacheStats] = useState<RemoteAudioCacheStats | null>(null);
+  const [savingClose, setSavingClose] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const closeRequest = useRef(false);
+  const [cache, setCache] = useState<RemoteAudioCacheStats | null>(null);
+  const [cacheLoading, setCacheLoading] = useState(false);
+  const [cacheError, setCacheError] = useState<string | null>(null);
+  const [cacheMessage, setCacheMessage] = useState<string | null>(null);
   const [clearingCache, setClearingCache] = useState(false);
-  const [clearMessage, setClearMessage] = useState<string | null>(null);
-  const [closeBehavior, setCloseBehavior] = useState<"minimize_to_tray" | "quit_app">(
-    settings?.close_button_behavior ?? "minimize_to_tray"
-  );
-  const [savingCloseBehavior, setSavingCloseBehavior] = useState(false);
-  const [closeBehaviorError, setCloseBehaviorError] = useState<string | null>(null);
-  const closeBehaviorRequest = useRef(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutChoiceOpen, setLogoutChoiceOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const logoutDialog = useRef<HTMLDialogElement>(null);
+  const logoutTrigger = useRef<HTMLButtonElement>(null);
+  const logoutRequest = useRef(false);
+  const root = useRef<HTMLDivElement>(null);
+  const focusSection = useRef(false);
+  useEffect(() => {
+    const dialog = logoutDialog.current;
+    if (!currentUser) {
+      setLogoutChoiceOpen(false);
+      return;
+    }
+    if (!logoutChoiceOpen || !dialog) return;
+    dialog.showModal();
+    dialog.querySelector<HTMLButtonElement>(".settings-logout-cancel")?.focus();
+    return () => {
+      dialog.close();
+      logoutTrigger.current?.focus({ preventScroll: true });
+    };
+  }, [logoutChoiceOpen, currentUser?.id]);
 
   useEffect(() => {
-    if (settings?.close_button_behavior) {
+    if (settings?.close_button_behavior)
       setCloseBehavior(settings.close_button_behavior);
-    }
   }, [settings?.close_button_behavior]);
+  useLayoutEffect(() => {
+    memory.section = section;
+    if (!focusSection.current) return;
+    const page = root.current?.closest<HTMLElement>(".main-content");
+    if (page) page.scrollTop = 0;
+    root.current
+      ?.querySelector<HTMLElement>("h1")
+      ?.focus({ preventScroll: true });
+    focusSection.current = false;
+  }, [section, memory]);
+  const openSection = (next: Section) => {
+    focusSection.current = true;
+    setSection(next);
+  };
+  useEffect(() => {
+    if (section !== "system") return;
+    let cancelled = false;
+    setCacheLoading(true);
+    setCache(null);
+    setCacheError(null);
+    executeQuery({ query: "GetRemoteAudioCacheStats" })
+      .then((response) => {
+        const value = cacheSnapshot(response);
+        if (!cancelled) setCache(value);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setCacheError(
+            "Couldn't load storage usage. Reopen this section to try again.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setCacheLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [section]);
 
-  const handleSetCloseBehavior = async (behavior: "minimize_to_tray" | "quit_app") => {
-    if (closeBehaviorRequest.current) return;
-    closeBehaviorRequest.current = true;
-    setSavingCloseBehavior(true);
-    setCloseBehaviorError(null);
+  const saveCloseBehavior = async (
+    behavior: "minimize_to_tray" | "quit_app",
+  ) => {
+    if (closeRequest.current || behavior === closeBehavior) return;
+    closeRequest.current = true;
+    setSavingClose(true);
+    setCloseError(null);
     try {
       await dispatchCommand({
         command: "SetCloseButtonBehavior",
         payload: { behavior },
       });
       setCloseBehavior(behavior);
-      if (onReloadSettings) {
-        try {
-          await onReloadSettings();
-        } catch {
-          setCloseBehaviorError("Your choice was saved, but Settings couldn’t refresh. Reopen Settings to reload it.");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to update close button behavior:", err);
-      setCloseBehaviorError("Couldn’t save this choice. Your previous close behavior is still active.");
-    } finally {
-      closeBehaviorRequest.current = false;
-      setSavingCloseBehavior(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSection === "system") {
-      executeQuery({ query: "GetRemoteAudioCacheStats" })
-        .then((res: any) => {
-          if (res && res.total_size_bytes !== undefined) {
-            setCacheStats(res);
-          } else if (res && res.data && res.data.total_size_bytes !== undefined) {
-            setCacheStats(res.data);
-          }
-        })
-        .catch((err) => console.error("Failed to load cache stats:", err));
-    }
-  }, [activeSection]);
-
-  const handleClearCache = async () => {
-    setClearingCache(true);
-    setClearMessage(null);
-    try {
-      const res = await dispatchCommand({ command: "ClearRemoteAudioCache" });
-      const bytes = res?.bytes_freed ?? 0;
-      const files = res?.files_removed ?? 0;
-      const mb = (bytes / (1024 * 1024)).toFixed(1);
-      setClearMessage(`Freed ${mb} MB (${files} files removed)`);
-      const updated = await executeQuery({ query: "GetRemoteAudioCacheStats" });
-      if (updated && (updated as any).total_size_bytes !== undefined) {
-        setCacheStats(updated as any);
-      } else if (updated && (updated as any).data && (updated as any).data.total_size_bytes !== undefined) {
-        setCacheStats((updated as any).data);
+      try {
+        await onReloadSettings?.();
+      } catch {
+        setCloseError("Your choice was saved. Reopen Settings to refresh it.");
       }
     } catch {
-      setClearMessage("Failed to clear cache");
+      setCloseError(
+        "Couldn't save this choice. Your previous close behavior is still active.",
+      );
+    } finally {
+      closeRequest.current = false;
+      setSavingClose(false);
+    }
+  };
+  const folderAction = async (
+    key: string,
+    action: () => Promise<void>,
+    message: string,
+  ) => {
+    if (folderBusy) return;
+    setFolderBusy(key);
+    setFolderError(null);
+    try {
+      await action();
+    } catch {
+      setFolderError(message);
+    } finally {
+      setFolderBusy(null);
+    }
+  };
+  const addFolder = (event: FormEvent) => {
+    event.preventDefault();
+    if (!newFolderPath.trim()) return;
+    void folderAction(
+      "add",
+      async () => {
+        await onAddFolder(newFolderPath.trim());
+        setNewFolderPath("");
+      },
+      "Couldn't add this folder. Check the path and try again.",
+    );
+  };
+  const clearCache = async () => {
+    if (clearingCache) return;
+    setClearingCache(true);
+    setCacheError(null);
+    setCacheMessage(null);
+    try {
+      await dispatchCommand({ command: "ClearRemoteAudioCache" });
+      setCacheMessage("Temporary audio cleared. Tracks in use stay available.");
+      try {
+        setCache(
+          cacheSnapshot(
+            await executeQuery({ query: "GetRemoteAudioCacheStats" }),
+          ),
+        );
+      } catch {
+        setCacheError(
+          "Cache cleared, but usage couldn't refresh. Reopen this section to check it.",
+        );
+      }
+    } catch {
+      setCacheError("Couldn't clear temporary audio. Please try again.");
     } finally {
       setClearingCache(false);
     }
   };
-
-  useEffect(() => {
-    if (cloudSyncStatus?.worker_url) {
-      setWorkerUrlInput(cloudSyncStatus.worker_url);
-    }
-  }, [cloudSyncStatus?.worker_url]);
-
-  const handleAddFolderSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderPath.trim()) return;
-    setAddingFolder(true);
+  const logOut = async (scope: "device" | "all") => {
+    if (logoutRequest.current) return;
+    logoutRequest.current = true;
+    setLoggingOut(true);
+    setLogoutError(null);
     try {
-      await onAddFolder(newFolderPath.trim());
-      setNewFolderPath("");
+      await onLogout(scope);
+      setLogoutChoiceOpen(false);
+    } catch {
+      setLogoutError(
+        scope === "all"
+          ? "Couldn't log out on all devices. Check your connection and try again."
+          : "Couldn't log out. Please try again.",
+      );
     } finally {
-      setAddingFolder(false);
+      logoutRequest.current = false;
+      setLoggingOut(false);
     }
   };
-
+  const folderRow = (folder: MusicFolder) => (
+    <div className="settings-folder">
+      <Folder size={20} aria-hidden="true" />
+      <div>
+        <strong title={folder.path}>{folder.path}</strong>
+        <span>{folder.track_count ?? 0} tracks</span>
+      </div>
+      <button
+        className="settings-icon-action"
+        type="button"
+        aria-label={`Remove folder ${folder.path}`}
+        disabled={!!folderBusy}
+        onClick={() =>
+          void folderAction(
+            folder.id,
+            () => onRemoveFolder(folder.id),
+            "Couldn't remove this folder. Please try again.",
+          )
+        }
+      >
+        <Trash2 size={17} />
+      </button>
+    </div>
+  );
+  const title =
+    section === "main"
+      ? "Settings"
+      : section === "folders"
+        ? "Music Folders"
+        : "System & Storage";
   return (
-    <div>
-      {/* Header */}
-      <div className="view-header">
-        <div>
-          <h1 className="view-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <SettingsIcon size={28} color="var(--text-muted)" />
-            <span>Settings & Configuration</span>
-          </h1>
-          <p style={{ color: "var(--text-dim)", fontSize: "0.88rem", marginTop: "4px" }}>
-            Manage music root directories, audio engine parameters, metadata providers, and Soulseek integration
-          </p>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="tab-bar">
-        <button
-          onClick={() => setActiveSection("folders")}
-          className={`tab-btn ${activeSection === "folders" ? "active" : ""}`}
-        >
-          <Folder size={16} />
-          <span>Music Folders</span>
-        </button>
-        <button
-          onClick={() => setActiveSection("audio")}
-          className={`tab-btn ${activeSection === "audio" ? "active" : ""}`}
-        >
-          <Volume2 size={16} />
-          <span>Audio Engine</span>
-        </button>
-        <button
-          onClick={() => setActiveSection("metadata")}
-          className={`tab-btn ${activeSection === "metadata" ? "active" : ""}`}
-        >
-          <Globe size={16} />
-          <span>Metadata Providers</span>
-        </button>
-        <button
-          onClick={() => setActiveSection("soulseek")}
-          className={`tab-btn ${activeSection === "soulseek" ? "active" : ""}`}
-        >
-          <DownloadCloud size={16} />
-          <span>Soulseek / Slskd</span>
-        </button>
-        <button
-          onClick={() => setActiveSection("system")}
-          className={`tab-btn ${activeSection === "system" ? "active" : ""}`}
-        >
-          <Database size={16} />
-          <span>System & Storage</span>
-        </button>
-        <button
-          onClick={() => setActiveSection("cloud")}
-          className={`tab-btn ${activeSection === "cloud" ? "active" : ""}`}
-        >
-          <Cloud size={16} />
-          <span>Cloud & Sync</span>
-        </button>
-      </div>
-
-      {/* SECTION: FOLDERS */}
-      {activeSection === "folders" && (
-        <div className="content-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+    <div className={`settings-view settings-view--${section}`} ref={root}>
+      <header className="settings-header">
+        {section !== "main" && (
+          <button
+            type="button"
+            className="settings-back"
+            onClick={() => openSection("main")}
+          >
+            <ArrowLeft size={17} /> Back to Settings
+          </button>
+        )}
+        <h1 tabIndex={-1}>
+          {title}
+          <span aria-hidden="true">.</span>
+        </h1>
+      </header>
+      {section === "main" ? (
+        <div className="settings-stack">
+          <section
+            className="settings-section interface-picker"
+            aria-labelledby="interface-style-heading"
+          >
+            <h2 id="interface-style-heading">Interface Style</h2>
+            <div
+              className="settings-style-options"
+              role="group"
+              aria-label="Interface Style"
+              aria-busy={isSavingInterfaceStyle}
+            >
+              {(["spatial", "brutalist"] as const).map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  aria-pressed={interfaceStyle === style}
+                  disabled={isSavingInterfaceStyle}
+                  onClick={() => void onSelectInterfaceStyle(style)}
+                >
+                  <span className="settings-choice-dot" aria-hidden="true" />
+                  <span>
+                    <strong>
+                      {style === "spatial" ? "Spatial" : "Brutalist"}
+                    </strong>
+                  </span>
+                  {interfaceStyle === style && (
+                    <span className="settings-choice-status" aria-hidden="true">
+                      <Check size={15} />
+                      Selected
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {isSavingInterfaceStyle && (
+              <p role="status">Saving Interface Style…</p>
+            )}
+            {interfaceStyleError && <p role="alert">{interfaceStyleError}</p>}
+          </section>
+          <section
+            className="settings-section settings-close"
+            aria-labelledby="settings-close-heading"
+          >
+            <h2 id="settings-close-heading">Window Close Behavior</h2>
+            <select
+              id="settings-close-behavior"
+              aria-labelledby="settings-close-heading"
+              value={closeBehavior}
+              disabled={savingClose || !settings}
+              onChange={(event) =>
+                void saveCloseBehavior(
+                  event.target.value as "minimize_to_tray" | "quit_app",
+                )
+              }
+            >
+              <option value="minimize_to_tray">
+                Keep playing in the background
+              </option>
+              <option value="quit_app">Quit Kaze</option>
+            </select>
+            <p className="settings-hint">
+              {closeBehavior === "minimize_to_tray"
+                ? "Kaze stays in the system tray. If the tray is unavailable, Kaze quits."
+                : "Stops playback and closes the app."}
+            </p>
+            {savingClose && <p role="status">Saving close behavior…</p>}
+            {closeError && <p role="alert">{closeError}</p>}
+          </section>
+          <section
+            className="settings-links"
+            aria-labelledby="settings-library-heading"
+          >
+            <h2 id="settings-library-heading">Library &amp; storage</h2>
+            <button
+              type="button"
+              className="settings-section-link"
+              onClick={() => openSection("folders")}
+            >
+              <span className="settings-section-icon" aria-hidden="true">
+                <Folder size={22} />
+              </span>
+              <span>
+                <strong>Music Folders</strong>
+                <span>
+                  {configuredFolders.length}{" "}
+                  {configuredFolders.length === 1 ? "folder" : "folders"} in
+                  your library
+                </span>
+              </span>
+              <span className="settings-open-label" aria-hidden="true">
+                Manage
+                <ArrowRight size={16} />
+              </span>
+            </button>
+            <button
+              type="button"
+              className="settings-section-link"
+              onClick={() => openSection("system")}
+            >
+              <span className="settings-section-icon" aria-hidden="true">
+                <Database size={22} />
+              </span>
+              <span>
+                <strong>System &amp; Storage</strong>
+                <span>Manage temporary audio</span>
+              </span>
+              <span className="settings-open-label" aria-hidden="true">
+                Manage
+                <ArrowRight size={16} />
+              </span>
+            </button>
+          </section>
+          <section className="settings-account" aria-label="Account">
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>Configured Music Folders</h3>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                All child directories and subfolders are scanned recursively. Unapproved paths and outside symlinks are strictly rejected.
+              <h2>Account</h2>
+              <p>
+                {currentUser
+                  ? currentUser.display_name || currentUser.username
+                  : "You're listening as a guest."}
               </p>
             </div>
-
-            <div style={{ display: "flex", gap: "10px" }}>
+            {currentUser ? (
               <button
-                onClick={() => onRerunOnboarding()}
-                className="btn btn-secondary"
-                title="Test initial onboarding flow with default or custom music directory"
+                type="button"
+                className="settings-logout"
+                ref={logoutTrigger}
+                onClick={() => {
+                  setLogoutError(null);
+                  setLogoutChoiceOpen(true);
+                }}
+                disabled={loggingOut}
               >
-                <Sparkles size={15} color="var(--accent-light)" />
-                <span>Re-run Onboarding Setup</span>
+                <LogOut size={17} />
+                {loggingOut ? "Logging out…" : "Log Out"}
               </button>
-
+            ) : (
               <button
-                onClick={() => onRescanLibrary()}
-                disabled={isScanning}
-                className="btn btn-secondary"
-                title={isScanning ? "Scanning Library..." : "Rescan Library"}
+                type="button"
+                className="settings-action"
+                onClick={onOpenAuthModal}
               >
-                <RefreshCw size={15} className={isScanning ? "animate-spin" : ""} color={isScanning ? "var(--accent)" : "currentColor"} />
+                Sign In
               </button>
-            </div>
-          </div>
-
-          {/* Folder List */}
-          <div style={{ marginBottom: "20px" }}>
-            {configuredFolders.map((folder) => (
-              <div key={folder.id} className="folder-item">
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: "hidden" }}>
-                  <Folder color="var(--accent-light)" size={20} style={{ flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontFamily: "monospace", fontSize: "0.9rem", color: "var(--text-main)" }}>
-                      {folder.path}
-                    </div>
-                    <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginTop: "2px" }}>
-                      {folder.track_count ?? 0} tracks indexed
-                    </div>
-                  </div>
+            )}
+            {currentUser && logoutChoiceOpen && (
+              <dialog
+                ref={logoutDialog}
+                className="settings-logout-dialog"
+                tabIndex={-1}
+                aria-modal="true"
+                aria-labelledby="logout-choice-heading"
+                aria-busy={loggingOut}
+                onKeyDown={(event) => {
+                  if (event.key !== "Tab") return;
+                  const buttons = Array.from(
+                    event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                      "button:not(:disabled)",
+                    ),
+                  );
+                  const first = buttons[0],
+                    last = buttons[buttons.length - 1];
+                  if (!first) {
+                    event.preventDefault();
+                    event.currentTarget.focus();
+                  } else if (
+                    event.shiftKey &&
+                    document.activeElement === first
+                  ) {
+                    event.preventDefault();
+                    last?.focus();
+                  } else if (
+                    !event.shiftKey &&
+                    document.activeElement === last
+                  ) {
+                    event.preventDefault();
+                    first.focus();
+                  }
+                }}
+                onCancel={(event) => {
+                  event.preventDefault();
+                  if (!logoutRequest.current) setLogoutChoiceOpen(false);
+                }}
+              >
+                <h2 id="logout-choice-heading">
+                  Where do you want to log out?
+                </h2>
+                <div className="settings-logout-options">
+                  <button
+                    type="button"
+                    disabled={loggingOut}
+                    onClick={() => void logOut("device")}
+                  >
+                    <strong>This device</strong>
+                    <span>Keep other devices signed in.</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loggingOut}
+                    onClick={() => void logOut("all")}
+                  >
+                    <strong>All devices</strong>
+                    <span>
+                      Log out everywhere, including this device. Requires a
+                      connection.
+                    </span>
+                  </button>
                 </div>
-
+                {loggingOut && <p role="status">Logging out…</p>}
+                {logoutError && <p role="alert">{logoutError}</p>}
                 <button
-                  onClick={() => onRemoveFolder(folder.id)}
-                  style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", padding: "6px" }}
-                  title="Remove folder"
+                  type="button"
+                  className="settings-action settings-logout-cancel"
+                  disabled={loggingOut}
+                  onClick={() => setLogoutChoiceOpen(false)}
                 >
-                  <Trash2 size={16} />
+                  Cancel
                 </button>
-              </div>
-            ))}
+              </dialog>
+            )}
+          </section>
+        </div>
+      ) : section === "folders" ? (
+        <section
+          className="settings-detail"
+          aria-label="Music Folders settings"
+        >
+          <div className="settings-detail-intro">
+            <p>Choose where Kaze finds your music.</p>
+            <button
+              type="button"
+              className="settings-action"
+              disabled={isScanning || !!folderBusy}
+              onClick={() =>
+                void folderAction(
+                  "scan",
+                  onRescanLibrary,
+                  "Couldn't scan your library. Please try again.",
+                )
+              }
+            >
+              <RefreshCw
+                size={16}
+                className={isScanning ? "spin-animation" : undefined}
+              />
+              {isScanning ? "Scanning…" : "Rescan Library"}
+            </button>
           </div>
-
-          {/* Add Folder Form */}
-          <form onSubmit={handleAddFolderSubmit} style={{ display: "flex", gap: "10px", borderTop: "1px solid var(--border)", paddingTop: "16px" }}>
+          {configuredFolders.length > 50 ? (
+            <WindowedList
+              items={configuredFolders}
+              rowHeight={88}
+              label="Music folders"
+              renderItem={folderRow}
+            />
+          ) : (
+            <div className="settings-folder-list">
+              {configuredFolders.length ? (
+                configuredFolders.map((folder) => (
+                  <div key={folder.id}>{folderRow(folder)}</div>
+                ))
+              ) : (
+                <p className="settings-hint">
+                  Add a folder to start your library.
+                </p>
+              )}
+            </div>
+          )}
+          <form onSubmit={addFolder} className="settings-folder-form">
+            <label htmlFor="settings-folder-path">Folder path</label>
             <input
-              type="text"
+              id="settings-folder-path"
               value={newFolderPath}
-              onChange={(e) => setNewFolderPath(e.target.value)}
-              placeholder="/path/to/music/folder"
-              className="input-field"
-              style={{ flex: 1, fontFamily: "monospace" }}
+              onChange={(event) => setNewFolderPath(event.target.value)}
+              placeholder="/path/to/your/music"
+              autoComplete="off"
             />
             <button
               type="submit"
-              disabled={addingFolder || !newFolderPath.trim()}
-              className="btn btn-primary"
+              className="settings-action settings-action--primary"
+              disabled={!!folderBusy || !newFolderPath.trim()}
             >
-              <FolderPlus size={16} />
-              <span>{addingFolder ? "Adding..." : "Add Folder"}</span>
+              <FolderPlus size={17} />
+              {folderBusy === "add" ? "Adding…" : "Add Folder"}
             </button>
           </form>
-        </div>
-      )}
-
-      {/* SECTION: AUDIO */}
-      {activeSection === "audio" && (
-        <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
-            Audio & Playback Parameters
-          </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            <div>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Default Volume
-              </label>
-              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--accent-light)", marginTop: "4px" }}>
-                {settings ? Math.round(settings.audio.default_volume * 100) : 80}%
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Audio Output Device
-              </label>
-              <div style={{ fontSize: "0.95rem", color: "var(--text-main)", marginTop: "4px" }}>
-                {settings?.audio.output_device || "System Default (CPAL)"}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Meaningful Play Threshold
-              </label>
-              <div style={{ fontSize: "0.95rem", color: "var(--text-main)", marginTop: "4px" }}>
-                {settings?.history.min_meaningful_seconds || 30} seconds
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", display: "block" }}>
-                Completion Threshold
-              </label>
-              <div style={{ fontSize: "0.95rem", color: "var(--text-main)", marginTop: "4px" }}>
-                {settings ? Math.round(settings.history.min_meaningful_percentage * 100) : 50}%
-              </div>
-            </div>
+          {folderError && <p role="alert">{folderError}</p>}
+        </section>
+      ) : (
+        <section
+          className="settings-detail"
+          aria-label="System & Storage settings"
+        >
+          <div className="settings-storage-summary">
+            <span className="settings-eyebrow">TEMPORARY AUDIO</span>
+            <strong>
+              {cacheLoading
+                ? "Loading…"
+                : cache
+                  ? size(cache.total_size_bytes)
+                  : "Unavailable"}
+            </strong>
+            {cache && (
+              <p>
+                {cache.file_count} cached{" "}
+                {cache.file_count === 1 ? "track" : "tracks"}
+                {cache.max_size_bytes > 0
+                  ? ` · ${size(cache.max_size_bytes)} limit`
+                  : ""}
+              </p>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* SECTION: METADATA */}
-      {activeSection === "metadata" && (
-        <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
-            External Metadata Providers
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div className="folder-item">
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>MusicBrainz & Cover Art Archive</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "2px" }}>
-                  1 req/sec rate-limiting with permanent disk artwork caching
-                </div>
-              </div>
-              <span className="badge badge-exact">Enabled</span>
-            </div>
-
-            <div className="folder-item">
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Spotify Web API</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "2px" }}>
-                  Optional Client Credentials OAuth for external recommendations
-                </div>
-              </div>
-              <span className="badge" style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>
-                {settings?.metadata.enable_spotify ? "Configured" : "Optional"}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION: SOULSEEK */}
-      {activeSection === "soulseek" && (
-        <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
-            Soulseek & SoulseekQt Integration
-          </h3>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "20px" }}>
-            Kaze integrates directly with your system's SoulseekQt desktop installation and local download repository.
-          </p>
-
-          {/* SoulseekQt Native Integration Card */}
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: "8px",
-              backgroundColor: "rgba(243, 112, 30, 0.08)",
-              border: "1px solid var(--accent-light)",
-              marginBottom: "24px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <DownloadCloud size={18} color="var(--accent-light)" />
-                  <span>SoulseekQt Desktop Application</span>
-                  <span className="badge badge-exact">Detected</span>
-                </div>
-                <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "6px" }}>
-                  Binary: ~/Applications/SoulseekQt*.AppImage or system launcher
-                </div>
-                <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", fontFamily: "monospace", marginTop: "2px" }}>
-                  Downloads: ~/Soulseek Downloads/complete
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => onLaunchSoulseek()}
-                >
-                  <ExternalLink size={15} />
-                  <span>Launch SoulseekQt</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => onImportSoulseek()}
-                >
-                  <RefreshCw size={15} />
-                  <span>Import Completed Downloads</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          <div className="settings-storage-action">
             <div>
-              <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase" }}>
-                Slskd Daemon Fallback Host & Port
-              </label>
-              <div style={{ fontFamily: "monospace", fontSize: "0.95rem", marginTop: "4px" }}>
-                {settings?.downloads.slskd_host || "localhost"}:{settings?.downloads.slskd_port || 5030}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase" }}>
-                Automatic Library Import
-              </label>
-              <div style={{ color: "var(--success)", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.9rem", marginTop: "4px" }}>
-                <CheckCircle size={16} /> Auto-import on download completion
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION: SYSTEM */}
-      {activeSection === "system" && (
-        <div className="content-card">
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", marginBottom: "16px" }}>
-            System, Database & Cache
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div className="folder-item">
-              <div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                  SQLite Database Path
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
-                  {settings?.database_path || "Default user data dir / music_player.db"}
-                </div>
-              </div>
-            </div>
-
-            <div className="folder-item">
-              <div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                  Cover Art Cache Directory
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
-                  {settings?.cache_dir || "Default user cache dir / artwork"}
-                </div>
-              </div>
-            </div>
-
-            <div className="folder-item" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ flex: 1, marginRight: "16px" }}>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                  Remote Audio Playback Cache (Bounded LRU)
-                </div>
-                <div style={{ fontFamily: "monospace", fontSize: "0.85rem", marginTop: "4px" }}>
-                  {settings?.cache_dir ? `${settings.cache_dir}/remote-audio` : "Default user cache dir / remote-audio"}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                  {cacheStats
-                    ? `${(cacheStats.total_size_bytes / (1024 * 1024)).toFixed(1)} MB used across ${cacheStats.file_count} cached tracks (Limit: ${(cacheStats.max_size_bytes / (1024 * 1024)).toFixed(0)} MB, auto-evicts to ~900 MB)`
-                    : "Max Limit: 1,024 MB (Auto-evicts oldest unplayed tracks to ~900 MB)"}
-                  {cacheStats && cacheStats.partial_file_count > 0 && ` • ${cacheStats.partial_file_count} active/partial download(s)`}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {clearMessage && (
-                  <span style={{ fontSize: "0.78rem", color: "#38bdf8" }}>{clearMessage}</span>
-                )}
-                <button
-                  type="button"
-                  onClick={handleClearCache}
-                  disabled={clearingCache}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: "rgba(239, 68, 68, 0.15)",
-                    color: "#f87171",
-                    border: "1px solid rgba(239, 68, 68, 0.3)",
-                    fontWeight: 600,
-                    fontSize: "0.8rem",
-                    cursor: clearingCache ? "not-allowed" : "pointer",
-                    opacity: clearingCache ? 0.6 : 1,
-                  }}
-                >
-                  <Trash2 size={14} />
-                  <span>{clearingCache ? "Clearing..." : "Clear Cache"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Close Button & Background Tray Behavior */}
-            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
-              <div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                  Window Close Behavior
-                </div>
-                <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                  Choose what the window’s close button does. If the system tray is unavailable, closing quits Kaze.
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "4px" }}>
-                <button
-                  type="button"
-                  onClick={() => handleSetCloseBehavior("minimize_to_tray")}
-                  aria-pressed={closeBehavior === "minimize_to_tray"}
-                  disabled={savingCloseBehavior}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: "4px",
-                    padding: "10px 14px",
-                    borderRadius: "8px",
-                    backgroundColor: closeBehavior === "minimize_to_tray" ? "rgba(224, 93, 30, 0.12)" : "rgba(255, 255, 255, 0.03)",
-                    border: `1px solid ${closeBehavior === "minimize_to_tray" ? "var(--accent)" : "rgba(255, 255, 255, 0.08)"}`,
-                    color: closeBehavior === "minimize_to_tray" ? "#fefefe" : "var(--text-muted)",
-                    cursor: savingCloseBehavior ? "not-allowed" : "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "0.88rem", color: closeBehavior === "minimize_to_tray" ? "var(--accent-light, #f08c4a)" : "var(--text-main)" }}>
-                    <span style={{
-                      display: "inline-block",
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: closeBehavior === "minimize_to_tray" ? "var(--accent)" : "rgba(255, 255, 255, 0.2)"
-                    }} />
-                    <span>Minimize to Tray (Default)</span>
-                  </div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", paddingLeft: "16px" }}>
-                    Keeps Kaze running and lets playback continue in the background.
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSetCloseBehavior("quit_app")}
-                  aria-pressed={closeBehavior === "quit_app"}
-                  disabled={savingCloseBehavior}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: "4px",
-                    padding: "10px 14px",
-                    borderRadius: "8px",
-                    backgroundColor: closeBehavior === "quit_app" ? "rgba(224, 93, 30, 0.12)" : "rgba(255, 255, 255, 0.03)",
-                    border: `1px solid ${closeBehavior === "quit_app" ? "var(--accent)" : "rgba(255, 255, 255, 0.08)"}`,
-                    color: closeBehavior === "quit_app" ? "#fefefe" : "var(--text-muted)",
-                    cursor: savingCloseBehavior ? "not-allowed" : "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "0.88rem", color: closeBehavior === "quit_app" ? "var(--accent-light, #f08c4a)" : "var(--text-main)" }}>
-                    <span style={{
-                      display: "inline-block",
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: closeBehavior === "quit_app" ? "var(--accent)" : "rgba(255, 255, 255, 0.2)"
-                    }} />
-                    <span>Quit Application</span>
-                  </div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", paddingLeft: "16px" }}>
-                    Stops playback, saves your session, and closes Kaze.
-                  </div>
-                </button>
-              </div>
-            </div>
-            {savingCloseBehavior && <p role="status">Saving close behavior…</p>}
-            {closeBehaviorError && <p role="alert">{closeBehaviorError}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* SECTION: CLOUD & SYNC */}
-      {activeSection === "cloud" && (
-        <div className="content-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-            <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Cloud size={20} color="#38bdf8" />
-                <span>Cloudflare Workers & D1 Synchronization</span>
-              </h3>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                Secure, serverless cloud storage for your user profile, custom playlists, track statistics, and listening history.
+              <h2>Clear temporary audio</h2>
+              <p>
+                Free up space. Your music files and playlists stay in place.
               </p>
             </div>
-
-            {onSyncCloud && (
-              <button
-                onClick={onSyncCloud}
-                disabled={isSyncingCloud}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  borderRadius: "8px",
-                  backgroundColor: "#4b607f",
-                  color: "#e8d8c9",
-                  border: "none",
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                  cursor: isSyncingCloud ? "not-allowed" : "pointer",
-                  opacity: isSyncingCloud ? 0.7 : 1,
-                  transition: "background-color 0.2s",
-                }}
-              >
-                <RefreshCw size={15} className={isSyncingCloud ? "spinning" : ""} />
-                <span>{isSyncingCloud ? "Syncing..." : "Sync Now"}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className="settings-action"
+              disabled={clearingCache || cacheLoading}
+              onClick={() => void clearCache()}
+            >
+              <Trash2 size={16} />
+              {clearingCache ? "Clearing…" : "Clear Cache"}
+            </button>
           </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Account Status Card */}
-            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                Cloud Account & Session Status
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px", flexWrap: "wrap" }}>
-                {cloudSyncStatus?.connected ? (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--success)", fontWeight: 600, fontSize: "0.9rem" }}>
-                      <ShieldCheck size={18} />
-                      <span>Authenticated & Connected</span>
-                    </div>
-                    <span style={{ color: "var(--text-dim)" }}>•</span>
-                    <span style={{ fontSize: "0.88rem", color: "#e8d8c9" }}>
-                      User: <strong>{cloudSyncStatus.username || cloudSyncStatus.user_id}</strong>
-                    </span>
-                    {cloudSyncStatus.device_name && (
-                      <>
-                        <span style={{ color: "var(--text-dim)" }}>•</span>
-                        <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                          Device: {cloudSyncStatus.device_name}
-                        </span>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                    <Cloud size={16} />
-                    <span>Local Mode (Offline or not logged in to cloud). Click Account in the sidebar to log in.</span>
-                  </div>
-                )}
-              </div>
-
-              {cloudSyncStatus?.connected && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "4px" }}>
-                  {cloudSyncStatus.idle_expires_at && (
-                    <div>
-                      • <strong>Inactivity Timeout:</strong> 30-day idle window (refreshed up to {new Date(cloudSyncStatus.idle_expires_at * 1000).toLocaleDateString()})
-                    </div>
-                  )}
-                  {cloudSyncStatus.absolute_expires_at && (
-                    <div>
-                      • <strong>Hard Ceiling:</strong> 90-day absolute expiration on {new Date(cloudSyncStatus.absolute_expires_at * 1000).toLocaleDateString()}
-                    </div>
-                  )}
-                  {cloudSyncStatus.last_synced_at && (
-                    <div>
-                      • <strong>Last synchronized:</strong> {new Date(cloudSyncStatus.last_synced_at * 1000).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {cloudSyncStatus?.connected && onLogoutAll && (
-                <div style={{ marginTop: "6px" }}>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (window.confirm("Are you sure you want to log out from ALL devices? Your music files, local playlists, and stats will remain safe.")) {
-                        await onLogoutAll();
-                      }
-                    }}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "6px",
-                      backgroundColor: "rgba(239, 68, 68, 0.15)",
-                      color: "#f87171",
-                      border: "1px solid rgba(239, 68, 68, 0.3)",
-                      fontSize: "0.8rem",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Log Out of All Devices
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Cloudflare Worker Endpoint Config (Hidden in production) */}
-            {import.meta.env.DEV && (
-              <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                  Cloudflare Worker API Endpoint (Dev Mode)
-                </div>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!workerUrlInput.trim() || !onSetCloudUrl) return;
-                    setSavingUrl(true);
-                    try {
-                      await onSetCloudUrl(workerUrlInput.trim());
-                    } finally {
-                      setSavingUrl(false);
-                    }
-                  }}
-                  style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "600px" }}
-                >
-                  <input
-                    type="text"
-                    value={workerUrlInput}
-                    onChange={(e) => setWorkerUrlInput(e.target.value)}
-                    placeholder="https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev"
-                    style={{
-                      flex: 1,
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(255, 255, 255, 0.15)",
-                      backgroundColor: "rgba(0, 0, 0, 0.2)",
-                      color: "#e8d8c9",
-                      fontSize: "0.88rem",
-                      fontFamily: "monospace",
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingUrl || workerUrlInput === cloudSyncStatus?.worker_url}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: "8px",
-                      backgroundColor: "#3f3f46",
-                      color: "#e8d8c9",
-                      border: "none",
-                      fontWeight: 500,
-                      fontSize: "0.85rem",
-                      cursor: savingUrl ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {savingUrl ? "Saving..." : "Save Endpoint"}
-                  </button>
-                </form>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", lineHeight: 1.4 }}>
-                  All authentication credentials and requests are processed exclusively through this Worker. Passwords are securely hashed with PBKDF2-SHA256 on the worker edge and stored in Cloudflare D1. The desktop client never receives or stores password hashes.
-                </div>
-              </div>
-            )}
-
-            {/* Architecture Highlights */}
-            <div className="folder-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", textTransform: "uppercase", fontWeight: 600 }}>
-                Data Synced
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                • <strong>User Profile</strong>: Username, account creation date, secure session token<br />
-                • <strong>Playlists & Tracks</strong>: Custom playlists, track associations, and online track metadata<br />
-                • <strong>Listening Stats</strong>: Play count, listening time, skip count, likes, and yearly history archives<br />
-                • <strong>Application Settings</strong>: Selected player preferences and volume
-              </div>
-            </div>
-          </div>
-        </div>
+          {cacheMessage && <p role="status">{cacheMessage}</p>}
+          {cacheError && <p role="alert">{cacheError}</p>}
+        </section>
       )}
     </div>
   );
-};
+});

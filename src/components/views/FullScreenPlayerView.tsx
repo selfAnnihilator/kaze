@@ -1,350 +1,116 @@
-import React, { useState, useEffect } from "react";
-import { Minimize2, Music } from "lucide-react";
-import { PlaybackState, Track } from "../../types";
+import React from "react";
+import { Minimize2 } from "lucide-react";
 import { LyricsView } from "./LyricsView";
-import { NowPlayingBar } from "../NowPlayingBar";
-import { executeQuery } from "../../services/api";
+import { NowPlayingBar, type NowPlayingBarProps } from "../NowPlayingBar";
+import { PlaybackStage } from "../../presentation/PlaybackStage";
+import type { Track } from "../../types";
+import {
+  BrutalistDeck,
+  type BrutalistDeckExtras,
+} from "../../presentation/BrutalistDeck";
+import { BrutalistPoster } from "../../presentation/BrutalistPoster";
 
-interface FullScreenPlayerViewProps {
-  playbackState: PlaybackState;
-  currentTrack?: Track;
-  isLoading?: boolean;
-  coverArtUrl?: string | null;
-  isInPlaylist?: boolean;
-  onOpenAddToPlaylist?: (track: {
-    id: string;
-    title: string;
-    artist?: string;
-    album?: string;
-    cover_art_url?: string;
-  }) => void;
+interface FullScreenPlayerViewProps extends NowPlayingBarProps {
   isLyricsActive: boolean;
   onToggleLyrics: () => void;
   onToggleFullscreen: () => void;
-  onPlayPause: () => void;
-  onNext: () => void;
-  onPrevious: () => void;
-  onSeek: (seconds: number) => void;
-  onVolumeChange: (volume: number) => void;
-  onToggleMute: () => void;
-  onToggleRepeat: () => void;
-  onToggleShuffle: () => void;
-  onLike: (trackId: string) => void;
-  onLikeOnline?: (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number }) => void;
-  isOnlineLiked?: boolean;
-  onRemoveFeedback: (trackId: string) => void;
-  onDownloadOnlineTrack?: (artist: string, title: string) => void;
-  onOpenOrigin?: () => void;
-  originName?: string;
+  previousTrack?: Track;
+  nextTrack?: Pick<Track, "id" | "title" | "artist_name" | "cover_art_url">;
+  brutalist?: BrutalistDeckExtras & {
+    albumId?: string;
+    onOpenAlbum: (id: string) => void;
+  };
 }
 
-export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> = ({
-  playbackState,
-  currentTrack,
-  isLoading = false,
-  coverArtUrl,
-  isInPlaylist = false,
-  onOpenAddToPlaylist,
-  isLyricsActive,
-  onToggleLyrics,
-  onToggleFullscreen,
-  onPlayPause,
-  onNext,
-  onPrevious,
-  onSeek,
-  onVolumeChange,
-  onToggleMute,
-  onToggleRepeat,
-  onToggleShuffle,
-  onLike,
-  onLikeOnline,
-  isOnlineLiked = false,
-  onRemoveFeedback,
-  onDownloadOnlineTrack,
-  onOpenOrigin,
-  originName,
-}) => {
-  const activeTitle = currentTrack?.title || "No Track Selected";
-  const activeArtist = currentTrack?.artist_name || (currentTrack ? "Unknown Artist" : "");
-
-  const [internalCover, setInternalCover] = useState<string | null>(null);
-
-  // Proactively pull local thumbnail if not already present in props
-  useEffect(() => {
-    if (coverArtUrl || currentTrack?.cover_art_url || !currentTrack?.id) {
-      return;
-    }
-    let isMounted = true;
-    executeQuery({
-      query: "GetTrackCoverArt",
-      payload: { track_id: currentTrack.id },
-    })
-      .then((res: any) => {
-        if (isMounted && res?.data) {
-          setInternalCover(res.data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, [coverArtUrl, currentTrack?.cover_art_url, currentTrack?.id]);
-
-  const activeArtworkUrl = coverArtUrl || currentTrack?.cover_art_url || internalCover || undefined;
-  const duration = playbackState.duration_secs || currentTrack?.duration_secs || 0;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        backgroundColor: "#181410",
-        backgroundImage:
-          "radial-gradient(ellipse at top center, rgba(120, 80, 40, 0.28) 0%, rgba(20, 16, 12, 0.95) 75%, #0f0d0b 100%)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        color: "#e8d8c9",
-        overflow: "hidden",
-        userSelect: "none",
-      }}
-    >
-      {/* Top Header */}
+export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> =
+  React.memo((props) => {
+    const {
+      playbackState,
+      currentTrack,
+      coverArtUrl,
+      previousTrack,
+      nextTrack,
+      isLoading,
+      isLyricsActive,
+      onSeek,
+      onToggleFullscreen,
+      originName,
+    } = props;
+    return (
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "24px 32px",
-          zIndex: 10,
-        }}
+        className={`fullscreen-player${props.brutalist ? " press-fullscreen" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Full screen player"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <header className="fullscreen-header">
+          <span>{originName ? `From: ${originName}` : "Now Playing"}</span>
+          <button
+            className="player-icon-btn"
+            title="Exit full screen (F / Esc)"
+            aria-label="Exit full screen"
+            aria-keyshortcuts="f Escape"
+            onClick={onToggleFullscreen}
+          >
+            <Minimize2 size={22} />
+          </button>
+        </header>
+        <div className="fullscreen-main">
           {isLyricsActive ? (
-            <span
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 700,
-                letterSpacing: "-0.01em",
-                color: "rgba(255, 255, 255, 0.95)",
-              }}
-            >
-              {activeTitle}
-            </span>
-          ) : originName ? (
-            <span
-              style={{
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                padding: "3px 10px",
-                borderRadius: "9999px",
-                backgroundColor: "rgba(255, 255, 255, 0.12)",
-                color: "rgba(255, 255, 255, 0.8)",
-                letterSpacing: "0.02em",
-              }}
-            >
-              From: {originName}
-            </span>
-          ) : (
-            <span
-              style={{
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "rgba(255, 255, 255, 0.4)",
-              }}
-            >
-              Now Playing
-            </span>
-          )}
-          {isLyricsActive && originName && (
-            <span
-              style={{
-                fontSize: "0.8rem",
-                padding: "2px 8px",
-                borderRadius: "6px",
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                color: "rgba(255, 255, 255, 0.6)",
-              }}
-            >
-              From: {originName}
-            </span>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={onToggleFullscreen}
-          className="player-icon-btn"
-          title="Exit full screen (Esc)"
-          style={{
-            color: "rgba(255, 255, 255, 0.7)",
-            backgroundColor: "rgba(255, 255, 255, 0.08)",
-            padding: "8px",
-            borderRadius: "50%",
-            border: "none",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-          }}
-        >
-          <Minimize2 size={20} />
-        </button>
-      </div>
-
-      {/* Middle Content: Large Album Art OR Lyrics View */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 0,
-          position: "relative",
-        }}
-      >
-        {isLyricsActive ? (
-          <div style={{ width: "100%", height: "100%", position: "relative" }}>
             <LyricsView
               trackId={currentTrack?.id}
-              artist={activeArtist}
-              title={activeTitle}
-              durationSecs={duration}
+              artist={currentTrack?.artist_name || ""}
+              title={currentTrack?.title || ""}
+              durationSecs={
+                playbackState.duration_secs || currentTrack?.duration_secs || 0
+              }
               onSeek={onSeek}
-              isFullScreen={true}
+              isFullScreen
             />
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "20px",
-              maxWidth: "600px",
-              width: "100%",
-              padding: "0 24px",
+          ) : props.brutalist ? (
+            <BrutalistPoster
+              track={currentTrack}
+              cover={coverArtUrl}
+              index={playbackState.current_queue_index}
+              playing={playbackState.is_playing}
+              loading={isLoading}
+              entries={props.brutalist.entries}
+              tracks={props.brutalist.tracks}
+              onPlayIndex={props.brutalist.onPlayIndex}
+              albumId={props.brutalist.albumId}
+              onOpenAlbum={(id) => {
+                onToggleFullscreen();
+                props.brutalist?.onOpenAlbum(id);
+              }}
+            />
+          ) : (
+            <PlaybackStage
+              track={currentTrack}
+              cover={coverArtUrl}
+              previous={previousTrack}
+              next={nextTrack}
+              index={playbackState.current_queue_index}
+              playing={playbackState.is_playing}
+              loading={isLoading}
+              onPrevious={props.onPrevious}
+              onNext={props.onNext}
+            />
+          )}
+        </div>
+        {props.brutalist ? (
+          <BrutalistDeck
+            {...props}
+            {...props.brutalist}
+            deckId="press-fullscreen-deck"
+            isFullscreen
+            onNavigate={(view) => {
+              onToggleFullscreen();
+              props.brutalist?.onNavigate(view);
             }}
-          >
-            <div
-              style={{
-                width: "min(380px, 50vh)",
-                height: "min(380px, 50vh)",
-                borderRadius: "16px",
-                overflow: "hidden",
-                boxShadow: "0 20px 50px rgba(0, 0, 0, 0.75)",
-                backgroundColor: "rgba(255, 255, 255, 0.06)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {activeArtworkUrl ? (
-                <img
-                  src={activeArtworkUrl}
-                  alt={activeTitle}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                <Music size={72} color="rgba(255, 255, 255, 0.3)" />
-              )}
-            </div>
-
-            {/* Song Title and Artist Name placed prominently at the bottom of the thumbnail image */}
-            <div
-              style={{
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "6px",
-                width: "100%",
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: "1.75rem",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  color: "#e8d8c9",
-                  margin: 0,
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  textShadow: "0 2px 12px rgba(0,0,0,0.6)",
-                }}
-                title={activeTitle}
-              >
-                {activeTitle}
-              </h2>
-              {activeArtist && (
-                <p
-                  style={{
-                    fontSize: "1.1rem",
-                    fontWeight: 500,
-                    color: "rgba(255, 255, 255, 0.7)",
-                    margin: 0,
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                  title={activeArtist}
-                >
-                  {activeArtist}
-                </p>
-              )}
-            </div>
-          </div>
+          />
+        ) : (
+          <NowPlayingBar {...props} isFullscreen />
         )}
       </div>
-
-      {/* Bottom Status Bar / Player Bar (matching Image 1) */}
-      <div
-        style={{
-          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          backgroundColor: "rgba(15, 12, 10, 0.98)",
-        }}
-      >
-        <NowPlayingBar
-          playbackState={playbackState}
-          isLoading={isLoading}
-          currentTrack={currentTrack}
-          coverArtUrl={activeArtworkUrl}
-          isInPlaylist={isInPlaylist}
-          onOpenAddToPlaylist={onOpenAddToPlaylist}
-          onPlayPause={onPlayPause}
-          onNext={onNext}
-          onPrevious={onPrevious}
-          onSeek={onSeek}
-          onVolumeChange={onVolumeChange}
-          onToggleMute={onToggleMute}
-          onToggleRepeat={onToggleRepeat}
-          onToggleShuffle={onToggleShuffle}
-          onLike={onLike}
-          onLikeOnline={onLikeOnline}
-          isOnlineLiked={isOnlineLiked}
-          onRemoveFeedback={onRemoveFeedback}
-          onDownloadOnlineTrack={onDownloadOnlineTrack}
-          onOpenOrigin={onOpenOrigin}
-          originName={originName}
-          isLyricsActive={isLyricsActive}
-          onToggleLyrics={onToggleLyrics}
-          isFullscreen={true}
-          onToggleFullscreen={onToggleFullscreen}
-        />
-      </div>
-    </div>
-  );
-};
+    );
+  });

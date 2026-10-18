@@ -127,6 +127,17 @@ impl MprisPlayer {
             let _ = task.await;
         }
     }
+
+    async fn resume_selected(&self) {
+        if self.playback_service.resume_needs_loading().await {
+            // A cold bookmark may need network I/O. Ordinary paused playback
+            // retains its immediate response and rapid-toggle ordering.
+            let ps = self.playback_service.clone();
+            self.spawn_command(async move { let _ = ps.resume().await; });
+        } else {
+            let _ = self.playback_service.resume().await;
+        }
+    }
 }
 
 impl Drop for MprisPlayer {
@@ -177,7 +188,7 @@ impl MprisPlayer {
         if state.is_playing {
             let _ = self.playback_service.pause().await;
         } else if state.is_paused {
-            let _ = self.playback_service.resume().await;
+            self.resume_selected().await;
         } else if state.queue_length > 0 {
             let idx = state.current_queue_index.unwrap_or(0);
             let ps = self.playback_service.clone();
@@ -198,7 +209,7 @@ impl MprisPlayer {
     async fn play(&self) -> zbus::fdo::Result<()> {
         let state = self.playback_service.get_playback_state().await;
         if state.is_paused {
-            let _ = self.playback_service.resume().await;
+            self.resume_selected().await;
         } else if !state.is_playing && state.queue_length > 0 {
             let idx = state.current_queue_index.unwrap_or(0);
             let ps = self.playback_service.clone();

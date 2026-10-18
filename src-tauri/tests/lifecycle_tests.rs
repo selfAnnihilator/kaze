@@ -111,3 +111,51 @@ fn serialized_close_setting_is_strict_and_defaults_when_missing() {
     config["close_button_behavior"] = serde_json::json!("invalid");
     assert!(serde_json::from_value::<AppConfig>(config).is_err());
 }
+
+#[tokio::test]
+async fn interface_style_uses_existing_settings_and_survives_relaunch() {
+    let (dir, processor, _) = setup().await;
+    match processor.execute_query(Query::GetSettings).await.unwrap() {
+        QueryResponse::Settings(value) => assert_eq!(value["interface_style"], "spatial"),
+        _ => panic!("Settings expected"),
+    }
+    add_track(&processor).await;
+    processor.dispatch_command(Command::PlayTrack { track_id: "track".into(), source: None }).await.unwrap();
+    processor.dispatch_command(Command::Pause).await.unwrap();
+    let before = serde_json::to_value(processor.playback_service().get_playback_state().await).unwrap();
+    for style in ["brutalist", "spatial", "brutalist"] {
+        processor.dispatch_command(Command::SetInterfaceStyle { style: style.into() }).await.unwrap();
+        let after = serde_json::to_value(processor.playback_service().get_playback_state().await).unwrap();
+        assert_eq!(before, after, "style must not alter playback or queue");
+    }
+    for invalid in ["", "Spatial", "brutalist ", "standard"] {
+        assert!(processor.dispatch_command(Command::SetInterfaceStyle { style: invalid.into() }).await.is_err());
+    }
+    let saved: (String,) = sqlx::query_as("SELECT value FROM application_settings WHERE key = 'interface_style'")
+        .fetch_one(processor.db_pool()).await.unwrap();
+    assert_eq!(saved.0, "brutalist");
+    processor.shutdown().await.unwrap();
+    let pool = init_db_pool(&dir.path().join("app.db")).await.unwrap();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = dir.path().join("cache");
+    let reopened = CoreProcessor::new_with_backend(pool, config, Box::new(MockAudioBackend::new()));
+    match reopened.execute_query(Query::GetSettings).await.unwrap() {
+        QueryResponse::Settings(value) => assert_eq!(value["interface_style"], "brutalist"),
+        _ => panic!("Settings expected"),
+    }
+    reopened.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn interface_style_storage_failure_preserves_saved_choice() {
+    let (_dir, processor, _) = setup().await;
+    processor.dispatch_command(Command::SetInterfaceStyle { style: "brutalist".into() }).await.unwrap();
+    sqlx::query("CREATE TRIGGER reject_style_write BEFORE INSERT ON application_settings WHEN NEW.key = 'interface_style' BEGIN SELECT RAISE(ABORT, 'test storage failure'); END")
+        .execute(processor.db_pool()).await.unwrap();
+    assert!(processor.dispatch_command(Command::SetInterfaceStyle { style: "spatial".into() }).await.is_err());
+    match processor.execute_query(Query::GetSettings).await.unwrap() {
+        QueryResponse::Settings(value) => assert_eq!(value["interface_style"], "brutalist"),
+        _ => panic!("Settings expected"),
+    }
+    processor.shutdown().await.unwrap();
+}

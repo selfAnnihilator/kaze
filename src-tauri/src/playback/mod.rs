@@ -3,6 +3,7 @@ pub mod decoder;
 pub mod progressive;
 pub mod queue;
 pub mod resolution_cache;
+mod session;
 pub mod service;
 pub mod stream;
 

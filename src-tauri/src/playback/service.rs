@@ -5,6 +5,8 @@ use crate::core::event_bus::EventBus;
 use crate::database::repositories::TrackRepository;
 use crate::playback::backend::AudioBackend;
 use crate::playback::queue::PlaybackQueue;
+use crate::playback::session::{RestoredTrack, SavedPlayback, SETTING_KEY};
+use crate::database::repositories::{SettingsRepository, SqliteSettingsRepository};
 use crate::playback::stream::StreamPlaybackManager;
 use crate::recommendations::{FlowExplanation, FlowSessionState, FlowTrackItem};
 use rand::seq::SliceRandom;
@@ -15,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, OnceCell, RwLock};
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -35,6 +37,7 @@ pub struct PlaybackStateDto {
     pub position_secs: f64,
     pub duration_secs: f64,
     pub volume: f32,
+    pub is_muted: bool,
     pub repeat_mode: RepeatMode,
     pub is_shuffle: bool,
     pub queue_length: usize,
@@ -64,6 +67,9 @@ pub struct PlaybackService {
     active_stream_state:
         Arc<std::sync::RwLock<Option<Arc<crate::playback::progressive::ProgressiveStreamState>>>>,
     pool: Option<SqlitePool>,
+    restore_ready: OnceCell<()>,
+    restored_track: RwLock<Option<RestoredTrack>>,
+    last_saved_bookmark: Mutex<Option<String>>,
     preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     monitor_task: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     shutdown_done: Mutex<bool>,
@@ -99,6 +105,9 @@ impl PlaybackService {
             stream_manager: Arc::new(std::sync::RwLock::new(None)),
             active_stream_state: Arc::new(std::sync::RwLock::new(None)),
             pool,
+            restore_ready: OnceCell::new(),
+            restored_track: RwLock::new(None),
+            last_saved_bookmark: Mutex::new(None),
             preresolution_handle: Arc::new(Mutex::new(None)),
             monitor_task: std::sync::Mutex::new(None),
             shutdown_done: Mutex::new(false),
@@ -126,6 +135,62 @@ impl PlaybackService {
         sm.set_event_bus(self.event_bus.clone());
         let mut w = self.stream_manager.write().unwrap();
         *w = Some(sm);
+    }
+
+    /// Restore metadata/controls only. Audio and history begin on an explicit Play.
+    pub async fn initialize_saved_playback(&self) {
+        self.restore_ready.get_or_init(|| async {
+            if let Err(error) = self.restore_saved_playback().await {
+                tracing::warn!(%error, "Could not restore playback bookmark; starting empty");
+            }
+        }).await;
+    }
+
+    async fn restore_saved_playback(&self) -> AppResult<()> {
+        let Some(pool) = &self.pool else { return Ok(()); };
+        let Some(value) = SqliteSettingsRepository::new(pool.clone()).get_setting(SETTING_KEY).await? else { return Ok(()); };
+        let saved: SavedPlayback = serde_json::from_str(&value)
+            .map_err(|_| AppError::Validation("Invalid saved playback bookmark".into()))?;
+        if !saved.valid() {
+            return Err(AppError::Validation("Invalid saved playback bookmark".into()));
+        }
+        let _operation = self.flow_operation.lock().await;
+        self.backend.lock().await.set_volume(saved.volume)?;
+        *self.volume.write().await = saved.volume;
+        if saved.has_current_track {
+            // Do not open files or resolve online sources until the user plays.
+            // Missing media remains visible and can be retried or skipped.
+            *self.restored_track.write().await = Some(RestoredTrack {
+                queue_id: saved.queue.current().unwrap().queue_id.clone(),
+                position_secs: saved.position_secs.min(saved.duration_secs),
+                duration_secs: saved.duration_secs,
+            });
+        }
+        *self.queue.write().await = saved.queue;
+        *self.last_saved_bookmark.lock().await = Some(value);
+        Ok(())
+    }
+
+    /// Called under the queue operation lock, periodically and before clean Stop.
+    async fn save_playback_bookmark(&self) -> AppResult<()> {
+        if self.restore_ready.get().is_none() || self.is_resolving.load(std::sync::atomic::Ordering::Acquire) { return Ok(()); }
+        let Some(pool) = &self.pool else { return Ok(()); };
+        let state = self.get_playback_state().await;
+        let saved = SavedPlayback {
+            version: 1,
+            queue: self.queue.read().await.clone(),
+            has_current_track: state.current_track_id.is_some(),
+            position_secs: state.position_secs,
+            duration_secs: state.duration_secs,
+            volume: state.volume,
+        };
+        if !saved.valid() { return Ok(()); }
+        let value = serde_json::to_string(&saved).map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut previous = self.last_saved_bookmark.lock().await;
+        if previous.as_ref() == Some(&value) { return Ok(()); }
+        SqliteSettingsRepository::new(pool.clone()).set_setting(SETTING_KEY, &value).await?;
+        *previous = Some(value);
+        Ok(())
     }
 
     pub fn set_flow_engine(&self, fe: Arc<crate::recommendations::FlowEngine>) {
@@ -415,10 +480,20 @@ impl PlaybackService {
     async fn run_playback_monitor_loop(&self) {
         let mut interval = tokio::time::interval(Duration::from_millis(250));
         let mut was_playing = false;
+        let mut last_checkpoint = tokio::time::Instant::now();
 
         loop {
             interval.tick().await;
             let operation = self.flow_operation.lock().await;
+            if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+                break;
+            }
+            if last_checkpoint.elapsed() >= Duration::from_secs(10) {
+                if let Err(error) = self.save_playback_bookmark().await {
+                    tracing::warn!(%error, "Could not checkpoint playback bookmark");
+                }
+                last_checkpoint = tokio::time::Instant::now();
+            }
             let session_queue_id = self.active_session_id.read().await.as_ref().map(|(_, q)| q.clone());
             if let Some(queue_id) = &session_queue_id {
                 if self.queue.read().await.current().map(|i| &i.queue_id) != Some(queue_id) {
@@ -635,6 +710,10 @@ impl PlaybackService {
     }
 
     async fn play_item(&self, item: &QueueItem) -> AppResult<()> {
+        self.play_item_at(item, None).await
+    }
+
+    async fn play_item_at(&self, item: &QueueItem, start_position: Option<f64>) -> AppResult<()> {
         let operation = self.flow_operation.lock().await;
         if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
             return Err(AppError::Playback("Kaze is shutting down".into()));
@@ -642,6 +721,9 @@ impl PlaybackService {
 
         if self.queue.read().await.current().map(|i| &i.queue_id) != Some(&item.queue_id) {
             return Ok(());
+        }
+        if start_position.is_none() {
+            *self.restored_track.write().await = None;
         }
         let generation = self
             .play_generation
@@ -709,6 +791,35 @@ impl PlaybackService {
             })
         };
 
+        // A saved online position requires a seekable source. A cold cache may
+        // buffer fully here; never silently replay it from the beginning.
+        let prepared_res = match prepared_res {
+            Ok(crate::playback::stream::PreparedPlayback::ProgressiveStream { target_path, duration, state, .. })
+                if start_position.is_some_and(|position| position > 0.0) => {
+                let ready = tokio::time::timeout(Duration::from_secs(120), async {
+                    loop {
+                        if self.play_generation.load(std::sync::atomic::Ordering::SeqCst) != generation
+                            || self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+                            return Err(AppError::Playback("Playback request superseded".into()));
+                        }
+                        match state.status.lock().unwrap().clone() {
+                            crate::playback::progressive::StreamStatus::Completed => return Ok(()),
+                            crate::playback::progressive::StreamStatus::Failed(error) => return Err(AppError::Playback(error)),
+                            crate::playback::progressive::StreamStatus::Cancelled => return Err(AppError::Playback("Stream cancelled".into())),
+                            _ => {}
+                        }
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                    }
+                }).await;
+                match ready {
+                    Ok(Ok(())) => Ok(crate::playback::stream::PreparedPlayback::LocalFile { path: target_path, duration }),
+                    Ok(Err(error)) => Err(error),
+                    Err(_) => Err(AppError::Playback("Timed out buffering the saved song. Try playing again.".into())),
+                }
+            }
+            other => other,
+        };
+
         let _operation = self.flow_operation.lock().await;
 
         // Check if a newer track transition was requested while resolving
@@ -745,7 +856,14 @@ impl PlaybackService {
         let (file_path_to_protect, actual_duration) = match prepared {
             crate::playback::stream::PreparedPlayback::LocalFile { path, duration } => {
                 *self.active_stream_state.write().unwrap() = None;
-                self.load_and_play_file(&path.to_string_lossy()).await?;
+                let mut backend = self.backend.lock().await;
+                backend.load_and_play(&path)?;
+                if let Some(position) = start_position {
+                    if let Err(error) = backend.seek(Duration::from_secs_f64(position.min(duration).max(0.0))) {
+                        let _ = backend.stop();
+                        return Err(error);
+                    }
+                }
                 (path.to_string_lossy().to_string(), duration)
             }
             crate::playback::stream::PreparedPlayback::ProgressiveStream {
@@ -763,6 +881,7 @@ impl PlaybackService {
         };
 
         *self.current_duration_secs.write().await = actual_duration;
+        *self.restored_track.write().await = None;
 
         let sm_opt = self.stream_manager.read().unwrap().clone();
         if let Some(sm) = sm_opt {
@@ -784,14 +903,13 @@ impl PlaybackService {
             source: src,
         });
 
+        if start_position.is_some() {
+            let position_secs = self.backend.lock().await.position().as_secs_f64();
+            let _ = self.event_bus.publish(Event::PlaybackSeeked { position_secs });
+        }
+
         self.emit_queue_updated().await;
         Ok(())
-    }
-
-    async fn load_and_play_file(&self, path_str: &str) -> AppResult<()> {
-        let path = PathBuf::from(path_str);
-        let mut backend = self.backend.lock().await;
-        backend.load_and_play(&path)
     }
 
     pub async fn pause(&self) -> AppResult<()> {
@@ -823,6 +941,13 @@ impl PlaybackService {
     }
 
     pub async fn resume(&self) -> AppResult<()> {
+        let restored = self.restored_track.read().await.clone();
+        if let Some(restored) = restored {
+            let item = self.queue.read().await.current().filter(|item| item.queue_id == restored.queue_id).cloned();
+            if let Some(item) = item {
+                return self.play_item_at(&item, Some(restored.position_secs)).await;
+            }
+        }
         let mut backend = self.backend.lock().await;
         if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
             return Err(AppError::Playback("Kaze is shutting down".into()));
@@ -854,16 +979,31 @@ impl PlaybackService {
         Ok(())
     }
 
+    pub async fn resume_needs_loading(&self) -> bool {
+        self.restored_track.read().await.is_some()
+    }
+
+    /// Cancel pending media preparation before the core waits for commands to drain.
+    pub fn request_shutdown(&self) {
+        if !self.shutting_down.swap(true, std::sync::atomic::Ordering::AcqRel) {
+            self.play_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
     /// Stop the monitor and invalidate pending resolution before stopping audio.
     pub async fn shutdown(&self) -> AppResult<()> {
         let mut done = self.shutdown_done.lock().await;
         if *done { return Ok(()); }
-        self.shutting_down.store(true, std::sync::atomic::Ordering::Release);
+        self.request_shutdown();
         let task = self.monitor_task.lock().unwrap_or_else(|e| e.into_inner()).take();
         if let Some(task) = task { task.abort(); let _ = task.await; }
+        let bookmark = {
+            let _operation = self.flow_operation.lock().await;
+            self.save_playback_bookmark().await
+        };
         let result = self.stop().await;
         *done = true;
-        result
+        result.and(bookmark)
     }
 
     pub async fn stop(&self) -> AppResult<()> {
@@ -872,6 +1012,7 @@ impl PlaybackService {
     }
 
     async fn stop_inner(&self) -> AppResult<()> {
+        *self.restored_track.write().await = None;
         self.stop_flow_inner().await;
         self.play_generation
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -905,6 +1046,17 @@ impl PlaybackService {
     }
 
     pub async fn seek(&self, position_secs: f64) -> AppResult<()> {
+        if !position_secs.is_finite() {
+            return Err(AppError::Validation("Seek position must be finite".into()));
+        }
+        {
+            let mut restored = self.restored_track.write().await;
+            if let Some(restored) = restored.as_mut() {
+                restored.position_secs = position_secs.clamp(0.0, restored.duration_secs);
+                let _ = self.event_bus.publish(Event::PlaybackSeeked { position_secs: restored.position_secs });
+                return Ok(());
+            }
+        }
         let can_seek = match &*self.active_stream_state.read().unwrap() {
             Some(state) => state.is_completed(),
             None => true,
@@ -913,7 +1065,8 @@ impl PlaybackService {
             return Err(AppError::Playback("Seeking is unavailable while audio is streaming. It will become available once the track is fully cached.".into()));
         }
 
-        let dur = Duration::from_secs_f64(position_secs.max(0.0));
+        let dur = Duration::try_from_secs_f64(position_secs.max(0.0))
+            .map_err(|_| AppError::Validation("Seek position is out of range".into()))?;
         let mut backend = self.backend.lock().await;
         backend.seek(dur)?;
 
@@ -968,7 +1121,8 @@ impl PlaybackService {
 
     async fn advance_after_finished(&self, generation: u64, queue_id: Option<&str>) -> AppResult<()> {
         let operation = self.flow_operation.lock().await;
-        if self.play_generation.load(std::sync::atomic::Ordering::SeqCst) != generation
+        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire)
+            || self.play_generation.load(std::sync::atomic::Ordering::SeqCst) != generation
             || self.queue.read().await.current().map(|i| i.queue_id.as_str()) != queue_id {
             return Ok(());
         }
@@ -1195,12 +1349,16 @@ impl PlaybackService {
 
     pub async fn clear_queue(&self) {
         let _operation = self.flow_operation.lock().await;
+        *self.restored_track.write().await = None;
         self.stop_flow_inner().await;
         {
             let mut q_guard = self.queue.write().await;
             q_guard.clear();
         }
         self.emit_queue_updated().await;
+        if let Err(error) = self.save_playback_bookmark().await {
+            tracing::warn!(%error, "Could not save cleared queue");
+        }
     }
 
     pub async fn set_shuffle(&self, enabled: bool) {
@@ -1220,7 +1378,8 @@ impl PlaybackService {
     }
 
     pub async fn get_playback_state(&self) -> PlaybackStateDto {
-        let (is_paused, is_finished, pos) = {
+        let restored = self.restored_track.read().await.clone();
+        let (mut is_paused, mut is_finished, mut pos) = {
             let backend = self.backend.lock().await;
             (
                 backend.is_paused(),
@@ -1229,9 +1388,15 @@ impl PlaybackService {
             )
         };
 
-        let duration = *self.current_duration_secs.read().await;
+        let mut duration = *self.current_duration_secs.read().await;
         let vol = *self.volume.read().await;
         let q_guard = self.queue.read().await;
+        if let Some(restored) = restored.filter(|saved| q_guard.current().is_some_and(|item| item.queue_id == saved.queue_id)) {
+            is_paused = true;
+            is_finished = false;
+            pos = restored.position_secs;
+            duration = restored.duration_secs;
+        }
         let is_playing = !is_paused && !is_finished && duration > 0.0;
         let has_active_track = duration > 0.0 && (!is_finished || is_paused);
 
@@ -1274,6 +1439,7 @@ impl PlaybackService {
             position_secs: pos,
             duration_secs: duration,
             volume: vol,
+            is_muted: vol == 0.0,
             repeat_mode: q_guard.repeat_mode(),
             is_shuffle: q_guard.is_shuffle(),
             queue_length: q_guard.len(),

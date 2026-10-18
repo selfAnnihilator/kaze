@@ -1,0 +1,92 @@
+{
+  "environment": {
+    "webkitgtk": "2.54.1",
+    "nvidia_driver": "615.78.08",
+    "session": "Niri / Wayland"
+  },
+  "method": "Same embedded binary and disposable profile fixture; change only WEBKIT_DISABLE_DMABUF_RENDERER. Focused native window, native PageDown, then Queue-to-Home navigation. Six round trips requested. These A/B runs used the subsequently reverted page-scroll mitigation.",
+  "runs": [
+    {
+      "WEBKIT_DISABLE_DMABUF_RENDERER": null,
+      "samples": [
+        {
+          "round": 0,
+          "view": "Queue",
+          "frames": 22
+        },
+        {
+          "round": 0,
+          "view": "Home",
+          "frames": 0
+        }
+      ],
+      "passed": false
+    },
+    {
+      "WEBKIT_DISABLE_DMABUF_RENDERER": "1",
+      "samples": [
+        {
+          "round": 0,
+          "view": "Queue",
+          "frames": 47
+        },
+        {
+          "round": 0,
+          "view": "Home",
+          "frames": 43
+        },
+        {
+          "round": 1,
+          "view": "Queue",
+          "frames": 26
+        },
+        {
+          "round": 1,
+          "view": "Home",
+          "frames": 40
+        },
+        {
+          "round": 2,
+          "view": "Queue",
+          "frames": 20
+        },
+        {
+          "round": 2,
+          "view": "Home",
+          "frames": 33
+        },
+        {
+          "round": 3,
+          "view": "Queue",
+          "frames": 24
+        },
+        {
+          "round": 3,
+          "view": "Home",
+          "frames": 41
+        },
+        {
+          "round": 4,
+          "view": "Queue",
+          "frames": 19
+        },
+        {
+          "round": 4,
+          "view": "Home",
+          "frames": 39
+        },
+        {
+          "round": 5,
+          "view": "Queue",
+          "frames": 22
+        },
+        {
+          "round": 5,
+          "view": "Home",
+          "frames": 39
+        }
+      ],
+      "passed": true
+    }
+  ]
+}
