@@ -48,7 +48,7 @@ build() {
     cd "$pkgname-$pkgver"
     npm ci
     npm run build
-    cargo build --release --locked
+    cargo build --release --locked --features tauri/custom-protocol
 }
 
 package() {

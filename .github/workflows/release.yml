@@ -209,16 +209,16 @@ jobs:
           cat << EOF > release_notes.md
           ## Kaze ${RELEASE_TAG}
 
-          ### Home and Flow
+          ### New in this patch
 
-          - Personalized library picks, recent rotation, rediscovery, and a weekly listening summary.
-          - Fresh Flow queues that preserve the current song, with separate Pause, Resume, and Stop actions.
-          - Playback-synchronized For You controls and friendly explanations backed by recorded listening data.
-          - Alt+Left/Right navigation through visited views, collections, and searches.
-          - Safer queue transitions and corrected Arch build dependencies and source checksums.
-
-          > ⚠️ **Important Compatibility Notice:**
-          > This release includes a statistics/history storage migration and updated cloud sync format. Older builds are no longer compatible with the current sync backend and should be upgraded.
+          - Independent Spatial and Brutalist interfaces with clearer browsing, stronger artwork fallbacks, and stable playback controls.
+          - Restore the last song, queue, and playback position paused when reopening Kaze.
+          - Start directly in the saved theme with a matching animated KAZE introduction and reduced-motion support.
+          - Keep Discovery chapters, Archive selections, and browsing positions when navigating back and forward.
+          - Simplified Settings, profile statistics, and a choice to log out this device or all devices.
+          - Fix Queue navigation freezing on affected NVIDIA/Wayland systems and reduce unnecessary interface updates.
+          - Improve Linux media-session controls, tray behavior, and single-instance window activation.
+          - Build the Arch package with its production interface embedded.
 
           Download the installer for your platform below:
 
