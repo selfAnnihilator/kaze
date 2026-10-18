@@ -67,37 +67,37 @@ impl TasteProfileEngine {
         Self { pool, rec_repo }
     }
 
-    /// Computes the complete dual-window taste profile from playback history, stats, and feedback for a user.
+    /// Blend recent listening (60%) with lifetime history (40%), scoped to one user.
     pub async fn compute_taste_profile(&self, user_id: &str) -> AppResult<TasteProfile> {
         let now = Utc::now().timestamp();
         let short_term_cutoff = now - (14 * 86400); // 14 days
-        let long_term_cutoff = now - (90 * 86400);  // 90 days
 
         // Query listening history joined with track, artist, and genre for this specific user
         let rows = sqlx::query_as::<_, HistorySessionRow>(
-            "SELECT h.track_id, t.artist_id, a.name as artist_name, g.name as genre_name,
+            "SELECT h.track_id, t.artist_id, a.name as artist_name, COALESCE(g.name, e.genre) as genre_name,
                     t.year, h.started_at, h.seconds_listened, h.percentage_listened,
                     h.completed, h.skipped
              FROM playback_history h
              JOIN tracks t ON t.id = h.track_id
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN genres g ON g.id = t.genre_id
-             WHERE h.user_id = ? AND h.started_at >= ?
+             LEFT JOIN external_tracks e ON e.id = t.id
+             WHERE h.user_id = ?
              ORDER BY h.started_at ASC"
         )
         .bind(user_id)
-        .bind(long_term_cutoff)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         // Query user explicit feedback (likes / dislikes) from track_statistics for this specific user
         let feedback_rows = sqlx::query_as::<_, FeedbackRow>(
-            "SELECT ts.track_id, t.artist_id, a.name as artist_name, g.name as genre_name, ts.manual_like
+            "SELECT ts.track_id, t.artist_id, a.name as artist_name, COALESCE(g.name, e.genre) as genre_name, ts.manual_like
              FROM track_statistics ts
              JOIN tracks t ON t.id = ts.track_id
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN genres g ON g.id = t.genre_id
+             LEFT JOIN external_tracks e ON e.id = t.id
              WHERE ts.user_id = ? AND ts.manual_like != 0"
         )
         .bind(user_id)
@@ -115,26 +115,34 @@ impl TasteProfileEngine {
         let mut era_raw: HashMap<String, f64> = HashMap::new();
 
         for row in &rows {
-            // Base session score: completion contributes heavily, skips penalize
-            let session_weight = if row.completed == 1 {
-                1.0
-            } else if row.skipped == 1 {
-                0.2
+            // Native history stores a fraction; tolerate older percentage-based rows.
+            let fraction = if row.percentage_listened > 1.0 {
+                row.percentage_listened / 100.0
             } else {
-                (row.percentage_listened / 100.0).clamp(0.1, 1.0)
+                row.percentage_listened
+            }.clamp(0.0, 1.0);
+            let session_weight = if row.skipped == 1 {
+                -0.2
+            } else if row.completed == 1 {
+                1.0
+            } else if fraction > 0.0 {
+                fraction
+            } else {
+                // Unknown-duration sessions still contribute actual listening time.
+                (row.seconds_listened / 240.0).clamp(0.0, 1.0)
             };
 
-            // Half-life time decay for recency
-            let age_days = ((now - row.started_at) as f64) / 86400.0;
-            let decay = (-0.05 * age_days).exp(); // 14-day half life approx
-            let decayed_score = session_weight * decay;
+            let age_days = ((now - row.started_at).max(0) as f64) / 86400.0;
+            let decayed_score = session_weight * (-0.05 * age_days).exp();
+            // Keep older listening relevant without letting it dominate recent changes.
+            let lifetime_score = session_weight * (-age_days / 180.0).exp().max(0.1);
 
             // Artist aggregation
             if let Some(artist_id) = &row.artist_id {
                 if let Some(name) = &row.artist_name {
                     artist_names.insert(artist_id.clone(), name.clone());
                 }
-                *artist_long_raw.entry(artist_id.clone()).or_insert(0.0) += decayed_score;
+                *artist_long_raw.entry(artist_id.clone()).or_insert(0.0) += lifetime_score;
                 if row.started_at >= short_term_cutoff {
                     *artist_short_raw.entry(artist_id.clone()).or_insert(0.0) += decayed_score;
                 }
@@ -144,7 +152,7 @@ impl TasteProfileEngine {
             if let Some(genre) = &row.genre_name {
                 let clean_genre = genre.trim().to_string();
                 if !clean_genre.is_empty() {
-                    *genre_long_raw.entry(clean_genre.clone()).or_insert(0.0) += decayed_score;
+                    *genre_long_raw.entry(clean_genre.clone()).or_insert(0.0) += lifetime_score;
                     if row.started_at >= short_term_cutoff {
                         *genre_short_raw.entry(clean_genre.clone()).or_insert(0.0) += decayed_score;
                     }
@@ -155,7 +163,7 @@ impl TasteProfileEngine {
             if let Some(year) = row.year {
                 if year > 1900 && year <= 2030 {
                     let decade = format!("{}0s", (year / 10));
-                    *era_raw.entry(decade).or_insert(0.0) += decayed_score;
+                    *era_raw.entry(decade).or_insert(0.0) += lifetime_score;
                 }
             }
         }
@@ -210,7 +218,7 @@ impl TasteProfileEngine {
             let _ = self.rec_repo.upsert_preference(user_id, "artist", &artist_id, short_norm, long_norm).await;
         }
 
-        top_artists.sort_by(|a, b| b.affinity.partial_cmp(&a.affinity).unwrap_or(std::cmp::Ordering::Equal));
+        top_artists.sort_by(|a, b| b.affinity.total_cmp(&a.affinity).then_with(|| a.id_or_name.cmp(&b.id_or_name)));
 
         // Normalize genre scores
         let max_genre_short = genre_short_raw.values().cloned().fold(0.0, f64::max).max(1.0);
@@ -242,7 +250,7 @@ impl TasteProfileEngine {
             let _ = self.rec_repo.upsert_preference(user_id, "genre", &genre, short_norm, long_norm).await;
         }
 
-        top_genres.sort_by(|a, b| b.affinity.partial_cmp(&a.affinity).unwrap_or(std::cmp::Ordering::Equal));
+        top_genres.sort_by(|a, b| b.affinity.total_cmp(&a.affinity).then_with(|| a.id_or_name.cmp(&b.id_or_name)));
 
         // Normalize eras
         let max_era = era_raw.values().cloned().fold(0.0, f64::max).max(1.0);

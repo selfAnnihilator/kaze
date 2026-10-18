@@ -12,12 +12,12 @@ export const FamiliarityBar = memo(function FamiliarityBar({
   onChange: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(() => quantize(value));
-  const dragging = useRef(false);
+  const dragging = useRef<number | null>(null);
   const latest = useRef(draft);
   const controlled = useRef(value);
   controlled.current = value;
   useEffect(() => {
-    if (!dragging.current) {
+    if (dragging.current === null) {
       latest.current = quantize(value);
       setDraft(latest.current);
     }
@@ -31,14 +31,18 @@ export const FamiliarityBar = memo(function FamiliarityBar({
     onChange(quantize(next));
   };
   const cancel = () => {
-    dragging.current = false;
+    dragging.current = null;
     preview(controlled.current);
+  };
+  const pointerValue = (input: HTMLInputElement, clientX: number) => {
+    const rect = input.getBoundingClientRect();
+    return rect.width > 0 ? (clientX - rect.left) / rect.width : latest.current;
   };
   const description =
     draft <= 0.25
-      ? "Rediscover: deep cuts and forgotten library gems"
+      ? "Rediscover: less-heard songs and online discoveries"
       : draft >= 0.75
-        ? "Familiar: proven favourites and high affinity"
+        ? "Familiar: songs you have played or liked"
         : "Balanced blend: familiar favourites and rediscovery";
   return (
     <div className="press-familiarity">
@@ -64,28 +68,38 @@ export const FamiliarityBar = memo(function FamiliarityBar({
           step={0.05}
           value={draft}
           onPointerDown={event => {
-            if (event.button !== 0) return;
-            dragging.current = true;
+            if (event.button !== 0 || !event.isPrimary || dragging.current !== null) return;
+            // WebKitGTK suppresses native range dragging after pointer capture.
+            // Own the gesture so preview and outside-release work consistently.
+            event.preventDefault();
+            event.currentTarget.focus({ preventScroll: true });
+            dragging.current = event.pointerId;
             event.currentTarget.setPointerCapture(event.pointerId);
+            preview(pointerValue(event.currentTarget, event.clientX));
           }}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (dragging.current) preview(next);
-            else commit(next);
+          onPointerMove={event => {
+            if (dragging.current !== event.pointerId) return;
+            preview(pointerValue(event.currentTarget, event.clientX));
+          }}
+          onChange={event => {
+            if (dragging.current === null) commit(Number(event.target.value));
           }}
           onPointerUp={event => {
-            if (!dragging.current) return;
-            dragging.current = false;
-            commit(latest.current);
+            if (dragging.current !== event.pointerId) return;
+            const next = pointerValue(event.currentTarget, event.clientX);
+            dragging.current = null;
+            commit(next);
             if (event.currentTarget.hasPointerCapture(event.pointerId))
               event.currentTarget.releasePointerCapture(event.pointerId);
           }}
-          onPointerCancel={cancel}
+          onPointerCancel={event => {
+            if (dragging.current === event.pointerId) cancel();
+          }}
           onLostPointerCapture={() => {
-            if (dragging.current) cancel();
+            if (dragging.current !== null) cancel();
           }}
           onBlur={() => {
-            if (dragging.current) cancel();
+            if (dragging.current !== null) cancel();
           }}
           onKeyDown={(event) => {
             if (event.altKey || event.ctrlKey || event.metaKey) return;

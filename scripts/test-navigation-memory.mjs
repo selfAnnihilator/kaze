@@ -99,8 +99,6 @@ try {
     const positions = new Map();
     for (const index of [0, 1, 2, 3]) {
       await select(index);
-      if (index === 1)
-        await page.getByRole("button", { name: /Similar Artists/ }).click();
       if (await shelf().count()) {
         await shelf().evaluate((el) =>
           el.scrollTo({ left: 480, behavior: "instant" }),
@@ -125,12 +123,7 @@ try {
           `chapter ${index} shelf restored ${await shelf().evaluate((el) => el.scrollLeft)} expected ${positions.get(index)}`,
         );
       if (index === 1)
-        assert.match(
-          await page
-            .getByRole("button", { name: /Similar Artists/ })
-            .getAttribute("class"),
-          /active/,
-        );
+        assert.equal(await page.locator(".discovery-shelf-filters").count(), 0);
       await forward(index % 2 !== 0);
       await page
         .locator(style === "brutalist" ? ".press-home" : ".spatial-home")
@@ -139,7 +132,7 @@ try {
       await page.locator(`[data-chapter-index="${index}"]`).waitFor();
       assert.equal(await page.locator(".discovery-chapter").count(), 1);
       console.log(
-        `PASS ${style}: chapter ${index + 1}, filter/shelf, Back/Forward button and shortcut`,
+        `PASS ${style}: chapter ${index + 1}, shelf, Back/Forward button and shortcut`,
       );
     }
     // Every chapter's independent shelf offset survives subsequent route unmounts.

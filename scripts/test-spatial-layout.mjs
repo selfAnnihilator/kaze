@@ -165,9 +165,7 @@ try {
       if (width === 1920 && i === 1) {
         await page.locator("#discovery-chapter-1 .discovery-track-card").nth(1).hover();
         await page.waitForFunction(() => document.querySelector(".spatial-discovery-caption h2")?.textContent === "New Feather");
-        await page.getByRole("button", { name: /^Top Genres/ }).click();
-        await page.waitForFunction(() => document.querySelector(".spatial-discovery-caption h2")?.textContent === "New Kerala");
-        await page.getByRole("button", { name: /^All For You/ }).click();
+        assert.equal(await page.locator(".discovery-shelf-filters").count(), 0);
       }
       const geometry = await page.evaluate(() => {
         const rect = (el) => {

@@ -48,6 +48,7 @@ pub struct HistoryService {
     current_session: Arc<Mutex<Option<ActiveSession>>>,
     current_user: Option<Arc<RwLock<Option<UserProfile>>>>,
     pool: Option<sqlx::SqlitePool>,
+    event_bus: Arc<EventBus>,
     shutting_down: AtomicBool,
     shutdown_signal: StdMutex<Option<tokio::sync::oneshot::Sender<()>>>,
     task: StdMutex<Option<tokio::task::JoinHandle<()>>>,
@@ -81,6 +82,7 @@ impl HistoryService {
             current_session: Arc::new(Mutex::new(None)),
             current_user,
             pool,
+            event_bus: event_bus.clone(),
             shutting_down: AtomicBool::new(false),
             shutdown_signal: StdMutex::new(Some(shutdown_tx)),
             task: StdMutex::new(None),
@@ -483,6 +485,9 @@ impl HistoryService {
             Ok(_) => {
                 // Clean up the crash-recovery journal entry ONLY on successful finalization.
                 self.delete_journal_entry(&entry.id).await;
+                let _ = self.event_bus.publish(Event::TasteProfileChanged {
+                    user_id: entry.user_id.clone(),
+                });
             }
             Err(err) => {
                 error!(session_id = %entry.id, %err, "Failed to commit playback session; leaving crash journal entry for recovery on next launch");

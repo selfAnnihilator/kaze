@@ -240,6 +240,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // User Authentication & Profile
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const currentUserIdRef = useRef("default");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
 
@@ -705,14 +706,31 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview,
   ]);
 
+  const discoveryRequestRef = useRef(0);
+  const fetchPersonalRecommendations = useCallback(async (forceRefresh = false) => {
+    const request = ++discoveryRequestRef.current;
+    const userId = currentUserIdRef.current;
+    const res = await executeQuery({
+      query: "GetDiscoveryRecommendations",
+      payload: { limit: 100, force_refresh: forceRefresh },
+    });
+    if (request === discoveryRequestRef.current && userId === currentUserIdRef.current && Array.isArray(res.data)) {
+      setDiscoveryRecs(res.data);
+    }
+  }, []);
+
+  useEffect(() => {
+    const userId = currentUser?.id || "default";
+    if (userId === currentUserIdRef.current) return;
+    currentUserIdRef.current = userId;
+    ++discoveryRequestRef.current;
+    setDiscoveryRecs([]);
+    void fetchPersonalRecommendations().catch(console.error);
+  }, [currentUser?.id, fetchPersonalRecommendations]);
+
   const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
     const [discovery, charts] = await Promise.allSettled([
-      executeQuery({
-        query: "GetDiscoveryRecommendations",
-        payload: { limit: 100, force_refresh: forceRefresh },
-      }).then((res) => {
-        if (Array.isArray(res.data)) setDiscoveryRecs(res.data);
-      }),
+      fetchPersonalRecommendations(forceRefresh),
       executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts },
         }).then((res) => {
         if (Array.isArray(res.data)) setWorldTrending(res.data);
@@ -725,8 +743,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     if (charts.status === "rejected") {
       console.error("Failed to fetch world charts:", charts.reason);
     }
-  }, [],
-  );
+  }, [fetchPersonalRecommendations]);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -855,6 +872,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   useEffect(() => {
     let unlistenFn: (() => void) | null = null;
     let subscriptionDisposed = false;
+    let tasteRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
     subscribeBackendEvents((event: any) => {
       if (!event || !event.event) return;
@@ -1140,7 +1158,25 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           fetchWishlist();
           break;
 
+        case "TasteProfileChanged": {
+          if (event.payload?.user_id !== currentUserIdRef.current) break;
+          // The writer emits this after commit: no race with history persistence.
+          // Coalesce rapid skips without subscribing App to position ticks.
+          ++discoveryRequestRef.current;
+          clearTimeout(tasteRefreshTimer);
+          tasteRefreshTimer = setTimeout(() => {
+            void fetchPersonalRecommendations().catch(console.error);
+            void fetchHomeOverview();
+          }, 250);
+          break;
+        }
+
         case "SessionChanged": {
+          currentUserIdRef.current = event.payload?.user?.id || "default";
+          ++discoveryRequestRef.current;
+          setDiscoveryRecs([]);
+          clearTimeout(tasteRefreshTimer);
+          void fetchPersonalRecommendations().catch(console.error);
           ++homeRequestRef.current;
           ++flowSessionRequestRef.current;
           void fetchHomeOverview();
@@ -1188,9 +1224,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
     return () => {
       subscriptionDisposed = true;
+      clearTimeout(tasteRefreshTimer);
+      ++discoveryRequestRef.current;
       if (unlistenFn) unlistenFn();
     };
   }, [
+    fetchPersonalRecommendations,
+    fetchDiscovery,
     fetchTracks,
     fetchAlbums,
     fetchOnboardingStatus,
@@ -1764,15 +1804,18 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           command: "SetFlowSteering",
           payload: { familiarity_ratio: val },
         });
-        if (revision === steeringRevisionRef.current)
+        if (revision === steeringRevisionRef.current) {
           steeringPendingRef.current = false;
+          await fetchFlowSession();
+          await fetchPlaybackState();
+        }
       } catch (err) {
         console.error("Failed to update Flow steering:", err);
         if (revision === steeringRevisionRef.current)
           steeringPendingRef.current = false;
       }
     }, 250);
-  }, []);
+  }, [fetchFlowSession, fetchPlaybackState]);
 
   useEffect(
     () => () => {

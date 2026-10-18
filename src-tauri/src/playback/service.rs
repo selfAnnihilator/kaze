@@ -252,7 +252,7 @@ impl PlaybackService {
             .into_iter()
             .collect::<Vec<_>>();
         let tracks = fe
-            .generate_flow_tracks_after(
+            .generate_playback_tracks_after(
                 user_id,
                 ratio,
                 20,
@@ -272,7 +272,7 @@ impl PlaybackService {
         }
         if tracks.is_empty() {
             return Err(AppError::Playback(
-                "No eligible local tracks for Flow. Add music to your library.".into(),
+                "No eligible songs for Flow. Play or like more music, or add songs to your library.".into(),
             ));
         }
         let state = Self::flow_settings(ratio, false);
@@ -454,15 +454,80 @@ impl PlaybackService {
         let _operation = self.flow_operation.lock().await;
         let state = Self::flow_settings(ratio, false);
         fe.save_flow_session(user_id, &state).await?;
-        if let Some(f) = self
+        let active = self
             .active_flow
-            .write()
+            .read()
             .await
-            .as_mut()
+            .as_ref()
             .filter(|f| f.user_id == user_id)
-        {
-            f.ratio = state.familiarity_ratio;
+            .map(|f| (f.generation, f.generated_queue_ids.clone()));
+        let Some((generation, generated_ids)) = active else {
+            return Ok(());
+        };
+        let (excluded, previous_artist) = {
+            let q = self.queue.read().await;
+            let current = q.current_index();
+            (
+                q.items()
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, item)| {
+                        current.is_some_and(|current| *index <= current)
+                            || !generated_ids.contains(&item.queue_id)
+                    })
+                    .map(|(_, item)| item.track_id.clone())
+                    .collect::<Vec<_>>(),
+                q.current().map(|item| item.artist.clone()),
+            )
+        };
+        let tracks = fe
+            .generate_playback_tracks_after(
+                user_id,
+                state.familiarity_ratio,
+                20,
+                &excluded,
+                previous_artist.as_deref(),
+            )
+            .await?;
+        let mut active = self.active_flow.write().await;
+        let Some(flow) = active.as_mut().filter(|flow| {
+            flow.generation == generation
+                && self
+                    .flow_generation
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    == generation
+        }) else {
+            return Ok(());
+        };
+        flow.ratio = state.familiarity_ratio;
+        let mut q = self.queue.write().await;
+        let current_index = q.current_index();
+        let start = current_index.map_or(0, |index| index + 1);
+        let mut rebuilt = q.items()[..start].to_vec();
+        // Keep original evidence for the current/history entries. Replace only
+        // generated upcoming slots, preserving manual entries at their positions.
+        flow.generated_queue_ids.retain(|id| rebuilt.iter().any(|item| &item.queue_id == id));
+        flow.reasons.retain(|id, _| rebuilt.iter().any(|item| &item.track_id == id));
+        let mut replacements = Vec::with_capacity(tracks.len());
+        for track in tracks {
+            let item = Self::flow_item(&track);
+            flow.generated_queue_ids.insert(item.queue_id.clone());
+            flow.reasons.insert(track.track_id, track.explanation);
+            replacements.push(item);
         }
+        let mut replacements = replacements.into_iter();
+        for old in q.items().iter().skip(start) {
+            if generated_ids.contains(&old.queue_id) {
+                if let Some(item) = replacements.next() { rebuilt.push(item); }
+            } else {
+                rebuilt.push(old.clone());
+            }
+        }
+        rebuilt.extend(replacements);
+        q.set_queue(rebuilt, current_index);
+        drop(q);
+        drop(active);
+        self.emit_queue_updated().await;
         Ok(())
     }
 
@@ -1175,11 +1240,11 @@ impl PlaybackService {
             )
         };
         let mut tracks = fe
-            .generate_flow_tracks_after(&user_id, ratio, 15, &recent, artist.as_deref())
+            .generate_playback_tracks_after(&user_id, ratio, 15, &recent, artist.as_deref())
             .await?;
         if tracks.is_empty() {
             tracks = fe
-                .generate_flow_tracks_after(
+                .generate_playback_tracks_after(
                     &user_id,
                     ratio,
                     15,

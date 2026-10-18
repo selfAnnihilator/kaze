@@ -84,3 +84,13 @@ test("preserved pre-Flow current song has continuation copy without invented que
   assert.equal(copy.secondary.length, 0);
   assert.doesNotMatch(JSON.stringify(copy), /your choice|favorite|affinity/i);
 });
+
+test("online Flow discoveries keep their source visible without claiming local-library ownership", () => {
+  const fresh = presentFlowExplanation(evidence({ primary: "online_discovery", is_unplayed: true, familiarity_ratio: 0, selected_at: 1 }));
+  assert.equal(fresh.title, "An online discovery");
+  assert.match(fresh.body, /online song/);
+  assert.doesNotMatch(JSON.stringify(fresh), /your library|own music collection/);
+  const known = presentFlowExplanation(evidence({ primary: "online", play_count: 3 }));
+  assert.equal(known.title, "From your online listening");
+  assert.doesNotMatch(known.body, /library/);
+});

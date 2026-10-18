@@ -29,6 +29,5 @@ export function useDiscoveryMemory() {
     chapter: 0,
     shelves: new Map<number, number>(),
     hovered: null as { chapter: number; id: string } | null,
-    filter: "ALL" as "ALL" | "GENRE" | "SIMILAR",
   }));
 }

@@ -12,7 +12,7 @@ Standard streaming music players rely on massive cloud infrastructure, collabora
 1. **Simple Random or Shuffle Queuing**: Play random unplayed tracks or tracks by top artists. Rejected because it lacks personalization, produces jarring genre shifts, and fails to identify forgotten gems or curate focused mixes.
 2. **Local Embedding Neural Network (e.g. ONNX/Wasm)**: Run heavy audio analysis embeddings locally. Rejected for core Phase 5 because of binary size bloat (hundreds of MBs of model weights), CPU/GPU resource contention, and lack of human-interpretable reasoning.
 3. **Multi-Factor Transparent Heuristic Engine with Dual-Window Affinity Profiling**:
-   - `TasteProfileEngine`: Computes dual-window affinities across artists, genres, and eras (60% short-term 14-day recency + 40% long-term 90-day baseline), persisting affinities in `user_preferences`.
+   - `TasteProfileEngine`: Computes dual-window affinities across artists, genres, and eras (60% short-term 14-day recency + 40% retained lifetime baseline), persisting affinities in `user_preferences`.
    - `ScoringEngine`: Scores candidate tracks using weighted factors:
      - Artist Affinity (35%)
      - Genre Affinity (25%)
@@ -37,3 +37,11 @@ Adopt the **Multi-Factor Transparent Heuristic Engine with Dual-Window Affinity 
 * All recommendations operate seamlessly offline.
 * Recommendation sessions and transparent reasons are logged in `recommendation_sessions` and `recommendations` tables.
 * Smart mixes can be refreshed on-demand, scheduled, or queued into the playback engine.
+
+## 2026-10-18: Active listening integration
+
+Corrected fractional listening weights and skip direction, retained older listening, and wired committed-history events into active For You refresh. Online discovery now uses actual affinity strength and bounded artist-catalog candidates while public charts remain independent. See [Listening scores and For You](../recommendation-scoring.md) for current formulas, refresh behavior, catalog limits, and verification. The offline scorer described above remains the Home/Flow scorer; fresh online catalog discovery requires network access.
+
+## 2026-10-18: Runtime Flow includes online music
+
+Runtime Flow now selects from physical local tracks, account-scoped online favorites/listening and taste-matched external catalog metadata. Familiarity weights recorded song familiarity rather than artist affinity alone; Rediscover reserves room for online exploration. Steering replaces upcoming generated slots immediately without restarting the current song or displacing manual queue entries. Candidate generation uses stored metadata without network calls; selected online songs enter the existing Rust full-song playback, history and statistics path. Local generation previews remain read-only. See the current [Flow scoring contract](../recommendation-scoring.md#home-flow-familiarity-and-online-songs) for bounds, formulas and verification.

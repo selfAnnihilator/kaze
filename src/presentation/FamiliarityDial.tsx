@@ -4,9 +4,9 @@ const quantize = (value: number) =>
   Math.round(Math.max(0, Math.min(1, value)) * 20) / 20;
 const description = (value: number) =>
   value <= 0.25
-    ? "Rediscover: deep cuts and forgotten library gems"
+    ? "Rediscover: less-heard songs and online discoveries"
     : value >= 0.75
-      ? "Familiar: proven favourites and high affinity"
+      ? "Familiar: songs you have played or liked"
       : "Balanced blend: familiar favourites and rediscovery";
 
 /** Dragging previews in this leaf. Only release or a keyboard step commits to Flow. */

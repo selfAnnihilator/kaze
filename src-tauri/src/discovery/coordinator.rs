@@ -33,6 +33,7 @@ pub struct DiscoveryCoordinator {
     taste_engine: Arc<TasteProfileEngine>,
     #[allow(dead_code)]
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
+    artist_candidate_cache: tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
     world_chart_cache: tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
 }
 
@@ -205,6 +206,7 @@ impl DiscoveryCoordinator {
             track_repo,
             taste_engine,
             provider_coordinator,
+            artist_candidate_cache: tokio::sync::Mutex::new(HashMap::new()),
             world_chart_cache: tokio::sync::RwLock::new(None),
         }
     }
@@ -533,8 +535,107 @@ impl DiscoveryCoordinator {
         Ok(ingested_count)
     }
 
-    /// Generates external discovery recommendations tailored so the MAJORITY are trending
-    /// hits that match the user's taste (top genres, listened artists, library artists).
+    /// Cache catalog candidates by artist for 15 minutes; listening changes only rerank.
+    async fn artist_candidates(
+        &self,
+        artist: &str,
+        force_refresh: bool,
+    ) -> Vec<ExternalTrackRecord> {
+        let key = artist.trim().to_lowercase();
+        if key.is_empty() {
+            return Vec::new();
+        }
+        let mut cache = self.artist_candidate_cache.lock().await;
+        if !force_refresh {
+            if let Some((at, tracks)) = cache.get(&key) {
+                if at.elapsed().as_secs() < 900 {
+                    return tracks.clone();
+                }
+            }
+        }
+        let Ok(client) = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(4))
+            .build()
+        else {
+            return Vec::new();
+        };
+        let mut tracks = Vec::new();
+        // An artist can be absent from US charts yet available in another catalog.
+        for country in ["us", "in"] {
+            let response = client
+                .get("https://itunes.apple.com/search")
+                .query(&[
+                    ("term", artist),
+                    ("country", country),
+                    ("media", "music"),
+                    ("entity", "song"),
+                    ("attribute", "artistTerm"),
+                    ("limit", "25"),
+                ])
+                .send()
+                .await;
+            let Ok(response) = response else {
+                continue;
+            };
+            if !response.status().is_success() {
+                continue;
+            }
+            let Ok(data) = response.json::<serde_json::Value>().await else {
+                continue;
+            };
+            if let Some(items) = data["results"].as_array() {
+                for item in items {
+                    let (Some(id), Some(title), Some(name)) = (
+                        item["trackId"].as_i64(),
+                        item["trackName"].as_str(),
+                        item["artistName"].as_str(),
+                    ) else {
+                        continue;
+                    };
+                    if name.trim().to_lowercase() != key {
+                        continue;
+                    }
+                    let record = ExternalTrackRecord {
+                        id: format!("itunes:{id}"),
+                        provider: "itunes".into(),
+                        provider_id: id.to_string(),
+                        title: title.into(),
+                        artist: name.into(),
+                        album: item["collectionName"].as_str().map(str::to_string),
+                        duration_secs: item["trackTimeMillis"].as_f64().map(|ms| ms / 1000.0),
+                        cover_art_url: item["artworkUrl100"].as_str().map(str::to_string),
+                        preview_url: item["previewUrl"].as_str().map(str::to_string),
+                        genre: item["primaryGenreName"].as_str().map(str::to_string),
+                        match_status: "NOT_FOUND".into(),
+                        matched_local_track_id: None,
+                        created_at: chrono::Utc::now().timestamp(),
+                    };
+                    let _ = self.wishlist_repo.upsert_external_track(&record).await;
+                    tracks.push(record);
+                }
+            }
+            if !tracks.is_empty() {
+                break;
+            }
+        }
+        if tracks.is_empty() {
+            // Retain useful candidates during provider outages; retry next time.
+            return cache
+                .get(&key)
+                .map(|(_, tracks)| tracks.clone())
+                .unwrap_or_default();
+        }
+        if cache.len() >= 64 {
+            cache.retain(|_, (at, _)| at.elapsed().as_secs() < 900);
+        }
+        if cache.len() >= 64 {
+            cache.clear();
+        }
+        cache.insert(key, (std::time::Instant::now(), tracks.clone()));
+        tracks
+    }
+
+    /// Ranks catalog candidates by listening affinity, with library signals for cold start.
     pub async fn get_discovery_recommendations(
         &self,
         user_id: &str,
@@ -562,7 +663,7 @@ impl DiscoveryCoordinator {
         let mut genre_counts: HashMap<String, usize> = HashMap::new();
         let mut library_artists: HashSet<String> = HashSet::new();
 
-        for t in &local_tracks {
+        for t in local_tracks.iter().filter(|t| t.format != "online" && !t.file_path.starts_with("online://")) {
             if let Some(ref g) = t.genre_name {
                 let clean = g.to_lowercase().trim().to_string();
                 if !clean.is_empty() {
@@ -577,21 +678,23 @@ impl DiscoveryCoordinator {
             }
         }
 
-        let mut listened_artists: HashSet<String> = HashSet::new();
-        if let Ok(profile) = self.taste_engine.compute_taste_profile(user_id).await {
-            for a in profile.top_artists {
-                listened_artists.insert(a.display_name.to_lowercase().trim().to_string());
-            }
-            for g in profile.top_genres {
-                let clean = g.display_name.to_lowercase().trim().to_string();
-                if !clean.is_empty() {
-                    *genre_counts.entry(clean).or_insert(0) += 10;
-                }
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        let listened_artists: HashMap<String, f64> = profile.top_artists.iter()
+            .map(|a| (a.display_name.to_lowercase().trim().to_string(), a.affinity))
+            .collect();
+        let mut genre_weights: HashMap<String, f64> = genre_counts.into_iter()
+            .map(|(genre, count)| (genre, (count as f64).min(10.0)))
+            .collect();
+        for g in &profile.top_genres {
+            let clean = g.display_name.to_lowercase().trim().to_string();
+            if !clean.is_empty() {
+                // Listening outranks library size, including reduced/zero affinities.
+                genre_weights.insert(clean, g.affinity * 100.0);
             }
         }
-
-        let mut ranked_user_genres: Vec<(String, usize)> = genre_counts.into_iter().collect();
-        ranked_user_genres.sort_by(|a, b| b.1.cmp(&a.1));
+        let mut ranked_user_genres: Vec<(String, f64)> = genre_weights.into_iter()
+            .filter(|(_, weight)| *weight > 0.0).collect();
+        ranked_user_genres.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
         let mut target_itunes_genre_ids = Vec::new();
         for (g, _) in &ranked_user_genres {
@@ -673,7 +776,7 @@ impl DiscoveryCoordinator {
                 || al.contains("chithra")
                 || al.contains("malayalam")
                 || a.chars().any(|c| c >= '\u{0d00}' && c <= '\u{0d7f}')
-        }) || local_tracks.iter().any(|t| {
+        }) || local_tracks.iter().filter(|t| t.format != "online" && !t.file_path.starts_with("online://")).any(|t| {
             let tl = t.title.to_lowercase();
             tl.contains("illuminati")
                 || tl.contains("malare")
@@ -723,9 +826,16 @@ impl DiscoveryCoordinator {
                 .await?;
         }
 
-        // 5. Score candidates with strong taste weighting (Genre + Artist + Trending)
-        // High affinity for user top genres (+100, +80, +65) ensures trending music from
-        // the user's taste overwhelmingly ranks at the top!
+        if self.provider_coordinator.is_some() {
+            let mut seen: HashSet<String> = ext_tracks.iter().map(|t| t.id.clone()).collect();
+            for artist in profile.top_artists.iter().filter(|a| a.affinity > 0.0).take(4) {
+                for track in self.artist_candidates(&artist.display_name, force_refresh).await {
+                    if seen.insert(track.id.clone()) { ext_tracks.push(track); }
+                }
+            }
+        }
+
+        // 5. Listening strength drives ordering; refreshing never adds random score noise.
         struct ScoredCandidate {
             track: ExternalTrackRecord,
             score: f64,
@@ -747,7 +857,6 @@ impl DiscoveryCoordinator {
             })
             .collect();
 
-        let now_millis = chrono::Utc::now().timestamp_millis();
 
         for mut track in ext_tracks {
             let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&track.title)
@@ -776,21 +885,16 @@ impl DiscoveryCoordinator {
             let track_genre = track.genre.as_deref().unwrap_or("").to_lowercase();
             let track_album = track.album.as_deref().unwrap_or("").to_lowercase();
 
-            let is_listened_artist = listened_artists.contains(&artist_lower);
+            let artist_affinity = listened_artists.get(&artist_lower).copied().unwrap_or(0.0);
+            let is_listened_artist = artist_affinity > 0.0;
             let is_library_artist = library_artists.contains(&artist_lower);
 
             let mut genre_score: f64 = 0.0;
             let mut matched_genre_display: Option<String> = None;
 
-            for (idx, (ug, _)) in ranked_user_genres.iter().enumerate() {
+            for (ug, weight) in &ranked_user_genres {
                 if genre_matches(&track_genre, ug) || genre_matches(&track_album, ug) {
-                    genre_score = match idx {
-                        0 => 100.0,
-                        1 => 80.0,
-                        2 => 65.0,
-                        3 => 50.0,
-                        _ => 35.0,
-                    };
+                    genre_score = *weight;
                     matched_genre_display =
                         Some(track.genre.clone().unwrap_or_else(|| ug.clone()));
                     break;
@@ -798,14 +902,14 @@ impl DiscoveryCoordinator {
             }
 
             if has_malayalam && (track_genre.contains("malayalam") || track_album.contains("malayalam")) {
-                genre_score = genre_score.max(85.0);
+                genre_score = genre_score.max(10.0);
             }
 
             let mut base_score = 15.0; // baseline chart presence
             if is_listened_artist {
-                base_score += 90.0;
-            } else if is_library_artist {
-                base_score += 70.0;
+                base_score += 150.0 * artist_affinity;
+            } else if is_library_artist && !listened_artists.contains_key(&artist_lower) {
+                base_score += 15.0;
             }
             base_score += genre_score;
 
@@ -814,23 +918,16 @@ impl DiscoveryCoordinator {
                 base_score += 5.0;
             }
 
-            // On force_refresh, apply a hash-based rotation offset so the recommendations rotate and feel fresh
-            if force_refresh {
-                let salt = (now_millis % 9973) as usize;
-                let hash = ((track.id.len() * 37 + track.title.len() * 59 + salt) % 90) as f64;
-                base_score += hash - 45.0;
-            }
-
             let reason = match status {
                 MatchStatus::NotFound => {
                     if is_listened_artist {
                         format!(
-                            "✨ Trending release • Similar to your listening habit for {}",
-                            track.artist
+                            "Based on your listening habit for {} ({:.0}% affinity)",
+                            track.artist, artist_affinity * 100.0
                         )
-                    } else if is_library_artist {
-                        format!("🎵 Trending hit by your library artist {}", track.artist)
-                    } else if track_genre.contains("malayalam") || track_album.contains("malayalam") {
+                    } else if is_library_artist && !listened_artists.contains_key(&artist_lower) {
+                        format!("By your library artist {}", track.artist)
+                    } else if has_malayalam && (track_genre.contains("malayalam") || track_album.contains("malayalam")) {
                         format!("🔥 Trending in Malayalam • Matches your library favorites")
                     } else if let Some(ref gd) = matched_genre_display {
                         format!("🔥 Trending in {} • Matches your top genre", gd)
@@ -852,31 +949,18 @@ impl DiscoveryCoordinator {
             });
         }
 
-        // Partition candidates into pure chart hits vs. personalized taste hits
-        let mut taste_candidates = Vec::new();
-        let mut chart_candidates = Vec::new();
-
-        for candidate in scored_list {
-            if candidate.reason.contains("Popular discovery across charts") {
-                chart_candidates.push(candidate);
-            } else {
-                taste_candidates.push(candidate);
-            }
-        }
+        let mut taste_candidates: Vec<_> = scored_list.into_iter()
+            .filter(|candidate| !candidate.reason.contains("Popular discovery across charts"))
+            .collect();
 
         taste_candidates.sort_by(|a, b| {
             b.score
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.track.id.cmp(&b.track.id))
         });
 
-        chart_candidates.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // 6. Enforce balanced allocation and STRICT ARTIST DIVERSITY (maximum 2 tracks per artist)
+        // 6. Keep artist diversity (maximum two tracks per artist).
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut recs = Vec::new();
 
@@ -914,80 +998,14 @@ impl DiscoveryCoordinator {
             }
         };
 
-        // Dedicated quota for pure trending hits (unbiased by personal taste)
-        let half_quota = (limit / 2).max(1);
-        let mut selected_chart = 0;
-        let mut selected_taste = 0;
-
-        // First pass: take up to half from pure chart hits
-        for scored in &chart_candidates {
-            if selected_chart >= half_quota {
-                break;
-            }
-            let artist_key = scored.track.artist.to_lowercase().trim().to_string();
-            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
-            if *count >= 2 {
-                continue;
-            }
-            *count += 1;
-            selected_chart += 1;
-            recs.push(to_recommendation(scored));
-        }
-
-        // Second pass: take personalized taste hits
-        let remaining_for_taste = limit.saturating_sub(recs.len()).max(half_quota);
+        // For You uses only personalized candidates, ordered by actual affinity.
         for scored in &taste_candidates {
-            if selected_taste >= remaining_for_taste || recs.len() >= limit {
-                break;
-            }
+            if recs.len() >= limit { break; }
             let artist_key = scored.track.artist.to_lowercase().trim().to_string();
-            let count = artist_counts.entry(artist_key.clone()).or_insert(0);
-            if *count >= 2 {
-                continue;
-            }
+            let count = artist_counts.entry(artist_key).or_insert(0);
+            if *count >= 2 { continue; }
             *count += 1;
-            selected_taste += 1;
             recs.push(to_recommendation(scored));
-        }
-
-        // Third pass: fill remaining capacity from chart candidates if any remain
-        if recs.len() < limit {
-            let already_included: HashSet<String> = recs.iter().map(|r| r.external_track_id.clone()).collect();
-            for scored in &chart_candidates {
-                if recs.len() >= limit {
-                    break;
-                }
-                if already_included.contains(&scored.track.id) {
-                    continue;
-                }
-                let artist_key = scored.track.artist.to_lowercase().trim().to_string();
-                let count = artist_counts.entry(artist_key.clone()).or_insert(0);
-                if *count >= 2 {
-                    continue;
-                }
-                *count += 1;
-                recs.push(to_recommendation(scored));
-            }
-        }
-
-        // Fourth pass: fill remaining capacity from taste candidates if any remain
-        if recs.len() < limit {
-            let already_included: HashSet<String> = recs.iter().map(|r| r.external_track_id.clone()).collect();
-            for scored in &taste_candidates {
-                if recs.len() >= limit {
-                    break;
-                }
-                if already_included.contains(&scored.track.id) {
-                    continue;
-                }
-                let artist_key = scored.track.artist.to_lowercase().trim().to_string();
-                let count = artist_counts.entry(artist_key.clone()).or_insert(0);
-                if *count >= 2 {
-                    continue;
-                }
-                *count += 1;
-                recs.push(to_recommendation(scored));
-            }
         }
 
         Ok(recs)

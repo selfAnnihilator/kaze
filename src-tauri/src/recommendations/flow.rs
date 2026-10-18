@@ -131,12 +131,14 @@ struct FlowCandidateRow {
     skip_count: Option<i64>,
     last_played_at: Option<i64>,
     manual_like: Option<i64>,
+    is_online: bool,
+    preview_url: Option<String>,
 }
 
 pub struct FlowEngine {
     pool: SqlitePool,
     taste_engine: Arc<TasteProfileEngine>,
-    home_picks: tokio::sync::Mutex<HashMap<String, (i64, Vec<RecommendedTrackDetail>)>>,
+    home_picks: tokio::sync::Mutex<HashMap<String, (i64, i64, Vec<RecommendedTrackDetail>)>>,
 }
 
 impl FlowEngine {
@@ -174,6 +176,47 @@ impl FlowEngine {
         exclude_track_ids: &[String],
         previous_artist: Option<&str>,
     ) -> AppResult<Vec<FlowTrackItem>> {
+        self.generate_candidates(
+            user_id,
+            familiarity_ratio,
+            limit,
+            exclude_track_ids,
+            previous_artist,
+            false,
+        )
+        .await
+    }
+
+    /// Runtime Flow includes account history and taste-matched online catalog metadata.
+    /// Selection performs no network/audio work; the shared player resolves a song on play.
+    pub async fn generate_playback_tracks_after(
+        &self,
+        user_id: &str,
+        familiarity_ratio: f64,
+        limit: usize,
+        exclude_track_ids: &[String],
+        previous_artist: Option<&str>,
+    ) -> AppResult<Vec<FlowTrackItem>> {
+        self.generate_candidates(
+            user_id,
+            familiarity_ratio,
+            limit,
+            exclude_track_ids,
+            previous_artist,
+            true,
+        )
+        .await
+    }
+
+    async fn generate_candidates(
+        &self,
+        user_id: &str,
+        familiarity_ratio: f64,
+        limit: usize,
+        exclude_track_ids: &[String],
+        previous_artist: Option<&str>,
+        include_online: bool,
+    ) -> AppResult<Vec<FlowTrackItem>> {
         if !familiarity_ratio.is_finite() {
             return Err(AppError::Validation("Flow steering must be finite".into()));
         }
@@ -185,13 +228,13 @@ impl FlowEngine {
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
         let now = Utc::now().timestamp();
 
-        let candidates = sqlx::query_as::<_, FlowCandidateRow>(
+        let mut candidates = sqlx::query_as::<_, FlowCandidateRow>(
             "SELECT t.id, t.title, t.artist_id, a.name as artist_name,
                     t.album_id, al.title as album_title, g.name as genre_name, t.year,
                     t.duration_secs,
                     CASE WHEN t.has_cover_art = 1 THEN '/api/cover/' || t.id ELSE NULL END as cover_art_url,
                     ts.play_count, ts.completion_count, ts.skip_count, ts.last_played_at,
-                    ts.manual_like
+                    ts.manual_like, 0 as is_online, NULL as preview_url
              FROM tracks t
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN albums al ON al.id = t.album_id
@@ -204,11 +247,66 @@ impl FlowEngine {
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
+        if include_online {
+            let online = sqlx::query_as::<_, FlowCandidateRow>(
+                "SELECT e.id, e.title, a.id as artist_id, e.artist as artist_name,
+                        t.album_id, e.album as album_title, COALESCE(g.name, e.genre) as genre_name, t.year,
+                        COALESCE(e.duration_secs, t.duration_secs, 210.0) as duration_secs,
+                        e.cover_art_url, ts.play_count, ts.completion_count, ts.skip_count, ts.last_played_at,
+                        CASE WHEN ts.manual_like = -1 THEN -1
+                             WHEN liked.track_id IS NOT NULL THEN 1 ELSE ts.manual_like END as manual_like,
+                        1 as is_online, e.preview_url
+                 FROM external_tracks e
+                 LEFT JOIN tracks t ON t.id = e.id
+                 LEFT JOIN artists a ON a.normalized_name = lower(trim(e.artist))
+                 LEFT JOIN genres g ON g.id = t.genre_id
+                 LEFT JOIN track_statistics ts ON ts.track_id = e.id AND ts.user_id = ?
+                 LEFT JOIN (
+                    SELECT DISTINCT pt.track_id FROM playlist_tracks pt
+                    JOIN playlists p ON p.id = pt.playlist_id
+                    WHERE p.user_id = ? AND p.name = 'Liked Songs' AND p.is_smart_mix = 0
+                 ) liked ON liked.track_id = e.id
+                 WHERE (t.id IS NULL OR t.format = 'online' OR t.file_path LIKE 'online://%')
+                   AND NOT EXISTS (
+                       SELECT 1 FROM tracks local WHERE local.id = e.matched_local_track_id
+                         AND local.format != 'online' AND local.file_path NOT LIKE 'online://%'
+                   )
+                 ORDER BY (liked.track_id IS NOT NULL OR COALESCE(ts.play_count, 0) > 0) DESC,
+                          COALESCE(ts.play_count, 0) DESC, e.created_at DESC, e.id
+                 LIMIT 2000"
+            ).bind(user_id).bind(user_id).fetch_all(&self.pool).await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            candidates.extend(online.into_iter().filter(|c| {
+                let known = c.manual_like == Some(1)
+                    || c.last_played_at.is_some()
+                    || c.play_count.unwrap_or(0) > 0;
+                let artist_match = c
+                    .artist_id
+                    .as_ref()
+                    .and_then(|id| profile.artist_affinities.get(id))
+                    .copied()
+                    .unwrap_or(0.0)
+                    > 0.15;
+                let genre_match = c.genre_name.as_ref().is_some_and(|genre| {
+                    profile.genre_affinities.iter().any(|(name, affinity)| {
+                        name.eq_ignore_ascii_case(genre.trim()) && *affinity > 0.15
+                    })
+                });
+                known || artist_match || genre_match
+            }));
+        }
+
         if candidates.is_empty() {
             return Ok(Vec::new());
         }
 
         let exclude_set: HashSet<&str> = exclude_track_ids.iter().map(|s| s.as_str()).collect();
+        let excluded_songs: HashSet<_> = candidates
+            .iter()
+            .filter(|c| exclude_set.contains(c.id.as_str()) || c.manual_like == Some(-1))
+            .map(|c| Self::song_key(&c.title, c.artist_name.as_deref().unwrap_or("")))
+            .collect();
+        let mut seen_songs = HashSet::new();
 
         struct ScoredCandidate {
             candidate: FlowCandidateRow,
@@ -227,7 +325,11 @@ impl FlowEngine {
             }
 
             // Excluded tracks (already queued or recently played in session) are skipped
-            if exclude_set.contains(c.id.as_str()) {
+            let identity = Self::song_key(&c.title, c.artist_name.as_deref().unwrap_or(""));
+            if exclude_set.contains(c.id.as_str())
+                || excluded_songs.contains(&identity)
+                || !seen_songs.insert(identity)
+            {
                 continue;
             }
 
@@ -265,7 +367,14 @@ impl FlowEngine {
                 last_played_at: c.last_played_at,
                 user_feedback: if is_liked { Some("like".into()) } else { None },
             };
-            let familiarity_score = ScoringEngine::score_track(&input, &profile, now).final_score;
+            let taste_score = ScoringEngine::score_track(&input, &profile, now).final_score;
+            // Familiarity means known songs, rather than every unheard song by a favorite artist.
+            let known_strength = if is_liked {
+                1.0
+            } else {
+                ((play_count.max(0) as f64).ln_1p() / 6.0_f64.ln_1p()).min(1.0)
+            };
+            let familiarity_score = taste_score * 0.4 + known_strength * 0.6;
 
             // 2. Rediscovery Component (favors forgotten tracks and unplayed library gems)
             let mut rediscovery_score = 0.0;
@@ -318,6 +427,13 @@ impl FlowEngine {
                 final_score -= ((skip_count - completion_count) as f64 * 0.05).min(0.35);
             }
             final_score = final_score.max(0.0);
+            if c.is_online
+                && !is_liked
+                && (final_score <= 0.0 || (play_count == 0 && skip_count > 0))
+            {
+                // An online exploration slot must not force repeatedly skipped songs.
+                continue;
+            }
             let (reason, reason_category) = Self::explain(&c, &profile, now);
 
             let mut explanation = Self::evidence(&c, &profile, now);
@@ -345,6 +461,7 @@ impl FlowEngine {
         let mut selected = Vec::with_capacity(limit);
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut last_artist = previous_artist.map(str::to_owned);
+        let mut selected_online = 0;
         let max_per_artist = if limit <= 10 { 2 } else { 3 };
         while !scored.is_empty() && selected.len() < limit {
             let key = |item: &ScoredCandidate| {
@@ -353,13 +470,21 @@ impl FlowEngine {
                     .clone()
                     .unwrap_or_else(|| "Unknown Artist".into())
             };
+            // Reserve some exploration slots for online candidates so a large local
+            // library cannot hide them through deterministic score ties. Familiar
+            // still lets known online favorites compete on their listening scores.
+            let online_due = include_online
+                && selected_online
+                    < (((selected.len() + 1) as f64 * (1.0 - ratio) * 0.5).round() as usize);
+            let spaced = |item: &ScoredCandidate| {
+                let artist = key(item);
+                last_artist.as_ref() != Some(&artist)
+                    && artist_counts.get(&artist).copied().unwrap_or(0) < max_per_artist
+            };
             let index = scored
                 .iter()
-                .position(|item| {
-                    let artist = key(item);
-                    last_artist.as_ref() != Some(&artist)
-                        && artist_counts.get(&artist).copied().unwrap_or(0) < max_per_artist
-                })
+                .position(|item| spaced(item) && (!online_due || item.candidate.is_online))
+                .or_else(|| scored.iter().position(spaced))
                 .or_else(|| {
                     scored
                         .iter()
@@ -367,6 +492,22 @@ impl FlowEngine {
                 })
                 .unwrap_or(0);
             let item = scored.remove(index);
+            if item.candidate.is_online {
+                selected_online += 1;
+            }
+            if include_online && item.candidate.is_online {
+                crate::recommendations::mixes::ensure_online_track(
+                    &self.pool,
+                    &item.candidate.id,
+                    &item.candidate.title,
+                    item.candidate.artist_name.as_deref(),
+                    item.candidate.album_title.as_deref(),
+                    Some(item.candidate.duration_secs),
+                    item.candidate.cover_art_url.as_deref(),
+                    item.candidate.preview_url.as_deref(),
+                )
+                .await?;
+            }
             let artist = key(&item);
             *artist_counts.entry(artist.clone()).or_insert(0) += 1;
             last_artist = Some(artist);
@@ -513,11 +654,17 @@ impl FlowEngine {
             )
             .collect();
 
-        // 4. For You: from existing LocalRecommender
+        // 4. Keep stable picks until listening changes or the short cache expires.
+        let history_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM playback_history WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         let mut picks = self.home_picks.lock().await;
         if picks
             .get(user_id)
-            .map(|(time, _)| now - time >= 60)
+            .map(|(time, count, _)| now - time >= 60 || *count != history_count)
             .unwrap_or(true)
         {
             let for_you = self
@@ -541,9 +688,9 @@ impl FlowEngine {
                     }],
                 })
                 .collect();
-            picks.insert(user_id.into(), (now, for_you));
+            picks.insert(user_id.into(), (now, history_count, for_you));
         }
-        let for_you = picks.get(user_id).unwrap().1.clone();
+        let for_you = picks.get(user_id).unwrap().2.clone();
         drop(picks);
 
         // 5. Library Moment: Spotlight on an album from user's library
@@ -676,7 +823,8 @@ impl FlowEngine {
             "SELECT t.id, t.title, t.artist_id, a.name as artist_name,
                     t.album_id, al.title as album_title, g.name as genre_name, t.year,
                     t.duration_secs, NULL as cover_art_url,
-                    ts.play_count, ts.completion_count, ts.skip_count, ts.last_played_at, ts.manual_like
+                    ts.play_count, ts.completion_count, ts.skip_count, ts.last_played_at, ts.manual_like,
+                    (t.format = 'online' OR t.file_path LIKE 'online://%') as is_online, NULL as preview_url
              FROM tracks t LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN albums al ON al.id = t.album_id LEFT JOIN genres g ON g.id = t.genre_id
              LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
@@ -700,8 +848,21 @@ impl FlowEngine {
                 "Matches your affinity for {}",
                 e.artist_name.as_deref().unwrap_or("this artist")
             ),
+            "online_discovery" => "Online discovery matching your listening taste".into(),
+            "online" => "Selected from your online listening".into(),
             _ => "Selected from your library".into(),
         })
+    }
+
+    fn song_key(title: &str, artist: &str) -> String {
+        let clean = |value: &str| {
+            value
+                .to_lowercase()
+                .chars()
+                .filter(|c| c.is_alphanumeric())
+                .collect::<String>()
+        };
+        format!("{}:{}", clean(artist), clean(title))
     }
 
     fn evidence(c: &FlowCandidateRow, profile: &TasteProfile, now: i64) -> FlowExplanation {
@@ -740,10 +901,17 @@ impl FlowEngine {
             && c.last_played_at.is_none()
             && c.skip_count.unwrap_or(0) == 0
         {
-            (
-                "Unplayed track from your library".into(),
-                "library_exploration",
-            )
+            if c.is_online {
+                (
+                    "Online discovery matching your listening taste".into(),
+                    "online_discovery",
+                )
+            } else {
+                (
+                    "Unplayed track from your library".into(),
+                    "library_exploration",
+                )
+            }
         } else if c
             .artist_id
             .as_ref()
@@ -759,6 +927,8 @@ impl FlowEngine {
                 ),
                 "artist_affinity",
             )
+        } else if c.is_online {
+            ("Selected from your online listening".into(), "online")
         } else {
             ("Selected from your library".into(), "library")
         };

@@ -1296,3 +1296,55 @@ async fn preserved_current_finishes_with_original_history_session_then_flow_adva
         Some(fresh)
     );
 }
+#[tokio::test]
+async fn home_for_you_recomputes_when_listening_changes_before_cache_expiry() {
+    let processor = setup_processor().await;
+    let played = add_track(&processor, "Played", "New Favorite", "Album", "Rock", 2020).await;
+    let candidate = add_track(&processor, "Unheard", "New Favorite", "Album", "Rock", 2020).await;
+    add_track(
+        &processor,
+        "Other",
+        "Other Artist",
+        "Other Album",
+        "Jazz",
+        2020,
+    )
+    .await;
+    let engine = processor.flow_engine();
+    let before = engine.get_home_overview("default").await.unwrap();
+    let old_score = before
+        .for_you
+        .iter()
+        .find(|t| t.track_id == candidate)
+        .unwrap()
+        .score;
+    let now = chrono::Utc::now().timestamp();
+    SqliteHistoryRepository::new(processor.db_pool().clone())
+        .record_playback(&PlaybackHistoryRecord {
+            id: Uuid::new_v4().to_string(),
+            user_id: "default".into(),
+            track_id: played,
+            started_at: now - 240,
+            ended_at: now,
+            seconds_listened: 240.0,
+            percentage_listened: 1.0,
+            completed: 1,
+            skipped: 0,
+            source: "collection".into(),
+            playlist_id: None,
+            recommendation_session_id: None,
+        })
+        .await
+        .unwrap();
+    let after = engine.get_home_overview("default").await.unwrap();
+    let new_score = after
+        .for_you
+        .iter()
+        .find(|t| t.track_id == candidate)
+        .unwrap()
+        .score;
+    assert!(
+        new_score > old_score,
+        "Home cannot retain a stale taste score for the cache's 60-second lifetime"
+    );
+}

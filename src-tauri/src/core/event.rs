@@ -106,6 +106,10 @@ pub enum Event {
     },
 
     // --- Recommendations & Mixes ---
+    /// Published only after listening or explicit feedback has been committed.
+    TasteProfileChanged {
+        user_id: String,
+    },
     SmartMixGenerated {
         playlist_id: String,
         mix_type: String,

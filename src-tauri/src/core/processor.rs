@@ -910,6 +910,7 @@ impl CoreProcessor {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, 1).await?;
                 self.flow_engine.invalidate_home_picks(&user_id).await;
+                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
                 // Also add to Liked Songs playlist
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 // Only add if it's a local track (not an online: prefixed id); online tracks use AddTrackToPlaylist
@@ -933,6 +934,7 @@ impl CoreProcessor {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, -1).await?;
                 self.flow_engine.invalidate_home_picks(&user_id).await;
+                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
                 // Remove from Liked Songs if it's there
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
@@ -943,6 +945,7 @@ impl CoreProcessor {
                 let user_id = self.current_user_id().await;
                 self.history_service.set_track_like_scoped(&user_id, &track_id, 0).await?;
                 self.flow_engine.invalidate_home_picks(&user_id).await;
+                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
                 // Remove from Liked Songs
                 let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
                 let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;

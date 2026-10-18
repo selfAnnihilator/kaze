@@ -12,7 +12,6 @@ import {
   WifiOff,
   Music,
   RefreshCw,
-  Radio,
   Music2,
   Play,
   Pause,
@@ -838,9 +837,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   likedTrackIds,
 }) => {
   const viewMemory = useDiscoveryMemory();
-  const [forYouFilter, setForYouFilter] = useState<"ALL" | "GENRE" | "SIMILAR">(
-    viewMemory.filter,
-  );
   const [, setVisibleCount] = useState(15);
   const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
   const [isOnline, setIsOnline] = useState(
@@ -993,67 +989,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
     }
     setSearchQuery("");
     setSearchResults(null);
-  };
-
-  const forYouGenreCount = useMemo(
-    () =>
-      forYou.filter((r) => {
-        const s = r.recommendation_reason.toLowerCase();
-        return (
-          s.includes("genre") ||
-          s.includes("popular in") ||
-          s.includes("trending in")
-        );
-      }).length,
-    [forYou],
-  );
-
-  const forYouSimilarCount = useMemo(
-    () =>
-      forYou.filter((r) => {
-        const s = r.recommendation_reason.toLowerCase();
-        return (
-          s.includes("similar") ||
-          s.includes("listening") ||
-          s.includes("library artist")
-        );
-      }).length,
-    [forYou],
-  );
-
-  const filteredForYou = useMemo(() => {
-    if (forYouFilter === "GENRE") {
-      return forYou.filter((r) => {
-        const s = r.recommendation_reason.toLowerCase();
-        return (
-          s.includes("genre") ||
-          s.includes("popular in") ||
-          s.includes("trending in")
-        );
-      });
-    }
-    if (forYouFilter === "SIMILAR") {
-      return forYou.filter((r) => {
-        const s = r.recommendation_reason.toLowerCase();
-        return (
-          s.includes("similar") ||
-          s.includes("listening") ||
-          s.includes("library artist")
-        );
-      });
-    }
-    return forYou;
-  }, [forYou, forYouFilter]);
-
-  const handleForYouFilterChange = (
-    nextFilter: "ALL" | "GENRE" | "SIMILAR",
-  ) => {
-    viewMemory.filter = nextFilter;
-    viewMemory.shelves.set(1, 0);
-    setForYouFilter(nextFilter);
-    if (forYouScrollRef.current) {
-      forYouScrollRef.current.scrollLeft = 0;
-    }
   };
 
   const songsScrollRef = useRef<HTMLDivElement>(null);
@@ -1463,7 +1398,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
           </section>
           <DiscoveryChapters selections={[
             { title: "Trending songs", subtitle: "Popular songs across world charts.", previews: trending.map(songPreview) },
-            { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: filteredForYou.map(songPreview) },
+            { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: forYou.map(songPreview) },
             { title: "Mixes for you", subtitle: "Personal blends shaped by your listening.", previews: allMixes.map(mixPreview) },
             { title: "Top charts", subtitle: "Follow the sound around the world.", previews: topCharts.map(chartPreview) },
           ]}>
@@ -1662,80 +1597,14 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                 )}
               </div>
 
-              {forYou.length > 0 &&
-                (forYouGenreCount > 0 || forYouSimilarCount > 0) && (
-                  <div
-                    className="discovery-shelf-filters"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                      marginBottom: "14px",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleForYouFilterChange("ALL")}
-                      className={`subtab-btn ${forYouFilter === "ALL" ? "active" : ""}`}
-                    >
-                      All For You ({forYou.length})
-                    </button>
-                    {forYouGenreCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleForYouFilterChange("GENRE")}
-                        className={`subtab-btn ${forYouFilter === "GENRE" ? "active" : ""}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}
-                      >
-                        <Radio size={12} color="var(--accent-light)" />
-                        <span>Top Genres ({forYouGenreCount})</span>
-                      </button>
-                    )}
-                    {forYouSimilarCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleForYouFilterChange("SIMILAR")}
-                        className={`subtab-btn ${forYouFilter === "SIMILAR" ? "active" : ""}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}
-                      >
-                        <Sparkles size={12} color="var(--accent-light)" />
-                        <span>Similar Artists ({forYouSimilarCount})</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
               {forYou.length > 0 ? (
-                filteredForYou.length === 0 ? (
-                  <div
-                    className="content-card"
-                    style={{
-                      padding: "24px",
-                      color: "var(--text-muted)",
-                      borderStyle: "dashed",
-                      textAlign: "center",
-                    }}
-                  >
-                    No songs found matching this filter.
-                  </div>
-                ) : (
-                  <WindowedStrip
-                    items={filteredForYou}
-                    scrollRef={forYouScrollRef}
-                    label="For You"
-                    initialScrollLeft={viewMemory.shelves.get(1) || 0}
-                    renderItem={renderSongCard}
-                  />
-                )
+                <WindowedStrip
+                  items={forYou}
+                  scrollRef={forYouScrollRef}
+                  label="For You"
+                  initialScrollLeft={viewMemory.shelves.get(1) || 0}
+                  renderItem={renderSongCard}
+                />
               ) : (
                 <div
                   className="content-card"
