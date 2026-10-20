@@ -15,6 +15,7 @@ mod linux_activation;
 #[cfg(target_os = "linux")]
 mod linux_rendering;
 mod tray;
+mod startup;
 #[cfg(target_os = "linux")]
 mod window_chrome;
 
@@ -68,7 +69,16 @@ pub fn run() {
     let config = AppConfig::default_with_dirs();
     let db_path = config.database_path.clone();
 
-    let context = tauri::generate_context!();
+    let login_launch = startup::is_login_launch(&std::env::args().collect::<Vec<_>>());
+    let mut context = tauri::generate_context!();
+    if login_launch {
+        // Set before window creation so login never flashes the main window.
+        for window in &mut context.config_mut().app.windows {
+            if window.label == "main" {
+                window.visible = false;
+            }
+        }
+    }
     #[cfg(target_os = "linux")]
     let context = {
         let mut context = context;
@@ -81,12 +91,25 @@ pub fn run() {
         context
     };
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // A late session-autostart request must not interrupt an open app.
+            if startup::is_login_launch(&args) {
+                return;
+            }
             tracing::info!("Second instance launch requested; restoring existing Kaze window");
             tray::show_main_window_from_launch(app, &args);
         }))
         .manage(lifecycle::DesktopLifecycle::default())
+        .manage(startup::StartupSettings::default());
+    #[cfg(not(target_os = "linux"))]
+    let builder = builder.plugin(
+        tauri_plugin_autostart::Builder::new()
+            .app_name("Kaze")
+            .arg(startup::LOGIN_ARG)
+            .build(),
+    );
+    builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -178,6 +201,14 @@ pub fn run() {
             if let Err(error) = tray::setup_tray(app.handle()) {
                 tracing::warn!(%error, "System tray unavailable; closing the window will quit Kaze");
             }
+            if login_launch {
+                let usable_tray = app.tray_by_id(tray::TRAY_ID).is_some()
+                    && tauri::async_runtime::block_on(lifecycle::tray_host_available());
+                if !usable_tray {
+                    tracing::warn!("Login startup has no usable tray; showing Kaze instead");
+                    tray::show_main_window(app.handle());
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -190,7 +221,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![execute_command, execute_query])
+        .invoke_handler(tauri::generate_handler![execute_command, execute_query, startup::get_autostart, startup::set_autostart])
         .build(context)
         .expect("error building tauri application")
         .run(|app_handle, event| {

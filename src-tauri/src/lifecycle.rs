@@ -75,7 +75,7 @@ pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
 }
 
 #[cfg(target_os = "linux")]
-async fn tray_host_available() -> bool {
+pub(crate) async fn tray_host_available() -> bool {
     // One query per close request, not a background poll. Bare Wayland sessions
     // may have no tray host even when libappindicator created an icon resource.
     let available = async {
@@ -98,7 +98,7 @@ async fn tray_host_available() -> bool {
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn tray_host_available() -> bool {
+pub(crate) async fn tray_host_available() -> bool {
     true
 }
 

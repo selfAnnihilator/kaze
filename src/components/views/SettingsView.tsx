@@ -26,6 +26,7 @@ import { dispatchCommand, executeQuery } from "../../services/api";
 import type { InterfaceStyle } from "../../presentation/InterfaceContext";
 import { WindowedList } from "../../presentation/WindowedList";
 import { useViewMemory } from "../../presentation/ViewMemory";
+import { StartupSettings } from "../StartupSettings";
 
 type Section = "main" | "folders" | "system";
 type MusicFolder = { id: string; path: string; track_count?: number };
@@ -380,6 +381,7 @@ export const SettingsView = memo(function SettingsView({
             {savingClose && <p role="status">Saving close behavior…</p>}
             {closeError && <p role="alert">{closeError}</p>}
           </section>
+          <StartupSettings />
           <section
             className="settings-links"
             aria-labelledby="settings-library-heading"

@@ -211,14 +211,10 @@ jobs:
 
           ### New in this patch
 
-          - Independent Spatial and Brutalist interfaces with clearer browsing, stronger artwork fallbacks, and stable playback controls.
-          - Restore the last song, queue, and playback position paused when reopening Kaze.
-          - Start directly in the saved theme with a matching animated KAZE introduction and reduced-motion support.
-          - Keep Discovery chapters, Archive selections, and browsing positions when navigating back and forward.
-          - Simplified Settings, profile statistics, and a choice to log out this device or all devices.
-          - Fix Queue navigation freezing on affected NVIDIA/Wayland systems and reduce unnecessary interface updates.
-          - Improve Linux media-session controls, tray behavior, and single-instance window activation.
-          - Build the Arch package with its production interface embedded.
+          - Add Settings → Startup → Start in tray on login, with normal window access when the tray is unavailable.
+          - Improve listening-based recommendations and refresh For You after listening and feedback changes.
+          - Include online favorites and discoveries in Flow, and apply familiarity changes to upcoming songs immediately.
+          - Fix dragging the Brutalist familiarity bar on Linux WebKit while preserving playback and queue continuity.
 
           Download the installer for your platform below:
 
@@ -439,3 +435,8 @@ jobs:
           echo "=========================================="
           echo "All release artifacts uploaded successfully!"
           echo "=========================================="
+
+      - name: Publish completed release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest

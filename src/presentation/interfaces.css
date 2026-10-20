@@ -1,4 +1,20 @@
 /* Production presentation systems. Both use the same mounted functional tree. */
+.settings-startup-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.settings-startup-switch input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.settings-startup-switch input:disabled {
+  cursor: wait;
+}
 :root[data-interface],
 :root[data-interface] * {
   scrollbar-width: none;
