@@ -48,7 +48,10 @@ pub fn present<R: tauri::Runtime>(
     use gtk::prelude::*;
     let native = window.gtk_window()?;
     native.deiconify();
-    native.show();
+    // An initially hidden Tao window has an unshown GTK container around the
+    // webview. Showing only GtkWindow maps an empty surface on first Open.
+    // Match Tao's normal show path and reveal the existing child widgets too.
+    native.show_all();
     if let Some((token, surface)) = token.zip(native.window()) {
         // GTK 3.24's Wayland backend consumes this as xdg_activation_v1 for
         // the mapped surface. Applying it directly to GDK avoids retaining a

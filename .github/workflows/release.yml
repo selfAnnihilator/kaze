@@ -211,10 +211,8 @@ jobs:
 
           ### New in this patch
 
-          - Add Settings → Startup → Start in tray on login, with normal window access when the tray is unavailable.
-          - Improve listening-based recommendations and refresh For You after listening and feedback changes.
-          - Include online favorites and discoveries in Flow, and apply familiarity changes to upcoming songs immediately.
-          - Fix dragging the Brutalist familiarity bar on Linux WebKit while preserving playback and queue continuity.
+          - Fix the blank window on Linux when opening Kaze after starting in the tray at login.
+          - Restore the complete existing window without restarting the interface, playback, or queue.
 
           Download the installer for your platform below:
 

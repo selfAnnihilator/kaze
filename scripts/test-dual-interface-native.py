@@ -37,7 +37,7 @@ def main():
         def launch():
             with socket.socket() as s:
                 s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
-            env = dict(os.environ, XDG_DATA_HOME=str(root/'data'), XDG_CACHE_HOME=str(root/'cache'), WEBKIT_INSPECTOR_HTTP_SERVER=f'127.0.0.1:{port}', NO_PROXY='127.0.0.1,localhost', no_proxy='127.0.0.1,localhost', HTTPS_PROXY='http://127.0.0.1:9', HTTP_PROXY='http://127.0.0.1:9', NO_AT_BRIDGE='1', GIO_USE_VFS='local')
+            env = dict(os.environ, XDG_DATA_HOME=str(root/'data'), XDG_CACHE_HOME=str(root/'cache'), XDG_CONFIG_HOME=str(root/'config'), WEBKIT_INSPECTOR_HTTP_SERVER=f'127.0.0.1:{port}', NO_PROXY='127.0.0.1,localhost', no_proxy='127.0.0.1,localhost', HTTPS_PROXY='http://127.0.0.1:9', HTTP_PROXY='http://127.0.0.1:9', NO_AT_BRIDGE='1', GIO_USE_VFS='local')
             process = subprocess.Popen([binary], env=env, stdout=log, stderr=log)
             tray.wait_for(lambda: watcher.owner() and watcher.item(process.pid), 'native app and own tray', timeout=25)
             inspector = tray.Inspector(port)
@@ -59,7 +59,7 @@ def main():
             browser.evaluate(f'{expression}.click(); true')
 
         def select(style):
-            browser.evaluate(f"[...document.querySelectorAll('.interface-options button')].find(b=>b.querySelector('strong').textContent==={json.dumps(style.title())}).click(); true")
+            browser.evaluate(f"[...document.querySelectorAll('.settings-style-options button')].find(b=>b.querySelector('strong').textContent==={json.dumps(style.title())}).click(); true")
             tray.wait_for(lambda: browser.query('GetSettings')['interface_style'] == style, f'{style} persisted')
             tray.wait_for(lambda: browser.evaluate('document.documentElement.dataset.interface') == style, f'{style} rendered')
 
@@ -112,7 +112,7 @@ def main():
             assert browser.evaluate("document.querySelector('.familiarity-dial').getAttribute('aria-valuenow')") == '1'
             print('PASS native four-destination rail and circular familiarity dial update actual Flow steering', flush=True)
             click('Settings')
-            tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".interface-options"))'), 'interface settings')
+            tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".settings-style-options"))'), 'interface settings')
             browser.evaluate("window.nativeApp=document.querySelector('.kaze-interface');window.nativeMain=document.querySelector('.main-content');window.nativeMain.scrollTop=100;true")
             with sqlite3.connect(db_path) as db:
                 journal_before = db.execute('SELECT session_id FROM active_playback_journal').fetchall()
