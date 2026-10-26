@@ -12,7 +12,7 @@ use crate::cloud::{
 use crate::database::repositories::{
     PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
-    SqliteUserRepository, SqliteWishlistRepository, StatsRepository, UserProfile, UserRepository,
+    SqliteUserRepository, SqliteWishlistRepository, WishlistRepository, StatsRepository, UserProfile, UserRepository,
 };
 use crate::discovery::{DiscoveryCoordinator, DiscoveryRecommendation, FuzzyTrackMatcher, WishlistManager};
 use crate::downloads::{DownloadProvider, DownloadService, SoulseekProvider};
@@ -54,6 +54,7 @@ pub struct CoreProcessor {
     recommender: Arc<LocalRecommender>,
     smart_mix_generator: Arc<SmartMixGenerator>,
     provider_coordinator: Arc<ProviderCoordinator>,
+    gap_enrichment: Arc<crate::providers::enrichment::GapEnrichmentService>,
     wishlist_manager: Arc<WishlistManager>,
     discovery_coordinator: Arc<DiscoveryCoordinator>,
     download_service: Arc<DownloadService>,
@@ -137,9 +138,25 @@ impl CoreProcessor {
             db_pool.clone(),
             event_bus.clone(),
             config.cache_dir.clone(),
-            None,
-            None,
+            config.metadata.spotify_client_id.clone(),
+            config.metadata.spotify_client_secret.clone(),
         ));
+        let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(db_pool.clone(), provider_coordinator.clone(), config.cache_dir.clone(), event_bus.clone()).with_provider_defaults(config.metadata.enable_musicbrainz, config.metadata.enable_spotify));
+        background_tasks.push(tokio::spawn(gap_enrichment.clone().run()));
+        let cover_art_cache = Arc::new(tokio::sync::RwLock::new(HashMap::new()));
+        let cover_cache_updates = cover_art_cache.clone();
+        let metadata_playback = playback_service.clone();
+        let mut cover_events = event_bus.subscribe();
+        background_tasks.push(tokio::spawn(async move {
+            loop { match cover_events.recv().await {
+                Ok(Event::LibraryMetadataUpdated | Event::LibraryScanCompleted { .. }) => {
+                    cover_cache_updates.write().await.clear();
+                    metadata_playback.refresh_queue_metadata().await;
+                },
+                Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => (),
+                Err(_) => break,
+            } }
+        }));
         let wishlist_repo = Arc::new(SqliteWishlistRepository::new(db_pool.clone()));
         let wishlist_manager = Arc::new(WishlistManager::new(wishlist_repo.clone()));
         let discovery_coordinator = Arc::new(DiscoveryCoordinator::new(
@@ -454,12 +471,13 @@ impl CoreProcessor {
             recommender,
             smart_mix_generator,
             provider_coordinator,
+            gap_enrichment,
             wishlist_manager,
             discovery_coordinator,
             download_service,
             flow_engine,
             config: Arc::new(RwLock::new(config)),
-            cover_art_cache: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            cover_art_cache,
             is_quitting: AtomicBool::new(false),
             close_button_quits: AtomicBool::new(false),
             close_behavior_ready: OnceCell::new(),
@@ -1159,11 +1177,27 @@ impl CoreProcessor {
 
             // --- Metadata Providers ---
             Command::TriggerMetadataRefresh { track_id } => {
-                let enriched = self.provider_coordinator.enrich_track(&track_id).await?;
+                let enriched = self.gap_enrichment.enrich(&track_id).await?;
                 info!(track_id = %track_id, enriched = enriched, "Triggered metadata refresh");
                 Ok(CommandResponse::Ok)
             }
 
+            Command::FillLibraryGaps { retry } => {
+                self.gap_enrichment.request_fill(retry).await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::RemoveProviderEnrichment => {
+                self.gap_enrichment.remove_all().await?;
+                Ok(CommandResponse::Ok)
+            }
+            Command::SetMetadataPreference { key, enabled } => {
+                if !matches!(key.as_str(), "enable_jiosaavn" | "auto_fill_metadata" | "enable_musicbrainz" | "enable_spotify") {
+                    return Err(AppError::Validation("Unknown metadata preference".into()));
+                }
+                self.settings_repo.set_setting(&key, if enabled { "true" } else { "false" }).await?;
+                if enabled && key == "auto_fill_metadata" { self.gap_enrichment.request_fill(false).await?; }
+                Ok(CommandResponse::Ok)
+            }
             // --- Discovery & Wishlist ---
             Command::AddToWishlist {
                 title,
@@ -1781,6 +1815,106 @@ impl CoreProcessor {
         }
     }
 
+    async fn load_track_artwork(&self, track_id: &str) -> AppResult<Option<String>> {
+        if let Some(cached) = self.cover_art_cache.read().await.get(track_id) {
+            return Ok(cached.clone());
+        }
+
+        let mut cover_result: Option<String> = None;
+        let track = self
+            .library_service
+            .track_repo()
+            .find_by_id(&track_id)
+            .await?;
+        if let Some(t) = track {
+            let path = std::path::Path::new(&t.file_path);
+            if path.exists() {
+                if let Ok(probe) = lofty::probe::Probe::open(path) {
+                    if let Ok(probe) = probe.guess_file_type() {
+                        if let Ok(tagged_file) = probe.read() {
+                            // Search across all tags for pictures
+                            let picture = tagged_file
+                                .tags()
+                                .iter()
+                                .find_map(|tag| tag.pictures().first())
+                                .or_else(|| {
+                                    tagged_file
+                                        .primary_tag()
+                                        .and_then(|tag| tag.pictures().first())
+                                })
+                                .or_else(|| {
+                                    tagged_file
+                                        .first_tag()
+                                        .and_then(|tag| tag.pictures().first())
+                                });
+
+                            if let Some(pic) = picture {
+                                let mime =
+                                    pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
+                                let encoded =
+                                    base64::engine::general_purpose::STANDARD.encode(pic.data());
+                                cover_result = Some(format!("data:{};base64,{}", mime, encoded));
+                            }
+                        }
+                    }
+                }
+
+                // If not found in tags, check folder for cover.jpg / folder.jpg / album.jpg / cover.png
+                if cover_result.is_none() {
+                    if let Some(parent) = path.parent() {
+                        for candidate in &[
+                            "cover.jpg",
+                            "folder.jpg",
+                            "album.jpg",
+                            "cover.png",
+                            "folder.png",
+                            "front.jpg",
+                            "front.png",
+                        ] {
+                            let img_path = parent.join(candidate);
+                            if img_path.is_file() {
+                                if let Ok(bytes) = std::fs::read(&img_path) {
+                                    let mime = if candidate.ends_with(".png") {
+                                        "image/png"
+                                    } else {
+                                        "image/jpeg"
+                                    };
+                                    let encoded =
+                                        base64::engine::general_purpose::STANDARD.encode(&bytes);
+                                    cover_result =
+                                        Some(format!("data:{};base64,{}", mime, encoded));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if cover_result.is_none() {
+            let path: Option<String> = sqlx::query_scalar("SELECT cover_art_path FROM track_enrichment WHERE track_id = ? AND state = 'matched'")
+                .bind(&track_id).fetch_optional(&self.db_pool).await?.flatten();
+            if let Some(path) = path {
+                if let Ok(bytes) = tokio::fs::read(path).await {
+                    let mime = image::guess_format(&bytes)
+                        .ok()
+                        .map(|f| f.to_mime_type())
+                        .unwrap_or("image/jpeg");
+                    cover_result = Some(format!(
+                        "data:{};base64,{}",
+                        mime,
+                        base64::engine::general_purpose::STANDARD.encode(bytes)
+                    ));
+                }
+            }
+        }
+        self.cover_art_cache
+            .write()
+            .await
+            .insert(track_id.to_string(), cover_result.clone());
+        Ok(cover_result)
+    }
+
     /// Executes a read-only Query and returns the typed QueryResponse.
     pub async fn execute_query(&self, query: Query) -> AppResult<QueryResponse> {
         info!(?query, "Executing query");
@@ -1866,6 +2000,9 @@ impl CoreProcessor {
                     Some("brutalist") => "brutalist",
                     _ => "spatial",
                 });
+                for (key, default) in [("enable_jiosaavn", true), ("auto_fill_metadata", true), ("enable_musicbrainz", cfg.metadata.enable_musicbrainz), ("enable_spotify", cfg.metadata.enable_spotify)] {
+                    val["metadata"][key] = serde_json::json!(self.gap_enrichment.enabled(key, default).await);
+                }
                 Ok(QueryResponse::Settings(val))
             }
             Query::GetLibraryOverview => {
@@ -2008,43 +2145,13 @@ impl CoreProcessor {
                         if let Some(obj) = v.as_object_mut() {
                             obj.insert("track_count".to_string(), serde_json::json!(count));
 
-                            if let Some((track_id, ext_cover, album_cover, has_cover, file_path_opt)) = first_song {
+                            if let Some((track_id, ext_cover, album_cover, _has_cover, _file_path_opt)) = first_song {
                                 obj.insert("first_track_id".to_string(), serde_json::json!(&track_id));
 
                                 let mut resolved_cover = ext_cover.or(album_cover);
 
                                 if resolved_cover.is_none() {
-                                    if let Some(cached) = self.cover_art_cache.read().await.get(&track_id) {
-                                        resolved_cover = cached.clone();
-                                    }
-                                }
-
-                                if resolved_cover.is_none() && has_cover == 1 {
-                                    if let Some(fp) = file_path_opt {
-                                        let path = std::path::Path::new(&fp);
-                                        if path.exists() {
-                                            if let Ok(probe) = lofty::probe::Probe::open(path) {
-                                                if let Ok(probe) = probe.guess_file_type() {
-                                                    if let Ok(tagged_file) = probe.read() {
-                                                        let picture = tagged_file
-                                                            .tags()
-                                                            .iter()
-                                                            .find_map(|tag| tag.pictures().first())
-                                                            .or_else(|| tagged_file.primary_tag().and_then(|tag| tag.pictures().first()))
-                                                            .or_else(|| tagged_file.first_tag().and_then(|tag| tag.pictures().first()));
-
-                                                        if let Some(pic) = picture {
-                                                            let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
-                                                            let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
-                                                            let data_url = format!("data:{};base64,{}", mime, encoded);
-                                                            self.cover_art_cache.write().await.insert(track_id.clone(), Some(data_url.clone()));
-                                                            resolved_cover = Some(data_url);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    resolved_cover = self.load_track_artwork(&track_id).await?;
                                 }
 
                                 if let Some(cover) = resolved_cover {
@@ -2131,7 +2238,37 @@ impl CoreProcessor {
                     ))
                 }
             }
-            Query::SearchOnlineMusic { query, limit } => {
+            Query::SearchOnlineMusic { query, limit, provider } => {
+                match provider.as_deref().unwrap_or("jiosaavn") {
+                    "jiosaavn" => {
+                        if self.settings_repo.get_setting("enable_jiosaavn").await?.as_deref() == Some("false") {
+                            return Err(AppError::Validation("JioSaavn is disabled in Settings; choose Alternative sources".into()));
+                        }
+                        let tracks = self.provider_coordinator.jiosaavn.search(&query, limit.unwrap_or(30).min(50) as usize).await?;
+                        let mut results = Vec::new();
+                        for t in tracks {
+                            let id = format!("jiosaavn:{}", t.provider_track_id);
+                            crate::database::repositories::SqliteWishlistRepository::new(self.db_pool.clone()).upsert_external_track(&crate::database::models::ExternalTrackRecord {
+                                id: id.clone(), provider: "jiosaavn".into(), provider_id: t.provider_track_id.clone(),
+                                title: t.title.clone(), artist: t.artist_name.clone(), album: t.album_title.clone(),
+                                duration_secs: t.duration_secs, cover_art_url: t.cover_art_url.clone(), preview_url: None,
+                                genre: None, match_status: "NOT_FOUND".into(), matched_local_track_id: None,
+                                created_at: chrono::Utc::now().timestamp(),
+                            }).await?;
+                            results.push(serde_json::to_value(DiscoveryRecommendation {
+                                external_track_id: id, provider: "jiosaavn".into(), provider_id: t.provider_track_id,
+                                title: t.title, artist: t.artist_name, album: t.album_title, duration_secs: t.duration_secs,
+                                cover_art_url: t.cover_art_url, preview_url: None, genre: None,
+                                match_status: crate::discovery::MatchStatus::NotFound, matched_local_track_id: None,
+                                recommendation_reason: "JioSaavn search".into(), in_wishlist: false,
+                            }).map_err(|e| AppError::Internal(e.to_string()))?);
+                        }
+                        return Ok(QueryResponse::DiscoveryRecommendations(results));
+                    }
+                    "alternative" => (),
+                    _ => return Err(AppError::Validation("Unknown online music provider".into())),
+                }
+
                 info!(query = %query, "Processor dispatching SearchOnlineMusic");
                 let limit_val = limit.unwrap_or(30) as usize;
                 let mut results = self
@@ -2228,59 +2365,7 @@ impl CoreProcessor {
                 Ok(QueryResponse::DiscoveryRecommendations(json_arr))
             }
             Query::GetTrackCoverArt { track_id } => {
-                if let Some(cached) = self.cover_art_cache.read().await.get(&track_id) {
-                    return Ok(QueryResponse::CoverArt(cached.clone()));
-                }
-
-                let mut cover_result: Option<String> = None;
-                let track = self
-                    .library_service
-                    .track_repo()
-                    .find_by_id(&track_id)
-                    .await?;
-                if let Some(t) = track {
-                    let path = std::path::Path::new(&t.file_path);
-                    if path.exists() {
-                        if let Ok(probe) = lofty::probe::Probe::open(path) {
-                            if let Ok(probe) = probe.guess_file_type() {
-                                if let Ok(tagged_file) = probe.read() {
-                                    // Search across all tags for pictures
-                                    let picture = tagged_file
-                                        .tags()
-                                        .iter()
-                                        .find_map(|tag| tag.pictures().first())
-                                        .or_else(|| tagged_file.primary_tag().and_then(|tag| tag.pictures().first()))
-                                        .or_else(|| tagged_file.first_tag().and_then(|tag| tag.pictures().first()));
-
-                                    if let Some(pic) = picture {
-                                        let mime = pic.mime_type().map(|m| m.as_str()).unwrap_or("image/jpeg");
-                                        let encoded = base64::engine::general_purpose::STANDARD.encode(pic.data());
-                                        cover_result = Some(format!("data:{};base64,{}", mime, encoded));
-                                    }
-                                }
-                            }
-                        }
-
-                        // If not found in tags, check folder for cover.jpg / folder.jpg / album.jpg / cover.png
-                        if cover_result.is_none() {
-                            if let Some(parent) = path.parent() {
-                                for candidate in &["cover.jpg", "folder.jpg", "album.jpg", "cover.png", "folder.png", "front.jpg", "front.png"] {
-                                    let img_path = parent.join(candidate);
-                                    if img_path.is_file() {
-                                        if let Ok(bytes) = std::fs::read(&img_path) {
-                                            let mime = if candidate.ends_with(".png") { "image/png" } else { "image/jpeg" };
-                                            let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
-                                            cover_result = Some(format!("data:{};base64,{}", mime, encoded));
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                self.cover_art_cache.write().await.insert(track_id, cover_result.clone());
-                Ok(QueryResponse::CoverArt(cover_result))
+                Ok(QueryResponse::CoverArt(self.load_track_artwork(&track_id).await?))
             }
             Query::GetTrackPlaylistMemberships => {
                 let user_id = self.current_user_id().await;

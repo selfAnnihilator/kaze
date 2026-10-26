@@ -145,6 +145,7 @@ async fn test_provider_enrichment_flow_with_mock_server() {
     let cover_art_provider = Arc::new(CoverArtArchiveProvider::new(temp_dir.path().to_path_buf()));
     let spotify_provider = Arc::new(SpotifyProvider::new(None, None));
 
+    sqlx::query("INSERT INTO application_settings(key,value,updated_at) VALUES ('enable_jiosaavn','false',0),('auto_fill_metadata','false',0)").execute(&pool).await.unwrap();
     let coordinator = Arc::new(ProviderCoordinator::with_providers(
         pool.clone(),
         processor.event_bus(),
@@ -157,6 +158,7 @@ async fn test_provider_enrichment_flow_with_mock_server() {
     let track_repo = processor.library_service().track_repo();
     let track_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/comfortably_numb.flac".into(),
             file_size: 5000,
             modified_timestamp: 100,
@@ -173,7 +175,7 @@ async fn test_provider_enrichment_flow_with_mock_server() {
             bitrate: Some(1000),
             sample_rate: Some(44100),
             format: "flac".into(),
-            has_cover_art: false,
+            has_cover_art: true,
             musicbrainz_track_id: None,
         })
         .await
@@ -187,6 +189,7 @@ async fn test_provider_enrichment_flow_with_mock_server() {
     let updated_track = track_repo.find_by_id(&track_id).await.expect("find track").expect("track exists");
     assert_eq!(updated_track.musicbrainz_track_id, Some("rec-12345-mbid".to_string()));
 
+    sqlx::query("INSERT INTO application_settings(key,value,updated_at) VALUES ('enable_musicbrainz','false',0)").execute(&pool).await.unwrap();
     // 6. Test dispatching Command::TriggerMetadataRefresh
     let res = processor
         .dispatch_command(Command::TriggerMetadataRefresh {

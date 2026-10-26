@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Search, X, RefreshCw } from "lucide-react";
 
 interface GlobalTopSearchBarProps {
+  provider?: "jiosaavn" | "alternative";
+  onProviderChange?: (provider: "jiosaavn" | "alternative") => void;
   placeholder?: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -13,6 +15,8 @@ interface GlobalTopSearchBarProps {
 
 export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(({
   searchQuery,
+  provider = "jiosaavn",
+  onProviderChange,
   placeholder = "Search any music online (artist, song title, album, or genre)...",
   setSearchQuery,
   onSearch,
@@ -114,6 +118,10 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
           )}
         </div>
 
+        {onProviderChange && <select aria-label="Online music source" value={provider} onChange={e => onProviderChange(e.target.value as "jiosaavn" | "alternative")}>
+          <option value="jiosaavn">JioSaavn</option>
+          <option value="alternative">Alternative sources</option>
+        </select>}
         <button
           type="submit"
           className="btn btn-primary"

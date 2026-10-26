@@ -20,6 +20,7 @@ export const sameSongMetadata = (
 };
 
 export const findLocalSearchMatch = (rec: DiscoveryRecommendation, tracks: Track[]): Track | undefined => {
+  if (rec.provider === "jiosaavn" || rec.external_track_id.startsWith("jiosaavn:")) return undefined;
   if (rec.matched_local_track_id) {
     const linked = tracks.find((track) => track.id === rec.matched_local_track_id);
     if (linked && linked.format !== "online" && !linked.file_path.startsWith("online://")) return linked;
@@ -55,6 +56,7 @@ export const isCurrentPlaybackTrack = (candidate: PlaybackCandidate, current?: T
   if (!current) return false;
   const ids = [candidate.track_id, candidate.id, candidate.external_track_id, candidate.matched_local_track_id].filter(Boolean);
   if (ids.includes(current.id)) return true;
+  if (ids.some(id => id?.startsWith("jiosaavn:")) || current.id.startsWith("jiosaavn:")) return false;
   // Only catalog/online aliases may fall back to metadata. Distinct local files
   // with the same tags remain distinct tracks.
   const online = (id: string) => id.startsWith("online:") || id.startsWith("itunes:");

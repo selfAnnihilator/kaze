@@ -100,6 +100,8 @@ pub enum Query {
     SearchOnlineMusic {
         query: String,
         #[serde(default)]
+        provider: Option<String>,
+        #[serde(default)]
         limit: Option<u32>,
     },
     GetTrackCoverArt {

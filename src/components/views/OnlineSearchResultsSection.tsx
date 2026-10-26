@@ -79,7 +79,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
       !rec.matched_local_track_id.startsWith("online:");
 
     const isPlayingLocal =
-      isLocalPlaying &&
+      rec.provider !== "jiosaavn" && isLocalPlaying &&
       !!currentLocalTrack &&
       currentLocalTrack.format !== "online" &&
       !currentLocalTrack.file_path.startsWith("online://") &&

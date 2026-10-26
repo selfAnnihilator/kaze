@@ -41,6 +41,9 @@ impl AlbumRepository for SqliteAlbumRepository {
                    (
                        SELECT t2.id FROM tracks t2
                        WHERE t2.album_id = al.id AND t2.has_cover_art = 1
+                       AND (NOT EXISTS (SELECT 1 FROM track_enrichment e WHERE e.track_id=t2.id AND e.state='matched' AND e.cover_art_path IS NOT NULL)
+                            OR EXISTS (SELECT 1 FROM track_source_metadata s WHERE s.track_id=t2.id AND json_extract(s.metadata_json,'$.has_cover_art')=1)
+                            OR EXISTS (SELECT 1 FROM track_enrichment e WHERE e.track_id=t2.id AND e.state='matched' AND json_extract(e.metadata_json,'$.album_id') IS NOT NULL AND lower(trim(json_extract(e.metadata_json,'$.album_title')))=al.normalized_title))
                        ORDER BY t2.track_number ASC, t2.title ASC
                        LIMIT 1
                    ) as first_track_id

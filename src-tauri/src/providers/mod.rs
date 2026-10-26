@@ -3,6 +3,9 @@ pub mod cover_art_archive;
 pub mod musicbrainz;
 pub mod spotify;
 pub mod types;
+pub mod jiosaavn;
+pub mod strict_match;
+pub mod enrichment;
 
 pub use coordinator::*;
 pub use cover_art_archive::*;

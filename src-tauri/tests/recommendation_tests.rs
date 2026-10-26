@@ -21,6 +21,7 @@ async fn setup_test_library(processor: &CoreProcessor) -> (Vec<String>, Vec<Stri
     for i in 1..=3 {
         let id = track_repo
             .save_scanned_track(ScannedMetadata {
+                title_is_fallback: false,
                 file_path: format!("/music/pink_floyd_{}.flac", i),
                 file_size: 2000,
                 modified_timestamp: 100,
@@ -49,6 +50,7 @@ async fn setup_test_library(processor: &CoreProcessor) -> (Vec<String>, Vec<Stri
     for i in 1..=2 {
         let id = track_repo
             .save_scanned_track(ScannedMetadata {
+                title_is_fallback: false,
                 file_path: format!("/music/daft_punk_{}.mp3", i),
                 file_size: 1500,
                 modified_timestamp: 100,
@@ -76,6 +78,7 @@ async fn setup_test_library(processor: &CoreProcessor) -> (Vec<String>, Vec<Stri
     // 1 Disliked track (Noise, 2020s)
     let disliked_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/annoying_noise.mp3".into(),
             file_size: 500,
             modified_timestamp: 100,

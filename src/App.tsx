@@ -302,6 +302,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // Global Top Search Bar State
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [onlineSearchProvider, setOnlineSearchProvider] = useState<"jiosaavn" | "alternative">("jiosaavn");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const globalSearchResults = destination.searchResults;
@@ -382,7 +383,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       if (!controller.signal.aborted) setResolvedTrackCover({ id: track.id, url });
     });
     return () => controller.abort();
-  }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url]);
+  }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url, playbackState.current_track?.has_cover_art]);
 
   const handleToggleFullscreen = useCallback(
     async (override?: boolean) => {
@@ -1083,6 +1084,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           setIsScanning(true);
           break;
 
+        case "LibraryMetadataUpdated":
+          clearCoverArtCache();
+          fetchTracks();
+          fetchAlbums();
+          fetchPlaybackState();
+          break;
         case "LibraryScanCompleted":
         case "ScanCompleted":
           clearCoverArtCache();
@@ -1305,8 +1312,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       _fromBackendQueue = false,
       playbackSource: "online" | "collection" | "playlist" = "online",
     ) => {
+      const exactProvider = rec.provider === "jiosaavn" || rec.external_track_id.startsWith("jiosaavn:");
       const hasRealLocalMatch =
-        !!rec.matched_local_track_id &&
+        !exactProvider && !!rec.matched_local_track_id &&
         !rec.matched_local_track_id.startsWith("itunes:") &&
         !rec.matched_local_track_id.startsWith("online:");
 
@@ -1317,7 +1325,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         ((hasRealLocalMatch &&
           playbackState.current_track.id === rec.matched_local_track_id) ||
           rec.external_track_id === playbackState.current_track.id ||
-          (rec.title.toLowerCase().trim() ===
+          (!exactProvider && rec.title.toLowerCase().trim() ===
             playbackState.current_track.title.toLowerCase().trim() &&
             playbackState.current_track.artist_name &&
             rec.artist.toLowerCase().trim() ===
@@ -1338,7 +1346,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }
 
       // 3. Offline check
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (!exactProvider && typeof navigator !== "undefined" && !navigator.onLine) {
         addAppNotification(
           "warning",
           "No Internet Connection",
@@ -2195,7 +2203,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           first.id.startsWith("online:");
 
         if (isOnline) {
-          if (typeof navigator !== "undefined" && !navigator.onLine) {
+          if (!first.id.startsWith("jiosaavn:") && typeof navigator !== "undefined" && !navigator.onLine) {
             addAppNotification(
               "warning",
               "No Internet Connection",
@@ -2743,7 +2751,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }
 
       // Offline check: Cannot stream online audio without an internet connection
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (!item.id.startsWith("jiosaavn:") && typeof navigator !== "undefined" && !navigator.onLine) {
         addAppNotification(
           "warning",
           "No Internet Connection",
@@ -3262,7 +3270,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       try {
         const res = await executeQuery({
           query: "SearchOnlineMusic",
-          payload: { query: q, limit: 35 },
+          payload: { query: q, limit: 35, provider: onlineSearchProvider },
         });
         let incoming: DiscoveryRecommendation[] = [];
         if (res && Array.isArray(res.data)) {
@@ -3305,6 +3313,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         );
       } catch (err) {
         console.error("Global online music search failed:", err);
+        if (!cancelled) addAppNotification("error", "Online search unavailable", typeof err === "string" ? err : "Couldn’t reach this source. Try again or choose Alternative sources.");
         updateDestination((current) =>
           !cancelled &&
           current.view === "discovery" &&
@@ -3316,9 +3325,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         if (!cancelled) setIsGlobalSearching(false);
       }
     };
-    void load();
+    const timer = setTimeout(() => void load(), 200);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [
     destination.searchQuery,
@@ -3326,7 +3336,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     destination.collection,
     destination.lyrics,
     searchRefreshRevision,
+    onlineSearchProvider,
     updateDestination,
+    addAppNotification,
   ]);
 
   const handleGlobalClearSearch = () => {
@@ -3670,6 +3682,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               <GlobalTopSearchBar
                 placeholder={interfacePreference.style === "spatial" ? "Find your next favourite" : undefined}
                 searchQuery={globalSearchQuery}
+                provider={onlineSearchProvider}
+                onProviderChange={setOnlineSearchProvider}
                 setSearchQuery={setGlobalSearchQuery}
                 onSearch={handleGlobalOnlineSearch}
                 onRefresh={handleGlobalRefresh}

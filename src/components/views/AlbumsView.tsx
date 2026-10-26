@@ -1,10 +1,10 @@
 import { useInterfaceStyle } from "../../presentation/InterfaceContext";
 import { BrutalistAlbums } from "../../presentation/BrutalistAlbums";
 import { WindowedGallery } from "../../presentation/WindowedGallery";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { Disc, Calendar } from "lucide-react";
 import { Album } from "../../types";
-import { loadCoverArt, peekCoverArt } from "../../services/coverArt";
+import { loadCoverArt, peekCoverArt, subscribeCoverArt, coverArtGeneration } from "../../services/coverArt";
 
 // Single shared IntersectionObserver for all album cards to eliminate per-card observer overhead
 const observerCallbacks = new Map<Element, () => void>();
@@ -41,6 +41,7 @@ interface AlbumCardProps {
 const AlbumCard: React.FC<AlbumCardProps> = React.memo(
   ({ album, onSelectAlbum }) => {
     const cacheKey = album.first_track_id || album.id;
+    const generation = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
     const [coverUrl, setCoverUrl] = useState<string | null>(() => {
       if (album.cover_art_path) return album.cover_art_path;
       if (cacheKey) return peekCoverArt(cacheKey) || null;
@@ -75,6 +76,8 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
         observer.unobserve(el);
       };
     }, [cacheKey, coverUrl, isVisible]);
+
+    useEffect(() => { setCoverUrl(null); }, [generation]);
 
     // Request cover art only when card enters viewport and has a track ID with artwork
     useEffect(() => {

@@ -1,6 +1,6 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useState, useSyncExternalStore } from "react";
 import { Disc3 } from "lucide-react";
-import { loadCoverArt } from "../services/coverArt";
+import { loadCoverArt, subscribeCoverArt, coverArtGeneration } from "../services/coverArt";
 
 export const Artwork = memo(function Artwork({
   src,
@@ -13,6 +13,7 @@ export const Artwork = memo(function Artwork({
   alt?: string;
   className?: string;
 }) {
+  const artGeneration = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
   const [resolved, setResolved] = useState<{ id: string; src: string } | null>(
     null,
   );
@@ -27,13 +28,13 @@ export const Artwork = memo(function Artwork({
       return;
     const controller = new AbortController();
     loadCoverArt(trackId, controller.signal).then((url) => {
-      if (!controller.signal.aborted && url)
-        setResolved({ id: trackId, src: url });
+      if (!controller.signal.aborted)
+        setResolved(url ? { id: trackId, src: url } : null);
     });
     return () => {
       controller.abort();
     };
-  }, [src, trackId]);
+  }, [src, trackId, artGeneration]);
   const url =
     src || (resolved && resolved.id === trackId ? resolved.src : undefined);
   const hasImage = !!url && failed !== url;

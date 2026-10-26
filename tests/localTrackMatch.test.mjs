@@ -42,3 +42,11 @@ test("a cover, different recording length, and online placeholder do not count a
   assert.equal(attachLocalSearchMatches([recommendation], [{ ...local, duration_secs: 276 }])[0].matched_local_track_id, undefined);
   assert.equal(attachLocalSearchMatches([recommendation], [{ ...local, format: "online", file_path: "online://pasoori" }])[0].matched_local_track_id, undefined);
 });
+
+test("JioSaavn selections retain exact provider identity beside a local metadata duplicate", () => {
+  const exact = { ...recommendation, provider: "jiosaavn", external_track_id: "jiosaavn:song-id", provider_id: "song-id" };
+  const [result] = attachLocalSearchMatches([exact], [local]);
+  assert.equal(result.external_track_id, "jiosaavn:song-id");
+  assert.equal(result.matched_local_track_id, undefined);
+  assert.equal(result.match_status, "NOT_FOUND");
+});

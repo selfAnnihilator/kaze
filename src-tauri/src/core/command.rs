@@ -206,6 +206,9 @@ pub enum Command {
     PollDownloadProgress {
         task_id: String,
     },
+    FillLibraryGaps { #[serde(default)] retry: bool },
+    RemoveProviderEnrichment,
+    SetMetadataPreference { key: String, enabled: bool },
     TriggerMetadataRefresh {
         track_id: String,
     },

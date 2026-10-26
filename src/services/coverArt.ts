@@ -7,6 +7,10 @@ type Request = {
   readers: Set<Reader>;
   started: boolean;
 };
+const listeners = new Set<() => void>();
+export function subscribeCoverArt(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
+export function coverArtGeneration() { return generation; }
+
 const cache = new Map<string, string | null>();
 const requests = new Map<string, Request>();
 const queue: Request[] = [];
@@ -28,6 +32,7 @@ export function clearCoverArtCache() {
   generation++;
   cache.clear();
   bytes = 0;
+  for (const listener of listeners) listener();
 }
 
 function remember(id: string, url: string | null) {

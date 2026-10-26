@@ -347,6 +347,7 @@ impl LibraryScanner {
             .unwrap_or(false);
 
         Ok(ScannedMetadata {
+            title_is_fallback: primary_tag.and_then(|t| t.title()).is_none_or(|t| t.trim().is_empty()),
             file_path: path.to_string_lossy().to_string(),
             file_size,
             modified_timestamp,

@@ -24,6 +24,7 @@ async fn setup_history_env() -> (CoreProcessor, String, String) {
 
     let track1_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/fav_song.flac".into(),
             file_size: 1500,
             modified_timestamp: 100,
@@ -48,6 +49,7 @@ async fn setup_history_env() -> (CoreProcessor, String, String) {
 
     let track2_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/skipped_song.mp3".into(),
             file_size: 800,
             modified_timestamp: 100,

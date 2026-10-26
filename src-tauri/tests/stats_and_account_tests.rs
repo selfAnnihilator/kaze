@@ -390,6 +390,7 @@ async fn test_stats_overview_and_top_days() {
     let track_repo = processor.library_service().track_repo();
     use music_player_backend::database::repositories::ScannedMetadata;
     let track1_id = track_repo.save_scanned_track(ScannedMetadata {
+        title_is_fallback: false,
         file_path: "/music/track1.flac".into(),
         file_size: 1000,
         modified_timestamp: 100,
@@ -411,6 +412,7 @@ async fn test_stats_overview_and_top_days() {
     }).await.expect("save track 1");
 
     let track2_id = track_repo.save_scanned_track(ScannedMetadata {
+        title_is_fallback: false,
         file_path: "/music/track2.flac".into(),
         file_size: 1000,
         modified_timestamp: 100,
@@ -690,6 +692,7 @@ async fn setup_test_track_for_playback(processor: &CoreProcessor, title: &str) -
     let track_repo = processor.library_service().track_repo();
     track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: format!("/music/{}.flac", title),
             file_size: 1500,
             modified_timestamp: 100,

@@ -386,6 +386,7 @@ async fn test_core_processor_discovery_and_wishlist_integration() -> AppResult<(
     // 6. Test Query::SearchOnlineMusic query execution with case-insensitivity
     let search_res = processor
         .execute_query(Query::SearchOnlineMusic {
+            provider: Some("alternative".into()),
             query: "was it real".to_string(),
             limit: Some(10),
         })
@@ -401,6 +402,7 @@ async fn test_core_processor_discovery_and_wishlist_integration() -> AppResult<(
     // 6b. Test uppercase query - MUST return results identically (case-insensitive)
     let search_upper = processor
         .execute_query(Query::SearchOnlineMusic {
+            provider: Some("alternative".into()),
             query: "WAS IT REAL".to_string(),
             limit: Some(10),
         })

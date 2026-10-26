@@ -26,6 +26,7 @@ import { dispatchCommand, executeQuery } from "../../services/api";
 import type { InterfaceStyle } from "../../presentation/InterfaceContext";
 import { WindowedList } from "../../presentation/WindowedList";
 import { useViewMemory } from "../../presentation/ViewMemory";
+import { MetadataSettings } from "../MetadataSettings";
 import { StartupSettings } from "../StartupSettings";
 
 type Section = "main" | "folders" | "system";
@@ -382,6 +383,7 @@ export const SettingsView = memo(function SettingsView({
             {closeError && <p role="alert">{closeError}</p>}
           </section>
           <StartupSettings />
+          <MetadataSettings />
           <section
             className="settings-links"
             aria-labelledby="settings-library-heading"

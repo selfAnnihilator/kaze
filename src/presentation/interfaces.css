@@ -1,4 +1,22 @@
 /* Production presentation systems. Both use the same mounted functional tree. */
+.metadata-settings .settings-startup-switch { display: flex; margin-block: 8px; }
+.settings-metadata-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.settings-metadata-actions button,
+.global-search select {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font: inherit;
+  max-width: 100%;
+}
+.settings-metadata-actions button:disabled { opacity: .5; }
+.global-search select { max-width: 190px; }
 .settings-startup-switch {
   display: inline-flex;
   align-items: center;

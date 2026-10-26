@@ -30,6 +30,7 @@ async fn add_track(
     let track_repo = processor.library_service().track_repo();
     track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: format!(
                 "/music/{}_{}.flac",
                 artist.to_lowercase().replace(' ', "_"),

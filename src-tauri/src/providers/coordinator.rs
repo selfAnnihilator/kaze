@@ -3,28 +3,17 @@ use super::musicbrainz::MusicBrainzProvider;
 use super::spotify::SpotifyProvider;
 use super::types::ExternalTrackMetadata;
 use super::MetadataProvider;
-use crate::core::error::{AppError, AppResult};
+use crate::core::error::AppResult;
 use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
-use sqlx::{FromRow, SqlitePool};
+use sqlx::SqlitePool;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
 
-#[derive(Debug, FromRow)]
-#[allow(dead_code)]
-struct TrackEnrichmentRow {
-    id: String,
-    title: String,
-    artist_name: Option<String>,
-    album_id: Option<String>,
-    album_title: Option<String>,
-    musicbrainz_track_id: Option<String>,
-    spotify_id: Option<String>,
-    has_cover_art: i64,
-}
 
 pub struct ProviderCoordinator {
+    cache_dir: PathBuf,
+    pub jiosaavn: Arc<super::jiosaavn::JioSaavnProvider>,
     pool: SqlitePool,
     event_bus: Arc<EventBus>,
     musicbrainz: Arc<MusicBrainzProvider>,
@@ -41,10 +30,12 @@ impl ProviderCoordinator {
         spotify_client_secret: Option<String>,
     ) -> Self {
         let musicbrainz = Arc::new(MusicBrainzProvider::new());
-        let cover_art = Arc::new(CoverArtArchiveProvider::new(cache_dir));
+        let cover_art = Arc::new(CoverArtArchiveProvider::new(cache_dir.clone()));
         let spotify = Arc::new(SpotifyProvider::new(spotify_client_id, spotify_client_secret));
 
         Self {
+            cache_dir: cache_dir.clone(),
+            jiosaavn: Arc::new(super::jiosaavn::JioSaavnProvider::new()),
             pool,
             event_bus,
             musicbrainz,
@@ -61,6 +52,8 @@ impl ProviderCoordinator {
         spotify: Arc<SpotifyProvider>,
     ) -> Self {
         Self {
+            cache_dir: cover_art.get_cached_path("probe").parent().and_then(|p| p.parent()).unwrap_or(std::path::Path::new(".")).to_path_buf(),
+            jiosaavn: Arc::new(super::jiosaavn::JioSaavnProvider::new()),
             pool,
             event_bus,
             musicbrainz,
@@ -109,107 +102,10 @@ impl ProviderCoordinator {
         });
     }
 
-    /// Enriches a local track by querying external providers and persisting IDs/artwork.
-    pub async fn enrich_track(&self, track_id: &str) -> AppResult<bool> {
-        let row = sqlx::query_as::<_, TrackEnrichmentRow>(
-            "SELECT t.id, t.title, a.name as artist_name, t.album_id, al.title as album_title,
-                    t.musicbrainz_track_id, t.spotify_id, t.has_cover_art
-             FROM tracks t
-             LEFT JOIN artists a ON a.id = t.artist_id
-             LEFT JOIN albums al ON al.id = t.album_id
-             WHERE t.id = ?"
-        )
-        .bind(track_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-        let track = match row {
-            Some(r) => r,
-            None => return Err(AppError::NotFound(format!("Track {} not found", track_id))),
-        };
-
-        let artist_str = track.artist_name.as_deref().unwrap_or("Unknown");
-        let album_str = track.album_title.as_deref();
-        let mut updated = false;
-
-        // 1. MusicBrainz Enrichment
-        let mut mb_release_id = None;
-
-        if track.musicbrainz_track_id.is_none() {
-            debug!(track = %track.title, artist = %artist_str, "Searching MusicBrainz for track");
-            match self.musicbrainz.search_track(&track.title, artist_str, album_str).await {
-                Ok(recs) if !recs.is_empty() => {
-                    let best = &recs[0];
-                    mb_release_id = best.album_id.clone();
-
-                    sqlx::query("UPDATE tracks SET musicbrainz_track_id = ? WHERE id = ?")
-                        .bind(&best.provider_track_id)
-                        .bind(track_id)
-                        .execute(&self.pool)
-                        .await
-                        .map_err(|e| AppError::Database(e.to_string()))?;
-
-                    updated = true;
-                    info!(track_id = %track_id, mb_id = %best.provider_track_id, "Enriched track with MusicBrainz ID");
-                }
-                Ok(_) => debug!(track = %track.title, "No MusicBrainz matches found"),
-                Err(e) => warn!(error = %e, "MusicBrainz enrichment failed"),
-            }
-        }
-
-        // 2. Cover Art Archive Enrichment
-        if track.has_cover_art == 0 {
-            if let Some(rel_id) = mb_release_id {
-                match self.cover_art.fetch_cover_art(&rel_id).await {
-                    Ok(Some(_bytes)) => {
-                        let cached_path = self.cover_art.get_cached_path(&rel_id);
-                        let path_str = cached_path.to_string_lossy().to_string();
-
-                        sqlx::query("UPDATE tracks SET has_cover_art = 1 WHERE id = ?")
-                            .bind(track_id)
-                            .execute(&self.pool)
-                            .await
-                            .map_err(|e| AppError::Database(e.to_string()))?;
-
-                        if let Some(alb_id) = &track.album_id {
-                            let _ = sqlx::query("UPDATE albums SET cover_art_path = ? WHERE id = ?")
-                                .bind(&path_str)
-                                .bind(alb_id)
-                                .execute(&self.pool)
-                                .await;
-                        }
-
-                        updated = true;
-                        info!(track_id = %track_id, path = %path_str, "Enriched track with Cover Art Archive artwork");
-                    }
-                    Ok(None) => debug!(release_id = %rel_id, "No artwork found in Cover Art Archive"),
-                    Err(e) => warn!(error = %e, "Cover Art Archive fetch failed"),
-                }
-            }
-        }
-
-        // 3. Spotify Enrichment (optional)
-        if track.spotify_id.is_none() && self.spotify.is_available() {
-            match self.spotify.search_track(&track.title, artist_str, album_str).await {
-                Ok(spotify_recs) if !spotify_recs.is_empty() => {
-                    let best = &spotify_recs[0];
-                    sqlx::query("UPDATE tracks SET spotify_id = ? WHERE id = ?")
-                        .bind(&best.provider_track_id)
-                        .bind(track_id)
-                        .execute(&self.pool)
-                        .await
-                        .map_err(|e| AppError::Database(e.to_string()))?;
-
-                    updated = true;
-                    info!(track_id = %track_id, spotify_id = %best.provider_track_id, "Enriched track with Spotify ID");
-                }
-                Ok(_) => (),
-                Err(e) => warn!(error = %e, "Spotify enrichment failed"),
-            }
-        }
-
-        Ok(updated)
+    /// All enrichment uses the conservative, reversible gap-fill path.
+    pub async fn enrich_track(self: &Arc<Self>, track_id: &str) -> AppResult<bool> {
+        super::enrichment::GapEnrichmentService::new(self.pool.clone(), self.clone(), self.cache_dir.clone(), self.event_bus.clone())
+            .enrich(track_id).await
     }
 
     /// Searches external tracks across available providers.

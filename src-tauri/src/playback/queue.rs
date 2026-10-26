@@ -30,6 +30,17 @@ impl PlaybackQueue {
         Self::default()
     }
 
+    /// Refresh labels without rebuilding queue order, IDs, shuffle state, or history.
+    pub fn update_metadata(&mut self, id: &str, title: &str, artist: &str) -> bool {
+        let mut changed = false;
+        for item in &mut self.items {
+            if item.track_id == id && (item.title != title || item.artist != artist) {
+                item.title = title.to_string(); item.artist = artist.to_string(); changed = true;
+            }
+        }
+        changed
+    }
+
     /// Replaces the current queue with new items, optionally starting at a specific index.
     pub fn set_queue(&mut self, items: Vec<QueueItem>, start_index: Option<usize>) {
         self.items = items;

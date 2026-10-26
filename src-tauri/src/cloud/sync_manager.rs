@@ -606,6 +606,8 @@ impl SyncManager {
                 "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
+                     provider = CASE WHEN external_tracks.provider IN ('online','cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider ELSE external_tracks.provider END,
+                     provider_id = CASE WHEN external_tracks.provider IN ('online','cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider_id ELSE external_tracks.provider_id END,
                      title = excluded.title,
                      artist = excluded.artist,
                      album = excluded.album,

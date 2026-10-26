@@ -714,7 +714,7 @@ impl PlaybackService {
         source: Option<String>,
     ) -> AppResult<()> {
         if let Some(pool) = &self.pool {
-            let _ = crate::recommendations::mixes::ensure_online_track(
+            crate::recommendations::mixes::ensure_online_track(
                 pool,
                 track_id,
                 title,
@@ -724,7 +724,7 @@ impl PlaybackService {
                 cover_art_url,
                 preview_url,
             )
-            .await;
+            .await?;
         }
 
         self.play_track(track_id, source).await
@@ -743,7 +743,7 @@ impl PlaybackService {
         play_next: bool,
     ) -> AppResult<bool> {
         if let Some(pool) = &self.pool {
-            let _ = crate::recommendations::mixes::ensure_online_track(
+            crate::recommendations::mixes::ensure_online_track(
                 pool,
                 track_id,
                 title,
@@ -753,7 +753,7 @@ impl PlaybackService {
                 cover_art_url,
                 preview_url,
             )
-            .await;
+            .await?;
         }
 
         self.enqueue_track(track_id, play_next).await
@@ -1410,6 +1410,17 @@ impl PlaybackService {
             self.emit_queue_updated().await;
         }
         removed
+    }
+
+    pub async fn refresh_queue_metadata(&self) {
+        let ids: std::collections::HashSet<String> = self.queue.read().await.items().iter().map(|item| item.track_id.clone()).collect();
+        let mut changed = false;
+        for id in ids {
+            if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await {
+                changed |= self.queue.write().await.update_metadata(&id, &track.title, track.artist_name.as_deref().unwrap_or("Unknown Artist"));
+            }
+        }
+        if changed { self.emit_queue_updated().await; }
     }
 
     pub async fn clear_queue(&self) {

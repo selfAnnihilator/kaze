@@ -94,17 +94,20 @@ pub async fn ensure_online_track(
     // 3. Ensure track in external_tracks table
     let _ = sqlx::query(
         "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, match_status, created_at)
-         VALUES (?, 'online', ?, ?, ?, ?, ?, ?, ?, 'NOT_FOUND', ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'NOT_FOUND', ?)
          ON CONFLICT(id) DO UPDATE SET
              title = excluded.title,
              artist = excluded.artist,
-             album = excluded.album,
-             duration_secs = excluded.duration_secs,
-             cover_art_url = excluded.cover_art_url,
-             preview_url = excluded.preview_url"
+             provider = CASE WHEN external_tracks.provider IN ('online', 'cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider ELSE external_tracks.provider END,
+             provider_id = CASE WHEN external_tracks.provider IN ('online', 'cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider_id ELSE external_tracks.provider_id END,
+             album = COALESCE(excluded.album, external_tracks.album),
+             duration_secs = COALESCE(excluded.duration_secs, external_tracks.duration_secs),
+             cover_art_url = COALESCE(excluded.cover_art_url, external_tracks.cover_art_url),
+             preview_url = CASE WHEN external_tracks.provider = 'jiosaavn' OR excluded.provider = 'jiosaavn' THEN NULL ELSE COALESCE(excluded.preview_url, external_tracks.preview_url) END"
     )
     .bind(id)
-    .bind(id)
+    .bind(if id.starts_with("jiosaavn:") { "jiosaavn" } else { "online" })
+    .bind(id.strip_prefix("jiosaavn:").unwrap_or(id))
     .bind(title)
     .bind(artist.unwrap_or("Unknown Artist"))
     .bind(album)
@@ -113,7 +116,7 @@ pub async fn ensure_online_track(
     .bind(preview_url)
     .bind(now)
     .execute(pool)
-    .await;
+    .await?;
 
     // 4. Ensure or update track in tracks table
     let fake_path = format!("online://{}", id);
@@ -148,7 +151,7 @@ pub async fn ensure_online_track(
     .bind(now)
     .bind(now)
     .execute(pool)
-    .await;
+    .await?;
 
     Ok(())
 }

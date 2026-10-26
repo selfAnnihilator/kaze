@@ -23,6 +23,7 @@ async fn setup_processor_with_tracks() -> (CoreProcessor, Arc<MockAudioBackend>,
 
     let track1_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/track1.wav".into(),
             file_size: 1000,
             modified_timestamp: 100,
@@ -47,6 +48,7 @@ async fn setup_processor_with_tracks() -> (CoreProcessor, Arc<MockAudioBackend>,
 
     let track2_id = track_repo
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: "/music/track2.wav".into(),
             file_size: 2000,
             modified_timestamp: 200,

@@ -27,6 +27,7 @@ async fn local(p: &CoreProcessor, title: &str, artist: &str) -> String {
     p.library_service()
         .track_repo()
         .save_scanned_track(ScannedMetadata {
+            title_is_fallback: false,
             file_path: format!("/fixture/{artist}-{title}.flac"),
             file_size: 1,
             modified_timestamp: 0,

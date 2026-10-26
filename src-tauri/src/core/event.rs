@@ -14,6 +14,7 @@ pub struct QueueItem {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "event", content = "payload")]
 pub enum Event {
+    LibraryMetadataUpdated,
     // --- Playback State Changes ---
     PlaybackStarted {
         session_id: String,

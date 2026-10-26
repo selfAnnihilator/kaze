@@ -171,6 +171,8 @@ export interface AppSettings {
   };
   metadata: {
     provider_priority: string[];
+    enable_jiosaavn?: boolean;
+    auto_fill_metadata?: boolean;
     enable_musicbrainz: boolean;
     enable_spotify: boolean;
     spotify_client_id?: string;
@@ -210,6 +212,9 @@ export interface SpotifyPlaylistImport {
 }
 
 export type Command =
+  | { command: "FillLibraryGaps"; payload: { retry: boolean } }
+  | { command: "RemoveProviderEnrichment" }
+  | { command: "SetMetadataPreference"; payload: { key: string; enabled: boolean } }
   | { command: "PlayTrack"; payload: { track_id: string; source?: string } }
   | { command: "PlayQueueIndex"; payload: { index: number } }
   | { command: "Pause" }
@@ -361,7 +366,7 @@ export type Query =
   | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
   | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string };
     }
-  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number } }
+  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number; provider?: "jiosaavn" | "alternative" } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }
   | { query: "GetTrackPlaylistMemberships" }
   | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number;

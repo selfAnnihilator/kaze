@@ -484,7 +484,7 @@ async fn fetch_track_info(
             t.title,
             a.name AS artist_name,
             al.title AS album_title,
-            al.cover_art_path,
+            COALESCE(al.cover_art_path, (SELECT e.cover_art_path FROM track_enrichment e JOIN track_source_metadata s ON s.track_id=e.track_id WHERE e.track_id=t.id AND e.state='matched' AND json_extract(s.metadata_json, '$.has_cover_art') = 0)),
             ext.cover_art_url,
             t.track_number,
             t.file_path,
@@ -738,6 +738,11 @@ pub async fn start_mpris_service(
             drop(player);
             loop {
                 match event_rx.recv().await {
+                    Ok(Event::LibraryMetadataUpdated) => {
+                        let player = player_iface.get().await;
+                        *player.current_track.write().await = None;
+                        break;
+                    }
                     Ok(Event::PlaybackSeeked { position_secs }) => {
                         let _ =
                             MprisPlayer::seeked(emitter, seconds_to_microseconds(position_secs))
