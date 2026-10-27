@@ -684,7 +684,7 @@ const ChartCard: React.FC<{
             marginBottom: "6px",
           }}
         >
-          TOP 50
+          JIOSAAVN
         </div>
         <div
           className="chart-card-region"
@@ -1045,67 +1045,18 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   // and listening profile. Generic search presets do not belong in For You.
   const allMixes = userSmartMixes;
 
-  const topCharts: ChartItem[] = [
-    {
-      id: "chart_top50_global",
-      title: "Top 50 - Worldwide",
-      subtitle: "Popular across 12 country charts",
-      chartNumber: "WORLD",
-      region: "Worldwide",
-      bgGradient:
-        "linear-gradient(135deg, #1a1714 0%, #4b607f 55%, #8b7cf6 100%)",
-      badgeBg: "#8b7cf6",
-    },
-    {
-      id: "chart_top50_india",
-      title: "Top 50 - India",
-      subtitle: "Current top songs in the India chart",
-      chartNumber: "INDIA",
-      region: "India",
-      bgGradient: "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
-      badgeBg: "#f3701e",
-    },
-    {
-      id: "chart_top50_usa",
-      title: "Top 50 - USA",
-      subtitle: "Current top songs in the US chart",
-      chartNumber: "USA",
-      region: "United States",
-      bgGradient:
-        "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #8b7cf6 100%)",
-      badgeBg: "#4b607f",
-    },
-    {
-      id: "chart_top50_uk",
-      title: "Top 50 - UK",
-      subtitle: "Current top songs in the UK chart",
-      chartNumber: "UK",
-      region: "United Kingdom",
-      bgGradient:
-        "linear-gradient(135deg, #2a211b 0%, #8b7cf6 62%, #f3701e 100%)",
-      badgeBg: "#8b7cf6",
-    },
-    {
-      id: "chart_top50_japan",
-      title: "Top 50 - Japan",
-      subtitle: "Current top songs in the Japan chart",
-      chartNumber: "JAPAN",
-      region: "Japan",
-      bgGradient:
-        "linear-gradient(135deg, #2a211b 0%, #f3701e 58%, #8b7cf6 100%)",
-      badgeBg: "#f3701e",
-    },
-    {
-      id: "chart_top50_brazil",
-      title: "Top 50 - Brazil",
-      subtitle: "Current top songs in the Brazil chart",
-      chartNumber: "BRAZIL",
-      region: "Brazil",
-      bgGradient:
-        "linear-gradient(135deg, #1a1714 0%, #4b607f 58%, #f3701e 100%)",
-      badgeBg: "#8b7cf6",
-    },
-  ];
+  const [topCharts, setTopCharts] = useState<ChartItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    executeQuery({ query: "GetCharts" }).then(result => {
+      if (!cancelled && Array.isArray(result.data)) setTopCharts(result.data.map((chart: {id: string; title: string}, index: number) => ({
+        id: `jiosaavn:playlist:${chart.id}`, title: chart.title, subtitle: "JioSaavn chart",
+        chartNumber: String(index + 1).padStart(2, "0"), region: "JioSaavn",
+        bgGradient: "var(--bg-surface)", badgeBg: "var(--accent)",
+      })));
+    }).catch(() => { if (!cancelled) setTopCharts([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleOpenMix = (mix: MixItem) => {
     if (onOpenCollection) {

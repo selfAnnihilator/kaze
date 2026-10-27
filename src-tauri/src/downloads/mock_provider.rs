@@ -51,7 +51,7 @@ impl MockDownloadProvider {
 #[async_trait]
 impl DownloadProvider for MockDownloadProvider {
     fn name(&self) -> &'static str {
-        "mock_soulseek"
+        "mock"
     }
 
     fn is_available(&self) -> bool {
@@ -72,7 +72,7 @@ impl DownloadProvider for MockDownloadProvider {
         let results = vec![
             DownloadSearchResult {
                 id: format!("mock_res_1_{}", query),
-                provider: "mock_soulseek".to_string(),
+                provider: "mock".to_string(),
                 username: "audiophile_99".to_string(),
                 filename: format!("Music/{}.flac", query),
                 file_size: 35_000_000,
@@ -84,7 +84,7 @@ impl DownloadProvider for MockDownloadProvider {
             },
             DownloadSearchResult {
                 id: format!("mock_res_2_{}", query),
-                provider: "mock_soulseek".to_string(),
+                provider: "mock".to_string(),
                 username: "mp3_vault".to_string(),
                 filename: format!("Shared/{}.mp3", query),
                 file_size: 9_500_000,

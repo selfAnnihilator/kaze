@@ -21,7 +21,7 @@ import {
   ListPlus,
   Search,
 } from "lucide-react";
-import { Playlist, Track, SpotifyPlaylistImport, UserProfile,
+import { Playlist, Track, JioSaavnPlaylistImport, UserProfile,
 } from "../../types";
 import { CollectionData } from "./CollectionDetailView";
 import { matchesPlaylistSearch } from "../../playlistSearch";
@@ -33,8 +33,8 @@ interface PlaylistsViewProps {
   onSelectPlaylist: (playlistId: string) => void;
   onPlayPlaylist: (playlistId: string) => void;
   onCreatePlaylist: (name: string, description?: string) => void;
-  onInspectSpotifyPlaylist: (urlOrId: string,
-  ) => Promise<SpotifyPlaylistImport | null>;
+  onInspectJioSaavnPlaylist: (urlOrId: string,
+  ) => Promise<JioSaavnPlaylistImport | null>;
   onSaveImportedPlaylist: (
     name: string,
     trackIds: string[],
@@ -49,7 +49,6 @@ interface PlaylistsViewProps {
     }>,
   ) => Promise<void>;
   onAddMissingToWishlist: (tracks: any[]) => Promise<void>;
-  onLaunchSoulseek: (query?: string, filter?: string) => Promise<void>;
   onSearchDirect?: (artist: string, title: string, album?: string) => void;
   onFetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
   onPlayTrack: (trackId: string) => void;
@@ -69,10 +68,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   activePlaylistId: _activePlaylistId,
   onPlayPlaylist,
   onCreatePlaylist,
-  onInspectSpotifyPlaylist,
+  onInspectJioSaavnPlaylist,
   onSaveImportedPlaylist,
   onAddMissingToWishlist: _onAddMissingToWishlist,
-  onLaunchSoulseek,
   onSearchDirect,
   onFetchPlaylistTracks,
   onPlayTrack,
@@ -96,13 +94,13 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
 
-  // Spotify Modal states
-  const [showSpotifyModal, setShowSpotifyModal] = useState(false);
-  const [spotifyInput, setSpotifyInput] = useState("");
-  const [inspectingSpotify, setInspectingSpotify] = useState(false);
-  const [spotifyResult, setSpotifyResult] = useState<SpotifyPlaylistImport | null>(null);
-  const [spotifyMessage, setSpotifyMessage] = useState<string | null>(null);
-  const [spotifyFilterQuery, setSpotifyFilterQuery] = useState("");
+  // JioSaavn Modal states
+  const [showJioSaavnModal, setShowJioSaavnModal] = useState(false);
+  const [jiosaavnInput, setJioSaavnInput] = useState("");
+  const [inspectingJioSaavn, setInspectingJioSaavn] = useState(false);
+  const [jiosaavnResult, setJioSaavnResult] = useState<JioSaavnPlaylistImport | null>(null);
+  const [jiosaavnMessage, setJioSaavnMessage] = useState<string | null>(null);
+  const [jiosaavnFilterQuery, setJioSaavnFilterQuery] = useState("");
 
   // Custom themed dialog states for Delete and Rename
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null,
@@ -261,29 +259,29 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
   };
 
-  const handleInspectSpotify = async (e: React.FormEvent) => {
+  const handleInspectJioSaavn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spotifyInput.trim()) return;
-    setInspectingSpotify(true);
-    setSpotifyMessage(null);
+    if (!jiosaavnInput.trim()) return;
+    setInspectingJioSaavn(true);
+    setJioSaavnMessage(null);
     try {
-      const res = await onInspectSpotifyPlaylist(spotifyInput.trim());
+      const res = await onInspectJioSaavnPlaylist(jiosaavnInput.trim());
       if (res) {
-        setSpotifyResult(res);
+        setJioSaavnResult(res);
       } else {
-        setSpotifyMessage(
-          "Could not retrieve Spotify playlist. Please verify the URL or ID.",
+        setJioSaavnMessage(
+          "Could not retrieve JioSaavn playlist. Please verify the URL or ID.",
         );
       }
     } catch (err: any) {
-      setSpotifyMessage(err?.message || "Failed to fetch Spotify playlist.");
+      setJioSaavnMessage(err?.message || "Failed to fetch JioSaavn playlist.");
     } finally {
-      setInspectingSpotify(false);
+      setInspectingJioSaavn(false);
     }
   };
 
-  const handleSaveSpotifyPlaylist = async (importAll: boolean = true) => {
-    if (!spotifyResult) return;
+  const handleSaveJioSaavnPlaylist = async (importAll: boolean = true) => {
+    if (!jiosaavnResult) return;
     if (!currentUser && onOpenAuthModal) {
       onOpenAuthModal();
       return;
@@ -291,8 +289,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
 
     // Determine tracks to import
     const targetTracks = importAll
-      ? spotifyResult.tracks
-      : spotifyResult.tracks.filter(
+      ? jiosaavnResult.tracks
+      : jiosaavnResult.tracks.filter(
           (t) => t.in_library && t.matched_local_track_id,
         );
 
@@ -301,45 +299,39 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
       return;
     }
 
-    const trackIds = targetTracks.map((t) =>
-      t.in_library &&
-      t.matched_local_track_id &&
-      !t.matched_local_track_id.startsWith("online:") &&
-      !t.matched_local_track_id.startsWith("itunes:")
-        ? t.matched_local_track_id
-        : `online:${t.spotify_id || Math.random().toString(36).substring(2, 9)}`,
-    );
+    const trackIds = targetTracks.map((track) => track.track_id);
 
     const tracksInfo = targetTracks.map((t, idx) => ({
       id: trackIds[idx],
       title: t.title,
       artist: t.artist,
       duration_secs: t.duration_secs,
-      cover_art_url: spotifyResult.cover_url,
+      album: t.album,
+      cover_art_url: t.cover_art_url,
     }));
 
-    await onSaveImportedPlaylist(spotifyResult.title, trackIds, tracksInfo);
-    setShowSpotifyModal(false);
-    setSpotifyResult(null);
-    setSpotifyInput("");
-    setSpotifyMessage(null);
-    setSpotifyFilterQuery("");
+    await onSaveImportedPlaylist(jiosaavnResult.title, trackIds, tracksInfo);
+    setShowJioSaavnModal(false);
+    setJioSaavnResult(null);
+    setJioSaavnInput("");
+    setJioSaavnMessage(null);
+    setJioSaavnFilterQuery("");
   };
 
-  const debouncedSpotifyFilter = useDebouncedValue(spotifyFilterQuery);
-  const displayedSpotifyTracks = useMemo(() => {
-    if (!spotifyResult) return [];
-    if (!debouncedSpotifyFilter.trim()) return spotifyResult.tracks;
-    return spotifyResult.tracks.filter((track) =>
-      matchesPlaylistSearch(track, debouncedSpotifyFilter),
+  const debouncedJioSaavnFilter = useDebouncedValue(jiosaavnFilterQuery);
+  const displayedJioSaavnTracks = useMemo(() => {
+    if (!jiosaavnResult) return [];
+    if (!debouncedJioSaavnFilter.trim()) return jiosaavnResult.tracks;
+    return jiosaavnResult.tracks.filter((track) =>
+      matchesPlaylistSearch(track, debouncedJioSaavnFilter),
     );
-  }, [spotifyResult, debouncedSpotifyFilter]);
+  }, [jiosaavnResult, debouncedJioSaavnFilter]);
 
-  const handleSearchMissingInSoulseek = async (
+  const handleSearchMissing = async (
     trackTitle: string,
     artistName: string,
   ) => {
-    await onLaunchSoulseek(trackTitle, artistName);
+    onSearchDirect?.(artistName, trackTitle);
   };
 
   const formatSeconds = (secs?: number) => {
@@ -389,7 +381,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 marginTop: "4px",
               }}
             >
-              Your custom playlists and imported Spotify collections
+              Your custom playlists and imported JioSaavn collections
             </p>
           </div>
         )}
@@ -398,11 +390,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
           <div style={{ display: "flex", gap: "10px" }}>
             <button
               className="btn btn-secondary"
-              onClick={() => setShowSpotifyModal(true)}
+              onClick={() => setShowJioSaavnModal(true)}
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
               <Share2 size={16} color="var(--accent-secondary)" />
-              <span>Import from Spotify</span>
+              <span>Import from JioSaavn</span>
             </button>
 
             <button
@@ -754,7 +746,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               </div>
               <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
                 Create custom playlists manually, save a Smart Mix as a
-                permanent playlist, or import directly from Spotify.
+                permanent playlist, or import directly from JioSaavn.
               </p>
               <div
                 style={{
@@ -772,10 +764,10 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 </button>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => setShowSpotifyModal(true)}
+                  onClick={() => setShowJioSaavnModal(true)}
                 >
                   <Share2 size={16} color="var(--accent-secondary)" />
-                  <span>Import from Spotify</span>
+                  <span>Import from JioSaavn</span>
                 </button>
               </div>
             </div>
@@ -1379,15 +1371,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         </div>
       )}
 
-      {/* MODAL 3: SPOTIFY PLAYLIST IMPORT */}
-      {showSpotifyModal && (
+      {/* MODAL 3: JIOSAAVN PLAYLIST IMPORT */}
+      {showJioSaavnModal && (
         <div
           className="modal-overlay"
           onClick={() => {
-            setShowSpotifyModal(false);
-            setSpotifyResult(null);
-            setSpotifyInput("");
-            setSpotifyMessage(null);
+            setShowJioSaavnModal(false);
+            setJioSaavnResult(null);
+            setJioSaavnInput("");
+            setJioSaavnMessage(null);
           }}
         >
           <div
@@ -1414,15 +1406,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               >
                 <Share2 size={24} color="var(--accent-secondary)" />
                 <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>
-                  Import Spotify Playlist
+                  Import JioSaavn Playlist (up to 50 songs)
                 </h3>
               </div>
               <button
                 onClick={() => {
-                  setShowSpotifyModal(false);
-                  setSpotifyResult(null);
-                  setSpotifyInput("");
-                  setSpotifyMessage(null);
+                  setShowJioSaavnModal(false);
+                  setJioSaavnResult(null);
+                  setJioSaavnInput("");
+                  setJioSaavnMessage(null);
                 }}
                 style={{
                   background: "none",
@@ -1443,37 +1435,37 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 lineHeight: 1.5,
               }}
             >
-              Paste a public Spotify playlist URL or ID. Kaze will inspect the
+              Paste a public JioSaavn playlist URL or ID. Kaze will inspect the
               tracks, match them against your local library, and let you
-              download missing tracks via SoulseekQt.
+              save the selected JioSaavn versions.
             </p>
 
             {/* Input Form */}
             <form
-              onSubmit={handleInspectSpotify}
+              onSubmit={handleInspectJioSaavn}
               style={{ display: "flex", gap: "10px", marginBottom: "20px" }}
             >
               <input
                 type="text"
-                placeholder="https://open.spotify.com/playlist/... or 37i9dQZF1DXcBWIGoYBM5M"
-                value={spotifyInput}
-                onChange={(e) => setSpotifyInput(e.target.value)}
+                placeholder="JioSaavn playlist URL or numeric ID"
+                value={jiosaavnInput}
+                onChange={(e) => setJioSaavnInput(e.target.value)}
                 className="input-field"
                 style={{ flex: 1, fontFamily: "monospace", fontSize: "0.9rem" }}
               />
               <button
                 type="submit"
-                disabled={inspectingSpotify || !spotifyInput.trim()}
+                disabled={inspectingJioSaavn || !jiosaavnInput.trim()}
                 className="btn btn-primary"
               >
                 <Sparkles size={15} />
                 <span>
-                  {inspectingSpotify ? "Inspecting..." : "Inspect Playlist"}
+                  {inspectingJioSaavn ? "Inspecting..." : "Inspect Playlist"}
                 </span>
               </button>
             </form>
 
-            {spotifyMessage && (
+            {jiosaavnMessage && (
               <div
                 style={{
                   padding: "12px 16px",
@@ -1489,12 +1481,12 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 }}
               >
                 <AlertCircle size={16} />
-                <span>{spotifyMessage}</span>
+                <span>{jiosaavnMessage}</span>
               </div>
             )}
 
             {/* Inspected Playlist Result */}
-            {spotifyResult && (
+            {jiosaavnResult && (
               <div
                 style={{
                   display: "flex",
@@ -1525,7 +1517,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         color: "#e8d8c9",
                       }}
                     >
-                      {spotifyResult.title}
+                      {jiosaavnResult.title}
                     </div>
                     <div
                       style={{
@@ -1536,12 +1528,12 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       }}
                     >
                       <span style={{ color: "var(--text-dim)" }}>
-                        Total: {spotifyResult.total_tracks} tracks
+                        Total: {jiosaavnResult.total_tracks} tracks
                       </span>
                       <span
                         style={{ color: "var(--success)", fontWeight: 600 }}
                       >
-                        ● {spotifyResult.matched_tracks} Local
+                        ● {jiosaavnResult.matched_tracks} Local
                       </span>
                       <span
                         style={{
@@ -1549,7 +1541,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                           fontWeight: 600,
                         }}
                       >
-                        ● {spotifyResult.missing_tracks} Online
+                        ● {jiosaavnResult.missing_tracks} Online
                       </span>
                     </div>
                   </div>
@@ -1557,7 +1549,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <div>
                     <button
                       className="btn btn-primary"
-                      onClick={() => handleSaveSpotifyPlaylist(true)}
+                      onClick={() => handleSaveJioSaavnPlaylist(true)}
                       title="Import this entire playlist into Kaze"
                       style={{
                         display: "flex",
@@ -1571,7 +1563,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Track Search Bar in Spotify Inspection Modal */}
+                {/* Track Search Bar in JioSaavn Inspection Modal */}
                 <div style={{ position: "relative", marginBottom: "12px" }}>
                   <Search
                     size={14}
@@ -1587,8 +1579,8 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <input
                     type="text"
                     placeholder="Search songs or artists in this playlist..."
-                    value={spotifyFilterQuery}
-                    onChange={(e) => setSpotifyFilterQuery(e.target.value)}
+                    value={jiosaavnFilterQuery}
+                    onChange={(e) => setJioSaavnFilterQuery(e.target.value)}
                     style={{
                       width: "100%",
                       padding: "8px 32px 8px 34px",
@@ -1600,10 +1592,10 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                       outline: "none",
                     }}
                   />
-                  {spotifyFilterQuery && (
+                  {jiosaavnFilterQuery && (
                     <button
                       type="button"
-                      onClick={() => setSpotifyFilterQuery("")}
+                      onClick={() => setJioSaavnFilterQuery("")}
                       style={{
                         position: "absolute",
                         right: "10px",
@@ -1629,10 +1621,10 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   <WindowedTable
                     className="track-table"
                     style={{ width: "100%" }}
-                    items={displayedSpotifyTracks}
+                    items={displayedJioSaavnTracks}
                     rowHeight={72}
                     renderItem={(tr, idx) => (
-                      <tr key={tr.spotify_id || idx} className="track-row">
+                      <tr key={tr.track_id || idx} className="track-row">
                         <td
                           style={{
                             textAlign: "center",
@@ -1696,7 +1688,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                                     gap: "5px",
                                   }}
                                   onClick={() =>
-                                    handleSearchMissingInSoulseek(
+                                    handleSearchMissing(
                                       tr.title,
                                       tr.artist,
                                     )

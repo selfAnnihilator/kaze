@@ -56,7 +56,7 @@ async fn test_download_provider_search_and_availability() -> AppResult<()> {
     provider
         .set_canned_results(vec![DownloadSearchResult {
             id: "canned_1".to_string(),
-            provider: "mock_soulseek".to_string(),
+            provider: "mock".to_string(),
             username: "lossless_curator".to_string(),
             filename: "FLAC/Comfortably Numb.flac".to_string(),
             file_size: 42_000_000,
@@ -80,7 +80,7 @@ async fn test_core_processor_search_soulseek() -> AppResult<()> {
     let pool = setup_test_db().await;
     let config = AppConfig::default_with_dirs();
     let processor = CoreProcessor::new(pool, config);
-    let res = processor.dispatch_command(Command::SearchSoulseek {
+    let res = processor.dispatch_command(Command::SearchDownloads {
         artist: "John Michael Howell".to_string(),
         title: "Pinky Up".to_string(),
         album: None,
@@ -276,7 +276,7 @@ async fn test_core_processor_download_commands_and_queries() -> AppResult<()> {
 
     // 1. Search via Command
     let search_res = processor
-        .dispatch_command(Command::SearchSoulseek {
+        .dispatch_command(Command::SearchDownloads {
             artist: "Led Zeppelin".to_string(),
             title: "Kashmir".to_string(),
             album: None,

@@ -3,8 +3,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 /// Conservative fallback TTL for resolved audio URLs when the provider does not
-/// advertise an explicit expiry timestamp.  Chosen to be well inside YouTube's
-/// ~6-hour signed-URL window with a safety margin.
+/// advertise an explicit expiry timestamp.  Also used for JioSaavn URLs without an explicit expiry.
 const FALLBACK_TTL_SECS: u64 = 4 * 3600; // 4 hours
 
 /// Hard cap on the number of entries stored in the cache.
@@ -20,7 +19,7 @@ pub struct ResolvedEntry {
     /// Wall-clock time at which this entry was inserted.
     resolved_at: Instant,
     /// Absolute expiry time.  Computed either from a provider-supplied UNIX
-    /// timestamp (e.g., the `expire` query parameter in a YouTube signed URL)
+    /// timestamp (e.g., the `expire` query parameter in a signed media URL)
     /// or from `resolved_at + FALLBACK_TTL_SECS`.
     expires_at: Instant,
 }
@@ -83,7 +82,7 @@ impl ResolvedEntry {
 ///   1. Remove all expired entries.
 ///   2. If still at capacity, remove the oldest `resolved_at` entry.
 pub struct ResolutionCache {
-    /// `key → entry`.  Key is the same `full:v2:…` string used for the disk
+    /// `key → entry`.  Key is the same `full:v3:jiosaavn:…` string used for the disk
     /// cache so lookups are a direct map hit.
     inner: Mutex<HashMap<String, ResolvedEntry>>,
 }
@@ -163,16 +162,16 @@ impl Default for ResolutionCache {
     }
 }
 
-/// Attempt to parse the `expire` query-parameter from a YouTube/googlevideo CDN
+/// Attempt to parse the `expire` query-parameter from a provider/googlevideo CDN
 /// URL and return it as a UNIX timestamp (seconds).
 ///
-/// YouTube signed URLs look like:
-///   `https://rr*.googlevideo.com/…?…&expire=1747123456&…`
+/// provider signed URLs look like:
+///   `https://rr*.aac.saavncdn.com/…?…&expire=1747123456&…`
 ///
-/// Returns `None` for non-YouTube URLs or when the parameter is absent/invalid.
+/// Returns `None` for non-provider URLs or when the parameter is absent/invalid.
 pub fn parse_url_expiry(url: &str) -> Option<u64> {
-    // Fast reject for non-YouTube CDN URLs.
-    if !url.contains("googlevideo.com") && !url.contains("youtube.com") {
+    // Fast reject for non-provider CDN URLs.
+    if !url.contains("aac.saavncdn.com") && !url.contains("provider.com") {
         return None;
     }
     // Parse the query string without pulling in a URL crate — we only need one
@@ -236,14 +235,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_url_expiry_extracts_from_youtube_url() {
-        let url = "https://rr3.googlevideo.com/path?itag=140&expire=1747123456&other=val";
+    fn parse_url_expiry_extracts_from_provider_url() {
+        let url = "https://rr3.aac.saavncdn.com/path?itag=140&expire=1747123456&other=val";
         assert_eq!(parse_url_expiry(url), Some(1747123456));
     }
 
     #[test]
-    fn parse_url_expiry_returns_none_for_non_youtube() {
-        let url = "https://download.audius.co/tracks/abc/stream";
+    fn parse_url_expiry_returns_none_for_non_provider() {
+        let url = "https://aac.saavncdn.com/song/abc.mp4";
         assert_eq!(parse_url_expiry(url), None);
     }
 
@@ -255,7 +254,7 @@ mod tests {
             .unwrap()
             .as_secs()
             + 100 * 365 * 24 * 3600;
-        let entry = ResolvedEntry::new("https://rr.googlevideo.com/x".to_string(), 180.0, Some(far_future_unix));
+        let entry = ResolvedEntry::new("https://rr.aac.saavncdn.com/x".to_string(), 180.0, Some(far_future_unix));
         // expires_at must be <= now + FALLBACK_TTL_SECS + tiny epsilon.
         let max_allowed = Instant::now() + Duration::from_secs(FALLBACK_TTL_SECS + 5);
         assert!(entry.expires_at <= max_allowed);

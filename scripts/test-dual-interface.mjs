@@ -517,7 +517,7 @@ try {
       const options=sources.getByRole("button",{name:"Download",exact:true});
       assert.ok(await options.count()<15);
       await options.first().click();await page.locator(".modal-overlay").waitFor({state:"detached"});
-      assert.ok((await commands()).some(command=>command.command==="SearchSoulseek"));
+      assert.ok((await commands()).some(command=>command.command==="SearchDownloads"));
       assert.ok((await commands()).some(command=>command.command==="StartDownload"));
     });
   }

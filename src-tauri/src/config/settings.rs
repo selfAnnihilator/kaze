@@ -118,35 +118,20 @@ impl Default for RecommendationWeightsConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataConfig {
     pub provider_priority: Vec<String>,
-    pub enable_musicbrainz: bool,
-    pub enable_spotify: bool,
-    pub spotify_client_id: Option<String>,
-    pub spotify_client_secret: Option<String>,
 }
 
 impl Default for MetadataConfig {
     fn default() -> Self {
         Self {
-            provider_priority: vec![
-                "embedded".to_string(),
-                "musicbrainz".to_string(),
-                "spotify".to_string(),
-            ],
-            enable_musicbrainz: true,
-            enable_spotify: false,
-            spotify_client_id: None,
-            spotify_client_secret: None,
+            provider_priority: vec!["embedded".into(), "jiosaavn".into()],
         }
     }
 }
 
-/// Soulseek and download provider configuration.
+/// Offline download configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadConfig {
     pub download_dir: Option<PathBuf>,
-    pub slskd_host: String,
-    pub slskd_port: u16,
-    pub slskd_api_key: Option<String>,
     pub auto_import: bool,
     pub max_concurrent_downloads: usize,
 }
@@ -155,9 +140,6 @@ impl Default for DownloadConfig {
     fn default() -> Self {
         Self {
             download_dir: None,
-            slskd_host: "localhost".to_string(),
-            slskd_port: 5030,
-            slskd_api_key: None,
             auto_import: true,
             max_concurrent_downloads: 2,
         }

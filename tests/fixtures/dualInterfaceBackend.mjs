@@ -294,6 +294,8 @@ export function installDualInterfaceFixture() {
             type: "DiscoveryRecommendations",
             data: f.empty ? [] : recs,
           };
+        case "GetCharts":
+          return { type: "Charts", data: [{ id: "1134548194", title: "India Superhits Top 50" }, { id: "110858205", title: "English chart" }] };
         case "GetWorldTrending":
           return { type: "WorldTrending", data: f.empty ? [] : recs };
         case "SearchOnlineMusic":
@@ -428,8 +430,8 @@ export function installDualInterfaceFixture() {
       commands.push(c);
       const p = c.payload || {};
       switch (c.command) {
-        case "SearchSoulseek":
-          return {status:"DownloadSearchResults",data:Array.from({length:120},(_,index)=>({id:`ytdlp_fixture_${index}`,provider:"yt-dlp",username:`Fixture uploader ${index}`,filename:`${p.artist} - ${p.title} ${index}.flac`,file_size:10485760,bitrate:1000,format:"flac",slots_free:true,speed_bps:1048576}))};
+        case "SearchDownloads":
+          return {status:"DownloadSearchResults",data:Array.from({length:120},(_,index)=>({id:`jiosaavn:fixture_${index}`,provider:"jiosaavn",username:`Fixture artist ${index}`,filename:`${p.artist} - ${p.title} ${index}.flac`,file_size:10485760,bitrate:1000,format:"flac",slots_free:true,speed_bps:1048576}))};
 
         case "SetInterfaceStyle":
           if (f.failStyle) throw Error("Fixture storage unavailable");

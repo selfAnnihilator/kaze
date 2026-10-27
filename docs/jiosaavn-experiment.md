@@ -4,6 +4,10 @@ Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public de
 
 Search and online playback use JioSaavn exclusively during this trial. Alternative sources and legacy download-provider routing are removed from the active backend. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.
 
+## Source consolidation — 2026-10-27
+
+JioSaavn supplies the catalog, charts, playlist imports, downloads and metadata enrichment as well as playback. Retired provider implementations and their launch/settings controls are removed. Saved aliases and original tag columns remain compatible. See [ADR 0017](adr/0017-jiosaavn-catalog-consolidation.md). Earlier feed/fallback descriptions below are dated history.
+
 ## Current contract: every displayed online song has a saved source
 
 Buffering repair (2026-10-27): progressive reader stalls/recovery now use `PlaybackBufferingChanged` with the active playback session and track ID. Preparation/obsolete readers do not send current-song state; chunk arrival, reader starvation and terminal download states serialize their flag/notification order. Completion, failure and cancellation clear buffering. Download recovery never emits a fake Resume or position zero. The UI accepts only the active session, preserves position/pause, clears pending selection loading at PlaybackStarted, and discards state-query replies overtaken by newer playback events or queries. Metadata-only next-source resolution remains separate from audio loading. `scripts/test-buffering-ui.mjs` replays these races in both interfaces; progressive-reader and history tests cover EOF, cancelled preparation and paused listening accounting. The opt-in unified JioSaavn native gate also checks completed buffering/pause and rejects fake Resume events.

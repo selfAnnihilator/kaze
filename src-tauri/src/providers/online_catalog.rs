@@ -117,6 +117,7 @@ impl OnlineCatalog {
         let metadata = if row.provider == "jiosaavn" || id.starts_with("jiosaavn:") {
             // These rows were fetched from the provider already; never search their titles again.
             ExternalTrackMetadata {
+                language: None,
                 provider: "jiosaavn".into(),
                 provider_track_id: if row.provider == "jiosaavn" {
                     row.provider_id

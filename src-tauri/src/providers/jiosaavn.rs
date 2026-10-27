@@ -211,6 +211,47 @@ impl JioSaavnProvider {
             .collect()
     }
 
+    /// Provider-owned chart IDs/titles; never synthesize country chart claims.
+    pub async fn charts(&self, refresh: bool) -> Result<Vec<Value>> {
+        let data = self.request("content.getCharts", &[("languages", "english,hindi,malayalam,tamil,telugu,kannada,punjabi")], refresh).await?;
+        let items = data.as_array().ok_or_else(|| JioSaavnError::Malformed("missing charts".into()))?;
+        Ok(items.iter().filter(|item| text(item,"id").is_some() && text(item,"title").is_some()).take(30).cloned().collect())
+    }
+
+    pub async fn playlist_reference(&self, reference: &str) -> Result<(String, String, Option<String>, Vec<ExternalTrackMetadata>)> {
+        let reference = reference.trim();
+        let data = if reference.chars().all(|c| c.is_ascii_digit()) && !reference.is_empty() {
+            self.request("playlist.getDetails", &[("listid",reference),("n","50")],false).await?
+        } else {
+            let url = reqwest::Url::parse(reference).map_err(|_| JioSaavnError::Malformed("use a JioSaavn playlist URL or numeric ID".into()))?;
+            if url.scheme() != "https" || !matches!(url.host_str(),Some("www.jiosaavn.com" | "jiosaavn.com")) {
+                return Err(JioSaavnError::Malformed("use a JioSaavn playlist URL".into()));
+            }
+            let token = url.path_segments().and_then(|segments| segments.filter(|s| !s.is_empty()).last()).unwrap_or("");
+            if token.is_empty() || !token.chars().all(|c| c.is_ascii_alphanumeric() || "_,-=".contains(c)) {
+                return Err(JioSaavnError::Malformed("invalid playlist URL".into()));
+            }
+            self.request("webapi.get", &[("token",token),("type","playlist"),("n","50")],false).await?
+        };
+        let id = text(&data,"id").or_else(|| text(&data,"listid")).ok_or_else(|| JioSaavnError::Malformed("missing playlist ID".into()))?;
+        let title = text(&data,"title").or_else(|| text(&data,"listname")).unwrap_or_else(|| "JioSaavn playlist".into());
+        let tracks = self.playlist(&id,50,false).await?;
+        Ok((id,title,text(&data,"image"),tracks))
+    }
+
+    pub async fn playlist(&self, id: &str, limit: usize, refresh: bool) -> Result<Vec<ExternalTrackMetadata>> {
+        if id.is_empty() || !id.chars().all(|c| c.is_ascii_digit()) {
+            return Err(JioSaavnError::Malformed("invalid playlist ID".into()));
+        }
+        let n = limit.clamp(1, 50).to_string();
+        let data = self.request("playlist.getDetails", &[("listid", id), ("n", &n)], refresh).await?;
+        let items = data.get("list").or_else(|| data.get("songs")).and_then(Value::as_array)
+            .ok_or_else(|| JioSaavnError::Malformed("missing playlist songs".into()))?;
+        let mut seen = HashSet::new();
+        Ok(items.iter().filter(|item| full_track_source(item).is_ok()).filter_map(|item| parse_track(item).ok())
+            .filter(|track| seen.insert(track.provider_track_id.clone())).take(limit.min(50)).collect())
+    }
+
     pub async fn resolve(&self, id: &str, refresh: bool) -> Result<(String, f64)> {
         let value = self.detail(id, refresh).await?;
         full_track_source(&value)
@@ -218,6 +259,7 @@ impl JioSaavnProvider {
 }
 
 fn full_track_source(value: &Value) -> Result<(String, f64)> {
+    let info = value.get("more_info").unwrap_or(value);
     if text(value, "type").is_some_and(|kind| kind != "song") {
         return Err(JioSaavnError::Unavailable("not a song".into()));
     }
@@ -230,6 +272,7 @@ fn full_track_source(value: &Value) -> Result<(String, f64)> {
     // Never use encrypted_drm_media_url, licenses, keys, or preview substitutions.
     if value
         .get("rights")
+        .or_else(|| info.get("rights"))
         .and_then(|r| number(r, "code"))
         .is_some_and(|n| n != 0.0)
     {
@@ -238,8 +281,9 @@ fn full_track_source(value: &Value) -> Result<(String, f64)> {
         ));
     }
     let encrypted = text(value, "encrypted_media_url")
+        .or_else(|| text(info, "encrypted_media_url"))
         .ok_or_else(|| JioSaavnError::Unavailable("ordinary full-track media absent".into()))?;
-    let url = decode_media_url(&encrypted, truthy(&value["320kbps"]))?;
+    let url = decode_media_url(&encrypted, truthy(value.get("320kbps").unwrap_or(&info["320kbps"])))?;
     Ok((url, duration))
 }
 
@@ -277,6 +321,7 @@ pub fn parse_track(v: &Value) -> Result<ExternalTrackMetadata> {
     let artist = text(v, "primary_artists")
         .or_else(|| text(info, "primary_artists"))
         .or_else(|| text(v, "singers"))
+        .or_else(|| info.pointer("/artistMap/primary_artists").and_then(Value::as_array).map(|artists| artists.iter().filter_map(|artist| text(artist,"name")).collect::<Vec<_>>().join(", ")).filter(|name| !name.is_empty()))
         .unwrap_or_default();
     let cover = text(v, "image")
         .filter(|u| u.starts_with("https://"))
@@ -295,6 +340,7 @@ pub fn parse_track(v: &Value) -> Result<ExternalTrackMetadata> {
             .filter(|n| *n > 0.0)
             .map(|n| n as u32),
         cover_art_url: cover,
+        language: text(v, "language").or_else(|| text(info, "language")),
     })
 }
 

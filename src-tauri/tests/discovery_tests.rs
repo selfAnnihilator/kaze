@@ -249,7 +249,7 @@ async fn test_discovery_coordinator_matching_and_recommendations() -> AppResult<
     // Ingest an external track that matches our local track
     let matching_ext = ExternalTrackRecord {
         id: "mb:12345".to_string(),
-        provider: "musicbrainz".to_string(),
+        provider: "jiosaavn".to_string(),
         provider_id: "12345".to_string(),
         title: "Time (2011 Remaster)".to_string(),
         artist: "Pink Floyd".to_string(),
@@ -270,7 +270,7 @@ async fn test_discovery_coordinator_matching_and_recommendations() -> AppResult<
     // Ingest an external track that is missing from local library
     let missing_ext = ExternalTrackRecord {
         id: "mb:67890".to_string(),
-        provider: "musicbrainz".to_string(),
+        provider: "jiosaavn".to_string(),
         provider_id: "67890".to_string(),
         title: "Comfortably Numb".to_string(),
         artist: "Pink Floyd".to_string(),

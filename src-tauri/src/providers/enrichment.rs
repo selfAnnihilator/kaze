@@ -1,4 +1,4 @@
-use super::{strict_match, ExternalTrackMetadata, MetadataProvider, ProviderCoordinator};
+use super::{strict_match, ExternalTrackMetadata, ProviderCoordinator};
 use crate::{
     core::{AppError, AppResult, Event, EventBus},
     database::repositories::{ScannedMetadata, SqliteTrackRepository, TrackRepository},
@@ -25,8 +25,6 @@ pub struct GapEnrichmentService {
     manual: AtomicBool,
     pending_updates: AtomicBool,
     wake: Notify,
-    musicbrainz_default: bool,
-    spotify_default: bool,
 }
 
 impl GapEnrichmentService {
@@ -45,15 +43,7 @@ impl GapEnrichmentService {
             manual: AtomicBool::new(false),
             pending_updates: AtomicBool::new(false),
             wake: Notify::new(),
-            musicbrainz_default: true,
-            spotify_default: false,
         }
-    }
-
-    pub fn with_provider_defaults(mut self, musicbrainz: bool, spotify: bool) -> Self {
-        self.musicbrainz_default = musicbrainz;
-        self.spotify_default = spotify;
-        self
     }
 
     pub async fn enabled(&self, key: &str, default: bool) -> bool {
@@ -252,11 +242,11 @@ impl GapEnrichmentService {
                 Ok(found) => candidates = found,
                 Err(e) => {
                     provider_failed = true;
-                    tracing::debug!(error = %e, "JioSaavn metadata unavailable; checking other enabled sources");
+                    tracing::debug!(error = %e, "JioSaavn metadata unavailable; will retry later");
                 }
             }
         }
-        let mut matched = strict_match::unique_match(
+        let matched = strict_match::unique_match(
             &source.title,
             source.artist.as_deref(),
             source.album.as_deref(),
@@ -264,51 +254,6 @@ impl GapEnrichmentService {
             &candidates,
         )
         .cloned();
-        if matched.is_none()
-            && self
-                .enabled("enable_musicbrainz", self.musicbrainz_default)
-                .await
-        {
-            candidates = self
-                .providers
-                .musicbrainz()
-                .search_track(
-                    &source.title,
-                    source.artist.as_deref().unwrap_or(""),
-                    source.album.as_deref(),
-                )
-                .await?;
-            matched = strict_match::unique_match(
-                &source.title,
-                source.artist.as_deref(),
-                source.album.as_deref(),
-                source.duration_secs,
-                &candidates,
-            )
-            .cloned();
-        }
-        if matched.is_none()
-            && self.enabled("enable_spotify", self.spotify_default).await
-            && self.providers.spotify().is_available()
-        {
-            candidates = self
-                .providers
-                .spotify()
-                .search_track(
-                    &source.title,
-                    source.artist.as_deref().unwrap_or(""),
-                    source.album.as_deref(),
-                )
-                .await?;
-            matched = strict_match::unique_match(
-                &source.title,
-                source.artist.as_deref(),
-                source.album.as_deref(),
-                source.duration_secs,
-                &candidates,
-            )
-            .cloned();
-        }
         let Some(mut matched) = matched else {
             self.record_attempt(
                 id,
@@ -364,9 +309,6 @@ impl GapEnrichmentService {
         .bind(id)
         .execute(&self.pool)
         .await?;
-        if matched.provider == "musicbrainz" {
-            sqlx::query("UPDATE tracks SET musicbrainz_track_id = COALESCE(musicbrainz_track_id, ?) WHERE id = ?").bind(&matched.provider_track_id).bind(id).execute(&self.pool).await?;
-        }
         Ok(true)
     }
 
@@ -399,16 +341,6 @@ impl GapEnrichmentService {
                 bytes.extend_from_slice(&chunk);
             }
             bytes
-        } else if track.provider == "musicbrainz" {
-            if let Some(album) = &track.album_id {
-                self.providers
-                    .cover_art()
-                    .fetch_cover_art(album)
-                    .await?
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            }
         } else {
             vec![]
         };

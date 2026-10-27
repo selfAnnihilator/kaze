@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Bookmark, Plus, Search, ExternalLink } from "lucide-react";
+import { Bookmark, Plus, Search } from "lucide-react";
 import type { WishlistItem } from "../../types";
 import { useDebouncedValue } from "../../presentation/useDebouncedValue";
 import { WindowedList } from "../../presentation/WindowedList";
@@ -13,7 +13,6 @@ interface WishlistViewProps {
     status: "want" | "ignore" | "already_own" | "downloaded",
   ) => Promise<void>;
   onSearchDirect: (artist: string, title: string, album?: string) => void;
-  onLaunchSoulseek?: (query?: string, filter?: string) => Promise<void>;
 }
 const statuses = ["WANT", "DOWNLOADED", "ALREADY_OWN", "IGNORE"] as const;
 const label = (status: string) => status.toLowerCase().replace(/_/g, " ");
@@ -23,7 +22,6 @@ export const WishlistView = React.memo(function WishlistView({
   onAddToWishlist,
   onUpdateStatus,
   onSearchDirect,
-  onLaunchSoulseek,
 }: WishlistViewProps) {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -175,19 +173,6 @@ export const WishlistView = React.memo(function WishlistView({
               >
                 <Search size={15} /> Find
               </button>
-              {onLaunchSoulseek && (
-                <button
-                  className="player-icon-btn"
-                  aria-label={`Find ${item.title} in Soulseek`}
-                  onClick={() =>
-                    void onLaunchSoulseek(item.title, item.artist).catch(() =>
-                      setError("Couldn’t launch Soulseek. Check Settings."),
-                    )
-                  }
-                >
-                  <ExternalLink size={16} />
-                </button>
-              )}
             </div>
           )}
         />

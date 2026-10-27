@@ -138,7 +138,6 @@ pub struct StreamPlaybackManager {
     jiosaavn: Arc<crate::providers::jiosaavn::JioSaavnProvider>,
     pub catalog: Option<Arc<crate::providers::online_catalog::OnlineCatalog>>,
     cache_dir: PathBuf,
-    legacy_cache_dir: PathBuf,
     pool: Option<SqlitePool>,
     http_client: reqwest::Client,
     config: Arc<RwLock<RemoteAudioCacheConfig>>,
@@ -168,7 +167,6 @@ impl StreamPlaybackManager {
         config: RemoteAudioCacheConfig,
     ) -> Self {
         let stream_cache_dir = base_cache_dir.join("remote-audio");
-        let legacy_cache_dir = base_cache_dir.join("stream_cache");
         let http_client = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
             .read_timeout(std::time::Duration::from_secs(30))
@@ -181,7 +179,6 @@ impl StreamPlaybackManager {
             jiosaavn,
             catalog,
             cache_dir: stream_cache_dir,
-            legacy_cache_dir,
             pool,
             http_client,
             config: Arc::new(RwLock::new(config)),
@@ -579,14 +576,10 @@ impl StreamPlaybackManager {
         self.cancel_active_stream().await;
 
         let mut guard = PartFileCleanupGuard::new(part_path.to_path_buf());
-        let mut request = self.http_client.get(stream_url).header(
+        let request = self.http_client.get(stream_url).header(
             reqwest::header::USER_AGENT,
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         );
-
-        if stream_url.contains("googlevideo.com") || stream_url.contains("youtube.com") {
-            request = request.header(reqwest::header::RANGE, "bytes=0-");
-        }
 
         let response = tokio::time::timeout(std::time::Duration::from_secs(12), request.send())
             .await
@@ -827,18 +820,13 @@ impl StreamPlaybackManager {
         let part_path = Self::get_part_path(target_path);
         let mut guard = PartFileCleanupGuard::new(part_path.clone());
 
-        let mut request = self
+        let request = self
             .http_client
             .get(url)
             .header(
                 reqwest::header::USER_AGENT,
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             );
-
-        // If streaming from googlevideo/youtube, send Range: bytes=0- to bypass Google CDN throttling
-        if url.contains("googlevideo.com") || url.contains("youtube.com") {
-            request = request.header(reqwest::header::RANGE, "bytes=0-");
-        }
 
         let response = request
             .send()
@@ -1037,7 +1025,7 @@ impl StreamPlaybackManager {
         let mut removed_count = 0;
         let now = std::time::SystemTime::now();
 
-        for dir in &[&self.cache_dir, &self.legacy_cache_dir] {
+        for dir in &[&self.cache_dir] {
             if let Ok(mut read_dir) = tokio::fs::read_dir(dir).await {
                 while let Ok(Some(entry)) = read_dir.next_entry().await {
                     let path = entry.path();
@@ -1082,7 +1070,7 @@ impl StreamPlaybackManager {
         let mut bytes_freed: u64 = 0;
         let mut files_removed: usize = 0;
 
-        for dir in &[&self.cache_dir, &self.legacy_cache_dir] {
+        for dir in &[&self.cache_dir] {
             if let Ok(mut read_dir) = tokio::fs::read_dir(dir).await {
                 while let Ok(Some(entry)) = read_dir.next_entry().await {
                     let path = entry.path();
@@ -1120,7 +1108,7 @@ impl StreamPlaybackManager {
         let mut file_count: usize = 0;
         let mut partial_file_count: usize = 0;
 
-        for dir in &[&self.cache_dir, &self.legacy_cache_dir] {
+        for dir in &[&self.cache_dir] {
             if let Ok(mut read_dir) = tokio::fs::read_dir(dir).await {
                 while let Ok(Some(entry)) = read_dir.next_entry().await {
                     let path = entry.path();
@@ -1171,7 +1159,6 @@ impl StreamPlaybackManager {
             jiosaavn: self.jiosaavn.clone(),
             catalog: self.catalog.clone(),
             cache_dir: self.cache_dir.clone(),
-            legacy_cache_dir: self.legacy_cache_dir.clone(),
             pool: self.pool.clone(),
             http_client: self.http_client.clone(),
             config: self.config.clone(),

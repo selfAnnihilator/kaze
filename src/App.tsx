@@ -14,7 +14,7 @@ import {
   PlaybackState,
   AppSettings,
   OnboardingStatus,
-  SpotifyPlaylistImport,
+  JioSaavnPlaylistImport,
   AppNotification,
   HomeOverview, FlowExplanation,
 } from "./types";
@@ -37,7 +37,7 @@ import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
-import { filterAndRankDownloadResults, rankResultMatch } from "./downloadMatch";
+import { filterAndRankDownloadResults } from "./downloadMatch";
 import { attachLocalSearchMatches } from "./localTrackMatch";
 import { DownloadModalTrack } from "./components/modals/DownloadOptionsModal";
 import { AddToPlaylistModalTrack } from "./components/modals/AddToPlaylistModal";
@@ -2972,14 +2972,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchPlaybackState,
   ]);
 
-  const handleInspectSpotifyPlaylist = async (
+  const handleInspectJioSaavnPlaylist = async (
     urlOrId: string,
-  ): Promise<SpotifyPlaylistImport | null> => {
+  ): Promise<JioSaavnPlaylistImport | null> => {
     const res = await executeQuery({
-      query: "ImportSpotifyPlaylist",
+      query: "ImportJioSaavnPlaylist",
       payload: { url_or_id: urlOrId },
     });
-    return (res.data as SpotifyPlaylistImport) || null;
+    return (res.data as JioSaavnPlaylistImport) || null;
   };
 
   const handleSaveImportedPlaylist = useCallback(
@@ -3131,37 +3131,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchWishlist();
   };
 
-  // Soulseek & Downloads
-  const handleLaunchSoulseek = async (query?: string, filter?: string) => {
-    if (query) {
-      try {
-        await navigator.clipboard.writeText(query);
-      } catch (e) {}
-    }
-    await dispatchCommand({
-      command: "LaunchSoulseek",
-      payload: { search_query: query, filter_query: filter },
-    });
-  };
-
-  const handleImportSoulseekDownloads = async () => {
-    setIsScanning(true);
-    await dispatchCommand({
-      command: "ImportSoulseekDownloads",
-    });
-    await fetchTracks();
-    await fetchPlaylists();
-    await fetchWishlist();
-    setIsScanning(false);
-  };
-
-  const handleSearchSoulseek = async (
+  // Downloads
+  const handleSearchDownloads = async (
     artist: string,
     title: string,
     album?: string,
   ): Promise<DownloadSearchResult[]> => {
     const res = await dispatchCommand({
-      command: "SearchSoulseek",
+      command: "SearchDownloads",
       payload: { artist, title, album },
     });
     const results = (res as any)?.data || (res as any)?.results;
@@ -3202,68 +3179,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       `"${track.title}" by ${track.artist} has been queued for download.`,
     );
     fetchDownloads();
-  };
-
-  const handleDirectAudioDownload = async (track: DownloadModalTrack) => {
-    try {
-      addAppNotification(
-        "info",
-        "Direct Download",
-        `Locating audio stream for "${track.title}" by ${track.artist}...`,
-      );
-      const searchResults = await handleSearchSoulseek(
-        track.artist,
-        track.title,
-        track.album,
-      );
-      if (!searchResults || searchResults.length === 0) {
-        addAppNotification(
-          "error",
-          "Download Error",
-          `No streamable audio found for "${track.title}".`,
-        );
-        return;
-      }
-
-      const goodDirect = searchResults.find(
-        (r) =>
-          (r.provider === "yt-dlp" || r.id.startsWith("ytdlp_")) &&
-          !r.id.startsWith("ytdlp_stream_mp3_") &&
-          rankResultMatch(r, track.artist, track.title) >= 40,
-      );
-      const chosen =
-        goodDirect ||
-        searchResults.find(
-          (r) =>
-            !r.id.startsWith("ytdlp_stream_mp3_") &&
-            rankResultMatch(r, track.artist, track.title) >= 30,
-        );
-
-      if (
-        !chosen &&
-        searchResults.some((r) => r.id.startsWith("ytdlp_stream_mp3_"))
-      ) {
-        setDownloadModalTrack(track);
-        return;
-      }
-
-      if (chosen) {
-        await handleModalStartDownload(chosen.id, track);
-      } else {
-        addAppNotification(
-          "error",
-          "Download Error",
-          `No confident audio match found for "${track.title}".`,
-        );
-      }
-    } catch (err: any) {
-      console.warn("Direct download failed:", err);
-      addAppNotification(
-        "error",
-        "Download Error",
-        `Could not start direct stream download for "${track.title}".`,
-      );
-    }
   };
 
   const handleGlobalOnlineSearch = async (queryOverride?: string) => {
@@ -3877,10 +3792,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
-                      onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                      onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
                       onSaveImportedPlaylist={handleSaveImportedPlaylist}
                       onAddMissingToWishlist={handleAddMissingToWishlist}
-                      onLaunchSoulseek={handleLaunchSoulseek}
                       onSearchDirect={handleInitiateDirectDownloadSearch}
                       onFetchPlaylistTracks={handleFetchPlaylistTracks}
                       onPlayTrack={handlePlayTrack}
@@ -3903,10 +3817,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
-                      onInspectSpotifyPlaylist={handleInspectSpotifyPlaylist}
+                      onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
                       onSaveImportedPlaylist={handleSaveImportedPlaylist}
                       onAddMissingToWishlist={handleAddMissingToWishlist}
-                      onLaunchSoulseek={handleLaunchSoulseek}
                       onSearchDirect={handleInitiateDirectDownloadSearch}
                       onFetchPlaylistTracks={handleFetchPlaylistTracks}
                       onPlayTrack={handlePlayTrack}
@@ -4003,12 +3916,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   {currentView === "downloads" && (
                     <DownloadsView
                       downloads={downloads}
-                      onSearchSoulseek={handleSearchSoulseek}
+                      onSearchDownloads={handleSearchDownloads}
                       onStartDownload={handleStartDownload}
                       onCancelDownload={handleCancelDownload}
                       onRefreshDownloads={fetchDownloads}
-                      onLaunchSoulseek={handleLaunchSoulseek}
-                      onImportSoulseek={handleImportSoulseekDownloads}
                     />
                   )}
                   {currentView === "wishlist" && (
@@ -4017,7 +3928,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onAddToWishlist={handleAddToWishlist}
                       onUpdateStatus={handleUpdateWishlistStatus}
                       onSearchDirect={handleInitiateDirectDownloadSearch}
-                      onLaunchSoulseek={handleLaunchSoulseek}
                     />
                   )}
 
@@ -4229,9 +4139,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             isOpen={!!downloadModalTrack}
             track={downloadModalTrack}
             onClose={() => setDownloadModalTrack(null)}
-            onSearchSoulseek={handleSearchSoulseek}
+            onSearchDownloads={handleSearchDownloads}
             onStartDownload={handleModalStartDownload}
-            onDirectAudioDownload={handleDirectAudioDownload}
           />
         </Suspense>
 

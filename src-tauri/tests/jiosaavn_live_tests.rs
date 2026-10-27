@@ -355,3 +355,37 @@ async fn saved_catalog_entries_play_the_exact_version_shown() {
     println!("PASS native Flow and Next: saved aliases retain source links without title matching");
     core.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+#[ignore = "requires live JioSaavn catalog and audio download"]
+async fn catalog_playlist_and_exact_download_gate() {
+    use music_player_backend::{config::AppConfig,core::{CoreProcessor,Query,QueryResponse,Command},database::init_db_pool,playback::backend::MockAudioBackend};
+    let temp=tempfile::tempdir().unwrap();let pool=init_db_pool(temp.path().join("catalog.db")).await.unwrap();
+    let mut config=AppConfig::default_with_dirs();config.cache_dir=temp.path().join("cache");config.downloads.download_dir=Some(temp.path().join("downloads"));config.downloads.auto_import=false;
+    let core=CoreProcessor::new_with_backend(pool,config,Box::new(MockAudioBackend::new()));
+    core.dispatch_command(Command::SetMetadataPreference{key:"auto_fill_metadata".into(),enabled:false}).await.unwrap();
+    let QueryResponse::Charts(charts)=core.execute_query(Query::GetCharts).await.unwrap() else {panic!("charts")};
+    assert!(!charts.is_empty());let id=charts[0]["id"].as_str().unwrap();
+    let QueryResponse::DiscoveryRecommendations(songs)=core.execute_query(Query::GetChartSongs{chart_id:format!("jiosaavn:playlist:{id}"),limit:5}).await.unwrap() else {panic!("chart songs")};
+    assert!(!songs.is_empty());assert!(songs.iter().all(|song|song["provider"]=="jiosaavn" && song["duration_secs"].as_f64().unwrap_or(0.0)>0.0));
+    let QueryResponse::JioSaavnPlaylistImport(import)=core.execute_query(Query::ImportJioSaavnPlaylist{url_or_id:charts[0]["perma_url"].as_str().unwrap_or(id).into()}).await.unwrap() else {panic!("playlist")};
+    assert!(import["tracks"][0]["track_id"].as_str().unwrap().starts_with("jiosaavn:"));
+    let results=core.download_service().search_track(songs[0]["artist"].as_str().unwrap(),songs[0]["title"].as_str().unwrap()).await.unwrap();
+    let selected=&results[0];assert_eq!(selected.provider,"jiosaavn");
+    let task=core.download_service().start_download(&selected.id,None).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(90),async {
+        loop {
+            let _ = core.download_service().poll_task(&task.id).await.unwrap();
+            let saved = core.download_service().list_downloads(None,10).await.unwrap().into_iter().find(|saved| saved.id==task.id).unwrap();
+            assert_ne!(saved.status,"FAILED");
+            if saved.status=="COMPLETED" {break;}
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+    }).await.expect("bounded download");
+    let path=std::path::PathBuf::from(task.destination_path.unwrap());
+    assert!(std::fs::metadata(&path).unwrap().len()>100_000);
+    assert!(SymphoniaSource::new(&path).unwrap().next().is_some());
+    assert!(std::fs::read_dir(path.parent().unwrap()).unwrap().all(|entry| !entry.unwrap().path().extension().is_some_and(|extension|extension=="part")));
+    core.shutdown().await.unwrap();
+    println!("PASS provider charts, exact playlist identities and selected JioSaavn full-audio download/decoder");
+}

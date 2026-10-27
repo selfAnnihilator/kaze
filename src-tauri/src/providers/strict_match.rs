@@ -55,6 +55,7 @@ mod tests {
     use super::*;
     fn track(id: &str, title: &str) -> ExternalTrackMetadata {
         ExternalTrackMetadata {
+            language: None,
             provider: "jiosaavn".into(),
             provider_track_id: id.into(),
             title: title.into(),

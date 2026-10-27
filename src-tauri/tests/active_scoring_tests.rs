@@ -121,7 +121,7 @@ async fn repeated_listening_changes_for_you_order_and_skips_are_not_positive_aff
         wishlist
             .upsert_external_track(&ExternalTrackRecord {
                 id: id.into(),
-                provider: "itunes".into(),
+                provider: "jiosaavn".into(),
                 provider_id: id.into(),
                 title: format!("Fresh {id}"),
                 artist: artist.into(),

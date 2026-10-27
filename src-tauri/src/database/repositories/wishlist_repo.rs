@@ -19,6 +19,7 @@ pub trait WishlistRepository: Send + Sync {
         match_status: &str,
         local_track_id: Option<&str>,
     ) -> AppResult<()>;
+    async fn list_catalog_tracks(&self, limit: u32) -> AppResult<Vec<ExternalTrackRecord>>;
     async fn list_external_tracks(
         &self,
         match_status: Option<&str>,
@@ -198,6 +199,14 @@ impl WishlistRepository for SqliteWishlistRepository {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn list_catalog_tracks(&self, limit: u32) -> AppResult<Vec<ExternalTrackRecord>> {
+        Ok(sqlx::query_as::<_, ExternalTrackRecord>(
+            "SELECT e.id,e.provider,e.provider_id,e.title,e.artist,e.album,e.duration_secs,e.cover_art_url,e.preview_url,e.genre,e.match_status,e.matched_local_track_id,e.created_at
+             FROM external_tracks e WHERE e.provider='jiosaavn' OR EXISTS(SELECT 1 FROM online_track_sources s WHERE s.track_id=e.id)
+             ORDER BY e.created_at DESC,e.id LIMIT ?")
+            .bind(limit.min(2000) as i64).fetch_all(&self.pool).await?)
     }
 
     async fn list_external_tracks(

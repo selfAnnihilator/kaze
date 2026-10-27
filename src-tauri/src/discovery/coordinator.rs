@@ -7,7 +7,6 @@ use crate::recommendations::TasteProfileEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tracing::{info, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryRecommendation {
@@ -35,36 +34,6 @@ pub struct DiscoveryCoordinator {
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
     artist_candidate_cache: tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
     world_chart_cache: tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
-}
-
-/// Maps common genre names/keywords to iTunes Store genre IDs
-pub fn map_genre_to_itunes_genre_id(genre: &str) -> Option<u32> {
-    let g = genre.to_lowercase();
-    if g.contains("hip hop") || g.contains("hip-hop") || g.contains("rap") {
-        Some(18) // Hip-Hop/Rap
-    } else if g.contains("pop") && !g.contains("k-pop") && !g.contains("j-pop") {
-        Some(14) // Pop
-    } else if g.contains("electro") || g.contains("dance") || g.contains("electronic") || g.contains("house") || g.contains("edm") {
-        Some(7)  // Electronic / Dance
-    } else if g.contains("alt") {
-        Some(20) // Alternative
-    } else if g.contains("rock") || g.contains("metal") {
-        Some(21) // Rock
-    } else if g.contains("r&b") || g.contains("soul") {
-        Some(15) // R&B / Soul
-    } else if g.contains("soundtrack") || g.contains("film") || g.contains("game") {
-        Some(24) // Soundtrack
-    } else if g.contains("country") {
-        Some(6)  // Country
-    } else if g.contains("jazz") {
-        Some(11) // Jazz
-    } else if g.contains("classical") {
-        Some(5)  // Classical
-    } else if g.contains("reggae") {
-        Some(16) // Reggae
-    } else {
-        None
-    }
 }
 
 /// Checks if a candidate genre fuzzy matches a user's library genre
@@ -99,102 +68,6 @@ pub fn genre_matches(candidate_genre: &str, user_genre: &str) -> bool {
 }
 
 impl DiscoveryCoordinator {
-    /// Reads a public chart in its published order. The chart ID is an explicit
-    /// product selection and is never derived from the user's taste profile.
-    pub async fn get_chart_songs(&self, chart_id: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
-        if chart_id == "chart_top50_global" {
-            return self.get_world_trending(limit, false).await;
-        }
-        let storefront = match chart_id {
-            "chart_top50_india" => "in",
-            "chart_top50_usa" => "us",
-            "chart_top50_uk" => "gb",
-            "chart_top50_japan" => "jp",
-            "chart_top50_brazil" => "br",
-            _ => return Err(crate::core::error::AppError::Validation("Unknown chart".to_string())),
-        };
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(8))
-            .build()
-            .map_err(|e| crate::core::error::AppError::Internal(e.to_string()))?;
-        let url = format!("https://itunes.apple.com/{storefront}/rss/topsongs/limit=50/json");
-        let feed: serde_json::Value = client.get(url).send().await
-            .and_then(|response| response.error_for_status())
-            .map_err(|e| crate::core::error::AppError::Network(e.to_string()))?
-            .json().await
-            .map_err(|e| crate::core::error::AppError::Network(e.to_string()))?;
-        Ok(feed.pointer("/feed/entry")
-            .and_then(|entries| entries.as_array())
-            .into_iter().flatten()
-            .filter_map(|entry| chart_entry_to_recommendation(entry, storefront))
-            .take(limit.min(50))
-            .collect())
-    }
-
-    /// Aggregate current top-song charts across major regional storefronts.
-    /// This feed is independent of library taste and stored recommendations.
-    pub async fn get_world_trending(&self, limit: usize, force_refresh: bool) -> AppResult<Vec<DiscoveryRecommendation>> {
-        if !force_refresh {
-            let cache = self.world_chart_cache.read().await;
-            if let Some((fetched_at, songs)) = &*cache {
-                if fetched_at.elapsed() < std::time::Duration::from_secs(15 * 60) {
-                    return Ok(songs.iter().take(limit).cloned().collect());
-                }
-            }
-        }
-        const STOREFRONTS: &[&str] = &["us", "gb", "in", "jp", "sg", "br", "de", "fr", "au", "ca", "mx", "za"];
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(6))
-            .build()
-            .map_err(|e| crate::core::error::AppError::Internal(e.to_string()))?;
-        let mut requests = tokio::task::JoinSet::new();
-        for &storefront in STOREFRONTS {
-            let client = client.clone();
-            requests.spawn(async move {
-                let url = format!("https://itunes.apple.com/{storefront}/rss/topsongs/limit=50/json");
-                let response = client.get(url).send().await.ok()?.error_for_status().ok()?;
-                let feed = response.json::<serde_json::Value>().await.ok()?;
-                Some((storefront, feed))
-            });
-        }
-
-        let mut by_song: HashMap<String, (DiscoveryRecommendation, usize, usize)> = HashMap::new();
-        while let Some(result) = requests.join_next().await {
-            let Ok(Some((storefront, feed))) = result else { continue };
-            let Some(entries) = feed.pointer("/feed/entry").and_then(|v| v.as_array()) else { continue };
-            for (rank, entry) in entries.iter().enumerate() {
-                let Some(rec) = chart_entry_to_recommendation(entry, storefront) else { continue };
-                let key = format!("{}:{}", rec.artist.to_lowercase(), rec.title.to_lowercase());
-                let item = by_song.entry(key).or_insert_with(|| (rec.clone(), 0, 0));
-                if item.0.preview_url.is_none() && rec.preview_url.is_some() {
-                    item.0 = rec;
-                }
-                item.1 += 1;
-                item.2 += 51usize.saturating_sub(rank);
-            }
-        }
-
-        let mut ranked: Vec<_> = by_song.into_values().collect();
-        ranked.sort_by(|a, b| (b.1, b.2).cmp(&(a.1, a.2)));
-        let mut artist_counts = HashMap::<String, usize>::new();
-        let songs: Vec<_> = ranked.into_iter().filter_map(|(mut rec, country_count, _)| {
-            let count = artist_counts.entry(rec.artist.to_lowercase()).or_default();
-            if *count >= 2 { None } else {
-                *count += 1;
-                rec.recommendation_reason = format!("Charting in {country_count} countries");
-                Some(rec)
-            }
-        }).take(100).collect();
-        if songs.is_empty() {
-            if let Some((_, cached)) = &*self.world_chart_cache.read().await {
-                return Ok(cached.iter().take(limit).cloned().collect());
-            }
-        } else {
-            *self.world_chart_cache.write().await = Some((std::time::Instant::now(), songs.clone()));
-        }
-        Ok(songs.into_iter().take(limit).collect())
-    }
-
     pub fn new(
         wishlist_repo: Arc<dyn WishlistRepository>,
         track_repo: Arc<dyn TrackRepository>,
@@ -293,348 +166,85 @@ impl DiscoveryCoordinator {
 
     /// Fetches trending hits and popular new music across overall charts and targeted user genres.
     /// Also extracts 30-second AAC audio preview links for instant in-app listening before download.
-    pub async fn fetch_trending_and_genre_candidates(
-        &self,
-        genre_ids: &[u32],
-        storefronts: &[String],
-        regional_queries: &[String],
-    ) -> AppResult<usize> {
-        let client = match reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(4))
-            .build()
-        {
-            Ok(c) => c,
-            Err(_) => return Ok(0),
-        };
-
-        let mut urls = Vec::new();
-
-        // Query trending charts for each detected storefront (e.g. "us", "jp", "kr", "in", "br")
-        for sf in storefronts {
-            urls.push(format!(
-                "https://itunes.apple.com/{}/rss/topsongs/limit=25/json",
-                sf
-            ));
-        }
-
-        // Query top 25 for each user taste genre
-        for &gid in genre_ids.iter().take(3) {
-            urls.push(format!(
-                "https://itunes.apple.com/us/rss/topsongs/limit=25/genre={}/json",
-                gid
-            ));
-        }
-
-        let mut ingested_count = 0;
-
-        for url in urls {
-            let resp = match client.get(&url).send().await {
-                Ok(r) if r.status().is_success() => r,
-                _ => continue,
-            };
-
-            let json_val: serde_json::Value = match resp.json().await {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
-
-            let entries = json_val
-                .get("feed")
-                .and_then(|f| f.get("entry"))
-                .and_then(|e| e.as_array());
-
-            if let Some(entries) = entries {
-                for entry in entries {
-                    let title = entry
-                        .get("im:name")
-                        .and_then(|n| n.get("label"))
-                        .and_then(|l| l.as_str())
-                        .unwrap_or("")
-                        .trim();
-
-                    let artist = entry
-                        .get("im:artist")
-                        .and_then(|a| a.get("label"))
-                        .and_then(|l| l.as_str())
-                        .unwrap_or("")
-                        .trim();
-
-                    if title.is_empty() || artist.is_empty() {
-                        continue;
-                    }
-
-                    let album = entry
-                        .get("im:collection")
-                        .and_then(|c| c.get("im:name"))
-                        .and_then(|n| n.get("label"))
-                        .and_then(|l| l.as_str())
-                        .map(|s| s.to_string());
-
-                    let cover_art_url = entry
-                        .get("im:image")
-                        .and_then(|imgs| imgs.as_array())
-                        .and_then(|arr| arr.last())
-                        .and_then(|img| img.get("label"))
-                        .and_then(|l| l.as_str())
-                        .map(|s| s.to_string());
-
-                    let itunes_id = entry
-                        .get("id")
-                        .and_then(|i| i.get("attributes"))
-                        .and_then(|a| a.get("im:id"))
-                        .and_then(|id| id.as_str())
-                        .unwrap_or("");
-
-                    let genre = entry
-                        .get("category")
-                        .and_then(|c| c.get("attributes"))
-                        .and_then(|a| a.get("label"))
-                        .and_then(|l| l.as_str())
-                        .map(|s| s.to_string());
-
-                    // Extract 30s AAC audio preview stream link
-                    let preview_url = entry
-                        .get("link")
-                        .and_then(|l| l.as_array())
-                        .and_then(|links| {
-                            links.iter().find_map(|link| {
-                                let attrs = link.get("attributes")?;
-                                let rel = attrs.get("rel")?.as_str()?;
-                                if rel == "enclosure" {
-                                    attrs.get("href")?.as_str().map(|s| s.to_string())
-                                } else {
-                                    None
-                                }
-                            })
-                        });
-
-                    let record = ExternalTrackRecord {
-                        id: format!(
-                            "itunes:{}",
-                            if itunes_id.is_empty() {
-                                format!("{}:{}", artist, title)
-                            } else {
-                                itunes_id.to_string()
-                            }
-                        ),
-                        provider: "itunes".to_string(),
-                        provider_id: if itunes_id.is_empty() {
-                            title.to_string()
-                        } else {
-                            itunes_id.to_string()
-                        },
-                        title: title.to_string(),
-                        artist: artist.to_string(),
-                        album: album.or_else(|| genre.clone()),
-                        // RSS exposes a 30-second preview, not song duration.
-                        duration_secs: None,
-                        cover_art_url,
-                        preview_url,
-                        genre,
-                        match_status: MatchStatus::NotFound.as_str().to_string(),
-                        matched_local_track_id: None,
-                        created_at: chrono::Utc::now().timestamp(),
-                    };
-
-                    let _ = self.ingest_external_track(record).await;
-                    ingested_count += 1;
-                }
-            }
-        }
-
-        // Query targeted regional terms (e.g. "malayalam", "malayalam hits")
-        for query in regional_queries {
-            let encoded = query.replace(' ', "+");
-            let url = format!(
-                "https://itunes.apple.com/search?term={}&country=in&media=music&entity=song&limit=25",
-                encoded
-            );
-            let resp = match client.get(&url).send().await {
-                Ok(r) if r.status().is_success() => r,
-                _ => continue,
-            };
-
-            let json_val: serde_json::Value = match resp.json().await {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
-
-            if let Some(results) = json_val.get("results").and_then(|r| r.as_array()) {
-                for item in results {
-                    let title = item
-                        .get("trackName")
-                        .and_then(|t| t.as_str())
-                        .unwrap_or("")
-                        .trim();
-                    let artist = item
-                        .get("artistName")
-                        .and_then(|a| a.as_str())
-                        .unwrap_or("")
-                        .trim();
-
-                    if title.is_empty() || artist.is_empty() {
-                        continue;
-                    }
-
-                    let album = item
-                        .get("collectionName")
-                        .and_then(|c| c.as_str())
-                        .map(|s| s.to_string());
-                    let cover_art_url = item
-                        .get("artworkUrl100")
-                        .and_then(|a| a.as_str())
-                        .map(|s| s.to_string());
-                    let preview_url = item
-                        .get("previewUrl")
-                        .and_then(|p| p.as_str())
-                        .map(|s| s.to_string());
-                    let track_id = item
-                        .get("trackId")
-                        .map(|id| id.to_string())
-                        .unwrap_or_default();
-                    let genre = item
-                        .get("primaryGenreName")
-                        .and_then(|g| g.as_str())
-                        .map(|s| s.to_string());
-
-                    let record = ExternalTrackRecord {
-                        id: format!(
-                            "itunes:{}",
-                            if track_id.is_empty() {
-                                format!("{}:{}", artist, title)
-                            } else {
-                                track_id.clone()
-                            }
-                        ),
-                        provider: "itunes".to_string(),
-                        provider_id: if track_id.is_empty() {
-                            title.to_string()
-                        } else {
-                            track_id
-                        },
-                        title: title.to_string(),
-                        artist: artist.to_string(),
-                        album,
-                        duration_secs: item.get("trackTimeMillis")
-                            .and_then(|value| value.as_f64())
-                            .map(|millis| millis / 1000.0),
-                        cover_art_url,
-                        preview_url,
-                        genre: genre.or_else(|| Some("Malayalam".to_string())),
-                        match_status: MatchStatus::NotFound.as_str().to_string(),
-                        matched_local_track_id: None,
-                        created_at: chrono::Utc::now().timestamp(),
-                    };
-
-                    let _ = self.ingest_external_track(record).await;
-                    ingested_count += 1;
-                }
-            }
-        }
-
-        Ok(ingested_count)
+    pub async fn charts(&self, refresh: bool) -> AppResult<Vec<serde_json::Value>> {
+        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
+        if !providers.enabled().await { return Ok(vec![]); }
+        Ok(providers.jiosaavn.charts(refresh).await?)
     }
-
-    /// Cache catalog candidates by artist for 15 minutes; listening changes only rerank.
-    async fn artist_candidates(
-        &self,
-        artist: &str,
-        force_refresh: bool,
-    ) -> Vec<ExternalTrackRecord> {
+    pub async fn get_chart_songs(&self, chart_id: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
+        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
+        if !providers.enabled().await { return Ok(vec![]); }
+        let id = chart_id.strip_prefix("jiosaavn:playlist:").ok_or_else(|| crate::core::AppError::Validation("Unknown JioSaavn chart".into()))?;
+        let mut rows = Vec::new();
+        for track in providers.jiosaavn.playlist(id, limit.min(50), false).await? {
+            rows.push(recommendation(providers.persist(track).await?, "JioSaavn chart"));
+        }
+        Ok(rows)
+    }
+    /// Provider chart order is separate from personal recommendation ranking.
+    pub async fn get_world_trending(&self, limit: usize, refresh: bool) -> AppResult<Vec<DiscoveryRecommendation>> {
+        if !refresh {
+            if let Some((at, songs)) = &*self.world_chart_cache.read().await {
+                if at.elapsed().as_secs() < 900 { return Ok(songs.iter().take(limit).cloned().collect()); }
+            }
+        }
+        let charts = self.charts(refresh).await?;
+        let mut songs = Vec::new(); let mut seen = HashSet::new();
+        for chart in charts.iter().take(3) {
+            let Some(id) = chart["id"].as_str() else { continue };
+            for mut row in self.get_chart_songs(&format!("jiosaavn:playlist:{id}"), 20).await.unwrap_or_default() {
+                if seen.insert(row.provider_id.clone()) {
+                    row.recommendation_reason = chart["title"].as_str().unwrap_or("JioSaavn chart").into();
+                    songs.push(row);
+                }
+            }
+        }
+        if songs.is_empty() {
+            if let Some((_, cached)) = &*self.world_chart_cache.read().await { return Ok(cached.iter().take(limit).cloned().collect()); }
+        } else { *self.world_chart_cache.write().await = Some((std::time::Instant::now(), songs.clone())); }
+        Ok(songs.into_iter().take(limit).collect())
+    }
+    async fn fetch_catalog_candidates(&self, queries: &[String]) -> AppResult<usize> {
+        let Some(providers) = &self.provider_coordinator else { return Ok(0); };
+        if !providers.enabled().await { return Ok(0); }
+        let mut count = 0;
+        for query in queries.iter().take(3) {
+            for track in providers.jiosaavn.search(query, 25).await.unwrap_or_default() {
+                providers.persist(track).await?; count += 1;
+            }
+        }
+        Ok(count)
+    }
+    async fn artist_candidates(&self, artist: &str, refresh: bool) -> Vec<ExternalTrackRecord> {
         let key = artist.trim().to_lowercase();
-        if key.is_empty() {
-            return Vec::new();
+        let Some(providers) = &self.provider_coordinator else { return vec![]; };
+        if !providers.enabled().await { return vec![]; }
+        if !refresh {
+            if let Some((at, tracks)) = self.artist_candidate_cache.lock().await.get(&key) {
+                if at.elapsed().as_secs() < 900 { return tracks.clone(); }
+            }
+        }
+        let mut rows = Vec::new();
+        for track in providers.jiosaavn.search(artist, 50).await.unwrap_or_default() {
+            if track.artist_name.to_lowercase().split(',').any(|name| name.trim() == key) {
+                if let Ok(row) = providers.persist(track).await { rows.push(row); }
+            }
         }
         let mut cache = self.artist_candidate_cache.lock().await;
-        if !force_refresh {
-            if let Some((at, tracks)) = cache.get(&key) {
-                if at.elapsed().as_secs() < 900 {
-                    return tracks.clone();
-                }
-            }
-        }
-        let Ok(client) = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(4))
-            .build()
-        else {
-            return Vec::new();
-        };
-        let mut tracks = Vec::new();
-        // An artist can be absent from US charts yet available in another catalog.
-        for country in ["us", "in"] {
-            let response = client
-                .get("https://itunes.apple.com/search")
-                .query(&[
-                    ("term", artist),
-                    ("country", country),
-                    ("media", "music"),
-                    ("entity", "song"),
-                    ("attribute", "artistTerm"),
-                    ("limit", "25"),
-                ])
-                .send()
-                .await;
-            let Ok(response) = response else {
-                continue;
-            };
-            if !response.status().is_success() {
-                continue;
-            }
-            let Ok(data) = response.json::<serde_json::Value>().await else {
-                continue;
-            };
-            if let Some(items) = data["results"].as_array() {
-                for item in items {
-                    let (Some(id), Some(title), Some(name)) = (
-                        item["trackId"].as_i64(),
-                        item["trackName"].as_str(),
-                        item["artistName"].as_str(),
-                    ) else {
-                        continue;
-                    };
-                    if name.trim().to_lowercase() != key {
-                        continue;
-                    }
-                    let record = ExternalTrackRecord {
-                        id: format!("itunes:{id}"),
-                        provider: "itunes".into(),
-                        provider_id: id.to_string(),
-                        title: title.into(),
-                        artist: name.into(),
-                        album: item["collectionName"].as_str().map(str::to_string),
-                        duration_secs: item["trackTimeMillis"].as_f64().map(|ms| ms / 1000.0),
-                        cover_art_url: item["artworkUrl100"].as_str().map(str::to_string),
-                        preview_url: item["previewUrl"].as_str().map(str::to_string),
-                        genre: item["primaryGenreName"].as_str().map(str::to_string),
-                        match_status: "NOT_FOUND".into(),
-                        matched_local_track_id: None,
-                        created_at: chrono::Utc::now().timestamp(),
-                    };
-                    let _ = self.wishlist_repo.upsert_external_track(&record).await;
-                    tracks.push(record);
-                }
-            }
-            if !tracks.is_empty() {
-                break;
-            }
-        }
-        if tracks.is_empty() {
-            // Retain useful candidates during provider outages; retry next time.
-            return cache
-                .get(&key)
-                .map(|(_, tracks)| tracks.clone())
-                .unwrap_or_default();
-        }
-        if cache.len() >= 64 {
-            cache.retain(|_, (at, _)| at.elapsed().as_secs() < 900);
-        }
-        if cache.len() >= 64 {
-            cache.clear();
-        }
-        cache.insert(key, (std::time::Instant::now(), tracks.clone()));
-        tracks
+        if rows.is_empty() { return cache.get(&key).map(|(_, rows)| rows.clone()).unwrap_or_default(); }
+        cache.retain(|_,(at,_)| at.elapsed().as_secs() < 900);
+        if cache.len() >= 64 { cache.clear(); }
+        cache.insert(key,(std::time::Instant::now(), rows.clone())); rows
     }
-
+    pub async fn search_online_music(&self, query: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
+        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
+        if !providers.enabled().await { return Ok(vec![]); }
+        let mut results = Vec::new();
+        for track in providers.jiosaavn.search(query, limit.min(50)).await? {
+            results.push(recommendation(providers.persist(track).await?, "JioSaavn search"));
+        }
+        Ok(results)
+    }
     /// Ranks catalog candidates by listening affinity, with library signals for cold start.
     pub async fn get_discovery_recommendations(
         &self,
@@ -696,134 +306,13 @@ impl DiscoveryCoordinator {
             .filter(|(_, weight)| *weight > 0.0).collect();
         ranked_user_genres.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-        let mut target_itunes_genre_ids = Vec::new();
-        for (g, _) in &ranked_user_genres {
-            if let Some(gid) = map_genre_to_itunes_genre_id(g) {
-                if !target_itunes_genre_ids.contains(&gid) {
-                    target_itunes_genre_ids.push(gid);
-                    if target_itunes_genre_ids.len() >= 3 {
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 3. Fetch candidate external tracks from database
-        let mut ext_tracks = self
-            .wishlist_repo
-            .list_external_tracks(None, 300)
-            .await?;
-
-        // Detect regional storefronts based on user's library genres and artists
-        let mut storefronts = vec!["us".to_string()];
-
-        let has_japanese = ranked_user_genres.iter().any(|(g, _)| {
-            let lower = g.to_lowercase();
-            lower.contains("asian") || lower.contains("j-pop") || lower.contains("japanese") || lower.contains("anime")
-        }) || library_artists.iter().any(|a| {
-            a.contains("ado")
-                || a.contains("yoasobi")
-                || a.contains("kajiura")
-                || a.contains("nemu")
-                || a.chars().any(|c| {
-                    (c >= '\u{3040}' && c <= '\u{30ff}') || (c >= '\u{4e00}' && c <= '\u{9fff}')
-                })
-        });
-
-        let has_korean = ranked_user_genres.iter().any(|(g, _)| {
-            let lower = g.to_lowercase();
-            lower.contains("k-pop") || lower.contains("korean")
-        }) || library_artists
-            .iter()
-            .any(|a| a.chars().any(|c| c >= '\u{ac00}' && c <= '\u{d7af}'));
-
-        let has_indian = ranked_user_genres.iter().any(|(g, _)| {
-            let lower = g.to_lowercase();
-            lower.contains("bollywood")
-                || lower.contains("indian")
-                || lower.contains("hindi")
-                || lower.contains("punjabi")
-                || lower.contains("desi")
-        }) || library_artists
-            .iter()
-            .any(|a| a.chars().any(|c| c >= '\u{0900}' && c <= '\u{097f}'));
-
-        let has_brazilian = ranked_user_genres.iter().any(|(g, _)| {
-            let lower = g.to_lowercase();
-            lower.contains("brazil") || lower.contains("samba") || lower.contains("bossa")
-        });
-
-        let has_latin = ranked_user_genres.iter().any(|(g, _)| {
-            let lower = g.to_lowercase();
-            lower.contains("latin") || lower.contains("reggaeton") || lower.contains("spanish")
-        });
-
-        if has_japanese && !storefronts.contains(&"jp".to_string()) {
-            storefronts.push("jp".to_string());
-        }
-        if has_korean && !storefronts.contains(&"kr".to_string()) {
-            storefronts.push("kr".to_string());
-        }
-        let has_malayalam = library_artists.iter().any(|a| {
-            let al = a.to_lowercase();
-            al.contains("sushin")
-                || al.contains("dabzee")
-                || al.contains("shaan rahman")
-                || al.contains("yesudas")
-                || al.contains("hanumankind")
-                || al.contains("ranjin raj")
-                || al.contains("anirudh")
-                || al.contains("chithra")
-                || al.contains("malayalam")
-                || a.chars().any(|c| c >= '\u{0d00}' && c <= '\u{0d7f}')
-        }) || local_tracks.iter().filter(|t| t.format != "online" && !t.file_path.starts_with("online://")).any(|t| {
-            let tl = t.title.to_lowercase();
-            tl.contains("illuminati")
-                || tl.contains("malare")
-                || tl.contains("poomuthole")
-                || tl.contains("aalolam")
-                || t.title.chars().any(|c| c >= '\u{0d00}' && c <= '\u{0d7f}')
-        }) || ranked_user_genres.iter().any(|(g, _)| {
-            g.to_lowercase().contains("malayalam")
-        });
-
-        if (has_indian || has_malayalam) && !storefronts.contains(&"in".to_string()) {
-            storefronts.push("in".to_string());
-        }
-
-        let mut regional_queries = Vec::new();
-        if has_malayalam {
-            regional_queries.push("malayalam".to_string());
-            regional_queries.push("malayalam hits".to_string());
-        }
-
-        if (has_brazilian || has_latin) && !storefronts.contains(&"br".to_string()) {
-            storefronts.push("br".to_string());
-        }
-
-        // 4. Check if pool needs refreshment (e.g. missing previews or too few candidates)
-        let unique_artists: HashSet<_> = ext_tracks
-            .iter()
-            .map(|t| t.artist.to_lowercase().trim().to_string())
-            .collect();
-        let has_previews = ext_tracks.iter().any(|t| t.preview_url.is_some());
-
-        if self.provider_coordinator.is_some()
-            && (force_refresh || unique_artists.len() < 10 || ext_tracks.len() < limit || !has_previews)
-        {
-            let _ = self
-                .fetch_trending_and_genre_candidates(
-                    &target_itunes_genre_ids,
-                    &storefronts,
-                    &regional_queries,
-                )
-                .await;
-
-            // Re-fetch external tracks after fresh ingestion
-            ext_tracks = self
-                .wishlist_repo
-                .list_external_tracks(None, 300)
-                .await?;
+        let has_malayalam = ranked_user_genres.iter().any(|(genre, _)| genre.contains("malayalam"));
+        let mut ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
+        if self.provider_coordinator.is_some() && (force_refresh || ext_tracks.len() < limit.max(30)) {
+            let mut queries: Vec<String> = ranked_user_genres.iter().take(3).map(|(genre,_)| genre.clone()).collect();
+            if queries.is_empty() { queries.push("English hits".into()); }
+            let _ = self.fetch_catalog_candidates(&queries).await;
+            ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
         }
 
         if self.provider_coordinator.is_some() {
@@ -1011,376 +500,12 @@ impl DiscoveryCoordinator {
         Ok(recs)
     }
 
-    /// Searches online music providers (iTunes Music API) for any artist, song, or album worldwide.
-    /// Ingests candidate results, matches them in real-time against the local library, and returns
-    /// full DiscoveryRecommendation records ready for previewing, wishlisting, or downloading.
-    pub async fn search_online_music(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> AppResult<Vec<DiscoveryRecommendation>> {
-        let clean_query = query.trim();
-        if clean_query.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let lower_query = clean_query.to_lowercase();
-        info!(query = %clean_query, limit = limit, "Executing case-insensitive online music search");
-
-        // 1. Build HTTP client with 6s timeout and proper User-Agent
-        let client = match reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(6))
-            .user_agent("SoundFlow/0.1.0 (Linux; x86_64)")
-            .build()
-        {
-            Ok(c) => c,
-            Err(e) => {
-                warn!(error = %e, "Failed to build HTTP client for online search");
-                return Ok(Vec::new());
-            }
-        };
-
-        // 2. Fetch wishlist and local tracks for matching and synthesis
-        let wishlist_items = self.wishlist_repo.get_all(None).await.unwrap_or_default();
-        let wishlist_ext_ids: HashSet<String> = wishlist_items
-            .iter()
-            .filter_map(|w| w.external_track_id.clone())
-            .collect();
-        let wishlist_keys: HashSet<String> = wishlist_items
-            .iter()
-            .map(|w| format!("{}:{}", w.artist.to_lowercase().trim(), w.title.to_lowercase().trim()))
-            .collect();
-
-        let local_tracks = self
-            .track_repo
-            .list_tracks(0, 10000, None, true)
-            .await
-            .unwrap_or_default();
-
-        let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
-            .iter()
-            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
-            .map(|t| (t.id.as_str(), t.title.as_str(), t.artist_name.as_deref().unwrap_or(""), t.duration_secs))
-            .collect();
-
-        // 3. Multi-storefront iTunes querying (Global + Regional India/Asia for broad catalog coverage)
-        let encoded = url_encode(clean_query);
-        let search_limit = limit.max(15).min(50);
-        let mut raw_items: Vec<serde_json::Value> = Vec::new();
-
-        // Query 1: Global catalog (broad media=music, non-restricted entity)
-        let url_global = format!(
-            "https://itunes.apple.com/search?term={}&media=music&limit={}",
-            encoded, search_limit
-        );
-        if let Ok(Ok(resp)) = tokio::time::timeout(std::time::Duration::from_secs(5), client.get(&url_global).send()).await {
-            if resp.status().is_success() {
-                if let Ok(text) = resp.text().await {
-                    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&text) {
-                        if let Some(arr) = json_val.get("results").and_then(|r| r.as_array()) {
-                            raw_items.extend(arr.iter().cloned());
-                        }
-                    }
-                }
-            }
-        }
-
-        // Query 2: Regional Indian storefront (&country=in) if fewer than 8 results found (captures Malayalam, Bollywood, Regional Asian tracks)
-        if raw_items.len() < 8 {
-            let url_in = format!(
-                "https://itunes.apple.com/search?term={}&country=in&media=music&limit={}",
-                encoded, search_limit
-            );
-            if let Ok(Ok(resp)) = tokio::time::timeout(std::time::Duration::from_secs(5), client.get(&url_in).send()).await {
-                if resp.status().is_success() {
-                    if let Ok(text) = resp.text().await {
-                        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if let Some(arr) = json_val.get("results").and_then(|r| r.as_array()) {
-                                raw_items.extend(arr.iter().cloned());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Query 3: Entity=song fallback if still 0 items
-        if raw_items.is_empty() {
-            let url_song = format!(
-                "https://itunes.apple.com/search?term={}&entity=song&limit={}",
-                encoded, search_limit
-            );
-            if let Ok(Ok(resp)) = tokio::time::timeout(std::time::Duration::from_secs(5), client.get(&url_song).send()).await {
-                if resp.status().is_success() {
-                    if let Ok(text) = resp.text().await {
-                        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if let Some(arr) = json_val.get("results").and_then(|r| r.as_array()) {
-                                raw_items.extend(arr.iter().cloned());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Process, deduplicate, and score candidates
-        struct ScoredResult {
-            recommendation: DiscoveryRecommendation,
-            score: i32,
-        }
-
-        let mut scored_results: Vec<ScoredResult> = Vec::new();
-        let mut seen_keys: HashSet<String> = HashSet::new();
-        let query_tokens: Vec<&str> = lower_query.split_whitespace().collect();
-
-        for item in raw_items {
-            let title = item.get("trackName")
-                .or_else(|| item.get("trackCensoredName"))
-                .or_else(|| item.get("collectionName"))
-                .or_else(|| item.get("name"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim();
-            let artist = item.get("artistName")
-                .or_else(|| item.get("collectionArtistName"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim();
-
-            if title.is_empty() || artist.is_empty() {
-                continue;
-            }
-
-            let dedup_key = format!("{}:{}", artist.to_lowercase(), title.to_lowercase());
-            if seen_keys.contains(&dedup_key) {
-                continue;
-            }
-            seen_keys.insert(dedup_key.clone());
-
-            let album = item.get("collectionName").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let genre = item.get("primaryGenreName").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let itunes_track_id = item.get("trackId").and_then(|v| v.as_i64()).map(|id| id.to_string()).unwrap_or_default();
-
-            let cover_art_url = item.get("artworkUrl100")
-                .or_else(|| item.get("artworkUrl60"))
-                .and_then(|v| v.as_str())
-                .map(|url| url.replace("100x100bb.jpg", "600x600bb.jpg").replace("60x60bb.jpg", "600x600bb.jpg"));
-
-            let preview_url = item.get("previewUrl").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let duration_secs = item.get("trackTimeMillis")
-                .and_then(|v| v.as_f64())
-                .map(|ms| ms / 1000.0)
-                .or(Some(30.0));
-
-            let ext_id = format!("itunes:{}", if itunes_track_id.is_empty() { format!("{}:{}", artist, title) } else { itunes_track_id.clone() });
-            let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(title)
-                || FuzzyTrackMatcher::is_lofi_indicator(artist);
-
-            // Dynamic library matching
-            let match_res = FuzzyTrackMatcher::find_best_match(
-                title,
-                artist,
-                duration_secs,
-                is_lofi,
-                candidate_local_tuples.iter().copied(),
-            );
-
-            let in_wishlist = wishlist_ext_ids.contains(&ext_id)
-                || wishlist_keys.contains(&dedup_key);
-
-            // Case-insensitive pinpoint relevance score
-            let lower_title = title.to_lowercase();
-            let lower_artist = artist.to_lowercase();
-            let mut score = 0;
-
-            if lower_title == lower_query {
-                score += 1000;
-            } else if lower_title.starts_with(&lower_query) {
-                score += 500;
-            } else if lower_title.contains(&lower_query) {
-                score += 250;
-            }
-
-            if lower_artist == lower_query {
-                score += 800;
-            } else if lower_artist.starts_with(&lower_query) {
-                score += 400;
-            } else if lower_artist.contains(&lower_query) {
-                score += 200;
-            }
-
-            for tok in &query_tokens {
-                if lower_title.contains(tok) {
-                    score += 60;
-                }
-                if lower_artist.contains(tok) {
-                    score += 40;
-                }
-            }
-
-            let reason = if score >= 500 {
-                format!("Top online match for \"{}\"", clean_query)
-            } else {
-                format!("Online result for \"{}\"", clean_query)
-            };
-
-            scored_results.push(ScoredResult {
-                recommendation: DiscoveryRecommendation {
-                    external_track_id: ext_id,
-                    provider: "itunes".to_string(),
-                    provider_id: if itunes_track_id.is_empty() { title.to_string() } else { itunes_track_id },
-                    title: title.to_string(),
-                    artist: artist.to_string(),
-                    album,
-                    duration_secs,
-                    cover_art_url,
-                    preview_url,
-                    genre,
-                    match_status: match_res.status,
-                    matched_local_track_id: match_res.matched_track_id,
-                    recommendation_reason: reason,
-                    in_wishlist,
-                },
-                score,
-            });
-        }
-
-        // 5. Synthesize matching local library tracks that aren't already represented
-        for lt in &local_tracks {
-            if lt.format == "online" || lt.file_path.starts_with("online://") || lt.id.starts_with("itunes:") || lt.id.starts_with("online:") {
-                continue;
-            }
-
-            let lt_title = lt.title.trim();
-            let lt_artist = lt.artist_name.as_deref().unwrap_or("").trim();
-            let lt_key = format!("{}:{}", lt_artist.to_lowercase(), lt_title.to_lowercase());
-            if seen_keys.contains(&lt_key) {
-                continue;
-            }
-
-            let lower_lt_title = lt_title.to_lowercase();
-            let lower_lt_artist = lt_artist.to_lowercase();
-
-            let matches_title = lower_lt_title.contains(&lower_query);
-            let matches_artist = lower_lt_artist.contains(&lower_query);
-            let matches_tokens = query_tokens.iter().all(|tok| lower_lt_title.contains(tok) || lower_lt_artist.contains(tok));
-
-            if matches_title || matches_artist || matches_tokens {
-                seen_keys.insert(lt_key);
-                let mut score = 50;
-                if lower_lt_title == lower_query {
-                    score += 900;
-                } else if lower_lt_title.starts_with(&lower_query) {
-                    score += 450;
-                } else if matches_title {
-                    score += 200;
-                }
-
-                if lower_lt_artist == lower_query {
-                    score += 700;
-                } else if matches_artist {
-                    score += 150;
-                }
-
-                scored_results.push(ScoredResult {
-                    recommendation: DiscoveryRecommendation {
-                        external_track_id: format!("local:{}", lt.id),
-                        provider: "library".to_string(),
-                        provider_id: lt.id.clone(),
-                        title: lt_title.to_string(),
-                        artist: lt_artist.to_string(),
-                        album: lt.album_title.clone(),
-                        duration_secs: Some(lt.duration_secs),
-                        cover_art_url: None,
-                        preview_url: None,
-                        genre: lt.genre_name.clone(),
-                        match_status: MatchStatus::ExactMatch,
-                        matched_local_track_id: Some(lt.id.clone()),
-                        recommendation_reason: "In your local library".to_string(),
-                        in_wishlist: false,
-                    },
-                    score,
-                });
-            }
-        }
-
-        // 6. Sort descending by relevance score (pinpoint exact matches first)
-        scored_results.sort_by(|a, b| b.score.cmp(&a.score));
-
-        let out: Vec<DiscoveryRecommendation> = scored_results
-            .into_iter()
-            .map(|sr| sr.recommendation)
-            .take(limit)
-            .collect();
-
-        info!(count = out.len(), query = %clean_query, "Online music search returning candidates");
-        Ok(out)
-    }
 }
 
-fn chart_entry_to_recommendation(entry: &serde_json::Value, storefront: &str) -> Option<DiscoveryRecommendation> {
-    let title = entry.pointer("/im:name/label")?.as_str()?.trim();
-    let artist = entry.pointer("/im:artist/label")?.as_str()?.trim();
-    if title.is_empty() || artist.is_empty() { return None; }
-    let id = entry.pointer("/id/attributes/im:id")?.as_str()?;
-    let cover_art_url = entry.get("im:image")?.as_array()?.last()?
-        .get("label")?.as_str().map(str::to_string);
-    let preview_url = entry.get("link").and_then(|links| links.as_array())
-        .and_then(|links| links.iter().find(|link| link.pointer("/attributes/rel").and_then(|v| v.as_str()) == Some("enclosure")))
-        .and_then(|link| link.pointer("/attributes/href"))
-        .and_then(|v| v.as_str()).map(str::to_string);
-    Some(DiscoveryRecommendation {
-        external_track_id: format!("itunes:{id}"),
-        provider: "itunes".into(),
-        provider_id: id.into(),
-        title: title.into(),
-        artist: artist.into(),
-        album: entry.pointer("/im:collection/im:name/label").and_then(|v| v.as_str()).map(str::to_string),
-        duration_secs: None,
-        cover_art_url,
-        preview_url,
-        genre: entry.pointer("/category/attributes/label").and_then(|v| v.as_str()).map(str::to_string),
-        match_status: MatchStatus::NotFound,
-        matched_local_track_id: None,
-        recommendation_reason: format!("Top songs chart · {}", storefront.to_uppercase()),
-        in_wishlist: false,
-    })
-}
-
-#[cfg(test)]
-mod world_chart_tests {
-    use super::*;
-
-    #[test]
-    fn chart_entry_uses_song_identity_and_preview_without_claiming_preview_duration() {
-        let entry = serde_json::json!({
-            "im:name": {"label": "Song"},
-            "im:artist": {"label": "Artist"},
-            "id": {"attributes": {"im:id": "123"}},
-            "im:image": [{"label": "https://example.com/art.jpg"}],
-            "link": [{"attributes": {"rel": "enclosure", "href": "https://example.com/preview.m4a"}}]
-        });
-        let rec = chart_entry_to_recommendation(&entry, "gb").unwrap();
-        assert_eq!(rec.external_track_id, "itunes:123");
-        assert_eq!(rec.preview_url.as_deref(), Some("https://example.com/preview.m4a"));
-        assert_eq!(rec.duration_secs, None);
-        assert_eq!(rec.recommendation_reason, "Top songs chart · GB");
-    }
-}
-
-/// Helper RFC 3986 percent-encoding for search query parameters
-fn url_encode(input: &str) -> String {
-    let mut encoded = String::new();
-    for b in input.bytes() {
-        match b {
-            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push(b as char);
-            }
-            b' ' => encoded.push('+'),
-            _ => {
-                encoded.push_str(&format!("%{:02X}", b));
-            }
-        }
-    }
-    encoded
+fn recommendation(row: ExternalTrackRecord, reason: &str) -> DiscoveryRecommendation {
+    DiscoveryRecommendation { external_track_id: row.id, provider: row.provider, provider_id: row.provider_id,
+        title: row.title, artist: row.artist, album: row.album, duration_secs: row.duration_secs,
+        cover_art_url: row.cover_art_url, preview_url: None, genre: row.genre,
+        match_status: MatchStatus::NotFound, matched_local_track_id: None,
+        recommendation_reason: reason.into(), in_wishlist: false }
 }

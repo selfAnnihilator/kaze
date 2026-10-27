@@ -89,13 +89,10 @@ pub enum Query {
         limit: u32,
     },
     GetSettings,
+    GetCharts,
     GetPlaybackState,
-    ImportSpotifyPlaylist {
+    ImportJioSaavnPlaylist {
         url_or_id: String,
-    },
-    ResolveFullTrackAudio {
-        artist: String,
-        title: String,
     },
     SearchOnlineMusic {
         query: String,
@@ -157,6 +154,7 @@ pub enum QueryResponse {
         configured_folders: Vec<serde_json::Value>,
     },
     Tracks(Vec<serde_json::Value>),
+    Charts(Vec<serde_json::Value>),
     Track(Option<serde_json::Value>),
     Artists(Vec<serde_json::Value>),
     Albums(Vec<serde_json::Value>),
@@ -172,12 +170,7 @@ pub enum QueryResponse {
     Wishlist(Vec<serde_json::Value>),
     DiscoveryRecommendations(Vec<serde_json::Value>),
     Downloads(Vec<serde_json::Value>),
-    SpotifyPlaylistImport(serde_json::Value),
-    FullTrackAudio {
-        stream_url: String,
-        duration_secs: f64,
-        download_result: Option<crate::downloads::types::DownloadSearchResult>,
-    },
+    JioSaavnPlaylistImport(serde_json::Value),
     CoverArt(Option<String>),
     TrackPlaylistMemberships(serde_json::Value),
     Lyrics(Option<serde_json::Value>),

@@ -185,17 +185,11 @@ pub enum Command {
         wishlist_id: String,
         status: WishlistStatus,
     },
-    SearchSoulseek {
+    SearchDownloads {
         artist: String,
         title: String,
         album: Option<String>,
     },
-    LaunchSoulseek {
-        search_query: Option<String>,
-        #[serde(default)]
-        filter_query: Option<String>,
-    },
-    ImportSoulseekDownloads,
     StartDownload {
         search_result_id: String,
         wishlist_id: Option<String>,
@@ -257,8 +251,6 @@ pub enum CommandResponse {
     OnboardingCompleted { configured_folders: usize },
     SearchResults(Vec<serde_json::Value>),
     DownloadStarted { task_id: String },
-    SoulseekLaunched { message: String },
-    SoulseekImported { imported_count: usize },
     WishlistAdded { count: usize },
     UserProfile(serde_json::Value),
     CloudSyncCompleted { synced_at: i64 },

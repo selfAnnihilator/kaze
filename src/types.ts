@@ -177,16 +177,9 @@ export interface AppSettings {
     provider_priority: string[];
     enable_jiosaavn?: boolean;
     auto_fill_metadata?: boolean;
-    enable_musicbrainz: boolean;
-    enable_spotify: boolean;
-    spotify_client_id?: string;
-    spotify_client_secret?: string;
   };
   downloads: {
     download_dir?: string;
-    slskd_host: string;
-    slskd_port: number;
-    slskd_api_key?: string;
     auto_import: boolean;
     max_concurrent_downloads: number;
   };
@@ -195,8 +188,10 @@ export interface AppSettings {
 
 // --- Commands & Queries ---
 
-export interface SpotifyImportedTrack {
-  spotify_id: string;
+export interface JioSaavnImportedTrack {
+  track_id: string;
+  album?: string;
+  cover_art_url?: string;
   title: string;
   artist: string;
   duration_secs?: number;
@@ -205,14 +200,14 @@ export interface SpotifyImportedTrack {
   matched_local_track_id?: string;
 }
 
-export interface SpotifyPlaylistImport {
+export interface JioSaavnPlaylistImport {
   playlist_id: string;
   title: string;
   cover_url?: string;
   total_tracks: number;
   matched_tracks: number;
   missing_tracks: number;
-  tracks: SpotifyImportedTrack[];
+  tracks: JioSaavnImportedTrack[];
 }
 
 export type Command =
@@ -305,11 +300,8 @@ export type Command =
   | { command: "UpdateWishlistStatus"; payload: { wishlist_id: string; status: "want" | "ignore" | "already_own" | "downloaded";
       };
     }
-  | { command: "SearchSoulseek"; payload: { artist: string; title: string; album?: string };
+  | { command: "SearchDownloads"; payload: { artist: string; title: string; album?: string };
     }
-  | { command: "LaunchSoulseek"; payload: { search_query?: string; filter_query?: string };
-    }
-  | { command: "ImportSoulseekDownloads" }
   | { command: "StartDownload"; payload: { search_result_id: string; wishlist_id?: string };
     }
   | { command: "CancelDownload"; payload: { task_id: string } }
@@ -367,9 +359,8 @@ export type Query =
     }
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
   | { query: "GetSettings" }
-  | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
-  | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string };
-    }
+  | { query: "GetCharts" }
+  | { query: "ImportJioSaavnPlaylist"; payload: { url_or_id: string } }
   | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number; provider?: "jiosaavn" } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }
   | { query: "GetTrackPlaylistMemberships" }

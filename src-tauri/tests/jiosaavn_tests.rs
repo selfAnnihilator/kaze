@@ -116,15 +116,16 @@ async fn real_local_file_plays_despite_stale_online_format_and_disabled_jiosaavn
 
 #[tokio::test]
 async fn trial_rejects_old_provider_requests() {
-    use music_player_backend::{config::AppConfig, core::{Command, CoreProcessor, Query}, playback::backend::MockAudioBackend};
+    use music_player_backend::{config::AppConfig, core::{CoreProcessor, Query}, playback::backend::MockAudioBackend};
     let temp = tempfile::tempdir().unwrap();
     let mut config = AppConfig::default_with_dirs();
     config.cache_dir = temp.path().join("cache");
     let core = CoreProcessor::new_with_backend(create_in_memory_pool().await.unwrap(), config, Box::new(MockAudioBackend::new()));
     assert!(core.execute_query(Query::SearchOnlineMusic { query: "Song".into(), provider: Some("alternative".into()), limit: Some(5) }).await.is_err());
-    assert!(core.execute_query(Query::ResolveFullTrackAudio { artist: "Artist".into(), title: "Song".into() }).await.is_err());
-    assert!(core.dispatch_command(Command::SearchSoulseek { artist: "Artist".into(), title: "Song".into(), album: None }).await.is_err());
-    assert!(core.dispatch_command(Command::LaunchSoulseek { search_query: None, filter_query: None }).await.is_err());
+    for retired in ["ResolveFullTrackAudio", "LaunchSoulseek", "ImportSoulseekDownloads"] {
+        let payload=json!({"command":retired,"payload":{}});
+        assert!(serde_json::from_value::<music_player_backend::core::Command>(payload).is_err());
+    }
     core.shutdown().await.unwrap();
 }
 
@@ -181,7 +182,7 @@ async fn enrichment_rescan_removal_and_offline_restart_preserve_source_tags() {
     let (url, requests, task) = server(json!({"results":[item.clone()],"song1":item}), 200).await;
     let bus = Arc::new(EventBus::default());
     let mut providers =
-        ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into(), None, None);
+        ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into());
     providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&url));
     let service =
         GapEnrichmentService::new(pool.clone(), Arc::new(providers), temp.path().into(), bus);
@@ -239,8 +240,6 @@ async fn enrichment_rescan_removal_and_offline_restart_preserve_source_tags() {
             pool.clone(),
             bus.clone(),
             temp.path().into(),
-            None,
-            None,
         )),
         temp.path().into(),
         bus,
@@ -268,7 +267,7 @@ async fn enrichment_rejects_ambiguity_versions_and_insufficient_evidence() {
         let (url, _, task) = server(json!({"results":items}), 200).await;
         let bus = Arc::new(EventBus::default());
         let mut providers =
-            ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into(), None, None);
+            ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into());
         providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&url));
         let service =
             GapEnrichmentService::new(pool.clone(), Arc::new(providers), temp.path().into(), bus);
@@ -355,7 +354,6 @@ async fn validated_artwork_uses_existing_loader_after_offline_restart() {
         config::AppConfig,
         core::{CoreProcessor, Query, QueryResponse},
         playback::backend::MockAudioBackend,
-        providers::{CoverArtArchiveProvider, MusicBrainzProvider, SpotifyProvider},
     };
     let temp = tempfile::tempdir().unwrap();
     let db = temp.path().join("art.db");
@@ -369,53 +367,15 @@ async fn validated_artwork_uses_existing_loader_after_offline_restart() {
     let mut png = std::io::Cursor::new(Vec::new());
     image.write_to(&mut png, image::ImageFormat::Png).unwrap();
     let png = png.into_inner();
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let url = format!("http://{}", listener.local_addr().unwrap());
-    let task = tokio::spawn(async move {
-        while let Ok((mut socket, _)) = listener.accept().await {
-            let mut request = [0u8; 8192];
-            let len = socket.read(&mut request).await.unwrap();
-            let request = String::from_utf8_lossy(&request[..len]);
-            let (body, content_type) = if request.contains("/release/") {
-                (png.clone(), "image/png")
-            } else {
-                (json!({"recordings":[{"id":"mb-song","title":"Song","length":200000,"artist-credit":[{"name":"Artist"}],"releases":[{"id":"release","title":"Album","date":"2024-01-01"}]}]}).to_string().into_bytes(),"application/json")
-            };
-            let header=format!("HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",body.len());
-            socket.write_all(header.as_bytes()).await.unwrap();
-            socket.write_all(&body).await.unwrap();
-        }
-    });
-    let bus = Arc::new(EventBus::default());
-    let providers = Arc::new(ProviderCoordinator::with_providers(
-        pool.clone(),
-        bus.clone(),
-        Arc::new(MusicBrainzProvider::with_base_url(&url)),
-        Arc::new(CoverArtArchiveProvider::with_base_url(
-            temp.path().into(),
-            &url,
-        )),
-        Arc::new(SpotifyProvider::new(None, None)),
-    ));
-    let service = GapEnrichmentService::new(pool.clone(), providers, temp.path().into(), bus);
     let repo = SqliteTrackRepository::new(pool.clone());
     let mut original = source("/music/with-art.flac");
     original.has_cover_art = false;
     let id = repo.save_scanned_track(original).await.unwrap();
-    assert!(service.enrich(&id).await.unwrap());
-    assert_eq!(
-        repo.find_by_id(&id).await.unwrap().unwrap().has_cover_art,
-        1
-    );
-    let art: String =
-        sqlx::query_scalar("SELECT cover_art_path FROM track_enrichment WHERE track_id=?")
-            .bind(&id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert!(std::path::Path::new(&art).is_file());
-    task.abort();
-    drop(service);
+    let art = temp.path().join("enrichment-artwork").join("song.png");
+    std::fs::create_dir_all(art.parent().unwrap()).unwrap();
+    std::fs::write(&art, png).unwrap();
+    sqlx::query("INSERT INTO track_enrichment(track_id,provider,provider_id,cover_art_path,state,attempted_at) VALUES (?,'jiosaavn','song',?,'matched',0)")
+        .bind(&id).bind(art.to_string_lossy().as_ref()).execute(&pool).await.unwrap();
     drop(repo);
     pool.close().await;
     let pool = init_db_pool(&db).await.unwrap();
@@ -503,4 +463,25 @@ async fn catalog_hides_unavailable_rows_but_preserves_saved_records_and_local_fi
     let retained:i64=sqlx::query_scalar("SELECT count(*) FROM tracks WHERE id='itunes:missing'").fetch_one(&pool).await.unwrap();
     assert_eq!(retained,1,"unavailable saved items are not deleted");
     task.abort();
+}
+
+#[tokio::test]
+async fn jiosaavn_charts_use_provider_ids_and_playlist_songs_keep_actual_metadata() {
+    let (url, _, chart_server) = server(json!([
+        {"id":"1134548194","title":"India Superhits Top 50"},
+        {"title":"missing ID"}
+    ]),200).await;
+    let charts=JioSaavnProvider::with_endpoint(&url).charts(false).await.unwrap();
+    assert_eq!(charts.len(),1);assert_eq!(charts[0]["id"],"1134548194");chart_server.abort();
+    let song=json!({"id":"provider-song","title":"Shown version","type":"song","language":"malayalam","year":"2026",
+      "more_info":{"album":"Actual album","duration":"183","rights":{"code":"0"},
+      "encrypted_media_url":"ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq",
+      "artistMap":{"primary_artists":[{"name":"Primary Artist"},{"name":"Second Artist"}]}}});
+    let (url,_,playlist_server)=server(json!({"list":[song.clone(),song,{"id":"metadata-only","title":"Unavailable"}]}),200).await;
+    let provider=JioSaavnProvider::with_endpoint(&url);
+    let songs=provider.playlist("123",50,false).await.unwrap();
+    assert_eq!(songs.len(),1);assert_eq!(songs[0].provider_track_id,"provider-song");
+    assert_eq!(songs[0].artist_name,"Primary Artist, Second Artist");
+    assert_eq!(songs[0].language.as_deref(),Some("malayalam"));assert_eq!(songs[0].duration_secs,Some(183.0));
+    assert!(provider.playlist("../old-source",50,false).await.is_err());playlist_server.abort();
 }

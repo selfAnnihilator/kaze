@@ -12,10 +12,10 @@ use crate::cloud::{
 use crate::database::repositories::{
     PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
-    SqliteUserRepository, SqliteWishlistRepository, WishlistRepository, StatsRepository, UserProfile, UserRepository,
+    SqliteUserRepository, SqliteWishlistRepository, StatsRepository, UserProfile, UserRepository,
 };
-use crate::discovery::{DiscoveryCoordinator, DiscoveryRecommendation, FuzzyTrackMatcher, WishlistManager};
-use crate::downloads::{DownloadProvider, DownloadService, DisabledDownloadProvider};
+use crate::discovery::{DiscoveryCoordinator, WishlistManager};
+use crate::downloads::{DownloadProvider, DownloadService, JioSaavnDownloadProvider};
 use std::collections::{HashMap};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
@@ -139,10 +139,8 @@ impl CoreProcessor {
             db_pool.clone(),
             event_bus.clone(),
             config.cache_dir.clone(),
-            config.metadata.spotify_client_id.clone(),
-            config.metadata.spotify_client_secret.clone(),
         ));
-        let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(db_pool.clone(), provider_coordinator.clone(), config.cache_dir.clone(), event_bus.clone()).with_provider_defaults(config.metadata.enable_musicbrainz, config.metadata.enable_spotify));
+        let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(db_pool.clone(), provider_coordinator.clone(), config.cache_dir.clone(), event_bus.clone()));
         background_tasks.push(tokio::spawn(gap_enrichment.clone().run()));
         let cover_art_cache = Arc::new(tokio::sync::RwLock::new(HashMap::new()));
         let cover_cache_updates = cover_art_cache.clone();
@@ -168,7 +166,7 @@ impl CoreProcessor {
         ));
 
         let download_repo = Arc::new(SqliteDownloadRepository::new(db_pool.clone()));
-        let download_provider = custom_download_provider.unwrap_or_else(|| Arc::new(DisabledDownloadProvider));
+        let download_provider = custom_download_provider.unwrap_or_else(|| Arc::new(JioSaavnDownloadProvider::new(provider_coordinator.jiosaavn.clone())));
         let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
             directories::UserDirs::new()
                 .and_then(|u| u.audio_dir().map(|p| p.join("Downloads")))
@@ -1187,7 +1185,7 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::SetMetadataPreference { key, enabled } => {
-                if !matches!(key.as_str(), "enable_jiosaavn" | "auto_fill_metadata" | "enable_musicbrainz" | "enable_spotify") {
+                if !matches!(key.as_str(), "enable_jiosaavn" | "auto_fill_metadata") {
                     return Err(AppError::Validation("Unknown metadata preference".into()));
                 }
                 self.settings_repo.set_setting(&key, if enabled { "true" } else { "false" }).await?;
@@ -1221,8 +1219,9 @@ impl CoreProcessor {
                 Ok(CommandResponse::WishlistAdded { count })
             }
 
-            // --- Soulseek & Downloads ---
-            Command::SearchSoulseek { artist, title, album: _ } => {
+            // --- Downloads ---
+            Command::SearchDownloads { artist, title, album: _ } => {
+                if !self.gap_enrichment.enabled("enable_jiosaavn",true).await { return Err(AppError::Validation("JioSaavn is disabled in Settings".into())); }
                 let results = self.download_service.search_track(&artist, &title).await?;
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
@@ -1230,17 +1229,11 @@ impl CoreProcessor {
                     .collect();
                 Ok(CommandResponse::SearchResults(val))
             }
-            Command::LaunchSoulseek { .. } => Err(AppError::Validation(
-                "Older music providers are disabled during the JioSaavn playback trial".into(),
-            )),
-            Command::ImportSoulseekDownloads => {
-                let count = self.import_soulseek_downloads().await?;
-                Ok(CommandResponse::SoulseekImported { imported_count: count })
-            }
             Command::StartDownload {
                 search_result_id,
                 wishlist_id,
             } => {
+                if !self.gap_enrichment.enabled("enable_jiosaavn",true).await { return Err(AppError::Validation("JioSaavn is disabled in Settings".into())); }
                 let task = self
                     .download_service
                     .start_download(&search_result_id, wishlist_id)
@@ -1986,7 +1979,7 @@ impl CoreProcessor {
                     Some("brutalist") => "brutalist",
                     _ => "spatial",
                 });
-                for (key, default) in [("enable_jiosaavn", true), ("auto_fill_metadata", true), ("enable_musicbrainz", cfg.metadata.enable_musicbrainz), ("enable_spotify", cfg.metadata.enable_spotify)] {
+                for (key, default) in [("enable_jiosaavn", true), ("auto_fill_metadata", true)] {
                     val["metadata"][key] = serde_json::json!(self.gap_enrichment.enabled(key, default).await);
                 }
                 Ok(QueryResponse::Settings(val))
@@ -2183,6 +2176,9 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
+            Query::GetCharts => {
+                Ok(QueryResponse::Charts(self.discovery_coordinator.charts(false).await?))
+            }
             Query::GetWorldTrending { limit, force_refresh } => {
                 let recs = self.discovery_coordinator.get_world_trending(limit as usize, force_refresh.unwrap_or(false)).await?;
                 let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
@@ -2204,40 +2200,18 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::Downloads(val))
             }
-            Query::ImportSpotifyPlaylist { url_or_id } => {
-                let val = self.import_spotify_playlist(&url_or_id).await?;
-                Ok(QueryResponse::SpotifyPlaylistImport(val))
+            Query::ImportJioSaavnPlaylist { url_or_id } => {
+                let val = self.import_jiosaavn_playlist(&url_or_id).await?;
+                Ok(QueryResponse::JioSaavnPlaylistImport(val))
             }
-            Query::ResolveFullTrackAudio { .. } => Err(AppError::Validation(
-                "Search JioSaavn and select a song for full audio playback".into(),
-            )),
             Query::SearchOnlineMusic { query, limit, provider } => {
                 match provider.as_deref().unwrap_or("jiosaavn") {
                     "jiosaavn" => {
                         if self.settings_repo.get_setting("enable_jiosaavn").await?.as_deref() == Some("false") {
                             return Err(AppError::Validation("Enable JioSaavn in Settings to search online music".into()));
                         }
-                        let tracks = self.provider_coordinator.jiosaavn.search(&query, limit.unwrap_or(30).min(50) as usize).await?;
-                        let mut results = Vec::new();
-                        for t in tracks {
-                            let existing: Option<String> = sqlx::query_scalar("SELECT id FROM external_tracks WHERE provider='jiosaavn' AND provider_id=?")
-                                .bind(&t.provider_track_id).fetch_optional(&self.db_pool).await?;
-                            let id = existing.unwrap_or_else(|| format!("jiosaavn:{}", t.provider_track_id));
-                            crate::database::repositories::SqliteWishlistRepository::new(self.db_pool.clone()).upsert_external_track(&crate::database::models::ExternalTrackRecord {
-                                id: id.clone(), provider: "jiosaavn".into(), provider_id: t.provider_track_id.clone(),
-                                title: t.title.clone(), artist: t.artist_name.clone(), album: t.album_title.clone(),
-                                duration_secs: t.duration_secs, cover_art_url: t.cover_art_url.clone(), preview_url: None,
-                                genre: None, match_status: "NOT_FOUND".into(), matched_local_track_id: None,
-                                created_at: chrono::Utc::now().timestamp(),
-                            }).await?;
-                            results.push(serde_json::to_value(DiscoveryRecommendation {
-                                external_track_id: id, provider: "jiosaavn".into(), provider_id: t.provider_track_id,
-                                title: t.title, artist: t.artist_name, album: t.album_title, duration_secs: t.duration_secs,
-                                cover_art_url: t.cover_art_url, preview_url: None, genre: None,
-                                match_status: crate::discovery::MatchStatus::NotFound, matched_local_track_id: None,
-                                recommendation_reason: "JioSaavn search".into(), in_wishlist: false,
-                            }).map_err(|e| AppError::Internal(e.to_string()))?);
-                        }
+                        let results = self.discovery_coordinator.search_online_music(&query, limit.unwrap_or(30).min(50) as usize).await?
+                            .into_iter().filter_map(|row| serde_json::to_value(row).ok()).collect();
                         return Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(results)).await?.as_array().cloned().unwrap_or_default()));
                     }
                     _ => Err(AppError::Validation("JioSaavn is the only online music source in this trial".into())),
@@ -2549,57 +2523,13 @@ impl CoreProcessor {
         }
     }
 
-    async fn import_soulseek_downloads(&self) -> AppResult<usize> {
-        let Some(user_dirs) = directories::UserDirs::new() else {
-            warn!("Could not determine the user's home directory for Soulseek downloads");
-            return Ok(0);
-        };
-        let path = user_dirs
-            .home_dir()
-            .join("Soulseek Downloads")
-            .join("complete");
-        if !path.exists() {
-            return Ok(0);
-        }
-
-        // 1. Add folder if not already present
-        let path_string = path.to_string_lossy().into_owned();
-        let _ = self.library_service.add_folder(&path_string).await;
-
-        // 2. Scan folder
-        let summaries = self.library_service.scan_library(None, true).await?;
-        let total_added: usize = summaries.iter().map(|s| s.added_tracks).sum();
-
-        // 3. Check wishlist items and update status
-        let wishlist_items = self.wishlist_manager.get_wishlist(None).await?;
-        for item in wishlist_items {
-            if item.status == "want" {
-                let match_res = self
-                    .discovery_coordinator
-                    .match_against_library(&item.title, &item.artist, None, false)
-                    .await?;
-                if match_res.status == crate::discovery::MatchStatus::ExactMatch
-                    || match_res.status == crate::discovery::MatchStatus::LikelyMatch
-                {
-                    let _ = self
-                        .wishlist_manager
-                        .update_status(&item.id, "downloaded")
-                        .await;
-                }
-            }
-        }
-
-        info!(total_added, "Imported tracks from Soulseek Downloads");
-        Ok(total_added)
-    }
-
     async fn add_missing_to_wishlist(&self, tracks: Vec<serde_json::Value>) -> AppResult<usize> {
         let mut count = 0;
         for t in tracks {
             let title = t.get("title").and_then(|v| v.as_str()).unwrap_or("").trim();
             let artist = t.get("artist").and_then(|v| v.as_str()).unwrap_or("").trim();
             let album = t.get("album").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let external_id = t.get("spotify_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let external_id = t.get("track_id").and_then(|v| v.as_str()).map(|s| s.to_string());
 
             if !title.is_empty() && !artist.is_empty() {
                 let _ = self
@@ -2613,142 +2543,16 @@ impl CoreProcessor {
         Ok(count)
     }
 
-    async fn import_spotify_playlist(&self, url_or_id: &str) -> AppResult<serde_json::Value> {
-        // Clean URL or bare ID
-        let clean_id = if let Some(idx) = url_or_id.find("/playlist/") {
-            let rest = &url_or_id[idx + 10..];
-            rest.split('?').next().unwrap_or(rest).trim()
-        } else {
-            url_or_id.split('?').next().unwrap_or(url_or_id).trim()
-        };
-
-        let embed_url = format!("https://open.spotify.com/embed/playlist/{}", clean_id);
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(12))
-            .build()
-            .unwrap_or_default();
-
-        let resp = client
-            .get(&embed_url)
-            .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64)")
-            .send()
-            .await
-            .map_err(|e| AppError::Network(format!("Failed to reach Spotify embed: {}", e)))?;
-
-        let html = resp
-            .text()
-            .await
-            .map_err(|e| AppError::Network(format!("Failed to read Spotify response: {}", e)))?;
-
-        // Extract JSON inside <script id="__NEXT_DATA__" type="application/json">...</script>
-        let script_tag = "<script id=\"__NEXT_DATA__\" type=\"application/json\">";
-        let script_start = html.find(script_tag)
-            .ok_or_else(|| AppError::ExternalApi {
-                provider: "spotify".into(),
-                message: "Unable to parse Spotify playlist payload".into(),
-            })?;
-        let json_start = script_start + script_tag.len();
-        let json_end = html[json_start..].find("</script>")
-            .map(|idx| json_start + idx)
-            .ok_or_else(|| AppError::ExternalApi {
-                provider: "spotify".into(),
-                message: "Invalid Spotify response format".into(),
-            })?;
-
-        let raw_json = &html[json_start..json_end];
-        let root: serde_json::Value = serde_json::from_str(raw_json)
-            .map_err(|e| AppError::ExternalApi {
-                provider: "spotify".into(),
-                message: format!("Failed to parse JSON: {}", e),
-            })?;
-
-        let status_code = root["props"]["pageProps"]["status"].as_i64().unwrap_or(200);
-        if status_code == 404 || !root["props"]["pageProps"]["state"]["data"].is_object() {
-            return Err(AppError::ExternalApi {
-                provider: "spotify".into(),
-                message: "This playlist is private on Spotify. In the Spotify app, click the '...' menu on the playlist and select 'Make Public' so Kaze can read the tracks.".into(),
-            });
+    async fn import_jiosaavn_playlist(&self, reference: &str) -> AppResult<serde_json::Value> {
+        let (id, title, image, tracks) = self.provider_coordinator.jiosaavn.playlist_reference(reference).await?;
+        let mut songs = Vec::new();
+        for track in tracks {
+            let row = self.provider_coordinator.persist(track).await?;
+            songs.push(serde_json::json!({"track_id":row.id,"title":row.title,"artist":row.artist,
+                "album":row.album,"duration_secs":row.duration_secs,"cover_art_url":row.cover_art_url,
+                "in_library":false,"match_status":"NOT_FOUND","matched_local_track_id":null}));
         }
-
-        let entity = &root["props"]["pageProps"]["state"]["data"]["entity"];
-        let playlist_title = entity["title"]
-            .as_str()
-            .or_else(|| entity["name"].as_str())
-            .unwrap_or("Imported Spotify Playlist")
-            .to_string();
-
-        let is_playlist_lofi = {
-            let lower = playlist_title.to_lowercase();
-            lower.contains("lofi")
-                || lower.contains("lo-fi")
-                || lower.contains("sleep")
-                || lower.contains("chill")
-                || lower.contains("relax")
-                || lower.contains("study")
-                || lower.contains("beats")
-        };
-
-        let cover_url = entity["coverArt"]["sources"][0]["url"]
-            .as_str()
-            .or_else(|| entity["visualIdentity"]["image"][2]["url"].as_str())
-            .or_else(|| entity["visualIdentity"]["image"][1]["url"].as_str())
-            .or_else(|| entity["visualIdentity"]["image"][0]["url"].as_str())
-            .map(|s| s.to_string());
-
-        let raw_tracks = entity["trackList"].as_array().cloned().unwrap_or_default();
-
-        let mut parsed_tracks = Vec::new();
-        let mut matched_count = 0;
-        let mut missing_count = 0;
-
-        for item in &raw_tracks {
-            let title = item["title"].as_str().unwrap_or("").trim().to_string();
-            let artist = item["subtitle"].as_str().unwrap_or("Unknown Artist").trim().to_string();
-            let duration_ms = item["duration"].as_f64().unwrap_or(0.0);
-            let duration_secs = if duration_ms > 0.0 { Some(duration_ms / 1000.0) } else { None };
-            let spotify_track_id = item["id"].as_str().unwrap_or("").to_string();
-
-            if title.is_empty() {
-                continue;
-            }
-
-            let is_lofi = is_playlist_lofi
-                || FuzzyTrackMatcher::is_lofi_indicator(&title)
-                || FuzzyTrackMatcher::is_lofi_indicator(&artist);
-
-            let match_res = self
-                .discovery_coordinator
-                .match_against_library(&title, &artist, duration_secs, is_lofi)
-                .await?;
-
-            let in_library = match_res.status == crate::discovery::MatchStatus::ExactMatch
-                || match_res.status == crate::discovery::MatchStatus::LikelyMatch;
-
-            if in_library {
-                matched_count += 1;
-            } else {
-                missing_count += 1;
-            }
-
-            parsed_tracks.push(serde_json::json!({
-                "spotify_id": spotify_track_id,
-                "title": title,
-                "artist": artist,
-                "duration_secs": duration_secs,
-                "in_library": in_library,
-                "match_status": match_res.status.as_str(),
-                "matched_local_track_id": if in_library { match_res.matched_track_id } else { None },
-            }));
-        }
-
-        Ok(serde_json::json!({
-            "playlist_id": clean_id,
-            "title": playlist_title,
-            "cover_url": cover_url,
-            "total_tracks": parsed_tracks.len(),
-            "matched_tracks": matched_count,
-            "missing_tracks": missing_count,
-            "tracks": parsed_tracks,
-        }))
+        Ok(serde_json::json!({"playlist_id":id,"title":title,"cover_url":image,
+            "total_tracks":songs.len(),"matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs}))
     }
 }

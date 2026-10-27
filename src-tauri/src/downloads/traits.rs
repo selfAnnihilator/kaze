@@ -3,7 +3,7 @@ use crate::core::error::AppResult;
 use async_trait::async_trait;
 use std::path::Path;
 
-/// Contract for download network providers (e.g. Soulseek/Slskd or Mocks).
+/// Contract for download network providers (JioSaavn and deterministic test fixtures).
 #[async_trait]
 pub trait DownloadProvider: Send + Sync {
     /// Human-readable identifier of the provider.
@@ -37,13 +37,4 @@ pub trait DownloadProvider: Send + Sync {
     /// Cancels or aborts an active transfer.
     async fn cancel(&self, provider_task_id: &str) -> AppResult<()>;
 
-    /// Resolves direct streamable audio URL and duration for full-song previewing.
-    async fn resolve_stream_url(&self, _query: &str) -> AppResult<Option<(String, f64, Option<DownloadSearchResult>)>> {
-        Ok(None)
-    }
-
-    /// Returns several independent full-track candidates in preferred order.
-    async fn resolve_stream_urls(&self, query: &str) -> AppResult<Vec<(String, f64, Option<DownloadSearchResult>)>> {
-        Ok(self.resolve_stream_url(query).await?.into_iter().collect())
-    }
 }
