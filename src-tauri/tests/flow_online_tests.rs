@@ -80,20 +80,10 @@ async fn external(p: &CoreProcessor, id: &str, title: &str, artist: &str, genre:
         .unwrap();
 }
 
-async fn cache_song(dir: &tempfile::TempDir, id: &str, title: &str, artist: &str) {
+async fn cache_song(dir: &tempfile::TempDir, id: &str) {
     let folder = dir.path().join("cache/remote-audio");
     tokio::fs::create_dir_all(&folder).await.unwrap();
-    let hash = format!(
-        "{:x}",
-        Sha256::digest(
-            format!(
-                "full:v2:{id}:{}:{}",
-                artist.to_lowercase(),
-                title.to_lowercase()
-            )
-            .as_bytes()
-        )
-    );
+    let hash = format!("{:x}", Sha256::digest(format!("full:v3:{id}").as_bytes()));
     let samples = vec![0_u8; 16000];
     let mut bytes = Vec::new();
     bytes.extend_from_slice(b"RIFF");
@@ -328,7 +318,7 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
     let (p, dir) = setup().await;
     ensure_online_track(
         p.db_pool(),
-        "online:favorite",
+        "jiosaavn:favorite",
         "Online Favorite",
         Some("Online Artist"),
         None,
@@ -338,8 +328,8 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
     )
     .await
     .unwrap();
-    stats(&p, "default", "online:favorite", 8, 1, 10).await;
-    cache_song(&dir, "online:favorite", "Online Favorite", "Online Artist").await;
+    stats(&p, "default", "jiosaavn:favorite", 8, 1, 10).await;
+    cache_song(&dir, "jiosaavn:favorite").await;
     let mut events = p.event_bus().subscribe();
     p.dispatch_command(Command::StartFlow {
         familiarity_ratio: Some(1.0),
@@ -352,7 +342,7 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
             .await
             .current_track_id
             .as_deref(),
-        Some("online:favorite")
+        Some("jiosaavn:favorite")
     );
     let mut started = 0;
     while let Ok(event) = events.try_recv() {
@@ -360,7 +350,7 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
             track_id, source, ..
         } = event
         {
-            assert_eq!(track_id, "online:favorite");
+            assert_eq!(track_id, "jiosaavn:favorite");
             assert_eq!(source, "flow");
             started += 1;
         }
@@ -373,7 +363,7 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
             .fetch_all(p.db_pool())
             .await
             .unwrap();
-    assert_eq!(rows, vec![("online:favorite".into(), "flow".into())]);
+    assert_eq!(rows, vec![("jiosaavn:favorite".into(), "flow".into())]);
     p.shutdown().await.unwrap();
 }
 

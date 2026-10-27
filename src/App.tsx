@@ -302,7 +302,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // Global Top Search Bar State
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
-  const [onlineSearchProvider, setOnlineSearchProvider] = useState<"jiosaavn" | "alternative">("jiosaavn");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const globalSearchResults = destination.searchResults;
@@ -3270,7 +3269,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       try {
         const res = await executeQuery({
           query: "SearchOnlineMusic",
-          payload: { query: q, limit: 35, provider: onlineSearchProvider },
+          payload: { query: q, limit: 35, provider: "jiosaavn" },
         });
         let incoming: DiscoveryRecommendation[] = [];
         if (res && Array.isArray(res.data)) {
@@ -3313,7 +3312,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         );
       } catch (err) {
         console.error("Global online music search failed:", err);
-        if (!cancelled) addAppNotification("error", "Online search unavailable", typeof err === "string" ? err : "Couldn’t reach this source. Try again or choose Alternative sources.");
+        if (!cancelled) addAppNotification("error", "Online search unavailable", typeof err === "string" ? err : "Couldn’t reach JioSaavn. Please try again.");
         updateDestination((current) =>
           !cancelled &&
           current.view === "discovery" &&
@@ -3336,7 +3335,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     destination.collection,
     destination.lyrics,
     searchRefreshRevision,
-    onlineSearchProvider,
     updateDestination,
     addAppNotification,
   ]);
@@ -3682,8 +3680,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               <GlobalTopSearchBar
                 placeholder={interfacePreference.style === "spatial" ? "Find your next favourite" : undefined}
                 searchQuery={globalSearchQuery}
-                provider={onlineSearchProvider}
-                onProviderChange={setOnlineSearchProvider}
                 setSearchQuery={setGlobalSearchQuery}
                 onSearch={handleGlobalOnlineSearch}
                 onRefresh={handleGlobalRefresh}

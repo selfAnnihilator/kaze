@@ -17,3 +17,6 @@ pub use soulseek::*;
 pub use traits::*;
 pub use types::*;
 pub use ytdlp::*;
+
+mod disabled;
+pub use disabled::DisabledDownloadProvider;

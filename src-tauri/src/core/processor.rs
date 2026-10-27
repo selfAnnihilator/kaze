@@ -15,8 +15,8 @@ use crate::database::repositories::{
     SqliteUserRepository, SqliteWishlistRepository, WishlistRepository, StatsRepository, UserProfile, UserRepository,
 };
 use crate::discovery::{DiscoveryCoordinator, DiscoveryRecommendation, FuzzyTrackMatcher, WishlistManager};
-use crate::downloads::{DownloadProvider, DownloadService, SoulseekProvider};
-use std::collections::{HashMap, HashSet};
+use crate::downloads::{DownloadProvider, DownloadService, DisabledDownloadProvider};
+use std::collections::{HashMap};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -167,15 +167,7 @@ impl CoreProcessor {
         ));
 
         let download_repo = Arc::new(SqliteDownloadRepository::new(db_pool.clone()));
-        let download_provider = custom_download_provider.unwrap_or_else(|| {
-            let ytdlp = Arc::new(crate::downloads::YtDlpProvider::new());
-            let soulseek = Arc::new(SoulseekProvider::new(
-                &config.downloads.slskd_host,
-                config.downloads.slskd_port,
-                config.downloads.slskd_api_key.clone(),
-            ));
-            Arc::new(crate::downloads::CompositeDownloadProvider::new(ytdlp, soulseek))
-        });
+        let download_provider = custom_download_provider.unwrap_or_else(|| Arc::new(DisabledDownloadProvider));
         let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
             directories::UserDirs::new()
                 .and_then(|u| u.audio_dir().map(|p| p.join("Downloads")))
@@ -1227,26 +1219,16 @@ impl CoreProcessor {
 
             // --- Soulseek & Downloads ---
             Command::SearchSoulseek { artist, title, album: _ } => {
-                let results = match self.download_service.search_track(&artist, &title).await {
-                    Ok(res) => res,
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Slskd daemon not responding, returning empty search results");
-                        Vec::new()
-                    }
-                };
+                let results = self.download_service.search_track(&artist, &title).await?;
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
                 Ok(CommandResponse::SearchResults(val))
             }
-            Command::LaunchSoulseek {
-                search_query,
-                filter_query,
-            } => {
-                let msg = self.launch_soulseek_qt(search_query, filter_query).await?;
-                Ok(CommandResponse::SoulseekLaunched { message: msg })
-            }
+            Command::LaunchSoulseek { .. } => Err(AppError::Validation(
+                "Older music providers are disabled during the JioSaavn playback trial".into(),
+            )),
             Command::ImportSoulseekDownloads => {
                 let count = self.import_soulseek_downloads().await?;
                 Ok(CommandResponse::SoulseekImported { imported_count: count })
@@ -2221,28 +2203,14 @@ impl CoreProcessor {
                 let val = self.import_spotify_playlist(&url_or_id).await?;
                 Ok(QueryResponse::SpotifyPlaylistImport(val))
             }
-            Query::ResolveFullTrackAudio { artist, title } => {
-                let res = self
-                    .download_service
-                    .resolve_full_track_audio(&artist, &title)
-                    .await?;
-                if let Some((stream_url, duration_secs, download_result)) = res {
-                    Ok(QueryResponse::FullTrackAudio {
-                        stream_url,
-                        duration_secs,
-                        download_result,
-                    })
-                } else {
-                    Err(crate::core::error::AppError::NotFound(
-                        "Full track stream not available".to_string(),
-                    ))
-                }
-            }
+            Query::ResolveFullTrackAudio { .. } => Err(AppError::Validation(
+                "Search JioSaavn and select a song for full audio playback".into(),
+            )),
             Query::SearchOnlineMusic { query, limit, provider } => {
                 match provider.as_deref().unwrap_or("jiosaavn") {
                     "jiosaavn" => {
                         if self.settings_repo.get_setting("enable_jiosaavn").await?.as_deref() == Some("false") {
-                            return Err(AppError::Validation("JioSaavn is disabled in Settings; choose Alternative sources".into()));
+                            return Err(AppError::Validation("Enable JioSaavn in Settings to search online music".into()));
                         }
                         let tracks = self.provider_coordinator.jiosaavn.search(&query, limit.unwrap_or(30).min(50) as usize).await?;
                         let mut results = Vec::new();
@@ -2265,104 +2233,8 @@ impl CoreProcessor {
                         }
                         return Ok(QueryResponse::DiscoveryRecommendations(results));
                     }
-                    "alternative" => (),
-                    _ => return Err(AppError::Validation("Unknown online music provider".into())),
+                    _ => Err(AppError::Validation("JioSaavn is the only online music source in this trial".into())),
                 }
-
-                info!(query = %query, "Processor dispatching SearchOnlineMusic");
-                let limit_val = limit.unwrap_or(30) as usize;
-                let mut results = self
-                    .discovery_coordinator
-                    .search_online_music(&query, limit_val)
-                    .await
-                    .unwrap_or_else(|e| {
-                        warn!(error = %e, "search_online_music failed, falling back to empty list");
-                        Vec::new()
-                    });
-
-                // Dual-source fallback: If online iTunes search returns few or zero items,
-                // fall back to download network (yt-dlp / YouTube), which captures regional, indie, and unreleased music
-                if results.len() < 5 {
-                    info!(query = %query, existing_count = results.len(), "Augmenting online search with audio download network");
-                    if let Ok(dl_results) = self.download_service.search(&query).await {
-                        let mut seen_keys: HashSet<String> = results
-                            .iter()
-                            .map(|r| format!("{}:{}", r.artist.to_lowercase().trim(), r.title.to_lowercase().trim()))
-                            .collect();
-
-                        let local_tracks = self
-                            .library_service
-                            .track_repo()
-                            .list_tracks(0, 10000, None, true)
-                            .await
-                            .unwrap_or_default();
-                        let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
-                            .iter()
-                            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
-                            .map(|t| (t.id.as_str(), t.title.as_str(), t.artist_name.as_deref().unwrap_or(""), t.duration_secs))
-                            .collect();
-
-                        let wishlist_items = self.wishlist_manager.get_wishlist(None).await.unwrap_or_default();
-                        let wishlist_keys: HashSet<String> = wishlist_items
-                            .iter()
-                            .map(|w| format!("{}:{}", w.artist.to_lowercase().trim(), w.title.to_lowercase().trim()))
-                            .collect();
-
-                        for dl_res in dl_results {
-                            let raw_name = dl_res.filename.trim_end_matches(".mp3").trim_end_matches(".flac");
-                            let (artist, title) = if let Some((a, t)) = raw_name.split_once(" - ") {
-                                (a.trim().to_string(), t.trim().to_string())
-                            } else {
-                                (dl_res.username.clone(), raw_name.to_string())
-                            };
-
-                            let key = format!("{}:{}", artist.to_lowercase().trim(), title.to_lowercase().trim());
-                            if seen_keys.contains(&key) {
-                                continue;
-                            }
-                            seen_keys.insert(key.clone());
-                            let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&title)
-                                || FuzzyTrackMatcher::is_lofi_indicator(&artist);
-
-                            let match_res = FuzzyTrackMatcher::find_best_match(
-                                &title,
-                                &artist,
-                                None,
-                                is_lofi,
-                                candidate_local_tuples.iter().copied(),
-                            );
-                            let in_wishlist = wishlist_keys.contains(&key);
-
-                            results.push(DiscoveryRecommendation {
-                                external_track_id: format!("download:{}", dl_res.id),
-                                provider: dl_res.provider.clone(),
-                                provider_id: dl_res.id.clone(),
-                                title,
-                                artist,
-                                album: None,
-                                duration_secs: Some(210.0),
-                                cover_art_url: None,
-                                preview_url: None,
-                                genre: Some("Online Audio Stream".to_string()),
-                                match_status: match_res.status,
-                                matched_local_track_id: match_res.matched_track_id,
-                                recommendation_reason: format!("Stream source for \"{}\"", query.trim()),
-                                in_wishlist,
-                            });
-
-                            if results.len() >= limit_val {
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                info!(count = results.len(), "Processor returning SearchOnlineMusic recommendations");
-                let json_arr: Vec<serde_json::Value> = results
-                    .into_iter()
-                    .map(|r| serde_json::to_value(r).unwrap_or_default())
-                    .collect();
-                Ok(QueryResponse::DiscoveryRecommendations(json_arr))
             }
             Query::GetTrackCoverArt { track_id } => {
                 Ok(QueryResponse::CoverArt(self.load_track_artwork(&track_id).await?))
@@ -2668,289 +2540,6 @@ impl CoreProcessor {
                 Ok(QueryResponse::Empty)
             }
         }
-    }
-
-    async fn launch_soulseek_qt(
-        &self,
-        search_query: Option<String>,
-        filter_query: Option<String>,
-    ) -> AppResult<String> {
-        // 1. Copy search query to clipboard
-        let clip_text = search_query
-            .as_deref()
-            .or(filter_query.as_deref());
-
-        if let Some(q) = clip_text {
-            let _ = std::process::Command::new("wl-copy")
-                .arg(q)
-                .spawn();
-
-            if let Ok(mut child) = std::process::Command::new("xclip")
-                .args(["-selection", "clipboard"])
-                .stdin(std::process::Stdio::piped())
-                .spawn()
-            {
-                if let Some(mut stdin) = child.stdin.take() {
-                    use std::io::Write;
-                    let _ = stdin.write_all(q.as_bytes());
-                }
-            }
-        }
-
-        // 2. Check if SoulseekQt is currently running
-        let mut is_running = false;
-        if let Ok(output) = std::process::Command::new("pgrep")
-            .arg("-f")
-            .arg("SoulseekQt")
-            .output()
-        {
-            if output.status.success() && !output.stdout.is_empty() {
-                is_running = true;
-            }
-        }
-
-        let possible_paths = directories::UserDirs::new()
-            .map(|dirs| {
-                let home = dirs.home_dir();
-                vec![
-                    home.join("Applications/SoulseekQt-2024-6-30.AppImage"),
-                    home.join("Applications/SoulseekQt.AppImage"),
-                    home.join("Documents/SoulseekQt-2024-6-30.AppImage"),
-                ]
-            })
-            .unwrap_or_default();
-
-        let mut launched_path = String::new();
-        if !is_running {
-            let mut launched = false;
-            for p in possible_paths {
-                if p.exists() {
-                    if std::process::Command::new(&p)
-                        .env("QT_QPA_PLATFORM", "xcb")
-                        .spawn()
-                        .is_ok()
-                    {
-                        launched = true;
-                        launched_path = p.to_string_lossy().into_owned();
-                        break;
-                    }
-                }
-            }
-
-            if !launched {
-                let _ = std::process::Command::new("gtk-launch")
-                    .arg("soulseekqt")
-                    .spawn();
-                launched_path = "gtk-launch soulseekqt".to_string();
-            }
-        } else {
-            launched_path = "running instance".to_string();
-        }
-
-        // 3. If a search query or filter query is provided, automate SoulseekQt GUI search
-        if search_query.is_some() || filter_query.is_some() {
-            let query = search_query.clone();
-            let filter = filter_query.clone();
-            let need_wait_for_launch = !is_running;
-            tokio::spawn(async move {
-                Self::automate_soulseek_search(query, filter, need_wait_for_launch).await;
-            });
-        }
-
-        let msg = match (&search_query, &filter_query) {
-            (Some(q), Some(f)) => format!("Searching for \"{}\" with filter \"{}\" in SoulseekQt...", q, f),
-            (Some(q), None) => format!("Searching for \"{}\" in SoulseekQt...", q),
-            (None, Some(f)) => format!("Filtering for \"{}\" in SoulseekQt...", f),
-            (None, None) => format!("Launched SoulseekQt ({})", launched_path),
-        };
-
-        info!("{}", msg);
-        Ok(msg)
-    }
-
-    async fn automate_soulseek_search(
-        query: Option<String>,
-        filter: Option<String>,
-        need_wait_for_launch: bool,
-    ) {
-        // Wait for window to appear or initialize
-        if need_wait_for_launch {
-            for _ in 0..30 {
-                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                if let Ok(out) = std::process::Command::new("xdotool")
-                    .env("DISPLAY", ":0")
-                    .args(["search", "--class", "soulseek"])
-                    .output()
-                {
-                    if out.status.success() && !out.stdout.is_empty() {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
-                        break;
-                    }
-                }
-            }
-        } else {
-            tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
-        }
-
-        // 1. Focus in Niri (Wayland compositor) if running under Niri
-        if let Ok(output) = std::process::Command::new("niri")
-            .args(["msg", "--json", "windows"])
-            .output()
-        {
-            if output.status.success() {
-                if let Ok(windows) = serde_json::from_slice::<Vec<serde_json::Value>>(&output.stdout) {
-                    for win in windows {
-                        let app_id = win.get("app_id").and_then(|v| v.as_str()).unwrap_or("");
-                        let title = win.get("title").and_then(|v| v.as_str()).unwrap_or("");
-                        if app_id.to_lowercase().contains("soulseek") || title.to_lowercase().contains("soulseek") {
-                            if let Some(id) = win.get("id").and_then(|v| v.as_u64()) {
-                                let _ = std::process::Command::new("niri")
-                                    .args(["msg", "action", "focus-window", "--id", &id.to_string()])
-                                    .status();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Find X11 Window ID via xdotool
-        let wid_output = std::process::Command::new("xdotool")
-            .env("DISPLAY", ":0")
-            .args(["search", "--class", "soulseek"])
-            .output();
-
-        let wid = match wid_output {
-            Ok(out) if out.status.success() => {
-                String::from_utf8_lossy(&out.stdout)
-                    .lines()
-                    .next()
-                    .map(|s| s.trim().to_string())
-            }
-            _ => None,
-        };
-
-        if let Some(wid) = wid {
-            if !wid.is_empty() {
-                // Focus window in X11
-                let _ = std::process::Command::new("xdotool")
-                    .env("DISPLAY", ":0")
-                    .args(["windowfocus", &wid])
-                    .status();
-
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-                // 1. If query is provided, execute primary search
-                if let Some(ref q) = query {
-                    // Put query in clipboard
-                    let _ = std::process::Command::new("wl-copy").arg(q).status();
-
-                    // Click Search Tab
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["mousemove", "--window", &wid, "265", "52", "click", "1"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
-
-                    // Click Manual Searches sub-tab
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["mousemove", "--window", &wid, "85", "86", "click", "1"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
-
-                    // Click Search Input Box
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["mousemove", "--window", &wid, "200", "122", "click", "1"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
-
-                    // Clear input box
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["key", "ctrl+a", "BackSpace"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-
-                    // Paste query
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["key", "ctrl+v"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
-
-                    // Press Return to execute search
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["key", "Return"])
-                        .status();
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
-
-                    // Click Search button as well
-                    let _ = std::process::Command::new("xdotool")
-                        .env("DISPLAY", ":0")
-                        .args(["mousemove", "--window", &wid, "725", "122", "click", "1"])
-                        .status();
-
-                    info!(query = %q, wid = %wid, "Automated SoulseekQt primary search");
-                }
-
-                // 2. If filter is provided, put it into the search result filter box
-                if let Some(ref f) = filter {
-                    if !f.trim().is_empty() {
-                        // Wait for search tab to open
-                        tokio::time::sleep(tokio::time::Duration::from_millis(350)).await;
-
-                        // Copy filter text to clipboard
-                        let _ = std::process::Command::new("wl-copy").arg(f).status();
-
-                        // Click Filter Box at the bottom of the active search tab (x=535, y=946 relative to window)
-                        let _ = std::process::Command::new("xdotool")
-                            .env("DISPLAY", ":0")
-                            .args(["mousemove", "--window", &wid, "535", "946", "click", "1"])
-                            .status();
-
-                        tokio::time::sleep(tokio::time::Duration::from_millis(80)).await;
-
-                        // Clear filter box
-                        let _ = std::process::Command::new("xdotool")
-                            .env("DISPLAY", ":0")
-                            .args(["key", "ctrl+a", "BackSpace"])
-                            .status();
-
-                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-
-                        // Paste filter text
-                        let _ = std::process::Command::new("xdotool")
-                            .env("DISPLAY", ":0")
-                            .args(["key", "ctrl+v"])
-                            .status();
-
-                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-
-                        // Hit Return
-                        let _ = std::process::Command::new("xdotool")
-                            .env("DISPLAY", ":0")
-                            .args(["key", "Return"])
-                            .status();
-
-                        info!(filter = %f, wid = %wid, "Automated SoulseekQt search result filter");
-                    }
-                }
-
-                return;
-            }
-        }
-
-        warn!("Could not locate SoulseekQt window to automate search/filter");
     }
 
     async fn import_soulseek_downloads(&self) -> AppResult<usize> {

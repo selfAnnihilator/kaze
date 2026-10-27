@@ -27,13 +27,11 @@ try {
     const page = await context.newPage(), errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(process.env.KAZE_TEST_URL || "http://127.0.0.1:5194", { waitUntil: "domcontentloaded" });
-    const source = page.getByRole("combobox", { name: "Online music source" });
-    await source.waitFor(); assert.equal(await source.inputValue(), "jiosaavn");
+    assert.equal(await page.getByLabel("Online music source").textContent(), "JioSaavn");
+    assert.equal(await page.getByRole("combobox", { name: "Online music source" }).count(), 0);
     const search = page.getByRole("textbox", { name: "Search music online" });
     await search.fill("Test Song"); await search.press("Enter");
     await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.provider === "jiosaavn"));
-    await source.selectOption("alternative");
-    await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.provider === "alternative"));
     await page.locator(".sidebar,.press-account-navigation").getByRole("button", { name: "Settings", exact: true }).click();
     const panel = page.locator(".settings-view");
     const availability = panel.getByRole("switch", { name: "Use JioSaavn for online music" });
@@ -50,7 +48,7 @@ try {
     assert.deepEqual(fills, [false, true]);
     await page.screenshot({ path: `/tmp/kaze-jiosaavn-${style}-settings.png` });
     assert.deepEqual(errors, []);
-    console.log(`PASS ${style}: default source, explicit alternative, availability, automatic fill, manual fill/retry/removal`);
+    console.log(`PASS ${style}: exclusive JioSaavn source, availability, automatic fill, manual fill/retry/removal`);
     await context.close();
   }
 } finally { await browser.close(); }

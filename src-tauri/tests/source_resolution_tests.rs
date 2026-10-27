@@ -202,12 +202,12 @@ async fn test_resolve_source_only_disk_cache_hit_bypasses_network() {
     let dir = tempdir().unwrap();
     let manager = StreamPlaybackManager::new(dir.path().to_path_buf(), None, None);
 
-    let track_id = "online:test-track-123";
+    let track_id = "jiosaavn:test-track-123";
     let title = "Hit Song";
     let artist = "Famous Artist";
 
     // Write a valid decodable audio file into the disk cache
-    let cache_key = format!("full:v2:{}", StreamPlaybackManager::compute_cache_key(track_id, artist, title));
+    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
     let cache_path = manager.get_cache_path(&cache_key);
 
     std::fs::create_dir_all(manager.cache_dir()).unwrap();
@@ -263,14 +263,14 @@ async fn test_resolve_source_only_memory_cache_hit_bypasses_provider() {
     // No download service attached — a provider call would fail immediately
     let manager = StreamPlaybackManager::new(dir.path().to_path_buf(), None, None);
 
-    let track_id = "online:memory-cached-1";
+    let track_id = "jiosaavn:memory-cached-1";
     let title = "Cached Song";
     let artist = "Cached Artist";
 
-    let cache_key = format!("full:v2:{}", StreamPlaybackManager::compute_cache_key(track_id, artist, title));
+    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
 
     // Pre-populate resolution cache directly via resolve_source_only's cache key
-    let test_url = "https://rr2.googlevideo.com/videoplayback?id=cached123&expire=9999999999".to_string();
+    let test_url = "https://aac.saavncdn.com/test.m4a".to_string();
     let entry = ResolvedEntry::new(test_url.clone(), 215.0, Some(9999999999));
     manager.resolution_cache().insert(cache_key.clone(), entry);
 
@@ -303,7 +303,7 @@ async fn test_resolve_source_only_never_creates_part_file() {
     let title = "Virtual Track";
     let artist = "Ghost Artist";
 
-    let cache_key = format!("full:v2:{}", StreamPlaybackManager::compute_cache_key(track_id, artist, title));
+    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
     let target_path = manager.get_cache_path(&cache_key);
     let part_path = StreamPlaybackManager::get_part_path(&target_path);
 
@@ -313,4 +313,22 @@ async fn test_resolve_source_only_never_creates_part_file() {
     // Must NOT create part file or target file
     assert!(!part_path.exists());
     assert!(!target_path.exists());
+}
+
+#[tokio::test]
+async fn legacy_identity_cannot_reuse_old_disk_or_memory_audio() {
+    let dir = tempdir().unwrap();
+    let manager = StreamPlaybackManager::new(dir.path().to_path_buf(), None, None);
+    let key = format!("full:v2:{}", StreamPlaybackManager::compute_cache_key("itunes:old", "Artist", "Song"));
+    std::fs::create_dir_all(manager.cache_dir()).unwrap();
+    let old_path = manager.get_cache_path(&key);
+    std::fs::write(&old_path, vec![0u8; 20_000]).unwrap();
+    manager.resolution_cache().insert(key, ResolvedEntry::new(
+        "https://example.invalid/old-provider-audio".into(), 200.0, None,
+    ));
+    let error = manager.resolve_source_only("itunes:old", "Song", "Artist").await.unwrap_err();
+    assert!(error.to_string().contains("No unique JioSaavn match"));
+    assert!(manager.resolve_and_prepare_playback("itunes:old", "Song", "Artist").await.is_err());
+    assert!(old_path.exists(), "selection must not modify unrelated cache files");
+    assert_eq!(std::fs::read_dir(manager.cache_dir()).unwrap().count(), 1);
 }

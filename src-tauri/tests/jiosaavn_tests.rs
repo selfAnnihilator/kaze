@@ -71,6 +71,42 @@ fn candidate(id: &str, title: &str) -> Value {
 }
 
 #[tokio::test]
+async fn real_local_file_plays_despite_stale_online_format_and_disabled_jiosaavn() {
+    use music_player_backend::{config::AppConfig, core::{Command, CoreProcessor}, playback::backend::MockAudioBackend};
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("original.flac");
+    std::fs::write(&path, b"local file fixture").unwrap();
+    let pool = create_in_memory_pool().await.unwrap();
+    let repo = SqliteTrackRepository::new(pool.clone());
+    let id = repo.save_scanned_track(source(path.to_str().unwrap())).await.unwrap();
+    sqlx::query("UPDATE tracks SET format='online' WHERE id=?").bind(&id).execute(&pool).await.unwrap();
+    let backend = MockAudioBackend::new();
+    let loaded = backend.loaded_path.clone();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = temp.path().join("cache");
+    let core = CoreProcessor::new_with_backend(pool, config, Box::new(backend));
+    core.dispatch_command(Command::SetMetadataPreference { key: "enable_jiosaavn".into(), enabled: false }).await.unwrap();
+    core.dispatch_command(Command::PlayTrack { track_id: id, source: Some("library".into()) }).await.unwrap();
+    assert_eq!(loaded.lock().unwrap().as_ref(), Some(&path));
+    assert_eq!(std::fs::read(&path).unwrap(), b"local file fixture");
+    core.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn trial_rejects_old_provider_requests() {
+    use music_player_backend::{config::AppConfig, core::{Command, CoreProcessor, Query}, playback::backend::MockAudioBackend};
+    let temp = tempfile::tempdir().unwrap();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = temp.path().join("cache");
+    let core = CoreProcessor::new_with_backend(create_in_memory_pool().await.unwrap(), config, Box::new(MockAudioBackend::new()));
+    assert!(core.execute_query(Query::SearchOnlineMusic { query: "Song".into(), provider: Some("alternative".into()), limit: Some(5) }).await.is_err());
+    assert!(core.execute_query(Query::ResolveFullTrackAudio { artist: "Artist".into(), title: "Song".into() }).await.is_err());
+    assert!(core.dispatch_command(Command::SearchSoulseek { artist: "Artist".into(), title: "Song".into(), album: None }).await.is_err());
+    assert!(core.dispatch_command(Command::LaunchSoulseek { search_query: None, filter_query: None }).await.is_err());
+    core.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn provider_reports_rate_limit_changed_shape_unavailable_and_caches_metadata() {
     let item = candidate("song1", "Song");
     let (url, count, task) = server(

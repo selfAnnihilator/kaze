@@ -383,36 +383,12 @@ async fn test_core_processor_discovery_and_wishlist_integration() -> AppResult<(
         _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
     }
 
-    // 6. Test Query::SearchOnlineMusic query execution with case-insensitivity
-    let search_res = processor
-        .execute_query(Query::SearchOnlineMusic {
-            provider: Some("alternative".into()),
-            query: "was it real".to_string(),
-            limit: Some(10),
-        })
-        .await?;
-    match search_res {
-        QueryResponse::DiscoveryRecommendations(recs) => {
-            println!("Got {} search results for 'was it real'", recs.len());
-            assert!(!recs.is_empty());
-        }
-        _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
-    }
-
-    // 6b. Test uppercase query - MUST return results identically (case-insensitive)
-    let search_upper = processor
-        .execute_query(Query::SearchOnlineMusic {
-            provider: Some("alternative".into()),
-            query: "WAS IT REAL".to_string(),
-            limit: Some(10),
-        })
-        .await?;
-    match search_upper {
-        QueryResponse::DiscoveryRecommendations(recs) => {
-            println!("Got {} search results for 'WAS IT REAL'", recs.len());
-            assert!(!recs.is_empty());
-        }
-        _ => panic!("Expected QueryResponse::DiscoveryRecommendations"),
+    // Legacy source requests must not silently fall back during the JioSaavn trial.
+    for query in ["was it real", "WAS IT REAL"] {
+        let result = processor.execute_query(Query::SearchOnlineMusic {
+            provider: Some("alternative".into()), query: query.into(), limit: Some(10),
+        }).await;
+        assert!(result.is_err(), "older online sources must be unavailable");
     }
 
     Ok(())

@@ -310,7 +310,7 @@ async fn test_get_cache_stats_accurate() {
 }
 
 #[tokio::test]
-async fn test_legacy_stream_cache_migration() {
+async fn test_startup_does_not_import_legacy_provider_cache() {
     let dir = tempdir().unwrap();
     let legacy_dir = dir.path().join("stream_cache");
     let new_dir = dir.path().join("remote-audio");
@@ -320,11 +320,11 @@ async fn test_legacy_stream_cache_migration() {
     tokio::fs::write(&legacy_file, vec![42u8; 12000]).await.unwrap();
 
     let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
-    manager.migrate_legacy_cache().await;
+    manager.startup_maintenance().await;
 
     let migrated_file = new_dir.join("legacy_hash.audio");
-    assert!(migrated_file.exists(), "Legacy file must be moved to remote-audio dir");
-    assert!(!legacy_file.exists(), "Legacy file must no longer exist in stream_cache");
+    assert!(!migrated_file.exists(), "Older provider audio must not enter the JioSaavn cache");
+    assert!(legacy_file.exists(), "Only explicit cache clearing removes old audio");
 }
 
 #[tokio::test]
@@ -446,14 +446,14 @@ async fn full_song_cache_ignores_a_cached_preview() {
     let dir = tempdir().unwrap();
     let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
     tokio::fs::create_dir_all(manager.cache_dir()).await.unwrap();
-    let identity = StreamPlaybackManager::compute_cache_key("itunes:2", "Artist", "Song");
-    let full_path = manager.get_cache_path(&format!("full:v2:{identity}"));
+    let identity = StreamPlaybackManager::compute_cache_key("jiosaavn:2", "Artist", "Song");
+    let full_path = manager.get_cache_path(&"full:v3:jiosaavn:2");
     let preview_path = manager.get_cache_path(&format!("preview:v1:{identity}"));
     tokio::fs::write(&full_path, wav_test_audio()).await.unwrap();
     tokio::fs::write(&preview_path, vec![2u8; 10_000]).await.unwrap();
 
     let (selected, duration) = manager.resolve_and_prepare_audio(
-        "itunes:2", "Song", "Artist"
+        "jiosaavn:2", "Song", "Artist"
     ).await.unwrap();
     assert_eq!(selected, full_path);
     assert!(duration > 30.0);

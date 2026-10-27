@@ -139,7 +139,6 @@ pub struct StreamPlaybackManager {
     cache_dir: PathBuf,
     legacy_cache_dir: PathBuf,
     pool: Option<SqlitePool>,
-    download_service: Option<Arc<DownloadService>>,
     http_client: reqwest::Client,
     config: Arc<RwLock<RemoteAudioCacheConfig>>,
     active_playing_path: Arc<RwLock<Option<PathBuf>>>,
@@ -164,7 +163,7 @@ impl StreamPlaybackManager {
     pub fn with_config(
         base_cache_dir: PathBuf,
         pool: Option<SqlitePool>,
-        download_service: Option<Arc<DownloadService>>,
+        _download_service: Option<Arc<DownloadService>>,
         config: RemoteAudioCacheConfig,
     ) -> Self {
         let stream_cache_dir = base_cache_dir.join("remote-audio");
@@ -180,7 +179,6 @@ impl StreamPlaybackManager {
             cache_dir: stream_cache_dir,
             legacy_cache_dir,
             pool,
-            download_service,
             http_client,
             config: Arc::new(RwLock::new(config)),
             active_playing_path: Arc::new(RwLock::new(None)),
@@ -288,11 +286,8 @@ impl StreamPlaybackManager {
 
     /// Resolves an audio track to a playable local file path and duration.
     ///
-    /// Checks in order:
-    /// 1. Local matched file on disk (from library).
-    /// 2. Downloaded audio file in downloads folder.
-    /// 3. Valid full-length cached audio in remote-audio cache.
-    /// 4. Remote full-audio stream resolution (via yt-dlp / composite provider).
+    /// Online audio uses exact JioSaavn identity, its complete cache, then its stream.
+    /// Local library files are handled by PlaybackService before this resolver.
     /// No preview URL is treated as playable audio.
     pub fn set_event_bus(&self, bus: Arc<EventBus>) {
         *self.event_bus.write().unwrap() = Some(bus);
@@ -320,7 +315,7 @@ impl StreamPlaybackManager {
         }
     }
 
-    async fn jiosaavn_identity(&self, track_id: &str, title: &str, artist: &str) -> AppResult<Option<String>> {
+    async fn jiosaavn_identity(&self, track_id: &str, title: &str, artist: &str) -> AppResult<String> {
         let row: Option<(String, String, Option<f64>, Option<String>)> = if let Some(pool) = &self.pool {
             sqlx::query_as("SELECT provider, provider_id, duration_secs, album FROM external_tracks WHERE id = ?")
                 .bind(track_id).fetch_optional(pool).await?
@@ -328,26 +323,27 @@ impl StreamPlaybackManager {
         let exact = row.as_ref().filter(|r| r.0 == "jiosaavn").map(|r| r.1.clone())
             .or_else(|| track_id.strip_prefix("jiosaavn:").map(str::to_string));
         // Complete cached audio remains playable even if this provider is disabled.
-        if exact.is_some() { return Ok(exact); }
-        if !self.jiosaavn_enabled().await? { return Ok(None); }
+        if let Some(id) = exact { return Ok(id); }
+        if !self.jiosaavn_enabled().await? { return Err(AppError::Playback("Enable JioSaavn in Settings to play online music".into())); }
         if let Some((_, _, Some(duration), album)) = row {
             let evidence = serde_json::json!({"title":title,"artist":artist,"album":album,"duration":duration}).to_string();
             if let Some(pool) = &self.pool {
                 let saved: Option<(String, String)> = sqlx::query_as("SELECT provider_id, evidence_json FROM provider_track_matches WHERE external_track_id = ? AND provider = 'jiosaavn'")
                     .bind(track_id).fetch_optional(pool).await?;
-                if let Some((id, signature)) = saved { if signature == evidence { return Ok(Some(id)); } }
+                if let Some((id, signature)) = saved { if signature == evidence { return Ok(id); } }
             }
-            if let Ok(candidates) = self.jiosaavn.search(&format!("{title} {artist}"), 20).await {
+            let candidates = self.jiosaavn.search(&format!("{title} {artist}"), 20).await?;
+            {
                 if let Some(m) = crate::providers::strict_match::unique_match(title, Some(artist), album.as_deref(), duration, &candidates) {
                     if let Some(pool) = &self.pool {
                         sqlx::query("INSERT INTO provider_track_matches(external_track_id, provider, provider_id, evidence_json) VALUES (?,'jiosaavn',?,?) ON CONFLICT(external_track_id) DO UPDATE SET provider_id=excluded.provider_id,evidence_json=excluded.evidence_json")
                             .bind(track_id).bind(&m.provider_track_id).bind(evidence).execute(pool).await?;
                     }
-                    return Ok(Some(m.provider_track_id.clone()));
+                    return Ok(m.provider_track_id.clone());
                 }
             }
         }
-        Ok(None)
+        Err(AppError::Playback("No unique JioSaavn match. Search JioSaavn and select the song to play it.".into()))
     }
 
     async fn jiosaavn_enabled(&self) -> AppResult<bool> {
@@ -357,14 +353,13 @@ impl StreamPlaybackManager {
         } else { Ok(true) }
     }
 
-    async fn audio_candidates(&self, jio_id: Option<&str>, artist: &str, title: &str, refresh: bool) -> AppResult<Vec<(String, f64, Option<crate::downloads::DownloadSearchResult>)>> {
-        if let Some(id) = jio_id {
-            if !self.jiosaavn_enabled().await? { return Err(AppError::Playback("JioSaavn is disabled in Settings; this song is not cached".into())); }
-            let (url, duration) = self.jiosaavn.resolve(id, refresh).await?;
-            return Ok(vec![(url, duration, None)]);
+    async fn audio_candidates(&self, jio_id: &str, refresh: bool) -> AppResult<Vec<(String, f64, Option<crate::downloads::DownloadSearchResult>)>> {
+        if !self.jiosaavn_enabled().await? {
+            return Err(AppError::Playback("JioSaavn is disabled in Settings; this song is not cached".into()));
         }
-        self.download_service.as_ref().ok_or_else(|| AppError::Playback("Full-song resolver is unavailable".into()))?
-            .resolve_full_track_audio_candidates(artist, title).await
+        let (url, duration) = self.jiosaavn.resolve(jio_id, refresh).await?;
+        info!(provider = "jiosaavn", song_id = jio_id, refresh, "Resolved JioSaavn audio source");
+        Ok(vec![(url, duration, None)])
     }
 
     /// Resolves an audio track for playback, using progressive streaming on cache misses.
@@ -377,69 +372,18 @@ impl StreamPlaybackManager {
         info!(track_id, title, artist, "Resolving audio for playback");
         let jio_id = self.jiosaavn_identity(track_id, title, artist).await?;
 
-        // 1. Check if there is an already-matched local track in the database
-        if let Some(pool) = self.pool.as_ref().filter(|_| jio_id.is_none()) {
-            let local_row: Option<(Option<String>,)> = sqlx::query_as(
-                "SELECT matched_local_track_id FROM external_tracks WHERE id = ?",
-            )
-            .bind(track_id)
-            .fetch_optional(pool)
-            .await
-            .unwrap_or(None);
-
-            if let Some((Some(matched_id),)) = local_row {
-                if !matched_id.is_empty() && !matched_id.starts_with("online:") && !matched_id.starts_with("itunes:") {
-                    let path_row: Option<(String, f64, String)> = sqlx::query_as(
-                        "SELECT file_path, duration_secs, format FROM tracks WHERE id = ?",
-                    )
-                    .bind(&matched_id)
-                    .fetch_optional(pool)
-                    .await
-                    .unwrap_or(None);
-
-                    if let Some((file_path, dur, format)) = path_row {
-                        let path = PathBuf::from(&file_path);
-                        if format != "online" && path.exists() {
-                            info!(%matched_id, path = %file_path, "Using matched local library file for online track");
-                            return Ok(PreparedPlayback::LocalFile { path, duration: dur });
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Check if a downloaded audio file exists in the download directory
-        if let Some(ref dl) = self.download_service.as_ref().filter(|_| jio_id.is_none()) {
-            let dl_dir = dl.download_dir();
-            let sanitized_title = sanitize_component(title);
-            let sanitized_artist = sanitize_component(artist);
-
-            for ext in &["mp3", "flac", "m4a", "ogg", "opus"] {
-                let candidate1 = dl_dir.join(format!("{} - {}.{}", sanitized_artist, sanitized_title, ext));
-                if candidate1.exists() {
-                    info!(path = %candidate1.display(), "Using downloaded file from download folder");
-                    return Ok(PreparedPlayback::LocalFile { path: candidate1, duration: 210.0 });
-                }
-                let candidate2 = dl_dir.join(format!("{}.{}", sanitized_title, ext));
-                if candidate2.exists() {
-                    info!(path = %candidate2.display(), "Using downloaded file from download folder");
-                    return Ok(PreparedPlayback::LocalFile { path: candidate2, duration: 210.0 });
-                }
-            }
-        }
-
         // 3. Check if cached in stream disk cache (Cache Hit)
-        let cache_key = if let Some(id) = &jio_id { format!("full:v3:jiosaavn:{id}") } else { format!("full:v2:{}", Self::compute_cache_key(track_id, artist, title)) };
+        let cache_key = format!("full:v3:jiosaavn:{jio_id}");
         let cache_path = self.get_cache_path(&cache_key);
 
         if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
-            debug!(path = %cache_path.display(), "Cache hit for remote audio stream");
+            info!(provider = "jiosaavn", song_id = %jio_id, path = %cache_path.display(), "JioSaavn audio cache hit");
             Self::touch_cache_entry(&cache_path);
             let dur = self.full_cache_duration(&cache_path, track_id).await;
             return Ok(PreparedPlayback::LocalFile { path: cache_path, duration: dur });
         }
 
-        if jio_id.is_some() && !self.jiosaavn_enabled().await? {
+        if !self.jiosaavn_enabled().await? {
             return Err(AppError::Playback("JioSaavn is disabled in Settings; this song is not cached".into()));
         }
 
@@ -495,13 +439,11 @@ impl StreamPlaybackManager {
 
 
         // 4a. Check in-memory resolution cache before calling provider.
-        let mut from_cache = false;
         let candidates = if let Some(resolved) = self.resolution_cache.get(&cache_key) {
             info!(track_id, "Resolution cache hit — skipping provider call");
-            from_cache = true;
             vec![(resolved.url.clone(), resolved.duration, None)]
         } else {
-            let raw = self.audio_candidates(jio_id.as_deref(), artist, title, false).await?;
+            let raw = self.audio_candidates(&jio_id, false).await?;
             // Store the first (best) candidate in the resolution cache.
             if let Some((url, dur, _)) = raw.first() {
                 let expiry = parse_url_expiry(url);
@@ -540,10 +482,10 @@ impl StreamPlaybackManager {
 
         // If the candidate came from resolution cache and failed (e.g. expired URL),
         // invalidate cache entry and fall back to fresh provider search.
-        if from_cache || jio_id.is_some() {
+        {
             warn!(track_id, "Cached resolution candidate failed, invalidating resolution cache and retrying via provider");
             self.resolution_cache.invalidate(&cache_key);
-            let fresh = self.audio_candidates(jio_id.as_deref(), artist, title, true).await?;
+            let fresh = self.audio_candidates(&jio_id, true).await?;
             if let Some((url, dur, _)) = fresh.first() {
                 let expiry = parse_url_expiry(url);
                 self.resolution_cache.insert(
@@ -572,12 +514,8 @@ impl StreamPlaybackManager {
 
     /// Dedicated source resolution API for pre-resolution and fast source lookup.
     ///
-    /// Preserves lookup priority:
-    ///   1. Local library matched file
-    ///   2. Downloaded file in downloads directory
-    ///   3. Complete disk-cache hit (`full:v2:...` valid and decodable audio)
-    ///   4. Resolved-URL memory cache hit
-    ///   5. Provider resolution (staged direct providers -> yt-dlp fallback)
+    /// Uses the same JioSaavn identity and cache namespace as playback.
+    /// Older provider caches and download-folder filename matches are excluded.
     ///
     /// Background pre-resolution must NEVER call code that starts HTTP audio download,
     /// creates `.part` files, modifies playback state, or prepares Rodio.
@@ -590,56 +528,8 @@ impl StreamPlaybackManager {
         info!(track_id, title, artist, "Pre-resolving audio source only");
         let jio_id = self.jiosaavn_identity(track_id, title, artist).await?;
 
-        // 1. Check matched local track in DB
-        if let Some(pool) = self.pool.as_ref().filter(|_| jio_id.is_none()) {
-            let local_row: Option<(Option<String>,)> = sqlx::query_as(
-                "SELECT matched_local_track_id FROM external_tracks WHERE id = ?",
-            )
-            .bind(track_id)
-            .fetch_optional(pool)
-            .await
-            .unwrap_or(None);
-
-            if let Some((Some(matched_id),)) = local_row {
-                if !matched_id.is_empty() && !matched_id.starts_with("online:") && !matched_id.starts_with("itunes:") {
-                    let path_row: Option<(String, f64, String)> = sqlx::query_as(
-                        "SELECT file_path, duration_secs, format FROM tracks WHERE id = ?",
-                    )
-                    .bind(&matched_id)
-                    .fetch_optional(pool)
-                    .await
-                    .unwrap_or(None);
-
-                    if let Some((file_path, dur, format)) = path_row {
-                        let path = PathBuf::from(&file_path);
-                        if format != "online" && path.exists() {
-                            return Ok(ResolvedAudioSource::LocalFile { path, duration: dur });
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Check download directory
-        if let Some(ref dl) = self.download_service.as_ref().filter(|_| jio_id.is_none()) {
-            let dl_dir = dl.download_dir();
-            let sanitized_title = sanitize_component(title);
-            let sanitized_artist = sanitize_component(artist);
-
-            for ext in &["mp3", "flac", "m4a", "ogg", "opus"] {
-                let candidate1 = dl_dir.join(format!("{} - {}.{}", sanitized_artist, sanitized_title, ext));
-                if candidate1.exists() {
-                    return Ok(ResolvedAudioSource::LocalFile { path: candidate1, duration: 210.0 });
-                }
-                let candidate2 = dl_dir.join(format!("{}.{}", sanitized_title, ext));
-                if candidate2.exists() {
-                    return Ok(ResolvedAudioSource::LocalFile { path: candidate2, duration: 210.0 });
-                }
-            }
-        }
-
         // 3. Complete disk-cache hit
-        let cache_key = if let Some(id) = &jio_id { format!("full:v3:jiosaavn:{id}") } else { format!("full:v2:{}", Self::compute_cache_key(track_id, artist, title)) };
+        let cache_key = format!("full:v3:jiosaavn:{jio_id}");
         let cache_path = self.get_cache_path(&cache_key);
 
         if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
@@ -649,7 +539,7 @@ impl StreamPlaybackManager {
             return Ok(ResolvedAudioSource::LocalFile { path: cache_path, duration: dur });
         }
 
-        if jio_id.is_some() && !self.jiosaavn_enabled().await? {
+        if !self.jiosaavn_enabled().await? {
             return Err(AppError::Playback("JioSaavn is disabled in Settings; this song is not cached".into()));
         }
 
@@ -665,7 +555,7 @@ impl StreamPlaybackManager {
 
         // 5. Provider resolution
 
-        let raw = self.audio_candidates(jio_id.as_deref(), artist, title, false).await?;
+        let raw = self.audio_candidates(&jio_id, false).await?;
         if let Some((url, dur, _)) = raw.first() {
             let expiry = parse_url_expiry(url);
             self.resolution_cache.insert(
@@ -1194,31 +1084,8 @@ impl StreamPlaybackManager {
         removed_count
     }
 
-    /// Migrates any valid entries from the legacy `stream_cache` directory into `remote-audio`.
-    pub async fn migrate_legacy_cache(&self) {
-        if !self.legacy_cache_dir.exists() || self.legacy_cache_dir == self.cache_dir {
-            return;
-        }
-
-        let _ = tokio::fs::create_dir_all(&self.cache_dir).await;
-        if let Ok(mut read_dir) = tokio::fs::read_dir(&self.legacy_cache_dir).await {
-            while let Ok(Some(entry)) = read_dir.next_entry().await {
-                let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("audio") {
-                    if let Some(file_name) = path.file_name() {
-                        let target = self.cache_dir.join(file_name);
-                        if !target.exists() {
-                            let _ = tokio::fs::rename(&path, &target).await;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Performs background startup maintenance (migrating legacy cache, cleaning stale partials, enforcing limits).
+    /// Cleans stale partials and enforces limits without importing older provider audio.
     pub async fn startup_maintenance(&self) {
-        self.migrate_legacy_cache().await;
         let max_age = std::time::Duration::from_secs(self.config.read().await.stale_part_max_age_secs);
         let stale_count = self.clean_stale_partial_files(max_age).await;
         if stale_count > 0 {
@@ -1324,7 +1191,6 @@ impl StreamPlaybackManager {
             cache_dir: self.cache_dir.clone(),
             legacy_cache_dir: self.legacy_cache_dir.clone(),
             pool: self.pool.clone(),
-            download_service: self.download_service.clone(),
             http_client: self.http_client.clone(),
             config: self.config.clone(),
             active_playing_path: self.active_playing_path.clone(),
@@ -1336,25 +1202,4 @@ impl StreamPlaybackManager {
             resolution_cache: self.resolution_cache.clone(),
         })
     }
-}
-
-fn sanitize_component(s: &str) -> String {
-    s.chars()
-        .map(|c| {
-            if c == '/'
-                || c == '\\'
-                || c == ':'
-                || c == '*'
-                || c == '?'
-                || c == '"'
-                || c == '<'
-                || c == '>'
-                || c == '|'
-            {
-                '_'
-            } else {
-                c
-            }
-        })
-        .collect()
 }

@@ -300,7 +300,7 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
     let config = AppConfig::default_with_dirs();
     let cache_dir = config.cache_dir.join("remote-audio");
     tokio::fs::create_dir_all(&cache_dir).await.unwrap();
-    let cache_key = format!("full:v2:{}", "online:test-song:queue artist:queued stream");
+    let cache_key = "full:v3:jiosaavn:test-song";
     let mut hasher = sha2::Sha256::new();
     hasher.update(cache_key.as_bytes());
     let hash = format!("{:x}", hasher.finalize());
@@ -333,7 +333,7 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
         .expect("play local track");
     processor
         .dispatch_command(Command::EnqueueOnlineTrack {
-            track_id: "online:test-song".into(),
+            track_id: "jiosaavn:test-song".into(),
             title: "Queued Stream".into(),
             artist: "Queue Artist".into(),
             album: Some("Queue Album".into()),
@@ -350,7 +350,7 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
     for _ in 0..10 {
         if let Ok(Ok(event)) = tokio::time::timeout(std::time::Duration::from_millis(100), events.recv()).await {
             if let Event::PlaybackStarted { track_id, title, .. } = event {
-                if track_id == "online:test-song" {
+                if track_id == "jiosaavn:test-song" {
                     assert_eq!(title, "Queued Stream");
                     saw_started = true;
                     break;

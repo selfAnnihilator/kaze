@@ -277,6 +277,11 @@ async fn cold_online_fixture(quit_while_loading: bool) {
         .execute(second.db_pool())
         .await
         .unwrap();
+    music_player_backend::recommendations::mixes::ensure_online_track(
+        second.db_pool(), "one", "one", None, None, Some(180.0), None, None,
+    ).await.unwrap();
+    sqlx::query("UPDATE external_tracks SET provider='jiosaavn',provider_id='one' WHERE id='one'")
+        .execute(second.db_pool()).await.unwrap();
     assert_eq!(state(&second).await["position_secs"], 42.25);
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
@@ -315,10 +320,7 @@ async fn cold_online_fixture(quit_while_loading: bool) {
         Some(second.download_service()),
     ));
     manager.resolution_cache().insert(
-        format!(
-            "full:v2:{}",
-            StreamPlaybackManager::compute_cache_key("one", "Unknown Artist", "one")
-        ),
+        "full:v3:jiosaavn:one".into(),
         ResolvedEntry::new(format!("http://{address}/audio.wav"), 180.0, None),
     );
     second.playback_service().set_stream_manager(manager);

@@ -2,7 +2,19 @@
 
 Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public deployment, installation or production-profile migration is part of this experiment.
 
-Search uses JioSaavn by default. The online source selector retains Alternative sources. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.
+Search and online playback use JioSaavn exclusively during this trial. Alternative sources and legacy download-provider routing are removed from the active backend. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.
+
+## JioSaavn-only listening trial — 2026-10-27
+
+- Online search has a fixed JioSaavn label. Stale requests for Alternative sources and the generic old full-audio resolver fail explicitly.
+- Online playback and pre-resolution require an exact JioSaavn song ID or a unique conservative title/artist/duration match. Unmatched catalog items ask the listener to search JioSaavn; they never fall back to YouTube, Audius, Internet Archive, or Soulseek.
+- Only `full:v3:jiosaavn:<song-id>` audio cache entries are eligible. Older cache migration and filename-based download substitution are removed. New JioSaavn audio still uses the bounded cache and existing seek behavior.
+- Existing local files play from disk even if a stale cloud record labels them online. Original music, artwork, playlists, history and account records are preserved.
+- With Kaze stopped, cleared 165 complete audio files and one partial file (749,897,855 bytes / 715.2 MiB) from the real profile's `remote-audio` and `stream_cache` directories. Both directories were verified empty before fresh playback.
+- Home, Flow, charts and broader catalog metadata retain their prior data sources pending the user's listening decision. Metadata-only enrichment fallbacks are separate from audio playback. Legacy download UI/actions cannot supply new audio in this build; importing existing local files remains available.
+- Validation: 154 affected Rust regressions passed (two existing ignored checks), 13 Node test files, both interface source/settings checks, all eleven native desktop groups, frontend/native builds, and the live unified-player gate passed. The live gate covers fresh progressive streaming, exact-ID URL refresh, pause/resume, seeking, cache replay and history/statistics identity.
+- Opened the final build against the existing database and freshly searched/played Mayajaalame (`jiosaavn:YC7AAdVt`, 267 seconds). Provider-resolution logs, advancing playback, a completed 10,901,670-byte file and the player's open audio descriptor confirm the fresh JioSaavn source. Left the song paused at zero with the original volume restored; subjective quality awaits the user.
+- Launcher environment detail: Codex supplies `XDG_CACHE_HOME=/home/abhi/.cache/codex-work`, so this launched process writes its new song to `codex-work/music-player/remote-audio`; a normal shell uses `/home/abhi/.cache/music-player/remote-audio`, which remains empty after the purge. The initial final-file check used the normal-shell path and timed out; confirming the active process's actual cache and audio descriptor resolved the check. Always inspect the target process environment/config when checking cache origin.
 
 ## First acceptance gate — passed 2026-10-26
 

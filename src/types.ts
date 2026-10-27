@@ -366,7 +366,7 @@ export type Query =
   | { query: "ImportSpotifyPlaylist"; payload: { url_or_id: string } }
   | { query: "ResolveFullTrackAudio"; payload: { artist: string; title: string };
     }
-  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number; provider?: "jiosaavn" | "alternative" } }
+  | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number; provider?: "jiosaavn" } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }
   | { query: "GetTrackPlaylistMemberships" }
   | { query: "GetTrackLyrics"; payload: { track_id?: string; artist: string; title: string; duration_secs?: number;

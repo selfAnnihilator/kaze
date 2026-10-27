@@ -830,7 +830,11 @@ impl PlaybackService {
         // Cancel any active progressive stream before starting a new track
         self.cancel_active_stream().await;
 
-        let is_online = track.format == "online" || track.file_path.starts_with("online://");
+        // Cloud imports may retain an online label for a real local file.
+        let has_local_file = PathBuf::from(&track.file_path).is_absolute()
+            && PathBuf::from(&track.file_path).is_file();
+        let is_online = !has_local_file
+            && (track.format == "online" || track.file_path.starts_with("online://"));
         if is_online {
             let _ = self.event_bus.publish(Event::PlaybackBuffering {
                 session_id: String::new(),
