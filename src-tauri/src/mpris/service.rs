@@ -760,6 +760,7 @@ pub async fn start_mpris_service(
                         | Event::PlaybackResumed { .. }
                         | Event::PlaybackStopped { .. }
                         | Event::PlaybackBuffering { .. }
+                        | Event::PlaybackBufferingChanged { .. }
                         | Event::PlaybackError { .. }
                         | Event::PlaybackVolumeChanged { .. }
                         | Event::PlaybackCapabilitiesChanged { .. }

@@ -73,6 +73,13 @@ pub enum Event {
         session_id: String,
         track_id: String,
     },
+    /// A reader stalled/recovered within an already-started playback session.
+    /// This does not change transport state or reset the playback position.
+    PlaybackBufferingChanged {
+        session_id: String,
+        track_id: String,
+        is_buffering: bool,
+    },
 
     // --- History & Track Milestones ---
     TrackFinished {

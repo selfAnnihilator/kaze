@@ -256,7 +256,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   });
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
   const playbackRequestId = useRef(0);
+  const playbackSessionId = useRef<string | null>(null);
+  const playbackStateRevision = useRef(0);
+  const playbackStateQueryId = useRef(0);
   const beginPlaybackLoading = useCallback((trackId: string) => {
+    ++playbackStateRevision.current;
     const requestId = ++playbackRequestId.current;
     setLoadingTrackId(trackId);
     return requestId;
@@ -555,8 +559,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   const fetchPlaybackState = useCallback(async () => {
+    const revision = playbackStateRevision.current;
+    const queryId = ++playbackStateQueryId.current;
     try {
       const res = await executeQuery({ query: "GetPlaybackState" });
+      // Source/catalog work can delay this response beyond a newer transport
+      // event. Never reinstate the old song or its buffering/paused state.
+      if (revision !== playbackStateRevision.current || queryId !== playbackStateQueryId.current) return;
       if (res.data) {
         playbackProgress.update(
           res.data.position_secs ?? 0,
@@ -880,8 +889,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
       switch (event.event) {
         case "PlaybackStarted": {
+          ++playbackStateRevision.current;
+          playbackSessionId.current = event.payload?.session_id || null;
           playbackProgress.update(0, event.payload?.duration_secs || 0);
           const trackId = event.payload?.track_id;
+          setLoadingTrackId((pending) => pending === trackId ? null : pending);
           const found = tracksRef.current.find((t) => t.id === trackId);
           const currentTrackDetail = event.payload?.current_track;
           const track: Track =
@@ -911,6 +923,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             ...prev,
             current_track: track,
             is_playing: true,
+            is_paused: false,
             is_buffering: false,
             position_secs: 0,
             duration_secs:
@@ -922,6 +935,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         }
 
         case "PlaybackBuffering": {
+          ++playbackStateRevision.current;
+          // Only PlaybackService emits this initial-resolution event. Reader
+          // stalls use the session-scoped event below and cannot select a song.
+          playbackSessionId.current = null;
           const trackId = event.payload?.track_id;
           const found = tracksRef.current.find((t) => t.id === trackId);
           setPlaybackState((prev) => ({
@@ -954,13 +971,26 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           break;
         }
 
+        case "PlaybackBufferingChanged": {
+          if (!event.payload?.session_id || event.payload.session_id !== playbackSessionId.current) break;
+          ++playbackStateRevision.current;
+          setPlaybackState((prev) => {
+            if (prev.current_track?.id !== event.payload?.track_id) return prev;
+            const buffering = !!event.payload?.is_buffering && prev.is_playing;
+            return prev.is_buffering === buffering ? prev : { ...prev, is_buffering: buffering };
+          });
+          break;
+        }
+
         case "PlaybackError":
+          ++playbackStateRevision.current;
           setPlaybackState((prev) => ({ ...prev, is_buffering: false }));
           addAppNotification("error", "Playback unavailable", event.payload?.message || "This track couldn’t be played. Try another track or retry playback.");
           void fetchPlaybackState();
           break;
 
         case "PlaybackPaused":
+          ++playbackStateRevision.current;
           playbackProgress.update(
             event.payload?.position_secs ?? playbackProgress.getPosition(),
             playbackProgress.getDuration(),
@@ -975,6 +1005,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           break;
 
         case "PlaybackResumed":
+          ++playbackStateRevision.current;
+          playbackSessionId.current = event.payload?.session_id || playbackSessionId.current;
           playbackProgress.update(
             event.payload?.position_secs ?? playbackProgress.getPosition(),
             playbackProgress.getDuration(),
@@ -989,6 +1021,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           break;
 
         case "PlaybackStopped":
+          ++playbackStateRevision.current;
+          playbackSessionId.current = null;
           playbackProgress.update(0, playbackProgress.getDuration());
           setPlaybackState((prev) => ({
             ...prev,

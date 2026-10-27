@@ -171,6 +171,7 @@ async fn unified_player_stream_cache_and_identity_gate() {
         ),
     );
     core.playback_service().set_stream_manager(manager);
+    let mut playback_events = core.event_bus().subscribe();
     core.dispatch_command(Command::PlayOnlineTrack {
         track_id: id.clone(),
         title: rec["title"].as_str().unwrap().into(),
@@ -198,6 +199,20 @@ async fn unified_player_stream_cache_and_identity_gate() {
     })
     .await
     .expect("bounded complete audio cache");
+    let ready = playback.get_playback_state().await;
+    assert!(!ready.is_buffering, "completed audio cannot keep buffering");
+    assert!(ready.is_paused, "background download must preserve pause");
+    while let Ok(event) = playback_events.try_recv() {
+        use music_player_backend::core::event::Event;
+        match event {
+            Event::PlaybackResumed { .. } => panic!("download recovery must not pretend the user resumed"),
+            Event::PlaybackBufferingChanged { session_id, track_id, .. } => {
+                assert!(!session_id.is_empty(), "reader notifications require an active playback session");
+                assert_eq!(track_id, id);
+            }
+            _ => (),
+        }
+    }
     core.dispatch_command(Command::Seek {
         position_secs: 140.0,
     })

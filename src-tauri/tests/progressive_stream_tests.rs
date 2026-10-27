@@ -184,3 +184,68 @@ fn completed_stream_announces_seekability_without_resuming_playback() {
     assert_eq!(events.try_recv().unwrap(), Event::PlaybackCapabilitiesChanged { track_id: "paused-track".into() });
     assert!(events.try_recv().is_err(), "completion must not emit fake resume/position activity");
 }
+
+#[test]
+fn download_terminal_states_clear_a_waiting_readers_buffering_flag() {
+    use std::sync::atomic::Ordering;
+    for terminal in ["completed", "failed", "cancelled"] {
+        let state = ProgressiveStreamState::new("current-song".into(), None);
+        state.is_buffering.store(true, Ordering::SeqCst);
+        match terminal {
+            "completed" => state.set_completed(),
+            "failed" => state.set_failed("connection lost".into()),
+            _ => state.set_cancelled(),
+        }
+        assert!(!state.is_buffering(), "{terminal} must clear the buffering indicator");
+    }
+}
+
+#[test]
+fn preparing_a_stream_does_not_publish_player_transport_events() {
+    use music_player_backend::core::event_bus::EventBus;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("preparing.part");
+    std::fs::write(&path, b"").unwrap();
+    let bus = Arc::new(EventBus::new(16));
+    let mut events = bus.subscribe();
+    let state = Arc::new(ProgressiveStreamState::new("not-current-yet".into(), Some(bus)));
+    let mut reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+    let producer = state.clone();
+    let handle = std::thread::spawn(move || {
+        for _ in 0..100 {
+            if producer.is_buffering() { break; }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(producer.is_buffering());
+        producer.set_cancelled();
+    });
+    assert!(reader.read(&mut [0; 1]).is_err());
+    handle.join().unwrap();
+    assert!(events.try_recv().is_err(), "preparing/obsolete readers must not alter the current song's UI");
+}
+
+#[test]
+fn current_reader_buffering_is_session_scoped_and_recovers_without_resume() {
+    use music_player_backend::core::{event::Event, event_bus::EventBus};
+    use std::sync::atomic::Ordering;
+    let bus = Arc::new(EventBus::new(16));
+    let mut events = bus.subscribe();
+    let state = ProgressiveStreamState::new("song".into(), Some(bus));
+    state.activate_playback("current-session".into());
+    assert_eq!(events.try_recv().unwrap(), Event::PlaybackBufferingChanged {
+        session_id: "current-session".into(), track_id: "song".into(), is_buffering: false,
+    });
+    // A waiting decoder has reached the available bytes. EOF (without another
+    // chunk) must clear this state, even if the user paused in the meantime.
+    state.is_buffering.store(true, Ordering::SeqCst);
+    state.set_completed();
+    assert_eq!(events.try_recv().unwrap(), Event::PlaybackBufferingChanged {
+        session_id: "current-session".into(), track_id: "song".into(), is_buffering: false,
+    });
+    assert!(matches!(events.try_recv().unwrap(), Event::PlaybackCapabilitiesChanged { .. }));
+    assert!(events.try_recv().is_err(), "EOF must not emit a fake resume or reset position");
+    state.deactivate_playback();
+    state.is_buffering.store(true, Ordering::SeqCst);
+    state.set_cancelled();
+    assert!(events.try_recv().is_err(), "an old session must become silent");
+}

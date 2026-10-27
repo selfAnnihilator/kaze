@@ -26,9 +26,46 @@ struct ActiveSession {
     listened_secs: f64,
     /// Set to Some(Instant) when the track is actively playing; None when paused.
     playing_since: Option<Instant>,
+    is_paused: bool,
+    is_buffering: bool,
     source: String,
     /// listened_secs at last journal checkpoint write (for crash-recovery throttling).
     last_journal_secs: f64,
+}
+
+#[cfg(test)]
+mod buffering_tests {
+    use super::*;
+    use crate::database::{create_in_memory_pool, repositories::{SqliteHistoryRepository, SqliteStatsRepository}};
+
+    #[tokio::test]
+    async fn buffer_recovery_does_not_restart_listening_while_paused_or_for_an_old_session() {
+        let pool = create_in_memory_pool().await.unwrap();
+        let service = HistoryService::new(
+            Arc::new(SqliteHistoryRepository::new(pool.clone())),
+            Arc::new(SqliteStatsRepository::new(pool)),
+            HistoryConfig::default(), Arc::new(EventBus::default()), None,
+        );
+        service.on_playback_started("current".into(), "song".into(), 240.0, "library".into()).await;
+        let buffering = |session: &str, is_buffering| Event::PlaybackBufferingChanged {
+            session_id: session.into(), track_id: "song".into(), is_buffering,
+        };
+        service.handle_event(buffering("current", true)).await;
+        assert!(service.current_session.lock().await.as_ref().unwrap().playing_since.is_none());
+        service.handle_event(Event::PlaybackPaused {
+            session_id: "current".into(), track_id: "song".into(), position_secs: 42.0,
+        }).await;
+        service.handle_event(buffering("current", false)).await;
+        assert!(service.current_session.lock().await.as_ref().unwrap().playing_since.is_none());
+        service.handle_event(Event::PlaybackResumed {
+            session_id: "current".into(), track_id: "song".into(), position_secs: 42.0,
+        }).await;
+        service.handle_event(buffering("old", true)).await;
+        assert!(service.current_session.lock().await.as_ref().unwrap().playing_since.is_some());
+        // No fictional track should be finalized by this event-accounting test.
+        service.current_session.lock().await.take();
+        service.shutdown().await;
+    }
 }
 
 impl ActiveSession {
@@ -169,6 +206,7 @@ impl HistoryService {
                 let mut guard = self.current_session.lock().await;
                 if let Some(ref mut session) = *guard {
                     if session.id == session_id {
+                        session.is_paused = true;
                         // Accumulate elapsed time from the playing_since marker.
                         if let Some(since) = session.playing_since.take() {
                             session.listened_secs += since.elapsed().as_secs_f64();
@@ -182,6 +220,7 @@ impl HistoryService {
                 let mut guard = self.current_session.lock().await;
                 if let Some(ref mut session) = *guard {
                     if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
+                        session.is_buffering = true;
                         // Pause active listening elapsed time while stream is buffering chunks.
                         if let Some(since) = session.playing_since.take() {
                             session.listened_secs += since.elapsed().as_secs_f64();
@@ -189,11 +228,25 @@ impl HistoryService {
                     }
                 }
             }
+            Event::PlaybackBufferingChanged { session_id, is_buffering, .. } => {
+                let mut guard = self.current_session.lock().await;
+                if let Some(session) = guard.as_mut().filter(|session| session.id == session_id) {
+                    session.is_buffering = is_buffering;
+                    if is_buffering {
+                        if let Some(since) = session.playing_since.take() {
+                            session.listened_secs += since.elapsed().as_secs_f64();
+                        }
+                    } else if !session.is_paused && session.playing_since.is_none() {
+                        session.playing_since = Some(Instant::now());
+                    }
+                }
+            }
             Event::PlaybackResumed { session_id, track_id, .. } => {
                 let mut guard = self.current_session.lock().await;
                 if let Some(ref mut session) = *guard {
                     if (session_id.is_empty() && session.track_id == track_id) || session.id == session_id {
-                        if session.playing_since.is_none() {
+                        session.is_paused = false;
+                        if !session.is_buffering && session.playing_since.is_none() {
                             session.playing_since = Some(Instant::now());
                         }
                     }
@@ -275,6 +328,8 @@ impl HistoryService {
             duration_secs,
             listened_secs: 0.0,
             playing_since: Some(Instant::now()),
+            is_paused: false,
+            is_buffering: false,
             source,
             last_journal_secs: 0.0,
         };

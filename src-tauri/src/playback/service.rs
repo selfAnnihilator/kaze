@@ -557,6 +557,7 @@ impl PlaybackService {
 
     pub async fn cancel_active_stream(&self) {
         if let Some(state) = self.active_stream_state.write().unwrap().take() {
+            state.deactivate_playback();
             state.set_cancelled();
         }
         let sm_opt = self.stream_manager.read().unwrap().clone();
@@ -990,13 +991,16 @@ impl PlaybackService {
 
         let src = self.current_source.read().await.clone();
         let _ = self.event_bus.publish(Event::PlaybackStarted {
-            session_id,
+            session_id: session_id.clone(),
             track_id: item.track_id.clone(),
             title: item.title.clone(),
             artist: item.artist.clone(),
             duration_secs: actual_duration,
             source: src,
         });
+        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+            state.activate_playback(session_id);
+        }
 
         if start_position.is_some() {
             let position_secs = self.backend.lock().await.position().as_secs_f64();
@@ -1067,10 +1071,13 @@ impl PlaybackService {
             .unwrap_or_default();
 
         let _ = self.event_bus.publish(Event::PlaybackResumed {
-            session_id,
+            session_id: session_id.clone(),
             track_id,
             position_secs: pos,
         });
+        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+            state.activate_playback(session_id);
+        }
         Ok(())
     }
 
@@ -1532,7 +1539,7 @@ impl PlaybackService {
         };
         let is_buffering = self.is_resolving.load(std::sync::atomic::Ordering::Relaxed)
             || match &*self.active_stream_state.read().unwrap() {
-                Some(state) => state.is_buffering(),
+                Some(state) => !is_paused && !is_finished && state.is_buffering(),
                 None => false,
             };
         let has_active_track = (duration > 0.0 && (!is_finished || is_paused)) || is_buffering;

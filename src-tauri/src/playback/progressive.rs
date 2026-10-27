@@ -28,6 +28,7 @@ pub struct ProgressiveStreamState {
     pub is_buffering: AtomicBool,
     pub event_bus: Option<Arc<EventBus>>,
     pub track_id: String,
+    playback_session: Mutex<Option<String>>,
 }
 
 impl ProgressiveStreamState {
@@ -40,23 +41,47 @@ impl ProgressiveStreamState {
             is_buffering: AtomicBool::new(false),
             event_bus,
             track_id,
+            playback_session: Mutex::new(None),
         }
     }
 
     /// Updates the downloaded byte count and wakes any waiting reader threads.
     pub fn update_downloaded(&self, new_bytes: u64) {
+        let _status = self.status.lock().unwrap();
         self.downloaded_bytes.store(new_bytes, Ordering::Release);
-        if self.is_buffering.swap(false, Ordering::SeqCst) {
-            debug!(track_id = %self.track_id, bytes = new_bytes, "Progressive stream resumed after buffering");
-            if let Some(ref bus) = self.event_bus {
-                let _ = bus.publish(Event::PlaybackResumed {
-                    session_id: String::new(),
-                    track_id: self.track_id.clone(),
-                    position_secs: 0.0,
-                });
-            }
-        }
+        self.set_buffering(false);
         self.condvar.notify_all();
+    }
+
+    /// Attach only after PlaybackStarted. Probing/preparation and obsolete
+    /// streams must never publish transport or current-song buffering events.
+    pub fn activate_playback(&self, session_id: String) {
+        let _status = self.status.lock().unwrap();
+        *self.playback_session.lock().unwrap() = Some(session_id);
+        self.publish_buffering(self.is_buffering());
+    }
+
+    pub fn deactivate_playback(&self) {
+        let _status = self.status.lock().unwrap();
+        *self.playback_session.lock().unwrap() = None;
+    }
+
+    // All callers hold status, serializing the flag and its notification with
+    // chunk arrival/EOF. Otherwise a late "buffering" can overtake recovery.
+    fn set_buffering(&self, buffering: bool) {
+        if self.is_buffering.swap(buffering, Ordering::SeqCst) != buffering {
+            self.publish_buffering(buffering);
+        }
+    }
+
+    fn publish_buffering(&self, is_buffering: bool) {
+        if let (Some(bus), Some(session_id)) = (&self.event_bus, self.playback_session.lock().unwrap().as_ref()) {
+            let _ = bus.publish(Event::PlaybackBufferingChanged {
+                session_id: session_id.clone(),
+                track_id: self.track_id.clone(),
+                is_buffering,
+            });
+        }
     }
 
     /// Marks the download as completed successfully.
@@ -64,6 +89,7 @@ impl ProgressiveStreamState {
         {
             let mut s = self.status.lock().unwrap();
             *s = StreamStatus::Completed;
+            self.set_buffering(false);
         }
         self.condvar.notify_all();
         // A paused player has no position ticks. Tell controllers that seeking
@@ -81,6 +107,7 @@ impl ProgressiveStreamState {
         {
             let mut s = self.status.lock().unwrap();
             *s = StreamStatus::Failed(err);
+            self.set_buffering(false);
         }
         self.condvar.notify_all();
     }
@@ -90,6 +117,7 @@ impl ProgressiveStreamState {
         {
             let mut s = self.status.lock().unwrap();
             *s = StreamStatus::Cancelled;
+            self.set_buffering(false);
         }
         self.condvar.notify_all();
     }
@@ -138,8 +166,11 @@ impl Read for ProgressiveStreamReader {
         }
 
         loop {
+            let status_guard = self.state.status.lock().unwrap();
             let downloaded = self.state.downloaded_bytes.load(Ordering::Acquire);
             if self.read_pos < downloaded {
+                self.state.set_buffering(false);
+                drop(status_guard);
                 let available = downloaded - self.read_pos;
                 let to_read = (available.min(buf.len() as u64)) as usize;
                 let n = self.file.read(&mut buf[..to_read])?;
@@ -148,7 +179,6 @@ impl Read for ProgressiveStreamReader {
             }
 
             // Reader caught up to downloaded bytes: check download status
-            let status_guard = self.state.status.lock().unwrap();
             match &*status_guard {
                 StreamStatus::Completed => {
                     // Truly at end of file
@@ -168,15 +198,7 @@ impl Read for ProgressiveStreamReader {
                 }
                 StreamStatus::Downloading => {
                     // Producer is still actively downloading: wait for new chunks
-                    if !self.state.is_buffering.swap(true, Ordering::SeqCst) {
-                        debug!(pos = self.read_pos, "Progressive stream entered buffering, waiting for download chunks");
-                        if let Some(ref bus) = self.state.event_bus {
-                            let _ = bus.publish(Event::PlaybackBuffering {
-                                session_id: String::new(),
-                                track_id: self.state.track_id.clone(),
-                            });
-                        }
-                    }
+                    self.state.set_buffering(true);
 
                     // Wait on condvar with a 500ms timeout to wake up reliably
                     let _ = self.state.condvar.wait_timeout(status_guard, Duration::from_millis(500)).unwrap();
