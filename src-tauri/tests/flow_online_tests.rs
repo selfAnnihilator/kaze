@@ -63,7 +63,7 @@ async fn external(p: &CoreProcessor, id: &str, title: &str, artist: &str, genre:
     SqliteWishlistRepository::new(p.db_pool().clone())
         .upsert_external_track(&ExternalTrackRecord {
             id: id.into(),
-            provider: "itunes".into(),
+            provider: "jiosaavn".into(),
             provider_id: id.into(),
             title: title.into(),
             artist: artist.into(),
@@ -375,7 +375,7 @@ async fn online_liked_songs_are_familiar_without_claiming_another_accounts_playl
     let (p, _dir) = setup().await;
     ensure_online_track(
         p.db_pool(),
-        "online:liked",
+        "jiosaavn:liked",
         "Liked online",
         Some("Liked artist"),
         None,
@@ -387,7 +387,7 @@ async fn online_liked_songs_are_familiar_without_claiming_another_accounts_playl
     .unwrap();
     let repo = SqlitePlaylistRepository::new(p.db_pool().clone());
     let liked = repo.ensure_liked_songs_playlist("listener").await.unwrap();
-    repo.add_track(&liked, "online:liked", None).await.unwrap();
+    repo.add_track(&liked, "jiosaavn:liked", None).await.unwrap();
     let engine = p.flow_engine();
     let own = engine
         .generate_playback_tracks_after("listener", 1.0, 10, &[], None)

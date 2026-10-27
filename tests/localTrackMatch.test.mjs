@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { attachLocalSearchMatches, sameSongMetadata } from "../src/localTrackMatch.ts";
+import { attachLocalSearchMatches, sameSongMetadata, isCurrentPlaybackTrack } from "../src/localTrackMatch.ts";
 
 const recommendation = {
   external_track_id: "itunes:pasoori",
@@ -49,4 +49,12 @@ test("JioSaavn selections retain exact provider identity beside a local metadata
   assert.equal(result.external_track_id, "jiosaavn:song-id");
   assert.equal(result.matched_local_track_id, undefined);
   assert.equal(result.match_status, "NOT_FOUND");
+});
+
+
+test("saved online aliases compare exact sources rather than matching titles", () => {
+  const current = { ...local, id: "itunes:saved", file_path: "online://itunes:saved", format: "online", playback_source: { provider: "jiosaavn", track_id: "album" } };
+  assert.equal(isCurrentPlaybackTrack({ ...recommendation, playback_source: { provider: "jiosaavn", track_id: "single" } }, current), false);
+  assert.equal(isCurrentPlaybackTrack({ ...recommendation, playback_source: { provider: "jiosaavn", track_id: "album" } }, current), true);
+  assert.equal(attachLocalSearchMatches([{ ...recommendation, playback_source: { provider: "jiosaavn", track_id: "album" } }], [local])[0].matched_local_track_id, undefined);
 });

@@ -1,6 +1,9 @@
+export interface OnlinePlaybackSource { provider: "jiosaavn"; track_id: string; }
+
 // --- Domain Models ---
 
 export interface Track {
+  playback_source?: OnlinePlaybackSource;
   id: string;
   file_path: string;
   title: string;
@@ -113,6 +116,7 @@ export interface DownloadSearchResult {
 }
 
 export interface DiscoveryRecommendation {
+  playback_source?: OnlinePlaybackSource;
   external_track_id: string;
   provider: string;
   provider_id: string;

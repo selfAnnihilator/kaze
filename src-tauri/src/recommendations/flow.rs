@@ -266,7 +266,7 @@ impl FlowEngine {
                     JOIN playlists p ON p.id = pt.playlist_id
                     WHERE p.user_id = ? AND p.name = 'Liked Songs' AND p.is_smart_mix = 0
                  ) liked ON liked.track_id = e.id
-                 WHERE (t.id IS NULL OR t.format = 'online' OR t.file_path LIKE 'online://%')
+                 WHERE (e.provider = 'jiosaavn' OR EXISTS (SELECT 1 FROM online_track_sources source WHERE source.track_id=e.id)) AND (t.id IS NULL OR t.format = 'online' OR t.file_path LIKE 'online://%')
                    AND NOT EXISTS (
                        SELECT 1 FROM tracks local WHERE local.id = e.matched_local_track_id
                          AND local.format != 'online' AND local.file_path NOT LIKE 'online://%'

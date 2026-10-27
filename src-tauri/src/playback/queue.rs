@@ -41,6 +41,21 @@ impl PlaybackQueue {
         changed
     }
 
+    pub fn update_source_metadata(&mut self, id: &str, title: &str, artist: &str, duration: f64) {
+        self.update_metadata(id, title, artist);
+        for item in &mut self.items { if item.track_id == id { item.duration_secs = duration; } }
+    }
+
+    /// Repair source metadata/prune unavailable entries while retaining queue-entry
+    /// IDs, selected entry, repeat mode, and the exact existing shuffle order.
+    pub fn reconcile_sources(&mut self, items: Vec<QueueItem>) {
+        let current = self.current().map(|item| item.queue_id.clone());
+        let shuffled: Vec<String> = self.shuffle_indices.iter().filter_map(|&i| self.items.get(i).map(|item| item.queue_id.clone())).collect();
+        self.items = items;
+        self.current_index = current.and_then(|id| self.items.iter().position(|item| item.queue_id == id));
+        self.shuffle_indices = shuffled.iter().filter_map(|id| self.items.iter().position(|item| &item.queue_id == id)).collect();
+    }
+
     /// Replaces the current queue with new items, optionally starting at a specific index.
     pub fn set_queue(&mut self, items: Vec<QueueItem>, start_index: Option<usize>) {
         self.items = items;

@@ -442,3 +442,65 @@ async fn validated_artwork_uses_existing_loader_after_offline_restart() {
         .contains("enrichment-artwork"));
     core.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn displayed_catalog_version_is_persistent_and_plays_without_matching_again() {
+    use music_player_backend::{config::AppConfig, core::{Command, CoreProcessor, Query, QueryResponse}, playback::{backend::MockAudioBackend, stream::StreamPlaybackManager}, providers::online_catalog::OnlineCatalog};
+    let mut single = candidate("single", "Dance With Me");
+    single["album"] = json!("Single"); single["duration"] = json!(219);
+    single["encrypted_media_url"] = json!("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq");
+    let mut album = single.clone(); album["id"] = json!("albumversion"); album["album"] = json!("The Romantic");
+    let (url, count, server_task) = server(json!({"results":[single,album]}),200).await;
+    let temp = tempfile::tempdir().unwrap();
+    let pool = create_in_memory_pool().await.unwrap();
+    ensure_online_track(&pool,"itunes:old","Dance With Me",Some("Artist"),Some("The Romantic"),Some(210.0),None,None).await.unwrap();
+    // The selected provider song can already exist from a previous search.
+    // Existing UNIQUE(provider,provider_id) must not prevent linking a saved alias.
+    ensure_online_track(&pool,"jiosaavn:albumversion","Dance With Me",Some("Artist"),Some("The Romantic"),Some(219.0),None,None).await.unwrap();
+    let catalog = OnlineCatalog::new(pool.clone(), Arc::new(JioSaavnProvider::with_endpoint(&url)));
+    let shown = catalog.present(json!([{"track_id":"itunes:old","title":"Dance With Me","artist":"Artist","duration_secs":210}])).await.unwrap();
+    assert_eq!(shown[0]["playback_source"]["track_id"],"albumversion");
+    assert_eq!(shown[0]["album"],"The Romantic");
+    assert_eq!(shown[0]["duration_secs"],219.0);
+    let original: (String,String)=sqlx::query_as("SELECT provider,provider_id FROM external_tracks WHERE id='itunes:old'").fetch_one(&pool).await.unwrap();
+    assert_eq!(original,("online".into(),"itunes:old".into()),"the source link must not steal the unique identity of an existing provider row");
+    assert_eq!(count.load(Ordering::SeqCst),1);
+    server_task.abort();
+    // A restart/offline catalog does not perform another title search or choose the other release.
+    let reopened = OnlineCatalog::new(pool.clone(), Arc::new(JioSaavnProvider::with_endpoint("http://127.0.0.1:1")));
+    assert_eq!(reopened.bind("itunes:old").await.unwrap().unwrap().provider_track_id,"albumversion");
+    let backend = MockAudioBackend::new(); let loaded = backend.loaded_path.clone();
+    let mut config=AppConfig::default_with_dirs(); config.cache_dir=temp.path().join("cache");
+    let core=CoreProcessor::new_with_backend(pool.clone(),config.clone(),Box::new(backend));
+    let mut manager=StreamPlaybackManager::new(config.cache_dir.clone(),Some(pool),None);
+    manager.catalog=Some(reopened);
+    let cache=manager.get_cache_path("full:v3:jiosaavn:albumversion");
+    std::fs::create_dir_all(manager.cache_dir()).unwrap();
+    let data=vec![0u8;32000];let mut wav=Vec::new();
+    wav.extend(b"RIFF");wav.extend((36+data.len() as u32).to_le_bytes());wav.extend(b"WAVEfmt ");wav.extend(16u32.to_le_bytes());wav.extend(1u16.to_le_bytes());wav.extend(1u16.to_le_bytes());wav.extend(8000u32.to_le_bytes());wav.extend(16000u32.to_le_bytes());wav.extend(2u16.to_le_bytes());wav.extend(16u16.to_le_bytes());wav.extend(b"data");wav.extend((data.len() as u32).to_le_bytes());wav.extend(data);
+    std::fs::write(&cache,wav).unwrap();
+    core.playback_service().set_stream_manager(Arc::new(manager));
+    core.dispatch_command(Command::PlayTrack{track_id:"itunes:old".into(),source:Some("playlist".into())}).await.unwrap();
+    assert_eq!(loaded.lock().unwrap().as_ref(),Some(&cache));
+    let QueryResponse::PlaybackState(state)=core.execute_query(Query::GetPlaybackState).await.unwrap() else {panic!("state")};
+    assert_eq!(state["current_track"]["playback_source"]["track_id"],"albumversion");
+    assert_eq!(state["current_track"]["duration_secs"],219.0);
+    core.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn catalog_hides_unavailable_rows_but_preserves_saved_records_and_local_files() {
+    use music_player_backend::providers::online_catalog::OnlineCatalog;
+    let (url,_,task)=server(json!({"results":[]}),200).await;
+    let pool=create_in_memory_pool().await.unwrap();
+    ensure_online_track(&pool,"itunes:missing","Missing",Some("Artist"),None,Some(210.0),None,None).await.unwrap();
+    let repo=SqliteTrackRepository::new(pool.clone());
+    let local=repo.save_scanned_track(source("/music/keep.flac")).await.unwrap();
+    let catalog=OnlineCatalog::new(pool.clone(),Arc::new(JioSaavnProvider::with_endpoint(&url)));
+    let shown=catalog.present(json!([{"track_id":"itunes:missing","title":"Missing"},{"track_id":local,"title":"Local"}])).await.unwrap();
+    assert_eq!(shown.as_array().unwrap().len(),1);
+    assert_eq!(shown[0]["title"],"Local");
+    let retained:i64=sqlx::query_scalar("SELECT count(*) FROM tracks WHERE id='itunes:missing'").fetch_one(&pool).await.unwrap();
+    assert_eq!(retained,1,"unavailable saved items are not deleted");
+    task.abort();
+}

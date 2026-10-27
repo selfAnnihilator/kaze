@@ -180,7 +180,7 @@ async fn reopening_again_preserves_bookmark_and_seek_before_play_changes_resume_
 }
 
 #[tokio::test]
-async fn online_and_missing_media_remain_visible_without_network_or_audio_on_startup() {
+async fn source_linked_online_and_missing_local_media_restore_without_audio() {
     let dir = tempfile::tempdir().unwrap();
     let (first, _) = open(&dir).await;
     seed(&first).await;
@@ -188,6 +188,11 @@ async fn online_and_missing_media_remain_visible_without_network_or_audio_on_sta
         .execute(first.db_pool())
         .await
         .unwrap();
+    music_player_backend::recommendations::mixes::ensure_online_track(
+        first.db_pool(), "one", "one", None, None, Some(180.0), None, None,
+    ).await.unwrap();
+    sqlx::query("UPDATE external_tracks SET provider='jiosaavn',provider_id='one' WHERE id='one'")
+        .execute(first.db_pool()).await.unwrap();
     first.shutdown().await.unwrap();
     let (second, backend) = open(&dir).await;
     let restored = state(&second).await;

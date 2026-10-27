@@ -136,6 +136,7 @@ pub enum ResolvedAudioSource {
 /// Manages streaming audio resolution, bounded disk caching, LRU eviction, and cancellation safety.
 pub struct StreamPlaybackManager {
     jiosaavn: Arc<crate::providers::jiosaavn::JioSaavnProvider>,
+    pub catalog: Option<Arc<crate::providers::online_catalog::OnlineCatalog>>,
     cache_dir: PathBuf,
     legacy_cache_dir: PathBuf,
     pool: Option<SqlitePool>,
@@ -174,8 +175,11 @@ impl StreamPlaybackManager {
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
+        let jiosaavn = Arc::new(crate::providers::jiosaavn::JioSaavnProvider::new());
+        let catalog = pool.as_ref().map(|pool| crate::providers::online_catalog::OnlineCatalog::new(pool.clone(), jiosaavn.clone()));
         Self {
-            jiosaavn: Arc::new(crate::providers::jiosaavn::JioSaavnProvider::new()),
+            jiosaavn,
+            catalog,
             cache_dir: stream_cache_dir,
             legacy_cache_dir,
             pool,
@@ -315,35 +319,12 @@ impl StreamPlaybackManager {
         }
     }
 
-    async fn jiosaavn_identity(&self, track_id: &str, title: &str, artist: &str) -> AppResult<String> {
-        let row: Option<(String, String, Option<f64>, Option<String>)> = if let Some(pool) = &self.pool {
-            sqlx::query_as("SELECT provider, provider_id, duration_secs, album FROM external_tracks WHERE id = ?")
-                .bind(track_id).fetch_optional(pool).await?
-        } else { None };
-        let exact = row.as_ref().filter(|r| r.0 == "jiosaavn").map(|r| r.1.clone())
-            .or_else(|| track_id.strip_prefix("jiosaavn:").map(str::to_string));
-        // Complete cached audio remains playable even if this provider is disabled.
-        if let Some(id) = exact { return Ok(id); }
-        if !self.jiosaavn_enabled().await? { return Err(AppError::Playback("Enable JioSaavn in Settings to play online music".into())); }
-        if let Some((_, _, Some(duration), album)) = row {
-            let evidence = serde_json::json!({"title":title,"artist":artist,"album":album,"duration":duration}).to_string();
-            if let Some(pool) = &self.pool {
-                let saved: Option<(String, String)> = sqlx::query_as("SELECT provider_id, evidence_json FROM provider_track_matches WHERE external_track_id = ? AND provider = 'jiosaavn'")
-                    .bind(track_id).fetch_optional(pool).await?;
-                if let Some((id, signature)) = saved { if signature == evidence { return Ok(id); } }
-            }
-            let candidates = self.jiosaavn.search(&format!("{title} {artist}"), 20).await?;
-            {
-                if let Some(m) = crate::providers::strict_match::unique_match(title, Some(artist), album.as_deref(), duration, &candidates) {
-                    if let Some(pool) = &self.pool {
-                        sqlx::query("INSERT INTO provider_track_matches(external_track_id, provider, provider_id, evidence_json) VALUES (?,'jiosaavn',?,?) ON CONFLICT(external_track_id) DO UPDATE SET provider_id=excluded.provider_id,evidence_json=excluded.evidence_json")
-                            .bind(track_id).bind(&m.provider_track_id).bind(evidence).execute(pool).await?;
-                    }
-                    return Ok(m.provider_track_id.clone());
-                }
-            }
+    async fn jiosaavn_identity(&self, track_id: &str, _title: &str, _artist: &str) -> AppResult<String> {
+        if let Some(catalog) = &self.catalog {
+            if let Some(source) = catalog.source_id(track_id).await? { return Ok(source); }
         }
-        Err(AppError::Playback("No unique JioSaavn match. Search JioSaavn and select the song to play it.".into()))
+        if let Some(id) = track_id.strip_prefix("jiosaavn:") { return Ok(id.into()); }
+        Err(AppError::Playback("This song is not available from JioSaavn".into()))
     }
 
     async fn jiosaavn_enabled(&self) -> AppResult<bool> {
@@ -1188,6 +1169,7 @@ impl StreamPlaybackManager {
     fn clone_for_bg(&self) -> Arc<Self> {
         Arc::new(Self {
             jiosaavn: self.jiosaavn.clone(),
+            catalog: self.catalog.clone(),
             cache_dir: self.cache_dir.clone(),
             legacy_cache_dir: self.legacy_cache_dir.clone(),
             pool: self.pool.clone(),

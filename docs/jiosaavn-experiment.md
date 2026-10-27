@@ -1,8 +1,22 @@
 # JioSaavn experiment
 
-Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public deployment, installation or production-profile migration is part of this experiment.
+Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public deployment or installation. The current source-link repair upgrades saved online identities in the testing profile while preserving playlist/history/statistics IDs.
 
 Search and online playback use JioSaavn exclusively during this trial. Alternative sources and legacy download-provider routing are removed from the active backend. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.
+
+## Current contract: every displayed online song has a saved source
+
+The source-link repair supersedes the search-redirect workaround below. `online_track_sources` stores the exact JioSaavn ID and provider metadata for each saved Kaze identity. Before Home, discovery, charts, playlists, Flow or a restored queue exposes an online row, it is linked to a provider version and its displayed metadata is replaced with that version's metadata. Missing sources are omitted from playable lists, preserving their original saved rows.
+
+For old catalog entries, import prefers the matching album, then provider order among same-title/artist releases. A 210-second placeholder is not treated as measured audio evidence. This choice happens once, before display; subsequent playback reads the saved provider ID and refreshes media only for that ID. Local-file enrichment keeps its separate strict matching rules. The old “No unique JioSaavn match” playback path and manual search redirects are removed.
+
+Source preparation uses four concurrent searches, a twenty-second batch deadline and persistent snapshots. Metadata events are batched. Restored queues retain entry IDs, an available selected entry, repeat and shuffle ordering while repairing source labels/durations. No original music files or tags are changed. A private database recovery backup was taken before applying the upgrade to the user's profile.
+
+Verification includes 157 affected Rust regressions, the focused final source/restore checks, Node tests and both interface browser checks. Live muted native playback passed for saved aliases of Babydoll, Dance With Me, Missing Piece, Bloody Mary and Bad Romance; every playback source and displayed album/title/duration agreed. A two-release fixture proves an album version chosen before display remains selected after restart/provider outage and plays its own cached audio without another title search. Browser checks also prove selecting another same-name release dispatches that release's exact ID.
+
+Real-profile verification exposed a legacy unique constraint on `(provider, provider_id)`: several saved IDs can point to a JioSaavn song that is already registered. The dedicated link table now supports that many-to-one relation without rewriting the original provider pair, and search reuses existing non-prefixed JioSaavn identities. Regression coverage includes an already-present canonical row. The original queue bookmark was restored after the probe; 70 source-ready entries remain playable from its 99 entries, while unlinked records remain saved. The actual saved Babydoll entry (`itunes:6794168373`) played JioSaavn `efAHHwFG`, a 7,437,911-byte complete audio file. Queue selection and Resume preserved the 70-entry queue; volume was restored and the app left paused near the beginning. Provider duration is 178 seconds; the decoder reports approximately 178.85 seconds, an expected subsecond container difference.
+
+See [ADR 0016](adr/0016-source-linked-online-catalog.md) for the current contract. Older dated sections retain the history of the experiment and the superseded workaround.
 
 ## JioSaavn-only listening trial — 2026-10-27
 

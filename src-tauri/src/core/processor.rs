@@ -59,6 +59,7 @@ pub struct CoreProcessor {
     discovery_coordinator: Arc<DiscoveryCoordinator>,
     download_service: Arc<DownloadService>,
     flow_engine: Arc<crate::recommendations::FlowEngine>,
+    online_catalog: Arc<crate::providers::online_catalog::OnlineCatalog>,
     config: Arc<RwLock<AppConfig>>,
     cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, Option<String>>>>,
     is_quitting: AtomicBool,
@@ -189,6 +190,8 @@ impl CoreProcessor {
             Some(db_pool.clone()),
             Some(download_service.clone()),
         ));
+        let online_catalog = stream_manager.catalog.as_ref().unwrap().clone();
+        online_catalog.set_event_bus(event_bus.clone());
         playback_service.set_stream_manager(stream_manager.clone());
         let sm_maint = stream_manager.clone();
         background_tasks.push(tokio::spawn(async move {
@@ -468,6 +471,7 @@ impl CoreProcessor {
             discovery_coordinator,
             download_service,
             flow_engine,
+            online_catalog,
             config: Arc::new(RwLock::new(config)),
             cover_art_cache,
             is_quitting: AtomicBool::new(false),
@@ -1897,7 +1901,7 @@ impl CoreProcessor {
         Ok(cover_result)
     }
 
-    /// Executes a read-only Query and returns the typed QueryResponse.
+    /// Returns query data with online sources bound before songs are exposed.
     pub async fn execute_query(&self, query: Query) -> AppResult<QueryResponse> {
         info!(?query, "Executing query");
 
@@ -1917,7 +1921,7 @@ impl CoreProcessor {
                         }
                     }
                 }
-                Ok(QueryResponse::PlaybackState(val))
+                Ok(QueryResponse::PlaybackState(self.online_catalog.present(val).await?))
             }
             Query::GetTopRankings {
                 window,
@@ -1940,7 +1944,7 @@ impl CoreProcessor {
                         items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
                     }
                 };
-                Ok(QueryResponse::Rankings(val))
+                Ok(QueryResponse::Rankings(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetOnboardingStatus => {
                 let completed = self.library_service.is_onboarding_completed().await?;
@@ -1991,7 +1995,7 @@ impl CoreProcessor {
                 let folders = self.library_service.get_folders().await?;
                 let val = serde_json::to_value(&folders)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
-                Ok(QueryResponse::Tracks(vec![val]))
+                Ok(QueryResponse::Tracks(self.online_catalog.present(serde_json::json!([val])).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetTracks {
                 offset,
@@ -2009,7 +2013,7 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::Tracks(val))
+                Ok(QueryResponse::Tracks(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetTrackById { track_id } => {
                 let user_id = self.current_user_id().await;
@@ -2019,6 +2023,7 @@ impl CoreProcessor {
                     .find_by_id_scoped(&track_id, Some(&user_id))
                     .await?;
                 let val = track.and_then(|t| serde_json::to_value(t).ok());
+                let val = match val { Some(value) => { let result = self.online_catalog.present(serde_json::json!([value])).await?; result.as_array().and_then(|items| items.first()).cloned() }, None => None };
                 Ok(QueryResponse::Track(val))
             }
             Query::GetArtists { offset, limit } => {
@@ -2068,7 +2073,7 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
-                Ok(QueryResponse::Recommendations(val))
+                Ok(QueryResponse::Recommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetSmartMixes => {
                 let user_id = self.current_user_id().await;
@@ -2153,7 +2158,7 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::PlaylistTracks(val))
+                Ok(QueryResponse::PlaylistTracks(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetWishlist => {
                 let items = self.wishlist_manager.get_wishlist(None).await?;
@@ -2176,17 +2181,17 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
-                Ok(QueryResponse::DiscoveryRecommendations(val))
+                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetWorldTrending { limit, force_refresh } => {
                 let recs = self.discovery_coordinator.get_world_trending(limit as usize, force_refresh.unwrap_or(false)).await?;
                 let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
-                Ok(QueryResponse::DiscoveryRecommendations(val))
+                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetChartSongs { chart_id, limit } => {
                 let recs = self.discovery_coordinator.get_chart_songs(&chart_id, limit as usize).await?;
                 let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
-                Ok(QueryResponse::DiscoveryRecommendations(val))
+                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetDownloads { status_filter, limit } => {
                 let tasks = self
@@ -2215,7 +2220,9 @@ impl CoreProcessor {
                         let tracks = self.provider_coordinator.jiosaavn.search(&query, limit.unwrap_or(30).min(50) as usize).await?;
                         let mut results = Vec::new();
                         for t in tracks {
-                            let id = format!("jiosaavn:{}", t.provider_track_id);
+                            let existing: Option<String> = sqlx::query_scalar("SELECT id FROM external_tracks WHERE provider='jiosaavn' AND provider_id=?")
+                                .bind(&t.provider_track_id).fetch_optional(&self.db_pool).await?;
+                            let id = existing.unwrap_or_else(|| format!("jiosaavn:{}", t.provider_track_id));
                             crate::database::repositories::SqliteWishlistRepository::new(self.db_pool.clone()).upsert_external_track(&crate::database::models::ExternalTrackRecord {
                                 id: id.clone(), provider: "jiosaavn".into(), provider_id: t.provider_track_id.clone(),
                                 title: t.title.clone(), artist: t.artist_name.clone(), album: t.album_title.clone(),
@@ -2231,7 +2238,7 @@ impl CoreProcessor {
                                 recommendation_reason: "JioSaavn search".into(), in_wishlist: false,
                             }).map_err(|e| AppError::Internal(e.to_string()))?);
                         }
-                        return Ok(QueryResponse::DiscoveryRecommendations(results));
+                        return Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(results)).await?.as_array().cloned().unwrap_or_default()));
                     }
                     _ => Err(AppError::Validation("JioSaavn is the only online music source in this trial".into())),
                 }
@@ -2500,7 +2507,7 @@ impl CoreProcessor {
                 let mut overview = self.flow_engine.get_home_overview(&user_id).await?;
                 overview.flow_session = self.playback_service.flow_session(&self.flow_engine, &user_id).await?;
                 let val = serde_json::to_value(overview).unwrap_or(serde_json::Value::Null);
-                Ok(QueryResponse::HomeOverview(val))
+                Ok(QueryResponse::HomeOverview(self.online_catalog.present(val).await?))
             }
             Query::GetFlowQueue {
                 familiarity_ratio,
@@ -2519,7 +2526,7 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::FlowQueue(val))
+                Ok(QueryResponse::FlowQueue(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
             }
             Query::GetFlowTrackReason { track_id } => {
                 let user_id = self.current_user_id().await;

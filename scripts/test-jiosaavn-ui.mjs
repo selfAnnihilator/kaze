@@ -11,15 +11,15 @@ try {
       const f = window.__kazeFixture, query = f.query.bind(f), command = f.command.bind(f);
       const preferences = { enable_jiosaavn: true, auto_fill_metadata: true };
       Object.assign(f.playback, {
-        current_track: { ...f.tracks[0], id: "itunes:legacy", title: "Dance With Me", artist_name: "Bruno Mars", file_path: "online://itunes:legacy", format: "online", duration_secs: 210 },
-        current_track_id: "itunes:legacy", is_playing: false, is_paused: false, duration_secs: 210,
+        current_track: { ...f.tracks[0], id: "itunes:legacy", title: "Dance With Me", artist_name: "Bruno Mars", file_path: "online://itunes:legacy", format: "online", duration_secs: 219, playback_source: { provider: "jiosaavn", track_id: "fixtureAlbum" } },
+        current_track_id: "itunes:legacy", is_playing: false, is_paused: false, duration_secs: 219,
       });
       f.query = async q => {
         if (q.query === "SearchOnlineMusic" && q.payload.query === "Unavailable Song") {
           return new Promise(resolve => { window.__completeUnavailableSearch = () => resolve({ type: "DiscoveryRecommendations", data: [] }); });
         }
         const result = await query(q);
-        if (q.query === "SearchOnlineMusic") result.data = result.data.map((track, index) => ({ ...track, provider: "jiosaavn", provider_id: `fixture${index}`, external_track_id: `jiosaavn:fixture${index}` }));
+        if (q.query === "SearchOnlineMusic") result.data = result.data.slice(0, 2).map((track, index) => ({ ...track, title: "Dance With Me", artist: "Bruno Mars", album: index ? "The Romantic" : "Single", duration_secs: 219, provider: "jiosaavn", provider_id: index ? "fixtureAlbum" : "fixtureSingle", external_track_id: index ? "jiosaavn:fixtureAlbum" : "jiosaavn:fixtureSingle", playback_source: { provider: "jiosaavn", track_id: index ? "fixtureAlbum" : "fixtureSingle" } }));
         if (q.query === "GetSettings") result.data.metadata = { ...result.data.metadata, ...preferences };
         return result;
       };
@@ -38,11 +38,14 @@ try {
     assert.equal(await page.getByLabel("Online music source").textContent(), "JioSaavn");
     assert.equal(await page.getByRole("combobox", { name: "Online music source" }).count(), 0);
     await page.locator(".play-pause-btn").first().click();
-    await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.query === "Dance With Me Bruno Mars"));
-    assert.equal(await page.evaluate(() => window.__kazeFixture.commands.filter(c => ["Resume", "PlayTrack", "PlayOnlineTrack"].includes(c.command)).length), 0, "legacy alias opens exact provider search instead of failing playback");
+    await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "Resume"));
+    assert.equal(await page.evaluate(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic")), false, "playing a source-linked saved ID must not redirect to search");
     const search = page.getByRole("textbox", { name: "Search music online" });
     await search.fill("Test Song"); await search.press("Enter");
     await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.provider === "jiosaavn" && q.payload.query === "Test Song"));
+    const selected = page.locator('.discovery-search-active button[title="Play"]').first();
+    await selected.waitFor(); await selected.click();
+    await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "PlayOnlineTrack" && c.payload.track_id === "jiosaavn:fixtureSingle"));
     await search.fill("Unavailable Song"); await search.press("Enter");
     await page.waitForFunction(() => typeof window.__completeUnavailableSearch === "function");
     await page.getByText("Searching JioSaavn…", { exact: true }).waitFor({ timeout: 5000 });
@@ -66,7 +69,7 @@ try {
     assert.deepEqual(fills, [false, true]);
     await page.screenshot({ path: `/tmp/kaze-jiosaavn-${style}-settings.png` });
     assert.deepEqual(errors, []);
-    console.log(`PASS ${style}: exclusive JioSaavn source, legacy entry routes to provider search, empty search without catalog fallback, availability, automatic fill, manual fill/retry/removal`);
+    console.log(`PASS ${style}: exclusive JioSaavn source, source-linked saved entry plays directly, selected release keeps its exact ID, empty search without catalog fallback, availability, automatic fill, manual fill/retry/removal`);
     await context.close();
   }
 } finally { await browser.close(); }

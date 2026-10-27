@@ -32,3 +32,5 @@ pub trait MetadataProvider: Send + Sync {
     async fn search_album(&self, title: &str, artist: &str) -> AppResult<Option<ExternalAlbumMetadata>>;
     async fn fetch_cover_art(&self, release_id: &str) -> AppResult<Option<Vec<u8>>>;
 }
+
+pub mod online_catalog;

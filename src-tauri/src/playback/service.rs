@@ -138,6 +138,22 @@ impl PlaybackService {
     }
 
     /// Restore metadata/controls only. Audio and history begin on an explicit Play.
+    fn online_catalog(&self) -> Option<Arc<crate::providers::online_catalog::OnlineCatalog>> {
+        self.stream_manager.read().unwrap().as_ref().and_then(|manager| manager.catalog.clone())
+    }
+
+    async fn prepare_track_source(&self, id: &str) -> AppResult<()> {
+        if let Some(catalog) = self.online_catalog() {
+            if catalog.bind(id).await?.is_none() {
+                if let Some(pool) = &self.pool {
+                    let unavailable: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tracks WHERE id=? AND file_path LIKE 'online://%')").bind(id).fetch_one(pool).await?;
+                    if unavailable { return Err(AppError::Playback("This song is not available from JioSaavn".into())); }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub async fn initialize_saved_playback(&self) {
         self.restore_ready.get_or_init(|| async {
             if let Err(error) = self.restore_saved_playback().await {
@@ -149,10 +165,17 @@ impl PlaybackService {
     async fn restore_saved_playback(&self) -> AppResult<()> {
         let Some(pool) = &self.pool else { return Ok(()); };
         let Some(value) = SqliteSettingsRepository::new(pool.clone()).get_setting(SETTING_KEY).await? else { return Ok(()); };
-        let saved: SavedPlayback = serde_json::from_str(&value)
+        let mut saved: SavedPlayback = serde_json::from_str(&value)
             .map_err(|_| AppError::Validation("Invalid saved playback bookmark".into()))?;
         if !saved.valid() {
             return Err(AppError::Validation("Invalid saved playback bookmark".into()));
+        }
+        if let Some(catalog) = self.online_catalog() {
+            let values = catalog.present(serde_json::to_value(saved.queue.items()).map_err(|e| AppError::Internal(e.to_string()))?).await?;
+            let items = serde_json::from_value(values).map_err(|e| AppError::Internal(e.to_string()))?;
+            saved.queue.reconcile_sources(items);
+            saved.has_current_track = saved.has_current_track && saved.queue.current().is_some();
+            if let Some(current) = saved.queue.current() { saved.duration_secs = current.duration_secs; }
         }
         let _operation = self.flow_operation.lock().await;
         self.backend.lock().await.set_volume(saved.volume)?;
@@ -215,6 +238,7 @@ impl PlaybackService {
             .flow_generation
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
             + 1;
+        if let Some(catalog) = self.online_catalog() { catalog.prepare_existing().await?; }
         let operation = self.flow_operation.lock().await;
         if self
             .flow_generation
@@ -629,6 +653,7 @@ impl PlaybackService {
 
     /// Plays a track directly, clearing existing queue or adding to top.
     pub async fn play_track(&self, track_id: &str, source: Option<String>) -> AppResult<()> {
+        self.prepare_track_source(track_id).await?;
         let track = match self.track_repo.find_by_id(track_id).await? {
             Some(t) => t,
             None => {
@@ -779,6 +804,7 @@ impl PlaybackService {
     }
 
     async fn play_item_at(&self, item: &QueueItem, start_position: Option<f64>) -> AppResult<()> {
+        self.prepare_track_source(&item.track_id).await?;
         let operation = self.flow_operation.lock().await;
         if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
             return Err(AppError::Playback("Kaze is shutting down".into()));
@@ -1287,12 +1313,16 @@ impl PlaybackService {
             let q_guard = self.queue.read().await;
             q_guard.current().map(|item| item.track_id.clone())
         };
+        let linked: HashSet<String> = if let Some(pool) = &self.pool {
+            sqlx::query_scalar("SELECT id FROM external_tracks WHERE provider='jiosaavn' UNION SELECT track_id FROM online_track_sources").fetch_all(pool).await?.into_iter().collect()
+        } else { HashSet::new() };
         let mut candidates = self
             .track_repo
             .list_tracks(0, 10_000, None, true)
             .await?
             .into_iter()
             .filter(|track| current_track_id.as_deref() != Some(track.id.as_str()))
+            .filter(|track| !track.file_path.starts_with("online://") || linked.contains(&track.id))
             .collect::<Vec<_>>();
         candidates.shuffle(&mut thread_rng());
         candidates.truncate(50);
@@ -1338,6 +1368,7 @@ impl PlaybackService {
     }
 
     pub async fn enqueue_track(&self, track_id: &str, play_next: bool) -> AppResult<bool> {
+        self.prepare_track_source(track_id).await?;
         let track = match self.track_repo.find_by_id(track_id).await? {
             Some(t) => t,
             None => {
@@ -1529,6 +1560,10 @@ impl PlaybackService {
     }
 
     async fn emit_queue_updated(&self) {
+        let ids: HashSet<String> = self.queue.read().await.items().iter().map(|item| item.track_id.clone()).collect();
+        for id in ids {
+            if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await { self.queue.write().await.update_source_metadata(&id, &track.title, track.artist_name.as_deref().unwrap_or("Unknown Artist"), track.duration_secs); }
+        }
         let (items, current_index, queue_track_ids) = {
             let q_guard = self.queue.read().await;
             let has_active_track = q_guard.current_index().is_some();

@@ -304,11 +304,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
-  const findOnJioSaavn = useCallback((title: string, artist?: string) => {
-    const query = [title, artist && artist !== "Unknown Artist" ? artist : ""].filter(Boolean).join(" ");
-    navigate({ ...viewDestination("discovery"), searchQuery: query, searchResults: [] });
-    setSearchRefreshRevision(revision => revision + 1);
-  }, [navigate]);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const globalSearchResults = destination.searchResults;
   const setGlobalSearchResults = useCallback((results: React.SetStateAction<DiscoveryRecommendation[] | null>) => {
@@ -1269,11 +1264,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   const handlePlayTrack = useCallback(
     async (trackId: string) => {
-      const selected = tracks.find(track => track.id === trackId);
-      if (selected?.file_path.startsWith("online://") && !trackId.startsWith("jiosaavn:")) {
-        findOnJioSaavn(selected.title, selected.artist_name);
-        return;
-      }
       if (playbackState.current_track?.id === trackId && (playbackState.is_playing || playbackState.is_paused)) {
         await dispatchCommand({
           command: playbackState.is_playing ? "Pause" : "Resume",
@@ -1307,7 +1297,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     },
     [
       tracks,
-      findOnJioSaavn,
       playbackState.current_track?.id,
       playbackState.is_playing,
       playbackState.is_paused,
@@ -1323,7 +1312,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       _fromBackendQueue = false,
       playbackSource: "online" | "collection" | "playlist" = "online",
     ) => {
-      const exactProvider = rec.provider === "jiosaavn" || rec.external_track_id.startsWith("jiosaavn:");
+      const exactProvider = !!rec.playback_source || rec.provider === "jiosaavn" || rec.external_track_id.startsWith("jiosaavn:");
       const hasRealLocalMatch =
         !exactProvider && !!rec.matched_local_track_id &&
         !rec.matched_local_track_id.startsWith("itunes:") &&
@@ -1336,11 +1325,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         ((hasRealLocalMatch &&
           playbackState.current_track.id === rec.matched_local_track_id) ||
           rec.external_track_id === playbackState.current_track.id ||
-          (!exactProvider && rec.title.toLowerCase().trim() ===
-            playbackState.current_track.title.toLowerCase().trim() &&
-            playbackState.current_track.artist_name &&
-            rec.artist.toLowerCase().trim() ===
-              playbackState.current_track.artist_name.toLowerCase().trim()));
+          (!!rec.playback_source && !!playbackState.current_track.playback_source &&
+            rec.playback_source.track_id === playbackState.current_track.playback_source.track_id));
 
       if (isCurrentlyPlaying) {
         await dispatchCommand({
@@ -1353,13 +1339,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       // 2. If this track is in local library, play it locally
       if (hasRealLocalMatch) {
         await handlePlayTrack(rec.matched_local_track_id!);
-        return;
-      }
-
-      // A saved catalog alias is not an exact provider selection. Let the user
-      // choose an available JioSaavn version instead of guessing a recording.
-      if (!exactProvider) {
-        findOnJioSaavn(rec.title, rec.artist);
         return;
       }
 
@@ -1396,7 +1375,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       playbackState.is_paused,
       playbackState.current_track,
       handlePlayTrack,
-      findOnJioSaavn,
       addAppNotification,
       fetchPlaybackState,
       beginPlaybackLoading,
@@ -1405,11 +1383,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   const handlePlayPause = useCallback(async () => {
-    const current = playbackState.current_track;
-    if (!playbackState.is_playing && current?.file_path.startsWith("online://") && !current.id.startsWith("jiosaavn:")) {
-      findOnJioSaavn(current.title, current.artist_name);
-      return;
-    }
     if (playbackState.is_playing) {
       await dispatchCommand({ command: "Pause" });
       setPlaybackState((prev) => ({ ...prev, is_playing: false }));
@@ -1417,7 +1390,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       await dispatchCommand({ command: "Resume" });
       setPlaybackState((prev) => ({ ...prev, is_playing: true }));
     }
-  }, [playbackState.is_playing, playbackState.current_track, findOnJioSaavn]);
+  }, [playbackState.is_playing]);
 
   useEffect(() => {
     handlePlayPauseRef.current = handlePlayPause;
@@ -2388,8 +2361,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               rawRecommendation: isOnline
                 ? {
                     external_track_id: t.id,
-                    provider: "online",
-                    provider_id: t.id,
+                    provider: t.playback_source?.provider || "online",
+                    provider_id: t.playback_source?.track_id || t.id,
+                    playback_source: t.playback_source,
                     title: t.title,
                     artist: t.artist_name || "Unknown Artist",
                     album: t.album_title,

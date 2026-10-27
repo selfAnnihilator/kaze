@@ -327,7 +327,7 @@ async fn legacy_identity_cannot_reuse_old_disk_or_memory_audio() {
         "https://example.invalid/old-provider-audio".into(), 200.0, None,
     ));
     let error = manager.resolve_source_only("itunes:old", "Song", "Artist").await.unwrap_err();
-    assert!(error.to_string().contains("No unique JioSaavn match"));
+    assert!(error.to_string().contains("not available from JioSaavn"));
     assert!(manager.resolve_and_prepare_playback("itunes:old", "Song", "Artist").await.is_err());
     assert!(old_path.exists(), "selection must not modify unrelated cache files");
     assert_eq!(std::fs::read_dir(manager.cache_dir()).unwrap().count(), 1);
