@@ -1,0 +1,74 @@
+{
+  "reference_revision": "0488e812a9ac7d740d785c6e09f1e83e527eebcc",
+  "python_version": "3.14.8",
+  "dependencies": {
+    "requests": "2.34.2",
+    "Flask": "3.1.3",
+    "pycryptodome": "4.2.0",
+    "beautifulsoup4": "4.15.0",
+    "lxml": "6.1.0"
+  },
+  "network_controls": {
+    "request_timeout_seconds": 10,
+    "third_party_proxy_fallback": "excluded; direct-origin verification only"
+  },
+  "results": [
+    {
+      "song_url": "https://gaana.com/song/alone-1435",
+      "original_function_track_count": 0,
+      "actual_result_route_http_status": 500,
+      "route_returned_json": false,
+      "network_observations": [
+        {
+          "url": "https://gaana.com/song/alone-1435",
+          "http_status": 200,
+          "bytes": 108858,
+          "original_regex_blocks": 0
+        },
+        {
+          "operation": "third_party_proxy_fallback",
+          "excluded": true
+        },
+        {
+          "url": "https://gaana.com/song/alone-1435",
+          "http_status": 200,
+          "bytes": 108858,
+          "original_regex_blocks": 0
+        },
+        {
+          "operation": "third_party_proxy_fallback",
+          "excluded": true
+        }
+      ]
+    },
+    {
+      "song_url": "https://gaana.com/song/kesariya-from-brahmastra",
+      "original_function_track_count": 0,
+      "actual_result_route_http_status": 500,
+      "route_returned_json": false,
+      "network_observations": [
+        {
+          "url": "https://gaana.com/song/kesariya-from-brahmastra",
+          "http_status": 200,
+          "bytes": 163045,
+          "original_regex_blocks": 0
+        },
+        {
+          "operation": "third_party_proxy_fallback",
+          "excluded": true
+        },
+        {
+          "url": "https://gaana.com/song/kesariya-from-brahmastra",
+          "http_status": 200,
+          "bytes": 163045,
+          "original_regex_blocks": 0
+        },
+        {
+          "operation": "third_party_proxy_fallback",
+          "excluded": true
+        }
+      ]
+    }
+  ],
+  "reference_source_files_match_git_revision": true
+}

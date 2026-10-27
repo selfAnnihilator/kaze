@@ -2,6 +2,8 @@
 
 Gaana was evaluated as an additional source on `codex/jiosaavn-playback-experiment`. It is **not enabled in Kaze**: the supplied reference does not currently pass its metadata/media acceptance gate. JioSaavn remains the default.
 
+**Scope:** this is a compatibility finding about the linked wrapper, not a finding that Gaana's service is universally unavailable. The original metadata probe did not execute the wrapper's Flask route. The independent recheck below closes that gap and states the remaining limits.
+
 The user clarified that the audio-quality concern came from an older source's cached song. No JioSaavn audio-processing or cache changes were made on that basis.
 
 ## Reference and live findings
@@ -15,6 +17,23 @@ The current Alone metadata identifies track `21232014`, duration 159 seconds, an
 The reference's example output is an HLS `.m3u8` playlist. Kaze's current direct-stream cache cannot treat a playlist document as a complete audio file. A working Gaana integration therefore needs both a verified current media interface and an appropriate Rust HLS preparation path if that interface still returns HLS. It must preserve exact provider identity, bounded caching, cancellation, full-track decoding and seeking. Preview playback does not pass the gate.
 
 No third-party proxy fallback, account credentials, browser audio engine, silent alternative-source substitution or broken Gaana menu option was added.
+
+## Independent recheck — 2026-10-27
+
+The remote HEAD/master still resolves to the pinned revision. Installed the missing Flask and PyCryptodome dependencies in a disposable environment and imported the actual `gaana.py` and `app.py`. Both files' Git blob IDs match the repository revision; source was not rewritten for the test. Called `downloadAndParsePage(url, False)` and the actual `/result/?url=...` route via Flask's test client:
+
+| Live page | HTTP page response | Original function | Actual Flask route |
+| --- | --- | --- | --- |
+| README example: `/song/alone-1435` | 200 | 0 tracks | 500, HTML error response |
+| `/song/kesariya-from-brahmastra` | 200 | 0 tracks | 500, HTML error response |
+
+After the function returns no songs, the route raises `ArithmeticError`. Its exception handler passes that exception object to `jsonify`, which fails with `TypeError: Object of type ArithmeticError is not JSON serializable` under Flask 3.1.3. The requirements file does not pin an older Flask version. This confirms an extraction failure plus an error-handling failure in the tested environment; the 500 alone is not evidence about the media service.
+
+Requests had a ten-second timeout. The code's third-party proxy-list fallback was explicitly excluded in memory, rather than contacting arbitrary proxies; direct origin retrieval was tested. Other proxy/region combinations are unverified. [Exact-wrapper evidence](evidence/gaana-wrapper-recheck-20261027.json) records the dependency versions, unchanged source identity and per-request observations.
+
+A separate REA-controlled Chromium session with a fresh profile attempted the public song page and its normal Play action. The page request received HTTP 403, so the Play button never became available and the action was **not executed**. The owned browser was terminated cleanly. [Complete browser evidence](evidence/gaana-browser-recheck-20261027.json), Evidence `ev_f357797394b1bcda6fe27c8986aaa6dd9e21deb717aa86e3b3e38b13785bdc7d`, reports incomplete action coverage. It does not prove a user-operated browser, logged-in session, other network or a current replacement API cannot play Gaana.
+
+Conclusion: the linked revision does not supply usable playback through the tested direct path unchanged. A working current Gaana integration remains a separate, unverified possibility and would require a current interface and the full native playback gate.
 
 ## Reproduce the compatibility check
 
