@@ -916,7 +916,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
 
   // Online Search State (fallback if not controlled by parent)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
-  const [, setInternalIsSearching] = useState(false);
+  const [internalIsSearching, setInternalIsSearching] = useState(false);
   const [internalSearchResults, setInternalSearchResults] = useState<
     DiscoveryRecommendation[] | null
   >(null);
@@ -927,6 +927,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   const searchResults =
     propSearchResults !== undefined ? propSearchResults : internalSearchResults;
   const setSearchResults = propSetSearchResults || setInternalSearchResults;
+  const searching = propIsSearchingOnline ?? internalIsSearching;
+  const searchActive = searchResults !== null || searching;
 
   const handleSearchOnline = async (queryOverride?: string) => {
     if (propOnSearchOnline) {
@@ -940,6 +942,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
       setSearchResults(null);
       return;
     }
+    setSearchResults([]);
     if (propIsSearchingOnline === undefined) setInternalIsSearching(true);
     try {
       const res = await executeQuery({
@@ -1340,7 +1343,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   return (
     <div
       ref={discoveryRef}
-      className={`discovery-view${searchResults !== null ? " discovery-search-active" : ""}`}
+      className={`discovery-view${searchActive ? " discovery-search-active" : ""}`}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -1349,10 +1352,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
       }}
     >
       {/* SEPARATE SEARCH SECTION (Displayed exclusively when search results are active) */}
-      {searchResults !== null ? (
+      {searchActive ? (
         <OnlineSearchResultsSection
           searchQuery={searchQuery}
-          searchResults={searchResults}
+          searchResults={searchResults ?? []}
+          isSearching={searching}
           onClearSearch={handleClearSearch}
           onPlayOnlineTrack={onPlayOnlineTrack}
           onStopTrack={onStopTrack}

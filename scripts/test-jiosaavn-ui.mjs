@@ -10,8 +10,16 @@ try {
     await context.addInitScript(() => {
       const f = window.__kazeFixture, query = f.query.bind(f), command = f.command.bind(f);
       const preferences = { enable_jiosaavn: true, auto_fill_metadata: true };
+      Object.assign(f.playback, {
+        current_track: { ...f.tracks[0], id: "itunes:legacy", title: "Dance With Me", artist_name: "Bruno Mars", file_path: "online://itunes:legacy", format: "online", duration_secs: 210 },
+        current_track_id: "itunes:legacy", is_playing: false, is_paused: false, duration_secs: 210,
+      });
       f.query = async q => {
+        if (q.query === "SearchOnlineMusic" && q.payload.query === "Unavailable Song") {
+          return new Promise(resolve => { window.__completeUnavailableSearch = () => resolve({ type: "DiscoveryRecommendations", data: [] }); });
+        }
         const result = await query(q);
+        if (q.query === "SearchOnlineMusic") result.data = result.data.map((track, index) => ({ ...track, provider: "jiosaavn", provider_id: `fixture${index}`, external_track_id: `jiosaavn:fixture${index}` }));
         if (q.query === "GetSettings") result.data.metadata = { ...result.data.metadata, ...preferences };
         return result;
       };
@@ -29,9 +37,19 @@ try {
     await page.goto(process.env.KAZE_TEST_URL || "http://127.0.0.1:5194", { waitUntil: "domcontentloaded" });
     assert.equal(await page.getByLabel("Online music source").textContent(), "JioSaavn");
     assert.equal(await page.getByRole("combobox", { name: "Online music source" }).count(), 0);
+    await page.locator(".play-pause-btn").first().click();
+    await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.query === "Dance With Me Bruno Mars"));
+    assert.equal(await page.evaluate(() => window.__kazeFixture.commands.filter(c => ["Resume", "PlayTrack", "PlayOnlineTrack"].includes(c.command)).length), 0, "legacy alias opens exact provider search instead of failing playback");
     const search = page.getByRole("textbox", { name: "Search music online" });
     await search.fill("Test Song"); await search.press("Enter");
-    await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.provider === "jiosaavn"));
+    await page.waitForFunction(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic" && q.payload.provider === "jiosaavn" && q.payload.query === "Test Song"));
+    await search.fill("Unavailable Song"); await search.press("Enter");
+    await page.waitForFunction(() => typeof window.__completeUnavailableSearch === "function");
+    await page.getByText("Searching JioSaavn…", { exact: true }).waitFor({ timeout: 5000 });
+    assert.equal(await page.locator(".discovery-hero").count(), 0, "catalog shelves must not appear as search results while loading");
+    await page.evaluate(() => window.__completeUnavailableSearch());
+    await page.getByText('No songs found on JioSaavn for “Unavailable Song”', { exact: true }).waitFor();
+    assert.equal(await page.locator(".discovery-hero").count(), 0);
     await page.locator(".sidebar,.press-account-navigation").getByRole("button", { name: "Settings", exact: true }).click();
     const panel = page.locator(".settings-view");
     const availability = panel.getByRole("switch", { name: "Use JioSaavn for online music" });
@@ -48,7 +66,7 @@ try {
     assert.deepEqual(fills, [false, true]);
     await page.screenshot({ path: `/tmp/kaze-jiosaavn-${style}-settings.png` });
     assert.deepEqual(errors, []);
-    console.log(`PASS ${style}: exclusive JioSaavn source, availability, automatic fill, manual fill/retry/removal`);
+    console.log(`PASS ${style}: exclusive JioSaavn source, legacy entry routes to provider search, empty search without catalog fallback, availability, automatic fill, manual fill/retry/removal`);
     await context.close();
   }
 } finally { await browser.close(); }

@@ -248,7 +248,7 @@ impl GapEnrichmentService {
         let mut provider_failed = false;
         let mut candidates = Vec::new();
         if self.enabled("enable_jiosaavn", true).await {
-            match self.providers.jiosaavn.search(&query, 25).await {
+            match self.providers.jiosaavn.search_metadata(&query, 25).await {
                 Ok(found) => candidates = found,
                 Err(e) => {
                     provider_failed = true;

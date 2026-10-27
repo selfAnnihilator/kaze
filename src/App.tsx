@@ -303,6 +303,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   // Global Top Search Bar State
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+  const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
+  const findOnJioSaavn = useCallback((title: string, artist?: string) => {
+    const query = [title, artist && artist !== "Unknown Artist" ? artist : ""].filter(Boolean).join(" ");
+    navigate({ ...viewDestination("discovery"), searchQuery: query, searchResults: [] });
+    setSearchRefreshRevision(revision => revision + 1);
+  }, [navigate]);
   const [isGlobalRefreshing, setIsGlobalRefreshing] = useState(false);
   const globalSearchResults = destination.searchResults;
   const setGlobalSearchResults = useCallback((results: React.SetStateAction<DiscoveryRecommendation[] | null>) => {
@@ -1263,6 +1269,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   const handlePlayTrack = useCallback(
     async (trackId: string) => {
+      const selected = tracks.find(track => track.id === trackId);
+      if (selected?.file_path.startsWith("online://") && !trackId.startsWith("jiosaavn:")) {
+        findOnJioSaavn(selected.title, selected.artist_name);
+        return;
+      }
       if (playbackState.current_track?.id === trackId && (playbackState.is_playing || playbackState.is_paused)) {
         await dispatchCommand({
           command: playbackState.is_playing ? "Pause" : "Resume",
@@ -1296,6 +1307,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     },
     [
       tracks,
+      findOnJioSaavn,
       playbackState.current_track?.id,
       playbackState.is_playing,
       playbackState.is_paused,
@@ -1344,17 +1356,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         return;
       }
 
-      // 3. Offline check
-      if (!exactProvider && typeof navigator !== "undefined" && !navigator.onLine) {
-        addAppNotification(
-          "warning",
-          "No Internet Connection",
-          `Cannot play "${rec.title}". Connect to the internet to stream online songs.`,
-        );
+      // A saved catalog alias is not an exact provider selection. Let the user
+      // choose an available JioSaavn version instead of guessing a recording.
+      if (!exactProvider) {
+        findOnJioSaavn(rec.title, rec.artist);
         return;
       }
 
-      // 4. Dispatch PlayOnlineTrack to unified Rust PlaybackService
+      // Dispatch PlayOnlineTrack to unified Rust PlaybackService
       const requestId = beginPlaybackLoading(rec.external_track_id);
       try {
         await dispatchCommand({
@@ -1387,6 +1396,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       playbackState.is_paused,
       playbackState.current_track,
       handlePlayTrack,
+      findOnJioSaavn,
       addAppNotification,
       fetchPlaybackState,
       beginPlaybackLoading,
@@ -1395,6 +1405,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   const handlePlayPause = useCallback(async () => {
+    const current = playbackState.current_track;
+    if (!playbackState.is_playing && current?.file_path.startsWith("online://") && !current.id.startsWith("jiosaavn:")) {
+      findOnJioSaavn(current.title, current.artist_name);
+      return;
+    }
     if (playbackState.is_playing) {
       await dispatchCommand({ command: "Pause" });
       setPlaybackState((prev) => ({ ...prev, is_playing: false }));
@@ -1402,7 +1417,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       await dispatchCommand({ command: "Resume" });
       setPlaybackState((prev) => ({ ...prev, is_playing: true }));
     }
-  }, [playbackState.is_playing]);
+  }, [playbackState.is_playing, playbackState.current_track, findOnJioSaavn]);
 
   useEffect(() => {
     handlePlayPauseRef.current = handlePlayPause;
@@ -3243,12 +3258,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   };
 
-  const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
   const handleGlobalOnlineSearch = async (queryOverride?: string) => {
     const q = (
       typeof queryOverride === "string" ? queryOverride : globalSearchQuery
     ).trim();
-    navigate({ ...viewDestination("discovery"), searchQuery: q });
+    navigate({ ...viewDestination("discovery"), searchQuery: q, searchResults: q ? [] : null });
     setSearchRefreshRevision((revision) => revision + 1);
   };
 

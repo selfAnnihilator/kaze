@@ -7,7 +7,7 @@ use des::{
 };
 use serde_json::Value;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -126,7 +126,7 @@ impl JioSaavnProvider {
         Ok(value)
     }
 
-    pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<ExternalTrackMetadata>> {
+    async fn search_items(&self, query: &str, limit: usize) -> Result<Vec<Value>> {
         if query.trim().is_empty() || limit == 0 {
             return Ok(vec![]);
         }
@@ -142,7 +142,34 @@ impl JioSaavnProvider {
             .get("results")
             .and_then(Value::as_array)
             .ok_or_else(|| JioSaavnError::Malformed("missing search results".into()))?;
-        items.iter().take(limit.min(50)).map(parse_track).collect()
+        Ok(items.iter().take(limit.min(50)).cloned().collect())
+    }
+
+    /// User-facing results must have the same full-song source that playback accepts.
+    /// Availability is present in the search response: no per-song requests or audio downloads.
+    pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<ExternalTrackMetadata>> {
+        let mut seen = HashSet::new();
+        Ok(self
+            .search_items(query, limit)
+            .await?
+            .iter()
+            .filter(|item| full_track_source(item).is_ok())
+            .filter_map(|item| parse_track(item).ok())
+            .filter(|track| seen.insert(track.provider_track_id.clone()))
+            .collect())
+    }
+
+    /// Local-file enrichment can use catalog metadata even when streaming is unavailable.
+    pub async fn search_metadata(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<ExternalTrackMetadata>> {
+        self.search_items(query, limit)
+            .await?
+            .iter()
+            .map(parse_track)
+            .collect()
     }
 
     pub async fn detail(&self, id: &str, refresh: bool) -> Result<Value> {
@@ -186,27 +213,34 @@ impl JioSaavnProvider {
 
     pub async fn resolve(&self, id: &str, refresh: bool) -> Result<(String, f64)> {
         let value = self.detail(id, refresh).await?;
-        let metadata = parse_track(&value)?;
-        let duration = metadata
-            .duration_secs
-            .filter(|d| *d > 0.0)
-            .ok_or_else(|| JioSaavnError::Malformed("missing full-song duration".into()))?;
-        // Decode only the ordinary URL envelope from the reference adapter.
-        // Never use encrypted_drm_media_url, licenses, keys, or preview substitutions.
-        if value
-            .get("rights")
-            .and_then(|r| number(r, "code"))
-            .is_some_and(|n| n != 0.0)
-        {
-            return Err(JioSaavnError::Unavailable(
-                "territory or content restriction".into(),
-            ));
-        }
-        let encrypted = text(&value, "encrypted_media_url")
-            .ok_or_else(|| JioSaavnError::Unavailable("ordinary full-track media absent".into()))?;
-        let url = decode_media_url(&encrypted, truthy(&value["320kbps"]))?;
-        Ok((url, duration))
+        full_track_source(&value)
     }
+}
+
+fn full_track_source(value: &Value) -> Result<(String, f64)> {
+    if text(value, "type").is_some_and(|kind| kind != "song") {
+        return Err(JioSaavnError::Unavailable("not a song".into()));
+    }
+    let metadata = parse_track(value)?;
+    let duration = metadata
+        .duration_secs
+        .filter(|d| *d > 0.0)
+        .ok_or_else(|| JioSaavnError::Malformed("missing full-song duration".into()))?;
+    // Decode only the ordinary URL envelope from the reference adapter.
+    // Never use encrypted_drm_media_url, licenses, keys, or preview substitutions.
+    if value
+        .get("rights")
+        .and_then(|r| number(r, "code"))
+        .is_some_and(|n| n != 0.0)
+    {
+        return Err(JioSaavnError::Unavailable(
+            "territory or content restriction".into(),
+        ));
+    }
+    let encrypted = text(value, "encrypted_media_url")
+        .ok_or_else(|| JioSaavnError::Unavailable("ordinary full-track media absent".into()))?;
+    let url = decode_media_url(&encrypted, truthy(&value["320kbps"]))?;
+    Ok((url, duration))
 }
 
 impl Default for JioSaavnProvider {

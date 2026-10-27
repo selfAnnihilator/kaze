@@ -71,6 +71,28 @@ fn candidate(id: &str, title: &str) -> Value {
 }
 
 #[tokio::test]
+async fn song_search_excludes_unavailable_catalog_entries_without_extra_requests() {
+    let mut playable = candidate("available", "Available Song");
+    playable["rights"] = json!({"code":0});
+    playable["encrypted_media_url"] = json!("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq");
+    let mut restricted = playable.clone(); restricted["id"] = json!("restricted"); restricted["rights"] = json!({"code":1});
+    let metadata_only = candidate("metadataonly", "Metadata Only");
+    let mut drm_only = metadata_only.clone(); drm_only["id"] = json!("drmonly"); drm_only["encrypted_drm_media_url"] = playable["encrypted_media_url"].clone();
+    let mut preview_only = metadata_only.clone(); preview_only["id"] = json!("previewonly"); preview_only["media_preview_url"] = json!("https://example.invalid/preview.mp3");
+    let mut invalid_media = playable.clone(); invalid_media["id"] = json!("invalidmedia"); invalid_media["encrypted_media_url"] = json!("invalid");
+    let mut no_duration = playable.clone(); no_duration["id"] = json!("noduration"); no_duration["duration"] = Value::Null;
+    let mut non_song = playable.clone(); non_song["id"] = json!("album"); non_song["type"] = json!("album");
+    let (url, count, task) = server(json!({"results":[playable.clone(),restricted,metadata_only,drm_only,preview_only,invalid_media,no_duration,non_song,playable]}),200).await;
+    let provider = JioSaavnProvider::with_endpoint(&url);
+    let tracks = provider.search("Song", 35).await.unwrap();
+    assert_eq!(tracks.iter().map(|t| t.provider_track_id.as_str()).collect::<Vec<_>>(), vec!["available"]);
+    assert_eq!(count.load(Ordering::SeqCst), 1, "availability uses the search response, without audio downloads or per-song requests");
+    assert_eq!(provider.search_metadata("Song", 35).await.unwrap().len(), 9, "metadata-only entries remain available for local-file enrichment");
+    assert_eq!(count.load(Ordering::SeqCst), 1, "the metadata response is reused");
+    task.abort();
+}
+
+#[tokio::test]
 async fn real_local_file_plays_despite_stale_online_format_and_disabled_jiosaavn() {
     use music_player_backend::{config::AppConfig, core::{Command, CoreProcessor}, playback::backend::MockAudioBackend};
     let temp = tempfile::tempdir().unwrap();
@@ -115,8 +137,8 @@ async fn provider_reports_rate_limit_changed_shape_unavailable_and_caches_metada
     )
     .await;
     let p = JioSaavnProvider::with_endpoint(&url);
-    assert_eq!(p.search("Song", 10).await.unwrap().len(), 1);
-    p.search("Song", 10).await.unwrap();
+    assert_eq!(p.search_metadata("Song", 10).await.unwrap().len(), 1);
+    p.search_metadata("Song", 10).await.unwrap();
     assert_eq!(count.load(Ordering::SeqCst), 1);
     p.detail("song1", false).await.unwrap();
     p.detail("song1", false).await.unwrap();

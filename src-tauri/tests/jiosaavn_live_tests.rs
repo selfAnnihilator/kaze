@@ -262,3 +262,26 @@ async fn unified_player_stream_cache_and_identity_gate() {
     println!("PASS unified PlaybackService: metadata-only pre-resolution, rejected URL refresh, progressive full song, pause/resume, seek, exact cache reuse, provider identity");
     core.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+#[ignore = "requires live JioSaavn search and full audio"]
+async fn reported_bruno_mars_song_has_full_provider_audio() {
+    let provider = JioSaavnProvider::new();
+    let tracks = provider.search("dance with me by bruno mars", 10).await.unwrap();
+    let exact: Vec<_> = tracks.iter().filter(|track| track.title == "Dance With Me" && track.artist_name == "Bruno Mars").collect();
+    assert!(!exact.is_empty(), "verify the reported song against the provider's current response");
+    let temp = tempfile::tempdir().unwrap();
+    let client = reqwest::Client::builder().timeout(Duration::from_secs(60)).build().unwrap();
+    for track in exact.iter().take(2) {
+        let (url, duration) = provider.resolve(&track.provider_track_id, false).await.unwrap();
+        let bytes = client.get(url).send().await.unwrap().error_for_status().unwrap().bytes().await.unwrap();
+        assert!(bytes.len() < 64 * 1024 * 1024);
+        let path = temp.path().join(format!("{}.m4a", track.provider_track_id));
+        std::fs::write(&path, &bytes).unwrap();
+        let source = SymphoniaSource::new(&path).expect("actual provider audio must decode");
+        let rate = source.sample_rate() as f64 * source.channels() as f64;
+        let seconds = source.count() as f64 / rate;
+        assert!((seconds - duration).abs() < 3.0);
+        println!("PASS {} / {} [{}]: {} bytes; {:.2}/{:.0}s decoded", track.title, track.artist_name, track.provider_track_id, bytes.len(), seconds, duration);
+    }
+}

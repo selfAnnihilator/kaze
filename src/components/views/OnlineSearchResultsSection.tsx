@@ -20,6 +20,7 @@ import { sameSongMetadata } from "../../localTrackMatch";
 interface OnlineSearchResultsSectionProps {
   searchQuery: string;
   searchResults: DiscoveryRecommendation[];
+  isSearching?: boolean;
   onClearSearch: () => void;
   onPlayOnlineTrack: (rec: DiscoveryRecommendation) => void;
   onStopTrack?: (rec: DiscoveryRecommendation) => void;
@@ -44,6 +45,7 @@ type SearchCategoryTab = "all" | "songs" | "artists" | "albums" | "playlists";
 export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProps> = ({
   searchQuery,
   searchResults,
+  isSearching = false,
   onClearSearch,
   onPlayOnlineTrack,
   onStopTrack,
@@ -370,7 +372,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
       </div>
 
       {/* Empty State if 0 Results */}
-      {searchResults.length === 0 ? (
+      {isSearching ? (
+        <p role="status" style={{ padding: "32px 24px", textAlign: "center", color: "var(--text-muted)" }}>Searching JioSaavn…</p>
+      ) : searchResults.length === 0 ? (
         <div
           style={{
             padding: "48px 24px",
@@ -383,7 +387,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         >
           <Music size={40} color="var(--text-dim)" />
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>
-            No relevant results found for &ldquo;{searchQuery}&rdquo;
+            No songs found on JioSaavn for “{searchQuery}”
           </h3>
           <p
             style={{
@@ -392,8 +396,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               maxWidth: "420px",
             }}
           >
-            Please check your spelling, try another artist or song title, or
-            explore the trending music and mixes below.
+            Try another song title or artist. Only songs available for full playback on JioSaavn appear here.
           </p>
         </div>
       ) : (
