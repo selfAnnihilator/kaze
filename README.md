@@ -21,7 +21,7 @@ Kaze is mainly for playing music you already have locally, with online streaming
 **Library**
 - Scans MP3, FLAC, OGG, Opus, M4A, AAC, WAV
 - Fast full-text search across titles, artists, and albums
-- Album art loaded from embedded tags or Cover Art Archive
+- Album art loaded from embedded tags, local folders, or matched JioSaavn metadata
 - Watches your folders and updates automatically when files change
 
 **Playback**
@@ -32,17 +32,19 @@ Kaze is mainly for playing music you already have locally, with online streaming
 
 **Discovery & Smart Mixes**
 - Kaze tracks what you play and builds a taste profile over time
+- “Not interested” excludes a song from recommendations, Flow and automatic continuation for your account; “Allow again” reverses the choice
+- Scores share listening signals across saved song aliases and use artist credits, language, era, completion, likes and skips
 - Smart mixes: *Daily Mix*, *On Repeat*, *Forgotten Favorites*, *Late Night*, *Discovery*
 - Listening stats with rolling windows: Today, 7 Days, 30 Days, All Time
 
 **Playlists**
 - Create and manage playlists
-- Import playlists from Spotify (optional, needs your own Spotify API key)
+- Import available songs from a JioSaavn playlist, preserving their exact source IDs
 
 **Wishlist & Downloads** *(optional)*
 - Mark tracks you want to find
-- Search available download sources, including direct streams, Internet Archive, and Audius
-- Optionally connect a local [Slskd](https://github.com/slskd/slskd) daemon to search Soulseek and download into your library
+- Search JioSaavn and choose the exact recording to download
+- Online playback, charts, metadata and downloads use the same JioSaavn catalog
 
 ---
 
@@ -136,11 +138,8 @@ For standalone installations (Windows and AppImage), Kaze automatically checks f
 
 ## Optional setup
 
-**Spotify metadata** (album art, richer metadata)
-Go to Settings → Providers → enter your [Spotify Developer](https://developer.spotify.com/dashboard) Client ID and Secret. Kaze uses this only for metadata lookups — it never plays Spotify streams.
-
-**Soulseek downloads**
-Run [Slskd](https://github.com/slskd/slskd) locally, then go to Settings → Downloads → enter your Slskd URL and API key.
+**Online music and metadata**
+Settings → Online music & library details controls JioSaavn availability and reversible metadata filling. Original local audio tags stay intact. This testing branch uses JioSaavn for search, charts, playlist imports and selected-song downloads; no retired provider credentials or external download daemon are required.
 
 ---
 
@@ -167,3 +166,5 @@ See **[Architecture Documentation](docs/ARCHITECTURE.md)** for the complete syst
 ## License
 
 MIT — free to use, modify, and distribute.
+
+On the JioSaavn testing branch, song Download buttons save the exact displayed recording directly as M4A, with percentage/fill inside the button and a downloaded icon on completion. The Not interested icon toggles recommendation exclusion and taste feedback on/off. Each Discovery section has refresh, and charts include available English/international editorial programming with its actual artwork. See [ADR 0019](docs/adr/0019-exact-song-downloads-and-discovery-controls.md).

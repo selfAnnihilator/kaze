@@ -35,7 +35,7 @@ try {
     const page = await context.newPage(), errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(process.env.KAZE_TEST_URL || "http://127.0.0.1:5194", { waitUntil: "domcontentloaded" });
-    assert.equal(await page.getByLabel("Online music source").textContent(), "JioSaavn");
+    assert.equal(await page.getByLabel("Online music source").count(), 0);
     assert.equal(await page.getByRole("combobox", { name: "Online music source" }).count(), 0);
     await page.locator(".play-pause-btn").first().click();
     await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "Resume"));
@@ -48,14 +48,14 @@ try {
     await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "PlayOnlineTrack" && c.payload.track_id === "jiosaavn:fixtureSingle"));
     await search.fill("Unavailable Song"); await search.press("Enter");
     await page.waitForFunction(() => typeof window.__completeUnavailableSearch === "function");
-    await page.getByText("Searching JioSaavn…", { exact: true }).waitFor({ timeout: 5000 });
+    await page.getByText("Searching music…", { exact: true }).waitFor({ timeout: 5000 });
     assert.equal(await page.locator(".discovery-hero").count(), 0, "catalog shelves must not appear as search results while loading");
     await page.evaluate(() => window.__completeUnavailableSearch());
-    await page.getByText('No songs found on JioSaavn for “Unavailable Song”', { exact: true }).waitFor();
+    await page.getByText('No songs found for “Unavailable Song”', { exact: true }).waitFor();
     assert.equal(await page.locator(".discovery-hero").count(), 0);
     await page.locator(".sidebar,.press-account-navigation").getByRole("button", { name: "Settings", exact: true }).click();
     const panel = page.locator(".settings-view");
-    const availability = panel.getByRole("switch", { name: "Use JioSaavn for online music" });
+    const availability = panel.getByRole("switch", { name: "Enable online music" });
     const auto = panel.getByRole("switch", { name: "Automatically fill missing artwork and details" });
     await availability.waitFor(); assert.equal(await availability.isChecked(), true); assert.equal(await auto.isChecked(), true);
     await availability.uncheck();

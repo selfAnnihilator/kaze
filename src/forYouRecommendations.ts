@@ -53,6 +53,7 @@ export const splitDiscoveryRecommendations = ({
 
     if (downloads.some((task) => {
       if (task.status === "FAILED" || task.status === "CANCELLED") return false;
+      if (task.source_track_id) return task.track_ids?.includes(rec.external_track_id) || task.source_track_id === rec.playback_source?.track_id || rec.external_track_id === `jiosaavn:${task.source_track_id}`;
       const target = downloadTargets[task.id];
       return sameSongMetadata(
         target?.title || task.title,

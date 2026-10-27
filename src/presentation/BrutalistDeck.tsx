@@ -1,8 +1,9 @@
+import { DownloadButton } from "../components/DownloadButton";
+import { NotInterestedButton } from "../components/NotInterestedButton";
 import { memo } from "react";
 import {
   Bookmark,
   BookmarkCheck,
-  Download,
   Heart,
   ListMusic,
   Maximize2,
@@ -207,6 +208,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
             </button>
           </div>
           <div className="press-track-tools">
+            {track && <NotInterestedButton key={track.id} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
             {p.onInspectWhyTrack && (
               <button
                 className="press-icon"
@@ -243,20 +245,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
                 )}
               </button>
             )}
-            {online && track && p.onDownloadOnlineTrack && (
-              <button
-                className="press-icon"
-                title="Download this online track to library"
-                onClick={() =>
-                  p.onDownloadOnlineTrack?.(
-                    track.artist_name || "",
-                    track.title,
-                  )
-                }
-              >
-                <Download size={18} />
-              </button>
-            )}
+            {online && track && <DownloadButton key={track.id} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} compact />}
             {p.onToggleLyrics && (
               <button
                 className="press-icon"

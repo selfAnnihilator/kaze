@@ -1,3 +1,7 @@
+use crate::cloud::{
+    credentials, device, AuthSessionState, CloudClient, CloudSessionMetadata, CloudSyncStatus,
+    CloudUser, SessionExpiredReason, SyncManager,
+};
 use crate::config::AppConfig;
 use crate::core::command::{Command, CommandResponse};
 use crate::core::error::{AppError, AppResult};
@@ -5,10 +9,6 @@ use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
-use crate::cloud::{
-    credentials, device, AuthSessionState, CloudClient, CloudSessionMetadata, CloudSyncStatus,
-    CloudUser, SessionExpiredReason, SyncManager,
-};
 use crate::database::repositories::{
     PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
@@ -16,7 +16,6 @@ use crate::database::repositories::{
 };
 use crate::discovery::{DiscoveryCoordinator, WishlistManager};
 use crate::downloads::{DownloadProvider, DownloadService, JioSaavnDownloadProvider};
-use std::collections::{HashMap};
 use crate::history::HistoryService;
 use crate::library::LibraryService;
 use crate::playback::backend::{AudioBackend, RodioAudioBackend};
@@ -25,13 +24,14 @@ use crate::profile::ProfileService;
 use crate::providers::ProviderCoordinator;
 use crate::ranking::RankingEngine;
 use crate::recommendations::{LocalRecommender, SmartMixGenerator, TasteProfileEngine};
+use base64::Engine;
+use lofty::file::TaggedFileExt;
 use sqlx::SqlitePool;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::{Mutex, OnceCell, RwLock};
 use tracing::{info, warn};
-use base64::Engine;
-use lofty::file::TaggedFileExt;
 
 /// Central processing coordinator for commands, queries, and event dispatching.
 pub struct CoreProcessor {
@@ -107,6 +107,7 @@ impl CoreProcessor {
         );
 
         let current_user = Arc::new(RwLock::new(None));
+        playback_service.set_recommendation_user(current_user.clone());
         let session_state = Arc::new(RwLock::new(AuthSessionState::SignedOut));
 
         let history_repo = Arc::new(SqliteHistoryRepository::new(db_pool.clone()));
@@ -140,21 +141,28 @@ impl CoreProcessor {
             event_bus.clone(),
             config.cache_dir.clone(),
         ));
-        let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(db_pool.clone(), provider_coordinator.clone(), config.cache_dir.clone(), event_bus.clone()));
+        let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(
+            db_pool.clone(),
+            provider_coordinator.clone(),
+            config.cache_dir.clone(),
+            event_bus.clone(),
+        ));
         background_tasks.push(tokio::spawn(gap_enrichment.clone().run()));
         let cover_art_cache = Arc::new(tokio::sync::RwLock::new(HashMap::new()));
         let cover_cache_updates = cover_art_cache.clone();
         let metadata_playback = playback_service.clone();
         let mut cover_events = event_bus.subscribe();
         background_tasks.push(tokio::spawn(async move {
-            loop { match cover_events.recv().await {
-                Ok(Event::LibraryMetadataUpdated | Event::LibraryScanCompleted { .. }) => {
-                    cover_cache_updates.write().await.clear();
-                    metadata_playback.refresh_queue_metadata().await;
-                },
-                Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => (),
-                Err(_) => break,
-            } }
+            loop {
+                match cover_events.recv().await {
+                    Ok(Event::LibraryMetadataUpdated | Event::LibraryScanCompleted { .. }) => {
+                        cover_cache_updates.write().await.clear();
+                        metadata_playback.refresh_queue_metadata().await;
+                    }
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => (),
+                    Err(_) => break,
+                }
+            }
         }));
         let wishlist_repo = Arc::new(SqliteWishlistRepository::new(db_pool.clone()));
         let wishlist_manager = Arc::new(WishlistManager::new(wishlist_repo.clone()));
@@ -166,7 +174,11 @@ impl CoreProcessor {
         ));
 
         let download_repo = Arc::new(SqliteDownloadRepository::new(db_pool.clone()));
-        let download_provider = custom_download_provider.unwrap_or_else(|| Arc::new(JioSaavnDownloadProvider::new(provider_coordinator.jiosaavn.clone())));
+        let download_provider = custom_download_provider.unwrap_or_else(|| {
+            Arc::new(JioSaavnDownloadProvider::new(
+                provider_coordinator.jiosaavn.clone(),
+            ))
+        });
         let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
             directories::UserDirs::new()
                 .and_then(|u| u.audio_dir().map(|p| p.join("Downloads")))
@@ -198,7 +210,6 @@ impl CoreProcessor {
 
         let flow_engine = Arc::new(crate::recommendations::FlowEngine::new(db_pool.clone()));
         playback_service.set_flow_engine(flow_engine.clone());
-
 
         let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
         let cloud_client = Arc::new(CloudClient::new());
@@ -487,11 +498,13 @@ impl CoreProcessor {
         if *guard > 0 {
             return *guard;
         }
-        let row: Option<(String,)> = sqlx::query_as("SELECT value FROM application_settings WHERE key = 'app_first_start_date'")
-            .fetch_optional(&self.db_pool)
-            .await
-            .ok()
-            .flatten();
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT value FROM application_settings WHERE key = 'app_first_start_date'",
+        )
+        .fetch_optional(&self.db_pool)
+        .await
+        .ok()
+        .flatten();
 
         if let Some((val,)) = row {
             if let Ok(ts) = val.parse::<i64>() {
@@ -521,7 +534,9 @@ impl CoreProcessor {
             .await
             .ok()
             .flatten()
-            .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string())
+            .unwrap_or_else(|| {
+                "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string()
+            })
     }
 
     pub fn is_quitting(&self) -> bool {
@@ -536,17 +551,27 @@ impl CoreProcessor {
     }
 
     pub fn close_button_behavior(&self) -> &'static str {
-        if self.close_button_quits.load(Ordering::Acquire) { "quit_app" } else { "minimize_to_tray" }
+        if self.close_button_quits.load(Ordering::Acquire) {
+            "quit_app"
+        } else {
+            "minimize_to_tray"
+        }
     }
 
     /// Awaited at startup and by settings IPC. A late startup read cannot
     /// overwrite a newer setting. Missing or invalid DB values mean hide-to-tray.
     pub async fn initialize_close_behavior(&self) -> AppResult<()> {
-        self.close_behavior_ready.get_or_try_init(|| async {
-            let saved = self.settings_repo.get_setting("close_button_behavior").await?;
-            self.close_button_quits.store(saved.as_deref() == Some("quit_app"), Ordering::Release);
-            Ok::<(), AppError>(())
-        }).await?;
+        self.close_behavior_ready
+            .get_or_try_init(|| async {
+                let saved = self
+                    .settings_repo
+                    .get_setting("close_button_behavior")
+                    .await?;
+                self.close_button_quits
+                    .store(saved.as_deref() == Some("quit_app"), Ordering::Release);
+                Ok::<(), AppError>(())
+            })
+            .await?;
         Ok(())
     }
 
@@ -562,7 +587,8 @@ impl CoreProcessor {
         self.settings_repo
             .set_setting("close_button_behavior", &behavior)
             .await?;
-        self.close_button_quits.store(behavior == "quit_app", Ordering::Release);
+        self.close_button_quits
+            .store(behavior == "quit_app", Ordering::Release);
         self.config.write().await.close_button_behavior = behavior;
         Ok(())
     }
@@ -570,12 +596,23 @@ impl CoreProcessor {
     /// Quiesce commands, stop audio once, await history writes, then close SQLite.
     pub async fn shutdown(&self) -> AppResult<()> {
         let mut done = self.shutdown_done.lock().await;
-        if *done { return Ok(()); }
+        if *done {
+            return Ok(());
+        }
         self.begin_quit();
         let _commands = self.command_gate.write().await;
-        let tasks = std::mem::take(&mut *self.background_tasks.lock().unwrap_or_else(|e| e.into_inner()));
-        for task in &tasks { task.abort(); }
-        for task in tasks { let _ = task.await; }
+        let tasks = std::mem::take(
+            &mut *self
+                .background_tasks
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()),
+        );
+        for task in &tasks {
+            task.abort();
+        }
+        for task in tasks {
+            let _ = task.await;
+        }
         self.history_service.begin_shutdown();
         let stopped = self.playback_service.shutdown().await;
         self.history_service.shutdown().await;
@@ -586,7 +623,10 @@ impl CoreProcessor {
 
     pub async fn current_user_id(&self) -> String {
         let current_user_guard = self.current_user.read().await;
-        current_user_guard.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string())
+        current_user_guard
+            .as_ref()
+            .map(|u| u.id.clone())
+            .unwrap_or_else(|| "default".to_string())
     }
 
     /// Trigger background push sync for the active user if authenticated.
@@ -601,10 +641,16 @@ impl CoreProcessor {
             let worker_url = self.get_cloud_worker_url().await;
             tokio::spawn(async move {
                 if let Some(token) = credentials::get_session_token(&uid) {
-                    if let Ok(payload) = SyncManager::prepare_local_sync_payload(&pool_clone, &uid).await {
-                        if let Ok(synced_at) = client_clone.push_sync(&worker_url, &token, &payload).await {
+                    if let Ok(payload) =
+                        SyncManager::prepare_local_sync_payload(&pool_clone, &uid).await
+                    {
+                        if let Ok(synced_at) =
+                            client_clone.push_sync(&worker_url, &token, &payload).await
+                        {
                             let _ = SyncManager::clear_tombstones(&pool_clone, &uid).await;
-                            let _ = SyncManager::update_session_synced_at(&pool_clone, &uid, synced_at).await;
+                            let _ =
+                                SyncManager::update_session_synced_at(&pool_clone, &uid, synced_at)
+                                    .await;
                         }
                     }
                 }
@@ -748,7 +794,10 @@ impl CoreProcessor {
                     "Library scan execution finished"
                 );
                 let user_id = self.current_user_id().await;
-                let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
+                let _ = self
+                    .smart_mix_generator
+                    .ensure_default_mixes(&user_id)
+                    .await;
                 Ok(CommandResponse::Ok)
             }
             Command::CancelScan => {
@@ -828,7 +877,9 @@ impl CoreProcessor {
             }
             Command::SetVolume { volume } => {
                 if !(0.0..=1.0).contains(&volume) {
-                    return Err(AppError::Validation("Volume must be between 0.0 and 1.0".into()));
+                    return Err(AppError::Validation(
+                        "Volume must be between 0.0 and 1.0".into(),
+                    ));
                 }
                 self.playback_service.set_volume(volume).await?;
                 Ok(CommandResponse::Ok)
@@ -847,8 +898,15 @@ impl CoreProcessor {
                 self.playback_service.set_shuffle(enabled).await;
                 Ok(CommandResponse::Ok)
             }
-            Command::EnqueueTrack { track_id, play_next } => {
-                if self.playback_service.enqueue_track(&track_id, play_next).await? {
+            Command::EnqueueTrack {
+                track_id,
+                play_next,
+            } => {
+                if self
+                    .playback_service
+                    .enqueue_track(&track_id, play_next)
+                    .await?
+                {
                     Ok(CommandResponse::Ok)
                 } else {
                     Err(AppError::Validation("Track is already in the queue".into()))
@@ -875,7 +933,11 @@ impl CoreProcessor {
                     preview_url.as_deref(),
                 )
                 .await?;
-                if self.playback_service.enqueue_track(&track_id, play_next).await? {
+                if self
+                    .playback_service
+                    .enqueue_track(&track_id, play_next)
+                    .await?
+                {
                     Ok(CommandResponse::Ok)
                 } else {
                     Err(AppError::Validation("Track is already in the queue".into()))
@@ -890,7 +952,8 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::ClearRemoteAudioCache => {
-                let (bytes_freed, files_removed) = self.playback_service.clear_remote_audio_cache().await?;
+                let (bytes_freed, files_removed) =
+                    self.playback_service.clear_remote_audio_cache().await?;
                 Ok(CommandResponse::RemoteAudioCacheCleared {
                     bytes_freed,
                     files_removed,
@@ -899,7 +962,9 @@ impl CoreProcessor {
 
             Command::StartFlow { familiarity_ratio } => {
                 let user_id = self.current_user_id().await;
-                self.playback_service.start_flow(&self.flow_engine, &user_id, familiarity_ratio).await?;
+                self.playback_service
+                    .start_flow(&self.flow_engine, &user_id, familiarity_ratio)
+                    .await?;
                 Ok(CommandResponse::Ok)
             }
             Command::ContinueFlow => {
@@ -913,71 +978,47 @@ impl CoreProcessor {
             }
             Command::SetFlowSteering { familiarity_ratio } => {
                 let user_id = self.current_user_id().await;
-                self.playback_service.set_flow_steering(&self.flow_engine, &user_id, familiarity_ratio).await?;
+                self.playback_service
+                    .set_flow_steering(&self.flow_engine, &user_id, familiarity_ratio)
+                    .await?;
                 Ok(CommandResponse::Ok)
             }
 
             // --- User Feedback & Taste ---
             Command::LikeTrack { track_id } => {
-                let user_id = self.current_user_id().await;
-                self.history_service.set_track_like_scoped(&user_id, &track_id, 1).await?;
-                self.flow_engine.invalidate_home_picks(&user_id).await;
-                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
-                // Also add to Liked Songs playlist
-                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
-                // Only add if it's a local track (not an online: prefixed id); online tracks use AddTrackToPlaylist
-                if !track_id.starts_with("online:") && !track_id.starts_with("itunes:") {
-                    let already_liked: i64 = sqlx::query_scalar(
-                        "SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?"
-                    )
-                    .bind(&liked_id)
-                    .bind(&track_id)
-                    .fetch_one(&self.db_pool)
-                    .await
-                    .map_err(|e| AppError::Database(e.to_string()))?;
-                    if already_liked == 0 {
-                        self.playlist_repo.add_track(&liked_id, &track_id, None).await?;
-                    }
-                }
-                self.trigger_background_sync().await;
+                self.set_song_feedback(&track_id, 1).await?;
                 Ok(CommandResponse::Ok)
             }
             Command::DislikeTrack { track_id } => {
-                let user_id = self.current_user_id().await;
-                self.history_service.set_track_like_scoped(&user_id, &track_id, -1).await?;
-                self.flow_engine.invalidate_home_picks(&user_id).await;
-                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
-                // Remove from Liked Songs if it's there
-                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
-                let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
-                self.trigger_background_sync().await;
+                self.set_song_feedback(&track_id, -1).await?;
                 Ok(CommandResponse::Ok)
             }
             Command::RemoveTrackFeedback { track_id } => {
-                let user_id = self.current_user_id().await;
-                self.history_service.set_track_like_scoped(&user_id, &track_id, 0).await?;
-                self.flow_engine.invalidate_home_picks(&user_id).await;
-                let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: user_id.clone() });
-                // Remove from Liked Songs
-                let liked_id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
-                let _ = self.playlist_repo.remove_track(&liked_id, &track_id).await;
-                self.trigger_background_sync().await;
+                self.set_song_feedback(&track_id, 0).await?;
                 Ok(CommandResponse::Ok)
             }
             Command::EnsureLikedSongsPlaylist => {
                 let user_id = self.current_user_id().await;
-                let id = self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                let id = self
+                    .playlist_repo
+                    .ensure_liked_songs_playlist(&user_id)
+                    .await?;
                 Ok(CommandResponse::EntityId(id))
             }
-
 
             // --- Playlists & Recommendations ---
             Command::GenerateSmartMix { mix_type } => {
                 let user_id = self.current_user_id().await;
-                let playlist = self.smart_mix_generator.generate_mix(&user_id, &mix_type).await?;
+                let playlist = self
+                    .smart_mix_generator
+                    .generate_mix(&user_id, &mix_type)
+                    .await?;
                 let tracks = self.playlist_repo.get_playlist_tracks(&playlist.id).await?;
                 let track_count = tracks.len();
-                let mix_type_name = playlist.mix_type.clone().unwrap_or_else(|| "custom".to_string());
+                let mix_type_name = playlist
+                    .mix_type
+                    .clone()
+                    .unwrap_or_else(|| "custom".to_string());
 
                 let _ = self.event_bus.publish(Event::SmartMixGenerated {
                     playlist_id: playlist.id.clone(),
@@ -997,10 +1038,17 @@ impl CoreProcessor {
                 }
 
                 let current_user_guard = self.current_user.read().await;
-                let user_id = current_user_guard.as_ref().map(|u| u.id.clone()).unwrap_or_else(|| "default".to_string());
+                let user_id = current_user_guard
+                    .as_ref()
+                    .map(|u| u.id.clone())
+                    .unwrap_or_else(|| "default".to_string());
                 drop(current_user_guard);
 
-                if let Some(_) = self.playlist_repo.find_by_name_and_user(&trimmed_name, &user_id).await? {
+                if let Some(_) = self
+                    .playlist_repo
+                    .find_by_name_and_user(&trimmed_name, &user_id)
+                    .await?
+                {
                     return Err(AppError::Validation(format!(
                         "A playlist named '{}' already exists",
                         trimmed_name
@@ -1020,7 +1068,9 @@ impl CoreProcessor {
                     created_at: now,
                     updated_at: now,
                 };
-                self.playlist_repo.create_playlist_with_user(&record, &user_id).await?;
+                self.playlist_repo
+                    .create_playlist_with_user(&record, &user_id)
+                    .await?;
 
                 // Background sync if user is logged in
                 self.trigger_background_sync().await;
@@ -1036,7 +1086,7 @@ impl CoreProcessor {
                     return Err(AppError::Validation("Sign in to delete playlists.".into()));
                 };
                 let owned: Option<(String,)> = sqlx::query_as(
-                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0"
+                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0",
                 )
                 .bind(&playlist_id)
                 .bind(uid)
@@ -1044,13 +1094,19 @@ impl CoreProcessor {
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
                 let Some((playlist_name,)) = owned else {
-                    return Err(AppError::Validation("Playlist not found or not owned by this account.".into()));
+                    return Err(AppError::Validation(
+                        "Playlist not found or not owned by this account.".into(),
+                    ));
                 };
                 if playlist_name == "Liked Songs" {
-                    return Err(AppError::Validation("The Liked Songs playlist cannot be deleted.".into()));
+                    return Err(AppError::Validation(
+                        "The Liked Songs playlist cannot be deleted.".into(),
+                    ));
                 }
                 if let Some(ref uid) = user_id {
-                    let _ = SyncManager::record_tombstone(&self.db_pool, uid, "playlist", &playlist_id).await;
+                    let _ =
+                        SyncManager::record_tombstone(&self.db_pool, uid, "playlist", &playlist_id)
+                            .await;
                 }
                 self.playlist_repo.delete_playlist(&playlist_id).await?;
                 self.trigger_background_sync().await;
@@ -1069,7 +1125,7 @@ impl CoreProcessor {
                     return Err(AppError::Validation("Sign in to rename playlists.".into()));
                 };
                 let owned: Option<(String,)> = sqlx::query_as(
-                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0"
+                    "SELECT name FROM playlists WHERE id = ? AND user_id = ? AND is_smart_mix = 0",
                 )
                 .bind(&playlist_id)
                 .bind(&uid)
@@ -1077,17 +1133,30 @@ impl CoreProcessor {
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
                 let Some((playlist_name,)) = owned else {
-                    return Err(AppError::Validation("Playlist not found or not owned by this account.".into()));
+                    return Err(AppError::Validation(
+                        "Playlist not found or not owned by this account.".into(),
+                    ));
                 };
                 if playlist_name == "Liked Songs" {
-                    return Err(AppError::Validation("The Liked Songs playlist cannot be renamed.".into()));
+                    return Err(AppError::Validation(
+                        "The Liked Songs playlist cannot be renamed.".into(),
+                    ));
                 }
-                if let Some(existing) = self.playlist_repo.find_by_name_and_user(&trimmed, &uid).await? {
+                if let Some(existing) = self
+                    .playlist_repo
+                    .find_by_name_and_user(&trimmed, &uid)
+                    .await?
+                {
                     if existing.id != playlist_id {
-                        return Err(AppError::Validation(format!("A playlist named '{}' already exists", trimmed)));
+                        return Err(AppError::Validation(format!(
+                            "A playlist named '{}' already exists",
+                            trimmed
+                        )));
                     }
                 }
-                self.playlist_repo.rename_playlist(&playlist_id, &trimmed).await?;
+                self.playlist_repo
+                    .rename_playlist(&playlist_id, &trimmed)
+                    .await?;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
@@ -1101,15 +1170,27 @@ impl CoreProcessor {
                 cover_art_url,
                 preview_url,
             } => {
-                let track_opt = self.library_service.track_repo().find_by_id(&track_id).await?;
+                let track_opt = self
+                    .library_service
+                    .track_repo()
+                    .find_by_id(&track_id)
+                    .await?;
                 let needs_online_ensure = match &track_opt {
                     None => true,
-                    Some(t) => t.title.starts_with("itunes:") || t.title.starts_with("online:") || t.format == "online",
+                    Some(t) => {
+                        t.title.starts_with("itunes:")
+                            || t.title.starts_with("online:")
+                            || t.format == "online"
+                    }
                 };
 
                 if needs_online_ensure {
                     let is_clean_title = match &title {
-                        Some(t) => !t.trim().is_empty() && !t.starts_with("itunes:") && !t.starts_with("online:"),
+                        Some(t) => {
+                            !t.trim().is_empty()
+                                && !t.starts_with("itunes:")
+                                && !t.starts_with("online:")
+                        }
                         None => false,
                     };
 
@@ -1135,14 +1216,25 @@ impl CoreProcessor {
                         if let Some((e_title, e_artist, e_album, e_dur, e_cov, e_prev)) = ext_opt {
                             (e_title, Some(e_artist), e_album, e_dur, e_cov, e_prev)
                         } else {
-                            (title.unwrap_or_else(|| track_id.clone()), artist, album, duration_secs, cover_art_url, preview_url)
+                            (
+                                title.unwrap_or_else(|| track_id.clone()),
+                                artist,
+                                album,
+                                duration_secs,
+                                cover_art_url,
+                                preview_url,
+                            )
                         }
                     };
 
                     let _ = crate::recommendations::mixes::ensure_online_track(
                         &self.db_pool,
                         &track_id,
-                        if t_title.is_empty() { &track_id } else { &t_title },
+                        if t_title.is_empty() {
+                            &track_id
+                        } else {
+                            &t_title
+                        },
                         t_artist.as_deref(),
                         t_album.as_deref(),
                         t_dur,
@@ -1151,20 +1243,33 @@ impl CoreProcessor {
                     )
                     .await;
                 }
-                self.playlist_repo.add_track(&playlist_id, &track_id, None).await?;
+                self.playlist_repo
+                    .add_track(&playlist_id, &track_id, None)
+                    .await?;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
-            Command::RemoveTrackFromPlaylist { playlist_id, track_id } => {
+            Command::RemoveTrackFromPlaylist {
+                playlist_id,
+                track_id,
+            } => {
                 let user_id = {
                     let current_user_guard = self.current_user.read().await;
                     current_user_guard.as_ref().map(|u| u.id.clone())
                 };
                 if let Some(ref uid) = user_id {
                     let entity_id = format!("{}:{}", playlist_id, track_id);
-                    let _ = SyncManager::record_tombstone(&self.db_pool, uid, "playlist_song", &entity_id).await;
+                    let _ = SyncManager::record_tombstone(
+                        &self.db_pool,
+                        uid,
+                        "playlist_song",
+                        &entity_id,
+                    )
+                    .await;
                 }
-                self.playlist_repo.remove_track(&playlist_id, &track_id).await?;
+                self.playlist_repo
+                    .remove_track(&playlist_id, &track_id)
+                    .await?;
                 self.trigger_background_sync().await;
                 Ok(CommandResponse::Ok)
             }
@@ -1188,8 +1293,12 @@ impl CoreProcessor {
                 if !matches!(key.as_str(), "enable_jiosaavn" | "auto_fill_metadata") {
                     return Err(AppError::Validation("Unknown metadata preference".into()));
                 }
-                self.settings_repo.set_setting(&key, if enabled { "true" } else { "false" }).await?;
-                if enabled && key == "auto_fill_metadata" { self.gap_enrichment.request_fill(false).await?; }
+                self.settings_repo
+                    .set_setting(&key, if enabled { "true" } else { "false" })
+                    .await?;
+                if enabled && key == "auto_fill_metadata" {
+                    self.gap_enrichment.request_fill(false).await?;
+                }
                 Ok(CommandResponse::Ok)
             }
             // --- Discovery & Wishlist ---
@@ -1206,7 +1315,10 @@ impl CoreProcessor {
                 info!(wishlist_id = %item.id, title = %item.title, "Added track to wishlist");
                 Ok(CommandResponse::EntityId(item.id))
             }
-            Command::UpdateWishlistStatus { wishlist_id, status } => {
+            Command::UpdateWishlistStatus {
+                wishlist_id,
+                status,
+            } => {
                 self.wishlist_manager
                     .update_status_enum(&wishlist_id, status)
                     .await?;
@@ -1220,8 +1332,21 @@ impl CoreProcessor {
             }
 
             // --- Downloads ---
-            Command::SearchDownloads { artist, title, album: _ } => {
-                if !self.gap_enrichment.enabled("enable_jiosaavn",true).await { return Err(AppError::Validation("JioSaavn is disabled in Settings".into())); }
+            Command::SearchDownloads {
+                artist,
+                title,
+                album: _,
+            } => {
+                if !self.gap_enrichment.enabled("enable_jiosaavn", true).await {
+                    return Err(AppError::Validation(
+                        "JioSaavn is disabled in Settings".into(),
+                    ));
+                }
+                // Persist source identity for every downloadable search row.
+                let _ = self
+                    .discovery_coordinator
+                    .search_online_music(&format!("{} {}", artist, title), 25)
+                    .await?;
                 let results = self.download_service.search_track(&artist, &title).await?;
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
@@ -1229,11 +1354,33 @@ impl CoreProcessor {
                     .collect();
                 Ok(CommandResponse::SearchResults(val))
             }
+            Command::DownloadTrack { track_id } => {
+                if !self.gap_enrichment.enabled("enable_jiosaavn", true).await {
+                    return Err(AppError::Validation(
+                        "Online music is disabled in Settings".into(),
+                    ));
+                }
+                // A search row may use a saved alias for this exact provider ID.
+                let bound_id = if let Some(source) = track_id.strip_prefix("jiosaavn:") {
+                    sqlx::query_scalar::<_,String>("SELECT id FROM external_tracks WHERE provider='jiosaavn' AND provider_id=?").bind(source).fetch_optional(&self.db_pool).await?.unwrap_or(track_id.clone())
+                } else {
+                    track_id.clone()
+                };
+                let track = self.online_catalog.bind(&bound_id).await?.ok_or_else(|| {
+                    AppError::Validation("This song has no saved online recording".into())
+                })?;
+                let task = self.download_service.download_track(&track).await?;
+                Ok(CommandResponse::DownloadStarted { task_id: task.id })
+            }
             Command::StartDownload {
                 search_result_id,
                 wishlist_id,
             } => {
-                if !self.gap_enrichment.enabled("enable_jiosaavn",true).await { return Err(AppError::Validation("JioSaavn is disabled in Settings".into())); }
+                if !self.gap_enrichment.enabled("enable_jiosaavn", true).await {
+                    return Err(AppError::Validation(
+                        "JioSaavn is disabled in Settings".into(),
+                    ));
+                }
                 let task = self
                     .download_service
                     .start_download(&search_result_id, wishlist_id)
@@ -1256,13 +1403,20 @@ impl CoreProcessor {
                     return Err(AppError::Validation("Username cannot be empty".to_string()));
                 }
                 if trimmed_user.len() < 3 || trimmed_user.len() > 50 {
-                    return Err(AppError::Validation("Username must be between 3 and 50 characters".to_string()));
+                    return Err(AppError::Validation(
+                        "Username must be between 3 and 50 characters".to_string(),
+                    ));
                 }
-                if !trimmed_user.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.') {
+                if !trimmed_user
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
+                {
                     return Err(AppError::Validation("Username can only contain alphanumeric characters, underscores, hyphens, and dots".to_string()));
                 }
                 if password.len() < 8 || password.len() > 128 {
-                    return Err(AppError::Validation("Password must be between 8 and 128 characters".to_string()));
+                    return Err(AppError::Validation(
+                        "Password must be between 8 and 128 characters".to_string(),
+                    ));
                 }
 
                 let worker_url = self.get_cloud_worker_url().await;
@@ -1270,18 +1424,23 @@ impl CoreProcessor {
                 let device_name = device::get_device_name();
                 let client_ver = device::get_client_version();
 
-                let auth_res = self.cloud_client.register(
-                    &worker_url,
-                    &trimmed_user,
-                    &password,
-                    Some(&device_id),
-                    Some(&device_name),
-                    Some(&client_ver),
-                ).await?;
+                let auth_res = self
+                    .cloud_client
+                    .register(
+                        &worker_url,
+                        &trimmed_user,
+                        &password,
+                        Some(&device_id),
+                        Some(&device_name),
+                        Some(&client_ver),
+                    )
+                    .await?;
 
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let has_avatar = cloud_user.has_avatar.unwrap_or(false);
-                    let avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
+                    let avatar_data_url = self
+                        .profile_service
+                        .get_cached_avatar_data_url(&cloud_user.id);
                     let avatar_key = if has_avatar {
                         Some(format!("avatars/{}.webp", cloud_user.id))
                     } else {
@@ -1292,7 +1451,8 @@ impl CoreProcessor {
                         cloud_user.id.clone(),
                         cloud_user.username.clone(),
                         cloud_user.created_at,
-                    ).with_avatar(
+                    )
+                    .with_avatar(
                         cloud_user.display_name.clone(),
                         avatar_key,
                         cloud_user.avatar_public_id.clone(),
@@ -1304,9 +1464,18 @@ impl CoreProcessor {
 
                     let now = chrono::Utc::now().timestamp();
                     let session_meta = auth_res.session;
-                    let session_id = session_meta.as_ref().map(|s| s.id.clone()).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-                    let idle_expires_at = session_meta.as_ref().map(|s| s.idle_expires_at).unwrap_or(now + 30 * 86400);
-                    let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
+                    let session_id = session_meta
+                        .as_ref()
+                        .map(|s| s.id.clone())
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                    let idle_expires_at = session_meta
+                        .as_ref()
+                        .map(|s| s.idle_expires_at)
+                        .unwrap_or(now + 30 * 86400);
+                    let absolute_expires_at = session_meta
+                        .as_ref()
+                        .map(|s| s.absolute_expires_at)
+                        .unwrap_or(now + 90 * 86400);
 
                     // Upsert local user profile cleanly
                     let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
@@ -1340,7 +1509,10 @@ impl CoreProcessor {
 
                     // Store raw bearer token securely in OS keyring (fallback to private local file)
                     if let Err(e) = credentials::store_session_token(&profile.id, &token) {
-                        tracing::warn!("Failed to store session token in secure credentials: {}", e);
+                        tracing::warn!(
+                            "Failed to store session token in secure credentials: {}",
+                            e
+                        );
                     }
 
                     // Cache session metadata only in cloud_sessions (never store raw tokens in SQLite)
@@ -1361,7 +1533,10 @@ impl CoreProcessor {
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
                     // Reassign orphan playlists to this user
-                    let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
+                    let _ = self
+                        .playlist_repo
+                        .reassign_orphan_playlists_to_user(&profile.id)
+                        .await;
 
                     // Guest listening retains its original owner on registration.
                     self.playback_service.stop_flow().await;
@@ -1383,16 +1558,22 @@ impl CoreProcessor {
                             &worker_url,
                             &user_id_clone,
                             &token,
-                        ).await {
+                        )
+                        .await
+                        {
                             let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
                         }
                     });
 
                     let val = serde_json::to_value(&profile).unwrap_or_default();
-                    let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
+                    let _ = self.event_bus.publish(Event::SessionChanged {
+                        user: Some(val.clone()),
+                    });
                     return Ok(CommandResponse::UserProfile(val));
                 }
-                Err(AppError::Validation("Cloud registration did not return user info".to_string()))
+                Err(AppError::Validation(
+                    "Cloud registration did not return user info".to_string(),
+                ))
             }
             Command::Login { username, password } => {
                 let trimmed_user = username.trim().to_string();
@@ -1408,25 +1589,30 @@ impl CoreProcessor {
                 let device_name = device::get_device_name();
                 let client_ver = device::get_client_version();
 
-                let auth_res = self.cloud_client.login(
-                    &worker_url,
-                    &trimmed_user,
-                    &password,
-                    Some(&device_id),
-                    Some(&device_name),
-                    Some(&client_ver),
-                ).await?;
+                let auth_res = self
+                    .cloud_client
+                    .login(
+                        &worker_url,
+                        &trimmed_user,
+                        &password,
+                        Some(&device_id),
+                        Some(&device_name),
+                        Some(&client_ver),
+                    )
+                    .await?;
 
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let has_avatar = cloud_user.has_avatar.unwrap_or(false);
-                    let mut avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
+                    let mut avatar_data_url = self
+                        .profile_service
+                        .get_cached_avatar_data_url(&cloud_user.id);
                     if !has_avatar && self.profile_service.has_cached_avatar(&cloud_user.id) {
                         self.profile_service.remove_cached_avatar(&cloud_user.id);
                         avatar_data_url = None;
                     }
 
                     let local_user_meta: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(
-                        "SELECT avatar_version, avatar_updated_at FROM users WHERE id = ?"
+                        "SELECT avatar_version, avatar_updated_at FROM users WHERE id = ?",
                     )
                     .bind(&cloud_user.id)
                     .fetch_optional(&self.db_pool)
@@ -1439,16 +1625,26 @@ impl CoreProcessor {
                     } else if avatar_data_url.is_none() {
                         true
                     } else if let Some((local_ver, local_updated)) = local_user_meta {
-                        (cloud_user.avatar_version.is_some() && cloud_user.avatar_version != local_ver)
-                            || (cloud_user.avatar_updated_at.is_some() && cloud_user.avatar_updated_at > local_updated)
+                        (cloud_user.avatar_version.is_some()
+                            && cloud_user.avatar_version != local_ver)
+                            || (cloud_user.avatar_updated_at.is_some()
+                                && cloud_user.avatar_updated_at > local_updated)
                     } else {
                         false
                     };
 
                     if needs_avatar_download {
-                        if let Ok(Some(bytes)) = self.cloud_client.download_avatar(&worker_url, Some(&token), &cloud_user.id).await {
-                            let _ = self.profile_service.save_cached_avatar(&cloud_user.id, &bytes);
-                            avatar_data_url = self.profile_service.get_cached_avatar_data_url(&cloud_user.id);
+                        if let Ok(Some(bytes)) = self
+                            .cloud_client
+                            .download_avatar(&worker_url, Some(&token), &cloud_user.id)
+                            .await
+                        {
+                            let _ = self
+                                .profile_service
+                                .save_cached_avatar(&cloud_user.id, &bytes);
+                            avatar_data_url = self
+                                .profile_service
+                                .get_cached_avatar_data_url(&cloud_user.id);
                         }
                     }
 
@@ -1462,7 +1658,8 @@ impl CoreProcessor {
                         cloud_user.id.clone(),
                         cloud_user.username.clone(),
                         cloud_user.created_at,
-                    ).with_avatar(
+                    )
+                    .with_avatar(
                         cloud_user.display_name.clone(),
                         avatar_key,
                         cloud_user.avatar_public_id.clone(),
@@ -1474,9 +1671,18 @@ impl CoreProcessor {
 
                     let now = chrono::Utc::now().timestamp();
                     let session_meta = auth_res.session;
-                    let session_id = session_meta.as_ref().map(|s| s.id.clone()).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-                    let idle_expires_at = session_meta.as_ref().map(|s| s.idle_expires_at).unwrap_or(now + 30 * 86400);
-                    let absolute_expires_at = session_meta.as_ref().map(|s| s.absolute_expires_at).unwrap_or(now + 90 * 86400);
+                    let session_id = session_meta
+                        .as_ref()
+                        .map(|s| s.id.clone())
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+                    let idle_expires_at = session_meta
+                        .as_ref()
+                        .map(|s| s.idle_expires_at)
+                        .unwrap_or(now + 30 * 86400);
+                    let absolute_expires_at = session_meta
+                        .as_ref()
+                        .map(|s| s.absolute_expires_at)
+                        .unwrap_or(now + 90 * 86400);
 
                     // Upsert local user profile (without password hash)
                     let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
@@ -1510,7 +1716,10 @@ impl CoreProcessor {
 
                     // Store raw bearer token securely in OS keyring (fallback to private local file)
                     if let Err(e) = credentials::store_session_token(&profile.id, &token) {
-                        tracing::warn!("Failed to store session token in secure credentials: {}", e);
+                        tracing::warn!(
+                            "Failed to store session token in secure credentials: {}",
+                            e
+                        );
                     }
 
                     // Cache session metadata only in cloud_sessions (never store raw tokens in SQLite)
@@ -1531,7 +1740,10 @@ impl CoreProcessor {
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
                     // Reassign orphan playlists to this user
-                    let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&profile.id).await;
+                    let _ = self
+                        .playlist_repo
+                        .reassign_orphan_playlists_to_user(&profile.id)
+                        .await;
 
                     self.playback_service.stop_flow().await;
                     *self.current_user.write().await = Some(profile.clone());
@@ -1554,16 +1766,22 @@ impl CoreProcessor {
                             &worker_url,
                             &user_id_clone,
                             &token,
-                        ).await {
+                        )
+                        .await
+                        {
                             let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
                         }
                     });
 
                     let val = serde_json::to_value(&profile).unwrap_or_default();
-                    let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
+                    let _ = self.event_bus.publish(Event::SessionChanged {
+                        user: Some(val.clone()),
+                    });
                     return Ok(CommandResponse::UserProfile(val));
                 }
-                Err(AppError::Validation("Cloud login did not return user info".to_string()))
+                Err(AppError::Validation(
+                    "Cloud login did not return user info".to_string(),
+                ))
             }
             Command::Logout => {
                 let worker_url = self.get_cloud_worker_url().await;
@@ -1595,11 +1813,20 @@ impl CoreProcessor {
             }
             Command::LogoutAll => {
                 let worker_url = self.get_cloud_worker_url().await;
-                let session = SyncManager::get_active_session(&self.db_pool).await?
-                    .ok_or_else(|| AppError::Validation("No active session. Sign in again to log out all devices.".to_string()))?;
+                let session = SyncManager::get_active_session(&self.db_pool)
+                    .await?
+                    .ok_or_else(|| {
+                        AppError::Validation(
+                            "No active session. Sign in again to log out all devices.".to_string(),
+                        )
+                    })?;
                 let user_id = session.user_id.clone();
-                let token = credentials::get_session_token(&user_id)
-                    .ok_or_else(|| AppError::Validation("Session credentials unavailable. Sign in again to log out all devices.".to_string()))?;
+                let token = credentials::get_session_token(&user_id).ok_or_else(|| {
+                    AppError::Validation(
+                        "Session credentials unavailable. Sign in again to log out all devices."
+                            .to_string(),
+                    )
+                })?;
                 // Require server confirmation before clearing this device. Otherwise
                 // an offline/failed request would falsely report global revocation.
                 self.cloud_client.logout_all(&worker_url, &token).await?;
@@ -1621,11 +1848,18 @@ impl CoreProcessor {
             }
             Command::RevokeSession { session_id } => {
                 let worker_url = self.get_cloud_worker_url().await;
-                let active = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                let active = SyncManager::get_active_session(&self.db_pool)
+                    .await
+                    .ok()
+                    .flatten();
                 if let Some(session) = active {
-                    let token = credentials::get_session_token(&session.user_id)
-                        .ok_or_else(|| AppError::Validation("No active session token".to_string()))?;
-                    self.cloud_client.revoke_session(&worker_url, &token, &session_id).await?;
+                    let token =
+                        credentials::get_session_token(&session.user_id).ok_or_else(|| {
+                            AppError::Validation("No active session token".to_string())
+                        })?;
+                    self.cloud_client
+                        .revoke_session(&worker_url, &token, &session_id)
+                        .await?;
                     if session.session_id == session_id {
                         let _ = SyncManager::delete_session(&self.db_pool, &session.user_id).await;
                         self.playback_service.stop_flow().await;
@@ -1639,18 +1873,23 @@ impl CoreProcessor {
                 let worker_url = self.get_cloud_worker_url().await;
                 let session = SyncManager::get_active_session(&self.db_pool)
                     .await?
-                    .ok_or_else(|| AppError::Validation("You must be logged in to upload a profile photo".to_string()))?;
-                let token = credentials::get_session_token(&session.user_id)
-                    .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
+                    .ok_or_else(|| {
+                        AppError::Validation(
+                            "You must be logged in to upload a profile photo".to_string(),
+                        )
+                    })?;
+                let token = credentials::get_session_token(&session.user_id).ok_or_else(|| {
+                    AppError::Validation(
+                        "Session credentials not found locally. Please log in again.".to_string(),
+                    )
+                })?;
 
                 let path = match file_path {
                     Some(p) if !p.trim().is_empty() => std::path::PathBuf::from(p),
-                    _ => {
-                        match ProfileService::pick_avatar_file()? {
-                            Some(p) => p,
-                            None => return Ok(CommandResponse::Ok),
-                        }
-                    }
+                    _ => match ProfileService::pick_avatar_file()? {
+                        Some(p) => p,
+                        None => return Ok(CommandResponse::Ok),
+                    },
                 };
 
                 let raw_bytes = std::fs::read(&path)
@@ -1658,28 +1897,46 @@ impl CoreProcessor {
                 let normalized_webp = ProfileService::normalize_avatar_image(&raw_bytes)?;
 
                 // Save to local cache immediately so the user has their photo locally regardless of cloud R2 status
-                let _ = self.profile_service.save_cached_avatar(&session.user_id, &normalized_webp);
-                let data_url = self.profile_service.get_cached_avatar_data_url(&session.user_id);
+                let _ = self
+                    .profile_service
+                    .save_cached_avatar(&session.user_id, &normalized_webp);
+                let data_url = self
+                    .profile_service
+                    .get_cached_avatar_data_url(&session.user_id);
                 let now = chrono::Utc::now().timestamp();
                 let local_avatar_key = format!("avatars/{}.webp", session.user_id);
 
                 // Attempt cloud upload to Cloudinary (via Worker), gracefully fall back to local if offline
-                let (avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at) = match self.cloud_client.upload_avatar(&worker_url, &token, normalized_webp.clone()).await {
-                    Ok(resp) => (resp.avatar_key, resp.avatar_public_id, resp.avatar_url, resp.avatar_version, resp.avatar_updated_at),
-                    Err(e) => {
-                        tracing::warn!("Cloud avatar upload deferred / unavailable: {}", e);
-                        (Some(local_avatar_key), None, None, None, Some(now))
-                    }
-                };
+                let (avatar_key, avatar_public_id, avatar_url, avatar_version, avatar_updated_at) =
+                    match self
+                        .cloud_client
+                        .upload_avatar(&worker_url, &token, normalized_webp.clone())
+                        .await
+                    {
+                        Ok(resp) => (
+                            resp.avatar_key,
+                            resp.avatar_public_id,
+                            resp.avatar_url,
+                            resp.avatar_version,
+                            resp.avatar_updated_at,
+                        ),
+                        Err(e) => {
+                            tracing::warn!("Cloud avatar upload deferred / unavailable: {}", e);
+                            (Some(local_avatar_key), None, None, None, Some(now))
+                        }
+                    };
 
-                let _ = self.user_repo.update_avatar_metadata(
-                    &session.user_id,
-                    avatar_key.as_deref(),
-                    avatar_public_id.as_deref(),
-                    avatar_url.as_deref(),
-                    avatar_version,
-                    avatar_updated_at,
-                ).await;
+                let _ = self
+                    .user_repo
+                    .update_avatar_metadata(
+                        &session.user_id,
+                        avatar_key.as_deref(),
+                        avatar_public_id.as_deref(),
+                        avatar_url.as_deref(),
+                        avatar_version,
+                        avatar_updated_at,
+                    )
+                    .await;
 
                 let updated_profile = {
                     let mut guard = self.current_user.write().await;
@@ -1695,8 +1952,12 @@ impl CoreProcessor {
                 };
 
                 let val = serde_json::to_value(&updated_profile).unwrap_or_default();
-                let _ = self.event_bus.publish(Event::UserProfileUpdated { user: val.clone() });
-                let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
+                let _ = self
+                    .event_bus
+                    .publish(Event::UserProfileUpdated { user: val.clone() });
+                let _ = self.event_bus.publish(Event::SessionChanged {
+                    user: Some(val.clone()),
+                });
 
                 Ok(CommandResponse::UserProfile(val))
             }
@@ -1704,9 +1965,16 @@ impl CoreProcessor {
                 let worker_url = self.get_cloud_worker_url().await;
                 let session = SyncManager::get_active_session(&self.db_pool)
                     .await?
-                    .ok_or_else(|| AppError::Validation("You must be logged in to remove your profile photo".to_string()))?;
-                let token = credentials::get_session_token(&session.user_id)
-                    .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
+                    .ok_or_else(|| {
+                        AppError::Validation(
+                            "You must be logged in to remove your profile photo".to_string(),
+                        )
+                    })?;
+                let token = credentials::get_session_token(&session.user_id).ok_or_else(|| {
+                    AppError::Validation(
+                        "Session credentials not found locally. Please log in again.".to_string(),
+                    )
+                })?;
 
                 // Attempt cloud delete, ignore 503/offline errors
                 if let Err(e) = self.cloud_client.delete_avatar(&worker_url, &token).await {
@@ -1714,7 +1982,10 @@ impl CoreProcessor {
                 }
 
                 self.profile_service.remove_cached_avatar(&session.user_id);
-                let _ = self.user_repo.update_avatar_metadata(&session.user_id, None, None, None, None, None).await;
+                let _ = self
+                    .user_repo
+                    .update_avatar_metadata(&session.user_id, None, None, None, None, None)
+                    .await;
 
                 let updated_profile = {
                     let mut guard = self.current_user.write().await;
@@ -1730,8 +2001,12 @@ impl CoreProcessor {
                 };
 
                 let val = serde_json::to_value(&updated_profile).unwrap_or_default();
-                let _ = self.event_bus.publish(Event::UserProfileUpdated { user: val.clone() });
-                let _ = self.event_bus.publish(Event::SessionChanged { user: Some(val.clone()) });
+                let _ = self
+                    .event_bus
+                    .publish(Event::UserProfileUpdated { user: val.clone() });
+                let _ = self.event_bus.publish(Event::SessionChanged {
+                    user: Some(val.clone()),
+                });
 
                 Ok(CommandResponse::UserProfile(val))
             }
@@ -1739,11 +2014,14 @@ impl CoreProcessor {
                 let worker_url = self.get_cloud_worker_url().await;
                 let session = SyncManager::get_active_session(&self.db_pool)
                     .await?
-                    .ok_or_else(|| AppError::Validation("Not logged in to a cloud account".to_string()))?;
+                    .ok_or_else(|| {
+                        AppError::Validation("Not logged in to a cloud account".to_string())
+                    })?;
 
                 let now = chrono::Utc::now().timestamp();
                 let is_idle_expired = session.idle_expires_at > 0 && now >= session.idle_expires_at;
-                let is_abs_expired = session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
+                let is_abs_expired =
+                    session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
                 if is_idle_expired || is_abs_expired {
                     *self.session_state.write().await = AuthSessionState::SessionExpired {
                         reason: if is_abs_expired {
@@ -1752,11 +2030,16 @@ impl CoreProcessor {
                             SessionExpiredReason::IdleTimeout
                         },
                     };
-                    return Err(AppError::Validation("Session expired. Please log in again.".to_string()));
+                    return Err(AppError::Validation(
+                        "Session expired. Please log in again.".to_string(),
+                    ));
                 }
 
-                let token = credentials::get_session_token(&session.user_id)
-                    .ok_or_else(|| AppError::Validation("Session credentials not found locally. Please log in again.".to_string()))?;
+                let token = credentials::get_session_token(&session.user_id).ok_or_else(|| {
+                    AppError::Validation(
+                        "Session credentials not found locally. Please log in again.".to_string(),
+                    )
+                })?;
 
                 // Deterministic sync: Pull first, reconcile, push
                 let report = SyncManager::sync_with_cloud(
@@ -1765,19 +2048,27 @@ impl CoreProcessor {
                     &worker_url,
                     &session.user_id,
                     &token,
-                ).await?;
+                )
+                .await?;
 
-                SyncManager::update_validation_timestamp(&self.db_pool, &session.user_id, now).await?;
+                SyncManager::update_validation_timestamp(&self.db_pool, &session.user_id, now)
+                    .await?;
                 let _ = self.event_bus.publish(Event::PlaylistsUpdated);
 
-                Ok(CommandResponse::CloudSyncCompleted { synced_at: report.synced_at })
+                Ok(CommandResponse::CloudSyncCompleted {
+                    synced_at: report.synced_at,
+                })
             }
             Command::SetCloudServerUrl { url } => {
                 let trimmed = url.trim().to_string();
                 if trimmed.is_empty() {
-                    return Err(AppError::Validation("Server URL cannot be empty".to_string()));
+                    return Err(AppError::Validation(
+                        "Server URL cannot be empty".to_string(),
+                    ));
                 }
-                self.settings_repo.set_setting("cloud_sync_url", &trimmed).await?;
+                self.settings_repo
+                    .set_setting("cloud_sync_url", &trimmed)
+                    .await?;
                 Ok(CommandResponse::Ok)
             }
             Command::SetCloseButtonBehavior { behavior } => {
@@ -1788,7 +2079,9 @@ impl CoreProcessor {
                 if !matches!(style.as_str(), "spatial" | "brutalist") {
                     return Err(AppError::Validation("Unknown interface style".to_string()));
                 }
-                self.settings_repo.set_setting("interface_style", &style).await?;
+                self.settings_repo
+                    .set_setting("interface_style", &style)
+                    .await?;
                 Ok(CommandResponse::Ok)
             }
         }
@@ -1799,6 +2092,26 @@ impl CoreProcessor {
             return Ok(cached.clone());
         }
 
+        // Source-bound online artwork belongs to the exact displayed recording.
+        // Never fall through to unrelated enrichment artwork for an online alias.
+        let online_cover: Option<String> = sqlx::query_scalar(
+            "SELECT COALESCE((SELECT json_extract(metadata_json,'$.cover_art_url') FROM online_track_sources WHERE track_id=?),
+             (SELECT cover_art_url FROM external_tracks WHERE id=? AND provider='jiosaavn'))")
+            .bind(track_id).bind(track_id).fetch_one(&self.db_pool).await?;
+        if let Some(url) = online_cover.filter(|url| url.starts_with("https://")) {
+            self.cover_art_cache
+                .write()
+                .await
+                .insert(track_id.into(), Some(url.clone()));
+            return Ok(Some(url));
+        }
+        if self.online_catalog.source_id(track_id).await?.is_some() {
+            self.cover_art_cache
+                .write()
+                .await
+                .insert(track_id.into(), None);
+            return Ok(None);
+        }
         let mut cover_result: Option<String> = None;
         let track = self
             .library_service
@@ -1902,11 +2215,16 @@ impl CoreProcessor {
             Query::GetPlaybackState => {
                 self.playback_service.initialize_saved_playback().await;
                 let state = self.playback_service.get_playback_state().await;
-                let mut val = serde_json::to_value(&state)
-                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                let mut val =
+                    serde_json::to_value(&state).map_err(|e| AppError::Internal(e.to_string()))?;
                 if let Some(track_id) = &state.current_track_id {
                     let user_id = self.current_user_id().await;
-                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id_scoped(track_id, Some(&user_id)).await {
+                    if let Ok(Some(track)) = self
+                        .library_service
+                        .track_repo()
+                        .find_by_id_scoped(track_id, Some(&user_id))
+                        .await
+                    {
                         if let Ok(track_val) = serde_json::to_value(track) {
                             if let Some(obj) = val.as_object_mut() {
                                 obj.insert("current_track".to_string(), track_val);
@@ -1914,7 +2232,9 @@ impl CoreProcessor {
                         }
                     }
                 }
-                Ok(QueryResponse::PlaybackState(self.online_catalog.present(val).await?))
+                Ok(QueryResponse::PlaybackState(
+                    self.online_catalog.present(val).await?,
+                ))
             }
             Query::GetTopRankings {
                 window,
@@ -1922,22 +2242,36 @@ impl CoreProcessor {
                 limit,
             } => {
                 let user_id = self.current_user_id().await;
-                let ranked = self.ranking_engine.get_rankings_for_user(Some(&user_id), window, entity, limit).await?;
+                let ranked = self
+                    .ranking_engine
+                    .get_rankings_for_user(Some(&user_id), window, entity, limit)
+                    .await?;
                 let val = match ranked {
-                    crate::ranking::RankedOutput::Tracks(items) => {
-                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
-                    }
-                    crate::ranking::RankedOutput::Artists(items) => {
-                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
-                    }
-                    crate::ranking::RankedOutput::Albums(items) => {
-                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
-                    }
-                    crate::ranking::RankedOutput::Genres(items) => {
-                        items.into_iter().filter_map(|i| serde_json::to_value(i).ok()).collect()
-                    }
+                    crate::ranking::RankedOutput::Tracks(items) => items
+                        .into_iter()
+                        .filter_map(|i| serde_json::to_value(i).ok())
+                        .collect(),
+                    crate::ranking::RankedOutput::Artists(items) => items
+                        .into_iter()
+                        .filter_map(|i| serde_json::to_value(i).ok())
+                        .collect(),
+                    crate::ranking::RankedOutput::Albums(items) => items
+                        .into_iter()
+                        .filter_map(|i| serde_json::to_value(i).ok())
+                        .collect(),
+                    crate::ranking::RankedOutput::Genres(items) => items
+                        .into_iter()
+                        .filter_map(|i| serde_json::to_value(i).ok())
+                        .collect(),
                 };
-                Ok(QueryResponse::Rankings(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::Rankings(
+                    self.online_catalog
+                        .present(serde_json::Value::Array(val))
+                        .await?
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
             }
             Query::GetOnboardingStatus => {
                 let completed = self.library_service.is_onboarding_completed().await?;
@@ -1948,13 +2282,12 @@ impl CoreProcessor {
                 let mut folders_val = Vec::new();
                 for f in folders {
                     let pattern = format!("{}/%", f.path.trim_end_matches('/'));
-                    let track_count: i64 = sqlx::query_scalar(
-                        "SELECT COUNT(*) FROM tracks WHERE file_path LIKE ?"
-                    )
-                        .bind(&pattern)
-                        .fetch_one(&self.db_pool)
-                        .await
-                        .unwrap_or(0);
+                    let track_count: i64 =
+                        sqlx::query_scalar("SELECT COUNT(*) FROM tracks WHERE file_path LIKE ?")
+                            .bind(&pattern)
+                            .fetch_one(&self.db_pool)
+                            .await
+                            .unwrap_or(0);
                     let mut v = serde_json::to_value(&f).unwrap_or_default();
                     if let Some(obj) = v.as_object_mut() {
                         obj.insert("track_count".to_string(), serde_json::json!(track_count));
@@ -1972,15 +2305,16 @@ impl CoreProcessor {
                 self.initialize_close_behavior().await?;
                 let mut cfg = self.config.read().await.clone();
                 cfg.close_button_behavior = self.close_button_behavior().to_string();
-                let mut val = serde_json::to_value(&cfg)
-                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                let mut val =
+                    serde_json::to_value(&cfg).map_err(|e| AppError::Internal(e.to_string()))?;
                 let style = self.settings_repo.get_setting("interface_style").await?;
                 val["interface_style"] = serde_json::json!(match style.as_deref() {
                     Some("brutalist") => "brutalist",
                     _ => "spatial",
                 });
                 for (key, default) in [("enable_jiosaavn", true), ("auto_fill_metadata", true)] {
-                    val["metadata"][key] = serde_json::json!(self.gap_enrichment.enabled(key, default).await);
+                    val["metadata"][key] =
+                        serde_json::json!(self.gap_enrichment.enabled(key, default).await);
                 }
                 Ok(QueryResponse::Settings(val))
             }
@@ -1988,7 +2322,14 @@ impl CoreProcessor {
                 let folders = self.library_service.get_folders().await?;
                 let val = serde_json::to_value(&folders)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
-                Ok(QueryResponse::Tracks(self.online_catalog.present(serde_json::json!([val])).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::Tracks(
+                    self.online_catalog
+                        .present(serde_json::json!([val]))
+                        .await?
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
             }
             Query::GetTracks {
                 offset,
@@ -2000,13 +2341,26 @@ impl CoreProcessor {
                 let tracks = self
                     .library_service
                     .track_repo()
-                    .list_tracks_scoped(Some(&user_id), offset, limit, sort_by.as_deref(), ascending)
+                    .list_tracks_scoped(
+                        Some(&user_id),
+                        offset,
+                        limit,
+                        sort_by.as_deref(),
+                        ascending,
+                    )
                     .await?;
                 let val: Vec<serde_json::Value> = tracks
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::Tracks(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::Tracks(
+                    self.online_catalog
+                        .present(serde_json::Value::Array(val))
+                        .await?
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
             }
             Query::GetTrackById { track_id } => {
                 let user_id = self.current_user_id().await;
@@ -2016,7 +2370,16 @@ impl CoreProcessor {
                     .find_by_id_scoped(&track_id, Some(&user_id))
                     .await?;
                 let val = track.and_then(|t| serde_json::to_value(t).ok());
-                let val = match val { Some(value) => { let result = self.online_catalog.present(serde_json::json!([value])).await?; result.as_array().and_then(|items| items.first()).cloned() }, None => None };
+                let val = match val {
+                    Some(value) => {
+                        let result = self
+                            .online_catalog
+                            .present(serde_json::json!([value]))
+                            .await?;
+                        result.as_array().and_then(|items| items.first()).cloned()
+                    }
+                    None => None,
+                };
                 Ok(QueryResponse::Track(val))
             }
             Query::GetArtists { offset, limit } => {
@@ -2045,7 +2408,10 @@ impl CoreProcessor {
             }
             Query::SearchLibrary { query_text, limit } => {
                 let user_id = self.current_user_id().await;
-                let results = self.library_service.search_scoped(Some(&user_id), &query_text, limit).await?;
+                let results = self
+                    .library_service
+                    .search_scoped(Some(&user_id), &query_text, limit)
+                    .await?;
                 let val: Vec<serde_json::Value> = results
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
@@ -2066,11 +2432,28 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
-                Ok(QueryResponse::Recommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::Recommendations(
+                    self.present_recommendations(serde_json::Value::Array(val), &user_id)
+                        .await?
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                ))
             }
-            Query::GetSmartMixes => {
+            Query::GetSmartMixes | Query::RefreshSmartMixes => {
+                if matches!(query, Query::RefreshSmartMixes) {
+                    sqlx::query(
+                        "UPDATE playlists SET expires_at=0 WHERE user_id=? AND is_smart_mix=1",
+                    )
+                    .bind(self.current_user_id().await)
+                    .execute(&self.db_pool)
+                    .await?;
+                }
                 let user_id = self.current_user_id().await;
-                let mixes = self.smart_mix_generator.ensure_default_mixes(&user_id).await?;
+                let mixes = self
+                    .smart_mix_generator
+                    .ensure_default_mixes(&user_id)
+                    .await?;
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for m in mixes {
                     let count = self.playlist_repo.get_track_count(&m.id).await.unwrap_or(0);
@@ -2086,22 +2469,36 @@ impl CoreProcessor {
             Query::GetPlaylists => {
                 let is_logged_in = self.current_user.read().await.is_some();
                 let user_id = self.current_user_id().await;
-                let _ = self.smart_mix_generator.ensure_default_mixes(&user_id).await;
+                let _ = self
+                    .smart_mix_generator
+                    .ensure_default_mixes(&user_id)
+                    .await;
                 if is_logged_in {
-                    self.playlist_repo.ensure_liked_songs_playlist(&user_id).await?;
+                    self.playlist_repo
+                        .ensure_liked_songs_playlist(&user_id)
+                        .await?;
                 }
                 let raw_playlists = self.playlist_repo.get_user_playlists(&user_id).await?;
                 let playlists: Vec<_> = if is_logged_in {
                     raw_playlists
                 } else {
-                    raw_playlists.into_iter().filter(|p| p.is_smart_mix == 1).collect()
+                    raw_playlists
+                        .into_iter()
+                        .filter(|p| p.is_smart_mix == 1)
+                        .collect()
                 };
                 let mut val: Vec<serde_json::Value> = Vec::new();
                 for p in playlists {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
 
                     // Query the first track in the playlist to use its thumbnail/cover
-                    let first_song: Option<(String, Option<String>, Option<String>, i64, Option<String>)> = sqlx::query_as(
+                    let first_song: Option<(
+                        String,
+                        Option<String>,
+                        Option<String>,
+                        i64,
+                        Option<String>,
+                    )> = sqlx::query_as(
                         "SELECT pt.track_id, 
                                 ext.cover_art_url, 
                                 al.cover_art_path, 
@@ -2113,7 +2510,7 @@ impl CoreProcessor {
                          LEFT JOIN external_tracks ext ON ext.id = pt.track_id
                          WHERE pt.playlist_id = ?
                          ORDER BY pt.position ASC
-                         LIMIT 1"
+                         LIMIT 1",
                     )
                     .bind(&p.id)
                     .fetch_optional(&self.db_pool)
@@ -2125,8 +2522,18 @@ impl CoreProcessor {
                         if let Some(obj) = v.as_object_mut() {
                             obj.insert("track_count".to_string(), serde_json::json!(count));
 
-                            if let Some((track_id, ext_cover, album_cover, _has_cover, _file_path_opt)) = first_song {
-                                obj.insert("first_track_id".to_string(), serde_json::json!(&track_id));
+                            if let Some((
+                                track_id,
+                                ext_cover,
+                                album_cover,
+                                _has_cover,
+                                _file_path_opt,
+                            )) = first_song
+                            {
+                                obj.insert(
+                                    "first_track_id".to_string(),
+                                    serde_json::json!(&track_id),
+                                );
 
                                 let mut resolved_cover = ext_cover.or(album_cover);
 
@@ -2135,7 +2542,10 @@ impl CoreProcessor {
                                 }
 
                                 if let Some(cover) = resolved_cover {
-                                    obj.insert("cover_art_url".to_string(), serde_json::json!(cover));
+                                    obj.insert(
+                                        "cover_art_url".to_string(),
+                                        serde_json::json!(cover),
+                                    );
                                 }
                             }
                         }
@@ -2145,13 +2555,33 @@ impl CoreProcessor {
                 Ok(QueryResponse::Playlists(val))
             }
             Query::GetPlaylistTracks { playlist_id } => {
-                let _ = crate::recommendations::mixes::repair_legacy_online_tracks(&self.db_pool).await;
+                let _ =
+                    crate::recommendations::mixes::repair_legacy_online_tracks(&self.db_pool).await;
                 let tracks = self.playlist_repo.get_playlist_tracks(&playlist_id).await?;
                 let val: Vec<serde_json::Value> = tracks
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::PlaylistTracks(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                let smart: bool =
+                    sqlx::query_scalar("SELECT is_smart_mix=1 FROM playlists WHERE id=?")
+                        .bind(&playlist_id)
+                        .fetch_optional(&self.db_pool)
+                        .await?
+                        .unwrap_or(false);
+                let value = if smart {
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                } else {
+                    self.online_catalog
+                        .present(serde_json::Value::Array(val))
+                        .await?
+                };
+                Ok(QueryResponse::PlaylistTracks(
+                    value.as_array().cloned().unwrap_or_default(),
+                ))
             }
             Query::GetWishlist => {
                 let items = self.wishlist_manager.get_wishlist(None).await?;
@@ -2168,35 +2598,117 @@ impl CoreProcessor {
                 let user_id = self.current_user_id().await;
                 let recs = self
                     .discovery_coordinator
-                    .get_discovery_recommendations(&user_id, limit as usize, force_refresh.unwrap_or(false))
+                    .get_discovery_recommendations(
+                        &user_id,
+                        limit as usize,
+                        force_refresh.unwrap_or(false),
+                    )
                     .await?;
                 let val: Vec<serde_json::Value> = recs
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())
                     .collect();
-                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::DiscoveryRecommendations(
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+                ))
             }
-            Query::GetCharts => {
-                Ok(QueryResponse::Charts(self.discovery_coordinator.charts(false).await?))
+            Query::GetRecommendationFeedback => {
+                let signals = crate::recommendations::signals::SongSignals::load(
+                    &self.db_pool,
+                    &self.current_user_id().await,
+                )
+                .await?;
+                let ids = signals
+                    .identities
+                    .keys()
+                    .filter(|id| signals.blocked_id(id))
+                    .cloned()
+                    .collect();
+                Ok(QueryResponse::RecommendationFeedback(ids))
             }
-            Query::GetWorldTrending { limit, force_refresh } => {
-                let recs = self.discovery_coordinator.get_world_trending(limit as usize, force_refresh.unwrap_or(false)).await?;
-                let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
-                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+            Query::RefreshCharts => Ok(QueryResponse::Charts(
+                self.discovery_coordinator.charts(true).await?,
+            )),
+            Query::GetCharts => Ok(QueryResponse::Charts(
+                self.discovery_coordinator.charts(false).await?,
+            )),
+            Query::GetWorldTrending {
+                limit,
+                force_refresh,
+            } => {
+                let recs = self
+                    .discovery_coordinator
+                    .get_world_trending(limit as usize, force_refresh.unwrap_or(false))
+                    .await?;
+                let val = recs
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(QueryResponse::DiscoveryRecommendations(
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+                ))
             }
             Query::GetChartSongs { chart_id, limit } => {
-                let recs = self.discovery_coordinator.get_chart_songs(&chart_id, limit as usize).await?;
-                let val = recs.into_iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
-                Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                let recs = self
+                    .discovery_coordinator
+                    .get_chart_songs(&chart_id, limit as usize)
+                    .await?;
+                let val = recs
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(QueryResponse::DiscoveryRecommendations(
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+                ))
             }
-            Query::GetDownloads { status_filter, limit } => {
+            Query::GetDownloads {
+                status_filter,
+                limit,
+            } => {
                 let tasks = self
                     .download_service
-                    .list_downloads(status_filter.as_deref(), limit)
+                    .list_downloads(status_filter.as_deref(), limit.min(10000))
                     .await?;
-                let val: Vec<serde_json::Value> = tasks
+                let aliases: Vec<(String,String)>=sqlx::query_as("SELECT track_id,provider_id FROM online_track_sources UNION SELECT id,provider_id FROM external_tracks WHERE provider='jiosaavn'").fetch_all(&self.db_pool).await?;
+                let mut sources: std::collections::HashMap<String, Vec<String>> =
+                    std::collections::HashMap::new();
+                for (id, source) in aliases {
+                    sources.entry(source).or_default().push(id);
+                }
+                let val = tasks
                     .into_iter()
-                    .filter_map(|t| serde_json::to_value(t).ok())
+                    .filter_map(|task| {
+                        let ids = task
+                            .source_track_id
+                            .as_ref()
+                            .and_then(|id| sources.get(id))
+                            .cloned()
+                            .unwrap_or_default();
+                        let mut value = serde_json::to_value(task).ok()?;
+                        value["track_ids"] = serde_json::json!(ids);
+                        Some(value)
+                    })
                     .collect();
                 Ok(QueryResponse::Downloads(val))
             }
@@ -2204,25 +2716,52 @@ impl CoreProcessor {
                 let val = self.import_jiosaavn_playlist(&url_or_id).await?;
                 Ok(QueryResponse::JioSaavnPlaylistImport(val))
             }
-            Query::SearchOnlineMusic { query, limit, provider } => {
-                match provider.as_deref().unwrap_or("jiosaavn") {
-                    "jiosaavn" => {
-                        if self.settings_repo.get_setting("enable_jiosaavn").await?.as_deref() == Some("false") {
-                            return Err(AppError::Validation("Enable JioSaavn in Settings to search online music".into()));
-                        }
-                        let results = self.discovery_coordinator.search_online_music(&query, limit.unwrap_or(30).min(50) as usize).await?
-                            .into_iter().filter_map(|row| serde_json::to_value(row).ok()).collect();
-                        return Ok(QueryResponse::DiscoveryRecommendations(self.online_catalog.present(serde_json::Value::Array(results)).await?.as_array().cloned().unwrap_or_default()));
+            Query::SearchOnlineMusic {
+                query,
+                limit,
+                provider,
+            } => match provider.as_deref().unwrap_or("jiosaavn") {
+                "jiosaavn" => {
+                    if self
+                        .settings_repo
+                        .get_setting("enable_jiosaavn")
+                        .await?
+                        .as_deref()
+                        == Some("false")
+                    {
+                        return Err(AppError::Validation(
+                            "Enable JioSaavn in Settings to search online music".into(),
+                        ));
                     }
-                    _ => Err(AppError::Validation("JioSaavn is the only online music source in this trial".into())),
+                    let results = self
+                        .discovery_coordinator
+                        .search_online_music(&query, limit.unwrap_or(30).min(50) as usize)
+                        .await?
+                        .into_iter()
+                        .filter_map(|row| serde_json::to_value(row).ok())
+                        .collect();
+                    return Ok(QueryResponse::DiscoveryRecommendations(
+                        self.online_catalog
+                            .present(serde_json::Value::Array(results))
+                            .await?
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default(),
+                    ));
                 }
-            }
-            Query::GetTrackCoverArt { track_id } => {
-                Ok(QueryResponse::CoverArt(self.load_track_artwork(&track_id).await?))
-            }
+                _ => Err(AppError::Validation(
+                    "JioSaavn is the only online music source in this trial".into(),
+                )),
+            },
+            Query::GetTrackCoverArt { track_id } => Ok(QueryResponse::CoverArt(
+                self.load_track_artwork(&track_id).await?,
+            )),
             Query::GetTrackPlaylistMemberships => {
                 let user_id = self.current_user_id().await;
-                let memberships = self.playlist_repo.get_track_playlist_memberships_for_user(&user_id).await?;
+                let memberships = self
+                    .playlist_repo
+                    .get_track_playlist_memberships_for_user(&user_id)
+                    .await?;
                 let val = serde_json::to_value(&memberships)
                     .map_err(|e| AppError::Internal(e.to_string()))?;
                 Ok(QueryResponse::TrackPlaylistMemberships(val))
@@ -2235,15 +2774,22 @@ impl CoreProcessor {
             } => {
                 // 1. If local track_id provided, attempt to read embedded lyrics from file tags
                 if let Some(ref tid) = track_id {
-                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id(tid).await {
+                    if let Ok(Some(track)) = self.library_service.track_repo().find_by_id(tid).await
+                    {
                         let path = std::path::Path::new(&track.file_path);
                         if path.exists() {
                             if let Ok(probe) = lofty::probe::Probe::open(path) {
                                 if let Ok(probe) = probe.guess_file_type() {
                                     if let Ok(tagged_file) = probe.read() {
-                                        if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
-                                            if let Some(lyrics_val) = tag.get_string(&lofty::tag::ItemKey::Lyrics) {
-                                                let is_synced = lyrics_val.contains('[') && lyrics_val.contains(']');
+                                        if let Some(tag) = tagged_file
+                                            .primary_tag()
+                                            .or_else(|| tagged_file.first_tag())
+                                        {
+                                            if let Some(lyrics_val) =
+                                                tag.get_string(&lofty::tag::ItemKey::Lyrics)
+                                            {
+                                                let is_synced = lyrics_val.contains('[')
+                                                    && lyrics_val.contains(']');
                                                 let payload = serde_json::json!({
                                                     "trackName": title,
                                                     "artistName": artist,
@@ -2278,11 +2824,22 @@ impl CoreProcessor {
                     }
                 }
 
-                match client.get("https://lrclib.net/api/get").query(&params).send().await {
+                match client
+                    .get("https://lrclib.net/api/get")
+                    .query(&params)
+                    .send()
+                    .await
+                {
                     Ok(resp) if resp.status().is_success() => {
                         if let Ok(json) = resp.json::<serde_json::Value>().await {
-                            let plain = json.get("plainLyrics").and_then(|v| v.as_str()).map(|s| s.to_string());
-                            let synced = json.get("syncedLyrics").and_then(|v| v.as_str()).map(|s| s.to_string());
+                            let plain = json
+                                .get("plainLyrics")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                            let synced = json
+                                .get("syncedLyrics")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
                             let payload = serde_json::json!({
                                 "trackName": title,
                                 "artistName": artist,
@@ -2299,18 +2856,27 @@ impl CoreProcessor {
             }
             Query::GetStatsOverview { year, month } => {
                 let current_user_guard = self.current_user.read().await;
-                let user_id = current_user_guard.as_ref().map(|u| u.id.as_str()).unwrap_or("default");
+                let user_id = current_user_guard
+                    .as_ref()
+                    .map(|u| u.id.as_str())
+                    .unwrap_or("default");
                 let app_start_date = self.get_or_init_app_start_date().await;
-                let user_joined_date = current_user_guard.as_ref().map(|u| u.created_at).unwrap_or(app_start_date);
+                let user_joined_date = current_user_guard
+                    .as_ref()
+                    .map(|u| u.created_at)
+                    .unwrap_or(app_start_date);
                 let weights = self.config.read().await.ranking.clone();
-                let overview = self.stats_repo.get_stats_overview(
-                    user_id,
-                    user_joined_date,
-                    app_start_date,
-                    year,
-                    month,
-                    &weights,
-                ).await?;
+                let overview = self
+                    .stats_repo
+                    .get_stats_overview(
+                        user_id,
+                        user_joined_date,
+                        app_start_date,
+                        year,
+                        month,
+                        &weights,
+                    )
+                    .await?;
                 let val = serde_json::to_value(&overview).unwrap_or_default();
                 Ok(QueryResponse::StatsOverview(val))
             }
@@ -2329,19 +2895,33 @@ impl CoreProcessor {
                 if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
                     let now = chrono::Utc::now().timestamp();
                     let worker_url = self.get_cloud_worker_url().await;
-                    let is_idle_expired = session.idle_expires_at > 0 && now >= session.idle_expires_at;
-                    let is_abs_expired = session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
+                    let is_idle_expired =
+                        session.idle_expires_at > 0 && now >= session.idle_expires_at;
+                    let is_abs_expired =
+                        session.absolute_expires_at > 0 && now >= session.absolute_expires_at;
                     if !is_idle_expired && !is_abs_expired && session.worker_url == worker_url {
                         if let Some(_tok) = credentials::get_session_token(&session.user_id) {
-                            let cached_avatar = self.profile_service.get_cached_avatar_data_url(&session.user_id);
-                            let local_user = self.user_repo.get_user_by_id(&session.user_id).await.ok().flatten();
+                            let cached_avatar = self
+                                .profile_service
+                                .get_cached_avatar_data_url(&session.user_id);
+                            let local_user = self
+                                .user_repo
+                                .get_user_by_id(&session.user_id)
+                                .await
+                                .ok()
+                                .flatten();
                             let profile = UserProfile::new(
                                 session.user_id.clone(),
                                 session.username.clone(),
                                 session.created_at,
-                            ).with_avatar(
+                            )
+                            .with_avatar(
                                 local_user.as_ref().and_then(|u| u.display_name.clone()),
-                                if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
+                                if cached_avatar.is_some() {
+                                    Some(format!("avatars/{}.webp", session.user_id))
+                                } else {
+                                    None
+                                },
                                 local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
                                 local_user.as_ref().and_then(|u| u.avatar_url.clone()),
                                 local_user.as_ref().and_then(|u| u.avatar_version),
@@ -2350,23 +2930,29 @@ impl CoreProcessor {
                             );
                             self.playback_service.stop_flow().await;
                             *self.current_user.write().await = Some(profile.clone());
-                            *self.session_state.write().await = AuthSessionState::OnlineAuthenticated {
-                                user: CloudUser {
-                                    id: session.user_id.clone(),
-                                    username: session.username.clone(),
-                                    created_at: session.created_at,
-                                    display_name: profile.display_name.clone(),
-                                    has_avatar: Some(profile.avatar_key.is_some()),
-                                    avatar_public_id: profile.avatar_public_id.clone(),
-                                    avatar_url: profile.avatar_url.clone(),
-                                    avatar_version: profile.avatar_version,
-                                    avatar_key: profile.avatar_key.clone(),
-                                    avatar_updated_at: profile.avatar_updated_at,
-                                },
-                                session_id: session.session_id.clone(),
-                            };
-                            let _ = self.playlist_repo.reassign_orphan_playlists_to_user(&session.user_id).await;
-                            return Ok(QueryResponse::CurrentUser(serde_json::to_value(&profile).ok()));
+                            *self.session_state.write().await =
+                                AuthSessionState::OnlineAuthenticated {
+                                    user: CloudUser {
+                                        id: session.user_id.clone(),
+                                        username: session.username.clone(),
+                                        created_at: session.created_at,
+                                        display_name: profile.display_name.clone(),
+                                        has_avatar: Some(profile.avatar_key.is_some()),
+                                        avatar_public_id: profile.avatar_public_id.clone(),
+                                        avatar_url: profile.avatar_url.clone(),
+                                        avatar_version: profile.avatar_version,
+                                        avatar_key: profile.avatar_key.clone(),
+                                        avatar_updated_at: profile.avatar_updated_at,
+                                    },
+                                    session_id: session.session_id.clone(),
+                                };
+                            let _ = self
+                                .playlist_repo
+                                .reassign_orphan_playlists_to_user(&session.user_id)
+                                .await;
+                            return Ok(QueryResponse::CurrentUser(
+                                serde_json::to_value(&profile).ok(),
+                            ));
                         }
                     }
                 }
@@ -2385,15 +2971,27 @@ impl CoreProcessor {
                 drop(current_user_guard);
 
                 if let Ok(Some(session)) = SyncManager::get_active_session(&self.db_pool).await {
-                    let cached_avatar = self.profile_service.get_cached_avatar_data_url(&session.user_id);
-                    let local_user = self.user_repo.get_user_by_id(&session.user_id).await.ok().flatten();
+                    let cached_avatar = self
+                        .profile_service
+                        .get_cached_avatar_data_url(&session.user_id);
+                    let local_user = self
+                        .user_repo
+                        .get_user_by_id(&session.user_id)
+                        .await
+                        .ok()
+                        .flatten();
                     let profile = UserProfile::new(
                         session.user_id.clone(),
                         session.username.clone(),
                         session.created_at,
-                    ).with_avatar(
+                    )
+                    .with_avatar(
                         local_user.as_ref().and_then(|u| u.display_name.clone()),
-                        if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
+                        if cached_avatar.is_some() {
+                            Some(format!("avatars/{}.webp", session.user_id))
+                        } else {
+                            None
+                        },
                         local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
                         local_user.as_ref().and_then(|u| u.avatar_url.clone()),
                         local_user.as_ref().and_then(|u| u.avatar_version),
@@ -2421,12 +3019,19 @@ impl CoreProcessor {
             }
             Query::GetCloudSyncStatus => {
                 let worker_url = self.get_cloud_worker_url().await;
-                let session = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                let session = SyncManager::get_active_session(&self.db_pool)
+                    .await
+                    .ok()
+                    .flatten();
                 let current_user_guard = self.current_user.read().await;
                 let current_state = self.session_state.read().await.clone();
 
                 let status = CloudSyncStatus {
-                    connected: session.is_some() && !matches!(current_state, AuthSessionState::SignedOut | AuthSessionState::SessionExpired { .. }),
+                    connected: session.is_some()
+                        && !matches!(
+                            current_state,
+                            AuthSessionState::SignedOut | AuthSessionState::SessionExpired { .. }
+                        ),
                     worker_url,
                     user_id: current_user_guard.as_ref().map(|u| u.id.clone()),
                     username: current_user_guard.as_ref().map(|u| u.username.clone()),
@@ -2448,7 +3053,10 @@ impl CoreProcessor {
             }
             Query::ListSessions => {
                 let worker_url = self.get_cloud_worker_url().await;
-                let session = SyncManager::get_active_session(&self.db_pool).await.ok().flatten();
+                let session = SyncManager::get_active_session(&self.db_pool)
+                    .await
+                    .ok()
+                    .flatten();
                 if let Some(session) = session {
                     if let Some(token) = credentials::get_session_token(&session.user_id) {
                         match self.cloud_client.list_sessions(&worker_url, &token).await {
@@ -2479,9 +3087,14 @@ impl CoreProcessor {
             Query::GetHomeOverview => {
                 let user_id = self.current_user_id().await;
                 let mut overview = self.flow_engine.get_home_overview(&user_id).await?;
-                overview.flow_session = self.playback_service.flow_session(&self.flow_engine, &user_id).await?;
+                overview.flow_session = self
+                    .playback_service
+                    .flow_session(&self.flow_engine, &user_id)
+                    .await?;
                 let val = serde_json::to_value(overview).unwrap_or(serde_json::Value::Null);
-                Ok(QueryResponse::HomeOverview(self.online_catalog.present(val).await?))
+                Ok(QueryResponse::HomeOverview(
+                    self.present_recommendations(val, &user_id).await?,
+                ))
             }
             Query::GetFlowQueue {
                 familiarity_ratio,
@@ -2500,19 +3113,35 @@ impl CoreProcessor {
                     .into_iter()
                     .filter_map(|t| serde_json::to_value(t).ok())
                     .collect();
-                Ok(QueryResponse::FlowQueue(self.online_catalog.present(serde_json::Value::Array(val)).await?.as_array().cloned().unwrap_or_default()))
+                Ok(QueryResponse::FlowQueue(
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+                ))
             }
             Query::GetFlowTrackReason { track_id } => {
                 let user_id = self.current_user_id().await;
                 let reason = match self.playback_service.flow_reason(&user_id, &track_id).await {
                     Some(reason) => Some(reason),
-                    None => Some(self.flow_engine.get_track_explanation(&user_id, &track_id).await?),
+                    None => Some(
+                        self.flow_engine
+                            .get_track_explanation(&user_id, &track_id)
+                            .await?,
+                    ),
                 };
                 Ok(QueryResponse::FlowTrackReason(reason))
             }
             Query::GetFlowSession => {
                 let user_id = self.current_user_id().await;
-                let session = self.playback_service.flow_session(&self.flow_engine, &user_id).await?;
+                let session = self
+                    .playback_service
+                    .flow_session(&self.flow_engine, &user_id)
+                    .await?;
                 let val = session.and_then(|s| serde_json::to_value(s).ok());
                 Ok(QueryResponse::FlowSession(val))
             }
@@ -2523,18 +3152,156 @@ impl CoreProcessor {
         }
     }
 
+    async fn set_song_feedback(&self, track_id: &str, feedback: i64) -> AppResult<()> {
+        let user = self.current_user_id().await;
+        if self
+            .library_service
+            .track_repo()
+            .find_by_id(track_id)
+            .await?
+            .is_none()
+        {
+            let row: Option<(String,String,Option<String>,Option<f64>,Option<String>)> = sqlx::query_as("SELECT title,artist,album,duration_secs,cover_art_url FROM external_tracks WHERE id=?").bind(track_id).fetch_optional(&self.db_pool).await?;
+            let Some((title, artist, album, duration, cover)) = row else {
+                return Err(AppError::NotFound("Song not found".into()));
+            };
+            crate::recommendations::mixes::ensure_online_track(
+                &self.db_pool,
+                track_id,
+                &title,
+                Some(&artist),
+                album.as_deref(),
+                duration,
+                cover.as_deref(),
+                None,
+            )
+            .await?;
+        }
+        let index =
+            crate::recommendations::signals::SongSignals::load(&self.db_pool, &user).await?;
+        let ids = index.related_ids(track_id);
+        let title = index
+            .identities
+            .get(track_id)
+            .map(|song| song.title.clone())
+            .unwrap_or_else(|| track_id.into());
+        let liked = self
+            .playlist_repo
+            .ensure_liked_songs_playlist(&user)
+            .await?;
+        let mut transaction = self.db_pool.begin().await?;
+        let identity = index
+            .identities
+            .get(track_id)
+            .ok_or_else(|| AppError::NotFound("Song identity not found".into()))?;
+        let previous: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(updated_at),0) FROM recommendation_feedback WHERE user_id=?",
+        )
+        .bind(&user)
+        .fetch_one(&mut *transaction)
+        .await?;
+        let timestamp = chrono::Utc::now()
+            .timestamp_millis()
+            .max(previous.saturating_add(1));
+        for key in index.related_feedback_keys(track_id) {
+            sqlx::query("UPDATE recommendation_feedback SET manual_like=?,updated_at=? WHERE user_id=? AND song_key=?").bind(feedback).bind(timestamp).bind(&user).bind(key).execute(&mut *transaction).await?;
+        }
+        let key = crate::recommendations::signals::song_key(&identity.title, &identity.artist)
+            .unwrap_or_else(|| format!("id:{track_id}"));
+        sqlx::query("INSERT INTO recommendation_feedback(user_id,song_key,track_id,source_id,title,artist,manual_like,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(user_id,song_key) DO UPDATE SET manual_like=excluded.manual_like,updated_at=excluded.updated_at,track_id=excluded.track_id,source_id=excluded.source_id,title=excluded.title,artist=excluded.artist")
+            .bind(&user).bind(key).bind(track_id).bind(&identity.source_id).bind(&identity.title).bind(&identity.artist).bind(feedback).bind(timestamp).execute(&mut *transaction).await?;
+
+        // One explicit opinion per recording, even when several saved IDs exist.
+        for id in &ids {
+            sqlx::query("UPDATE track_statistics SET manual_like=0 WHERE user_id=? AND track_id=?")
+                .bind(&user)
+                .bind(id)
+                .execute(&mut *transaction)
+                .await?;
+            sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?")
+                .bind(&liked)
+                .bind(id)
+                .execute(&mut *transaction)
+                .await?;
+            if feedback == -1 {
+                sqlx::query("DELETE FROM playlist_tracks WHERE track_id=? AND playlist_id IN (SELECT id FROM playlists WHERE user_id=? AND is_smart_mix=1)").bind(id).bind(&user).execute(&mut *transaction).await?;
+            }
+        }
+        sqlx::query("INSERT INTO track_statistics(user_id,track_id,manual_like) VALUES(?,?,?) ON CONFLICT(user_id,track_id) DO UPDATE SET manual_like=excluded.manual_like")
+            .bind(&user).bind(track_id).bind(feedback).execute(&mut *transaction).await?;
+        sqlx::query("UPDATE playlists SET expires_at=0 WHERE user_id=? AND is_smart_mix=1")
+            .bind(&user)
+            .execute(&mut *transaction)
+            .await?;
+        transaction.commit().await?;
+        if feedback == 1 {
+            self.playlist_repo.add_track(&liked, track_id, None).await?;
+        }
+        if feedback == -1 {
+            self.playback_service
+                .remove_recommended_songs(&user, &ids)
+                .await?;
+        }
+        self.flow_engine.invalidate_home_picks(&user).await;
+        let _ = self
+            .event_bus
+            .publish(Event::RecommendationFeedbackChanged {
+                user_id: user.clone(),
+                track_id: track_id.into(),
+                title,
+                track_ids: ids,
+                disliked: feedback == -1,
+                manual_like: feedback,
+            });
+        let _ = self
+            .event_bus
+            .publish(Event::TasteProfileChanged { user_id: user });
+        self.trigger_background_sync().await;
+        Ok(())
+    }
+
+    async fn present_recommendations(
+        &self,
+        value: serde_json::Value,
+        user: &str,
+    ) -> AppResult<serde_json::Value> {
+        let value = self.online_catalog.present(value).await?;
+        Ok(
+            crate::recommendations::signals::SongSignals::load(&self.db_pool, user)
+                .await?
+                .filter(value)
+                .unwrap_or(serde_json::Value::Null),
+        )
+    }
+
     async fn add_missing_to_wishlist(&self, tracks: Vec<serde_json::Value>) -> AppResult<usize> {
         let mut count = 0;
         for t in tracks {
             let title = t.get("title").and_then(|v| v.as_str()).unwrap_or("").trim();
-            let artist = t.get("artist").and_then(|v| v.as_str()).unwrap_or("").trim();
-            let album = t.get("album").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let external_id = t.get("track_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let artist = t
+                .get("artist")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim();
+            let album = t
+                .get("album")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let external_id = t
+                .get("track_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             if !title.is_empty() && !artist.is_empty() {
                 let _ = self
                     .wishlist_manager
-                    .add_to_wishlist(title.to_string(), artist.to_string(), album, external_id, None)
+                    .add_to_wishlist(
+                        title.to_string(),
+                        artist.to_string(),
+                        album,
+                        external_id,
+                        None,
+                    )
                     .await?;
                 count += 1;
             }
@@ -2544,7 +3311,11 @@ impl CoreProcessor {
     }
 
     async fn import_jiosaavn_playlist(&self, reference: &str) -> AppResult<serde_json::Value> {
-        let (id, title, image, tracks) = self.provider_coordinator.jiosaavn.playlist_reference(reference).await?;
+        let (id, title, image, tracks) = self
+            .provider_coordinator
+            .jiosaavn
+            .playlist_reference(reference)
+            .await?;
         let mut songs = Vec::new();
         for track in tracks {
             let row = self.provider_coordinator.persist(track).await?;
@@ -2552,7 +3323,9 @@ impl CoreProcessor {
                 "album":row.album,"duration_secs":row.duration_secs,"cover_art_url":row.cover_art_url,
                 "in_library":false,"match_status":"NOT_FOUND","matched_local_track_id":null}));
         }
-        Ok(serde_json::json!({"playlist_id":id,"title":title,"cover_url":image,
-            "total_tracks":songs.len(),"matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs}))
+        Ok(
+            serde_json::json!({"playlist_id":id,"title":title,"cover_url":image,
+            "total_tracks":songs.len(),"matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs}),
+        )
     }
 }

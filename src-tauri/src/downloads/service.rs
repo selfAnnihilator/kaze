@@ -24,6 +24,7 @@ pub struct DownloadService {
     download_dir: PathBuf,
     auto_import: bool,
     search_cache: Arc<RwLock<HashMap<String, DownloadSearchResult>>>,
+    direct_gate: tokio::sync::Mutex<()>,
 }
 
 impl DownloadService {
@@ -45,6 +46,7 @@ impl DownloadService {
             download_dir,
             auto_import,
             search_cache: Arc::new(RwLock::new(HashMap::new())),
+            direct_gate: tokio::sync::Mutex::new(()),
         }
     }
 
@@ -69,7 +71,11 @@ impl DownloadService {
         Ok(results)
     }
 
-    pub async fn search_track(&self, artist: &str, title: &str) -> AppResult<Vec<DownloadSearchResult>> {
+    pub async fn search_track(
+        &self,
+        artist: &str,
+        title: &str,
+    ) -> AppResult<Vec<DownloadSearchResult>> {
         let results = self.provider.search_track(artist, title).await?;
         let mut cache = self.search_cache.write().await;
         for result in &results {
@@ -79,14 +85,62 @@ impl DownloadService {
     }
 
     /// Searches the network for a specific wishlist item.
-    pub async fn search_wishlist_item(&self, wishlist_id: &str) -> AppResult<Vec<DownloadSearchResult>> {
+    pub async fn search_wishlist_item(
+        &self,
+        wishlist_id: &str,
+    ) -> AppResult<Vec<DownloadSearchResult>> {
         let item = self
             .wishlist_manager
             .get_by_id(wishlist_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Wishlist item {} not found", wishlist_id)))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!("Wishlist item {} not found", wishlist_id))
+            })?;
 
         self.search_track(&item.artist, &item.title).await
+    }
+
+    /// Download the displayed recording; never search its title again.
+    pub async fn download_track(
+        &self,
+        track: &crate::providers::ExternalTrackMetadata,
+    ) -> AppResult<DownloadTaskRecord> {
+        let _guard = self.direct_gate.lock().await;
+        let result = DownloadSearchResult {
+            id: format!("jiosaavn:{}", track.provider_track_id),
+            provider: "jiosaavn".into(),
+            username: track.artist_name.clone(),
+            filename: format!(
+                "{} - {} ({}).m4a",
+                super::jiosaavn::safe_name(&track.artist_name),
+                super::jiosaavn::safe_name(&track.title),
+                super::jiosaavn::safe_name(&track.provider_track_id)
+            ),
+            file_size: 0,
+            bitrate: None,
+            sample_rate: None,
+            format: "m4a".into(),
+            slots_free: true,
+            speed_bps: 0,
+        };
+        for task in self.list_downloads(None, 10000).await? {
+            if task.provider == result.provider
+                && task.source_track_id.as_deref() == Some(track.provider_track_id.as_str())
+                && (matches!(task.status.as_str(), "DOWNLOADING" | "QUEUED")
+                    || (task.status == "COMPLETED"
+                        && task
+                            .destination_path
+                            .as_ref()
+                            .is_some_and(|path| std::path::Path::new(path).is_file())))
+            {
+                return Ok(task);
+            }
+        }
+        self.search_cache
+            .write()
+            .await
+            .insert(result.id.clone(), result.clone());
+        self.start_download(&result.id, None).await
     }
 
     /// Enqueues a download task based on a cached search result.
@@ -124,9 +178,18 @@ impl DownloadService {
         let dest_str = dest_path.to_string_lossy().to_string();
 
         // Extract title and artist if parseable from filename, else fallback
-        let (artist, title) = parse_artist_title_from_filename(&result.filename);
+        let (artist, mut title) = parse_artist_title_from_filename(&result.filename);
+        let source_track_id = (result.provider == "jiosaavn")
+            .then(|| result.id.strip_prefix("jiosaavn:").map(str::to_string))
+            .flatten();
+        if let Some(source) = &source_track_id {
+            if let Some(clean) = title.strip_suffix(&format!(" ({source})")) {
+                title = clean.to_string();
+            }
+        }
 
         let task = DownloadTaskRecord {
+            source_track_id,
             id: task_id.clone(),
             provider: result.provider.clone(),
             provider_task_id: Some(provider_task_id),
@@ -185,7 +248,9 @@ impl DownloadService {
 
                 match provider.get_progress(pt_id).await {
                     Ok(Some(progress)) => {
-                        let _ = repo.update_progress(&task_id_clone, progress.bytes_downloaded).await;
+                        let _ = repo
+                            .update_progress(&task_id_clone, progress.bytes_downloaded)
+                            .await;
                         let _ = event_bus.publish(Event::DownloadProgressChanged {
                             task_id: task_id_clone.clone(),
                             bytes_downloaded: progress.bytes_downloaded,
@@ -195,8 +260,12 @@ impl DownloadService {
 
                         if progress.status == DownloadStatus::Completed {
                             let now = Utc::now().timestamp();
-                            let _ = repo.update_status(&task_id_clone, "COMPLETED", None, None, Some(now)).await;
-                            let file_path = current_task.destination_path.unwrap_or_else(|| dest_str_clone.clone());
+                            let _ = repo
+                                .update_status(&task_id_clone, "COMPLETED", None, None, Some(now))
+                                .await;
+                            let file_path = current_task
+                                .destination_path
+                                .unwrap_or_else(|| dest_str_clone.clone());
                             let _ = event_bus.publish(Event::DownloadCompleted {
                                 task_id: task_id_clone.clone(),
                                 file_path,
@@ -205,20 +274,24 @@ impl DownloadService {
                                 let _ = wishlist_manager.update_status(wl_id, "DOWNLOADED").await;
                             }
                             if auto_import {
-                                tracing::info!("Auto-importing newly downloaded music into library");
+                                tracing::info!(
+                                    "Auto-importing newly downloaded music into library"
+                                );
                                 let dl_dir_str = download_dir_clone.to_string_lossy().to_string();
                                 let _ = library_service.add_folder(&dl_dir_str).await;
                                 let _ = library_service.scan_library(None, true).await;
                             }
                             break;
                         } else if progress.status == DownloadStatus::Failed {
-                            let _ = repo.update_status(
-                                &task_id_clone,
-                                "FAILED",
-                                None,
-                                Some("Transfer failed"),
-                                None,
-                            ).await;
+                            let _ = repo
+                                .update_status(
+                                    &task_id_clone,
+                                    "FAILED",
+                                    None,
+                                    Some("Transfer failed"),
+                                    None,
+                                )
+                                .await;
                             let _ = event_bus.publish(Event::DownloadFailed {
                                 task_id: task_id_clone.clone(),
                                 error: "Transfer failed".to_string(),
@@ -295,11 +368,7 @@ impl DownloadService {
 
     /// Marks a download task completed, triggers auto-import into library,
     /// and updates any linked wishlist item to 'DOWNLOADED'.
-    pub async fn complete_task(
-        &self,
-        task_id: &str,
-        task: &DownloadTaskRecord,
-    ) -> AppResult<()> {
+    pub async fn complete_task(&self, task_id: &str, task: &DownloadTaskRecord) -> AppResult<()> {
         let now = Utc::now().timestamp();
         let dest_path_str = task.destination_path.clone().unwrap_or_default();
 
@@ -335,11 +404,10 @@ impl DownloadService {
 
     /// Cancels an active download task.
     pub async fn cancel_download(&self, task_id: &str) -> AppResult<()> {
-        let task = self
-            .repo
-            .get_task_by_id(task_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Download task {} not found", task_id)))?;
+        let task =
+            self.repo.get_task_by_id(task_id).await?.ok_or_else(|| {
+                AppError::NotFound(format!("Download task {} not found", task_id))
+            })?;
 
         if let Some(ref pt_id) = task.provider_task_id {
             let _ = self.provider.cancel(pt_id).await;

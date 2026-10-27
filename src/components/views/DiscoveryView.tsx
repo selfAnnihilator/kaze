@@ -1,3 +1,5 @@
+import { DownloadButton } from "../DownloadButton";
+import { NotInterestedButton } from "../NotInterestedButton";
 import { DiscoveryChapters, DiscoveryPreviewTarget, type DiscoveryPreview } from "../../presentation/DiscoveryChapters";
 import { WindowedStrip } from "../../presentation/WindowedStrip";
 import { Artwork } from "../../presentation/Artwork";
@@ -5,7 +7,6 @@ import { useDiscoveryMemory } from "../../presentation/ViewMemory";
 import React, { useState, useRef, useEffect, useMemo,
 } from "react";
 import {
-  DownloadCloud,
   Sparkles,
   Bookmark,
   BookmarkCheck,
@@ -57,8 +58,6 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   onStop,
   onArtistClick,
   onAddToWishlist,
-  onDownload,
-  downloads,
   trackPlaylistMap,
   onAddToPlaylist,
   isQueued = false,
@@ -71,19 +70,6 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   const playlistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
   const isInPlaylist = playlistIds.length > 0;
 
-  const activeDownload = downloads?.find((d) => {
-    if (d.status === "FAILED" || d.status === "CANCELLED") return false;
-    const titleMatch =
-      d.title.toLowerCase().trim() === rec.title.toLowerCase().trim() ||
-      d.filename.toLowerCase().includes(rec.title.toLowerCase().trim());
-    const artistMatch =
-      !d.artist ||
-      d.artist.toLowerCase().trim() === rec.artist.toLowerCase().trim() ||
-      rec.artist.toLowerCase().includes(d.artist.toLowerCase().trim()) ||
-      d.filename.toLowerCase().includes(rec.artist.toLowerCase().trim());
-    return titleMatch && artistMatch;
-  });
-
   const hasRealLocalMatch =
     rec.match_status === "EXACT_MATCH" &&
     !!rec.matched_local_track_id &&
@@ -92,21 +78,8 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
 
   const isDownloaded =
     (rec.provider === "library" && !rec.external_track_id.startsWith("itunes:") && !rec.external_track_id.startsWith("online:")) ||
-    hasRealLocalMatch ||
-    activeDownload?.status === "COMPLETED";
+    hasRealLocalMatch;
 
-  const isDownloading =
-    activeDownload &&
-    (activeDownload.status === "DOWNLOADING" || activeDownload.status === "QUEUED");
-
-  const downloadPercent =
-    activeDownload?.file_size && activeDownload.file_size > 0
-      ? Math.min(100, Math.round((activeDownload.bytes_downloaded / activeDownload.file_size) * 100,
-          ),
-        )
-      : activeDownload?.status === "DOWNLOADING"
-      ? 50
-      : 0;
 
   const handleCardClick = () => {
     if (isLoading) return;
@@ -355,72 +328,12 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           borderTop: "1px solid rgba(255, 255, 255, 0.05)",
         }}
       >
-        {isDownloaded ? (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              fontSize: "0.72rem",
-              color: "var(--accent-secondary)",
-              fontWeight: 500,
-            }}
-          >
-            <CheckCircle2 size={13} />
-            <span>Downloaded</span>
-          </span>
-        ) : isDownloading ? (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "2px 7px",
-              borderRadius: "12px",
-              background: "rgba(243, 112, 30, 0.15)",
-              border: "1px solid rgba(243, 112, 30, 0.35)",
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              color: "var(--accent-secondary)",
-            }}
-            title={
-              activeDownload.status === "QUEUED"
-                ? "Download queued..."
-                : `Downloading ${downloadPercent}%`
-            }
-          >
-            <RefreshCw size={11} className="spin-animation" />
-            <span>
-              {activeDownload.status === "QUEUED"
-                ? "Queued"
-                : `${downloadPercent}%`}
-            </span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{
-              padding: "3px 8px",
-              fontSize: "0.72rem",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload(rec.artist, rec.title);
-            }}
-            title="Download song directly to library"
-          >
-            <DownloadCloud size={12} />
-            <span>Download</span>
-          </button>
-        )}
+        <DownloadButton key={rec.external_track_id} downloaded={isDownloaded} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} />
 
         <div
           style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}
         >
+          <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
           {isLiked && (
             <span
               title="Liked song"
@@ -618,6 +531,7 @@ interface ChartItem {
   subtitle: string;
   chartNumber: string;
   region: string;
+  image?: string;
   bgGradient: string;
   badgeBg: string;
 }
@@ -671,6 +585,7 @@ const ChartCard: React.FC<{
           textAlign: "center",
         }}
       >
+        {chart.image && <Artwork src={chart.image} alt={chart.title} className="chart-cover" />}
         <div
           className="chart-card-badge"
           style={{
@@ -684,7 +599,7 @@ const ChartCard: React.FC<{
             marginBottom: "6px",
           }}
         >
-          JIOSAAVN
+          CHART
         </div>
         <div
           className="chart-card-region"
@@ -876,7 +791,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
         playlistTrackIds,
         likedTrackIds: likedTrackIds || new Set<string>(),
         downloads,
-        downloadTargets,
+              downloadTargets,
         localTracks,
       }),
     [
@@ -1043,20 +958,22 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
 
   // Every mix shown here is generated for the active account from its library
   // and listening profile. Generic search presets do not belong in For You.
-  const allMixes = userSmartMixes;
+  const [refreshedMixes, setRefreshedMixes] = useState<Playlist[] | null>(null);
+  const allMixes = refreshedMixes ? refreshedMixes.filter(p => p.is_smart_mix === 1).map(p => ({ id: `smart-mix:${p.id}`, name: p.name, subtitle: p.description || "Made for you", tag: "SMART MIX", bgGradient: "var(--bg-surface)", accentColor: "var(--accent)", playlistId: p.id, cover_art_url: p.cover_art_url })) : userSmartMixes;
 
   const [topCharts, setTopCharts] = useState<ChartItem[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    executeQuery({ query: "GetCharts" }).then(result => {
-      if (!cancelled && Array.isArray(result.data)) setTopCharts(result.data.map((chart: {id: string; title: string}, index: number) => ({
-        id: `jiosaavn:playlist:${chart.id}`, title: chart.title, subtitle: "JioSaavn chart",
-        chartNumber: String(index + 1).padStart(2, "0"), region: "JioSaavn",
-        bgGradient: "var(--bg-surface)", badgeBg: "var(--accent)",
-      })));
-    }).catch(() => { if (!cancelled) setTopCharts([]); });
-    return () => { cancelled = true; };
-  }, []);
+  const refreshCharts = async (force = false) => {
+    const result = await executeQuery({ query: force ? "RefreshCharts" : "GetCharts" });
+    if (Array.isArray(result.data)) setTopCharts(result.data.map((chart: {id: string; title: string; image?: string}, index: number) => ({
+      id: `jiosaavn:playlist:${chart.id}`, title: chart.title, subtitle: "Top songs",
+      chartNumber: String(index + 1).padStart(2, "0"), region: "", image: chart.image,
+      bgGradient: "var(--bg-surface)", badgeBg: "var(--accent)",
+    })));
+  };
+  useEffect(() => { let mounted = true; executeQuery({ query: "GetCharts" }).then(result => {
+    if (mounted && Array.isArray(result.data)) setTopCharts(result.data.map((chart: { id: string; title: string; image?: string }, index: number) => ({ id: `jiosaavn:playlist:${chart.id}`, title: chart.title, subtitle: "Top songs", chartNumber: String(index + 1).padStart(2, "0"), region: "", image: chart.image, bgGradient: "var(--bg-surface)", badgeBg: "var(--accent)" })));
+  }).catch(console.error); return () => { mounted = false; }; }, []);
+  const refreshMixes = async () => { const result = await executeQuery({ query: "RefreshSmartMixes" }); if (Array.isArray(result.data)) setRefreshedMixes(result.data); };
 
   const handleOpenMix = (mix: MixItem) => {
     if (onOpenCollection) {
@@ -1158,7 +1075,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
     artworkLabel: "MIX", onPlay: () => handlePlayMixItem(mix), onOpen: () => handleOpenMix(mix),
   });
   const chartPreview = (chart: ChartItem): DiscoveryPreview => ({
-    id: chart.id, title: chart.title, artist: chart.subtitle, artworkLabel: chart.chartNumber,
+    id: chart.id, title: chart.title, artist: chart.subtitle, cover: chart.image, artworkLabel: chart.chartNumber,
     onPlay: () => handlePlayChartItem(chart), onOpen: () => handleOpenChart(chart),
   });
 
@@ -1352,10 +1269,10 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
             </div>
           </section>
           <DiscoveryChapters selections={[
-            { title: "Trending songs", subtitle: "Popular songs across world charts.", previews: trending.map(songPreview) },
-            { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: forYou.map(songPreview) },
-            { title: "Mixes for you", subtitle: "Personal blends shaped by your listening.", previews: allMixes.map(mixPreview) },
-            { title: "Top charts", subtitle: "Follow the sound around the world.", previews: topCharts.map(chartPreview) },
+            { title: "Trending songs", subtitle: "Popular songs from the charts.", previews: trending.map(songPreview), onRefresh: handleRefreshTrending },
+            { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: forYou.map(songPreview), onRefresh: () => _onRefresh?.(true) || Promise.resolve() },
+            { title: "Mixes for you", subtitle: "Personal blends shaped by your listening.", previews: allMixes.map(mixPreview), onRefresh: refreshMixes },
+            { title: "Top charts", subtitle: "Follow the sound around the world.", previews: topCharts.map(chartPreview), onRefresh: () => refreshCharts(true) },
           ]}>
             {/* SECTION 1: Trending Songs */}
             <div>
@@ -1389,7 +1306,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                       marginTop: "2px",
                     }}
                   >
-                    Popular songs across world charts
+                    Popular songs from the charts
                   </p>
                 </div>
 

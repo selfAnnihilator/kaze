@@ -21,9 +21,7 @@ export const Artwork = memo(function Artwork({
   useEffect(() => {
     if (
       src ||
-      !trackId ||
-      trackId.startsWith("online:") ||
-      trackId.startsWith("itunes:")
+      !trackId
     )
       return;
     const controller = new AbortController();

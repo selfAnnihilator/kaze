@@ -190,6 +190,9 @@ pub enum Command {
         title: String,
         album: Option<String>,
     },
+    DownloadTrack {
+        track_id: String,
+    },
     StartDownload {
         search_result_id: String,
         wishlist_id: Option<String>,
@@ -200,9 +203,15 @@ pub enum Command {
     PollDownloadProgress {
         task_id: String,
     },
-    FillLibraryGaps { #[serde(default)] retry: bool },
+    FillLibraryGaps {
+        #[serde(default)]
+        retry: bool,
+    },
     RemoveProviderEnrichment,
-    SetMetadataPreference { key: String, enabled: bool },
+    SetMetadataPreference {
+        key: String,
+        enabled: bool,
+    },
     TriggerMetadataRefresh {
         track_id: String,
     },
@@ -246,13 +255,29 @@ pub enum CommandResponse {
     Ok,
     EntityId(String),
     QueuedIndex(usize),
-    ScanStarted { task_id: String },
-    MixGenerated { playlist_id: String, track_count: usize },
-    OnboardingCompleted { configured_folders: usize },
+    ScanStarted {
+        task_id: String,
+    },
+    MixGenerated {
+        playlist_id: String,
+        track_count: usize,
+    },
+    OnboardingCompleted {
+        configured_folders: usize,
+    },
     SearchResults(Vec<serde_json::Value>),
-    DownloadStarted { task_id: String },
-    WishlistAdded { count: usize },
+    DownloadStarted {
+        task_id: String,
+    },
+    WishlistAdded {
+        count: usize,
+    },
     UserProfile(serde_json::Value),
-    CloudSyncCompleted { synced_at: i64 },
-    RemoteAudioCacheCleared { bytes_freed: u64, files_removed: usize },
+    CloudSyncCompleted {
+        synced_at: i64,
+    },
+    RemoteAudioCacheCleared {
+        bytes_freed: u64,
+        files_removed: usize,
+    },
 }

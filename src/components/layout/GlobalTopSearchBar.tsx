@@ -13,7 +13,7 @@ interface GlobalTopSearchBarProps {
 
 export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(({
   searchQuery,
-  placeholder = "Search JioSaavn (artist, song title, or album)...",
+  placeholder = "Search music (artist, song title, or album)...",
   setSearchQuery,
   onSearch,
   onRefresh: _onRefresh,
@@ -114,7 +114,6 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
           )}
         </div>
 
-        <span aria-label="Online music source" style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>JioSaavn</span>
         <button
           type="submit"
           className="btn btn-primary"

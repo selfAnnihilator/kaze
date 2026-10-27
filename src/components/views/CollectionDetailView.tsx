@@ -1,3 +1,5 @@
+import { DownloadButton } from "../DownloadButton";
+import { NotInterestedButton } from "../NotInterestedButton";
 import { Artwork } from "../../presentation/Artwork";
 import { useInterfaceStyle } from "../../presentation/InterfaceContext";
 import { useDebouncedValue } from "../../presentation/useDebouncedValue";
@@ -11,10 +13,8 @@ import {
   Clock,
   ArrowLeft,
   Music2,
-  DownloadCloud,
   Bookmark,
   BookmarkCheck,
-  CheckCircle2,
   RefreshCw,
   MoreVertical,
   Pencil,
@@ -97,13 +97,11 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   onPlayAll,
   onShuffleAll,
   onAddToWishlist,
-  onDownload,
   onSaveToPlaylists,
   isSaved = false,
   currentPlayingTrackId,
   isPlaying = false,
   isShuffled = false,
-  downloads = [],
   trackPlaylistMap,
   onAddToPlaylist,
   userPlaylistIds,
@@ -147,19 +145,6 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     [rawTracks, filteredQuery],
   );
   const tracks = visibleTrackEntries.map(({ track }) => track);
-
-  const activeDownloadMap = useMemo(() => {
-    const map = new Map<string, DownloadTask>();
-    if (!downloads || downloads.length === 0) return map;
-    for (const d of downloads) {
-      if (d.status === "FAILED" || d.status === "CANCELLED") continue;
-      const t = d.title.toLowerCase().trim();
-      const a = (d.artist || "").toLowerCase().trim();
-      map.set(`${a}:::${t}`, d);
-      map.set(`t:::${t}`, d);
-    }
-    return map;
-  }, [downloads]);
 
   const totalDurationSecs = tracks.reduce(
     (acc, t) => acc + (t.duration_secs || 0),
@@ -765,33 +750,6 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 (!!track.matched_local_track_id &&
                   loadingTrackId === track.matched_local_track_id);
 
-              const activeDownload =
-                activeDownloadMap.get(
-                  `${(track.artist || "").toLowerCase().trim()}:::${track.title.toLowerCase().trim()}`,
-                ) ||
-                activeDownloadMap.get(
-                  `t:::${track.title.toLowerCase().trim()}`,
-                );
-
-              const isDownloaded =
-                track.is_downloaded || activeDownload?.status === "COMPLETED";
-              const isDownloading =
-                activeDownload &&
-                (activeDownload.status === "DOWNLOADING" ||
-                  activeDownload.status === "QUEUED");
-              const downloadPercent =
-                activeDownload?.file_size && activeDownload.file_size > 0
-                  ? Math.min(
-                      100,
-                      Math.round(
-                        (activeDownload.bytes_downloaded /
-                          activeDownload.file_size) *
-                          100,
-                      ),
-                    )
-                  : activeDownload?.status === "DOWNLOADING"
-                    ? 50
-                    : 0;
               const effectiveTrackId = track.matched_local_track_id || track.id;
               const isLiked = likedTrackIds
                 ? likedTrackIds.has(effectiveTrackId) ||
@@ -970,60 +928,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {isDownloaded ? (
-                      <span
-                        title="Downloaded in local library"
-                        style={{
-                          color: "var(--accent-secondary)",
-                          display: "inline-flex",
-                        }}
-                      >
-                        <CheckCircle2 size={16} />
-                      </span>
-                    ) : isDownloading ? (
-                      <div
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                          padding: "2px 7px",
-                          borderRadius: "12px",
-                          background: "rgba(243, 112, 30, 0.15)",
-                          border: "1px solid rgba(243, 112, 30, 0.35)",
-                          fontSize: "0.72rem",
-                          fontWeight: 600,
-                          color: "#8b7cf6",
-                        }}
-                        title={
-                          activeDownload.status === "QUEUED"
-                            ? "Download queued..."
-                            : `Downloading ${downloadPercent}%`
-                        }
-                      >
-                        <RefreshCw size={11} className="spin-animation" />
-                        <span>
-                          {activeDownload.status === "QUEUED"
-                            ? "Queued"
-                            : `${downloadPercent}%`}
-                        </span>
-                      </div>
-                    ) : onDownload ? (
-                      <button
-                        type="button"
-                        onClick={() => onDownload(track.artist, track.title)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "var(--text-dim)",
-                          cursor: "pointer",
-                          padding: "4px",
-                          display: "flex",
-                        }}
-                        title="Download track"
-                      >
-                        <DownloadCloud size={15} />
-                      </button>
-                    ) : null}
+                    <DownloadButton key={track.id} downloaded={!!track.is_downloaded} sourceId={track.rawRecommendation?.playback_source?.track_id || track.rawLocalTrack?.playback_source?.track_id} trackId={track.id} title={track.title} compact />
 
                     <button
                       type="button"
@@ -1051,6 +956,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                       {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
                     </button>
 
+                    <NotInterestedButton trackId={track.id} title={track.title} />
                     <button
                       type="button"
                       onClick={(e) => {

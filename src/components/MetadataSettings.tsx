@@ -44,7 +44,7 @@ export const MetadataSettings = memo(function MetadataSettings() {
   };
   return <section className="settings-section metadata-settings" aria-labelledby="metadata-settings-heading">
     <h2 id="metadata-settings-heading">Online music &amp; library details</h2>
-    <label className="settings-startup-switch"><input type="checkbox" role="switch" disabled={busy || !preferences} checked={preferences?.enable_jiosaavn ?? true} onChange={e => void save("enable_jiosaavn", e.target.checked)} /><span>Use JioSaavn for online music</span></label>
+    <label className="settings-startup-switch"><input type="checkbox" role="switch" disabled={busy || !preferences} checked={preferences?.enable_jiosaavn ?? true} onChange={e => void save("enable_jiosaavn", e.target.checked)} /><span>Enable online music</span></label>
     <label className="settings-startup-switch"><input type="checkbox" role="switch" disabled={busy || !preferences} checked={preferences?.auto_fill_metadata ?? true} onChange={e => void save("auto_fill_metadata", e.target.checked)} /><span>Automatically fill missing artwork and details</span></label>
     <p className="settings-hint">Matches need the same recording and duration. Your audio files and existing tags stay intact.</p>
     <div className="settings-metadata-actions">

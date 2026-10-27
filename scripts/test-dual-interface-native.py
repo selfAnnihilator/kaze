@@ -140,7 +140,8 @@ def main():
                 browser.evaluate('window.hiddenMutationCount=0;true')
                 time.sleep(.4)
                 assert browser.evaluate('window.hiddenMutationCount') == 0, ('hidden visual mutations', cycle)
-                assert watcher.status() == 'Playing'
+                status = watcher.status()
+                assert status == 'Playing', {'cycle': cycle, 'mpris': status, 'playback': browser.query('GetPlaybackState')}
                 watcher.menu(app.pid, 'Open Kaze')
                 tray.wait_for(lambda: tray.windows(app.pid) and browser.evaluate('!document.hidden'), 'native visible restoration')
                 assert browser.evaluate("window.nativeApp===document.querySelector('.kaze-interface')&&window.nativeMain===document.querySelector('.main-content')&&document.querySelector('.main-content').dataset.view==='settings'")

@@ -1,3 +1,5 @@
+import { DownloadButton } from "./DownloadButton";
+import { NotInterestedButton } from "./NotInterestedButton";
 import React, { useState } from "react";
 import {
   Play,
@@ -11,7 +13,6 @@ import {
   VolumeX,
   Heart,
   Music,
-  Download,
   Bookmark,
   BookmarkCheck,
   Mic2,
@@ -44,7 +45,6 @@ export interface NowPlayingBarProps {
   }) => void;
   isOnlineLiked?: boolean;
   onRemoveFeedback: (trackId: string) => void;
-  onDownloadOnlineTrack?: (artist: string, title: string) => void;
   isInPlaylist?: boolean;
   onOpenAddToPlaylist?: (track: {
     id: string;
@@ -153,7 +153,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
     onLikeOnline,
     isOnlineLiked = false,
     onRemoveFeedback,
-    onDownloadOnlineTrack,
     isInPlaylist = false,
     onOpenAddToPlaylist,
     onOpenOrigin,
@@ -280,6 +279,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
           {/* Heart — works for all tracks */}
           {currentTrack && (
             <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
+              <NotInterestedButton key={currentTrack.id} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} />
               <button
                 className="player-icon-btn"
                 title={
@@ -340,21 +340,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               )}
             </div>
           )}
-          {isOnline && onDownloadOnlineTrack && currentTrack && (
-            <button
-              className="player-icon-btn"
-              title="Download this online track to library"
-              onClick={() =>
-                onDownloadOnlineTrack(
-                  currentTrack.artist_name || "",
-                  currentTrack.title,
-                )
-              }
-              style={{ color: "var(--accent-light)", marginLeft: "4px" }}
-            >
-              <Download size={16} />
-            </button>
-          )}
+          {isOnline && currentTrack && <DownloadButton key={currentTrack.id} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}
           {onOpenAddToPlaylist && currentTrack && (
             <button
               className="player-icon-btn"

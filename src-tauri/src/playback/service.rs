@@ -3,10 +3,10 @@ use crate::core::error::{AppError, AppResult};
 use crate::core::event::{Event, QueueItem};
 use crate::core::event_bus::EventBus;
 use crate::database::repositories::TrackRepository;
+use crate::database::repositories::{SettingsRepository, SqliteSettingsRepository};
 use crate::playback::backend::AudioBackend;
 use crate::playback::queue::PlaybackQueue;
 use crate::playback::session::{RestoredTrack, SavedPlayback, SETTING_KEY};
-use crate::database::repositories::{SettingsRepository, SqliteSettingsRepository};
 use crate::playback::stream::StreamPlaybackManager;
 use crate::recommendations::{FlowExplanation, FlowSessionState, FlowTrackItem};
 use rand::seq::SliceRandom;
@@ -81,6 +81,8 @@ pub struct PlaybackService {
     play_generation: Arc<std::sync::atomic::AtomicU64>,
     /// Indicates whether an audio source is actively being resolved over network.
     is_resolving: Arc<std::sync::atomic::AtomicBool>,
+    recommendation_user:
+        std::sync::RwLock<Option<Arc<RwLock<Option<crate::database::repositories::UserProfile>>>>>,
     flow_operation: Mutex<()>,
     flow_generation: std::sync::atomic::AtomicU64,
     active_flow: RwLock<Option<ActiveFlow>>,
@@ -115,6 +117,7 @@ impl PlaybackService {
             active_session_id: Arc::new(RwLock::new(None)),
             play_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             is_resolving: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            recommendation_user: std::sync::RwLock::new(None),
             flow_operation: Mutex::new(()),
             flow_generation: std::sync::atomic::AtomicU64::new(0),
             active_flow: RwLock::new(None),
@@ -126,7 +129,10 @@ impl PlaybackService {
         let task = tokio::spawn(async move {
             s_clone.run_playback_monitor_loop().await;
         });
-        *service.monitor_task.lock().unwrap_or_else(|e| e.into_inner()) = Some(task);
+        *service
+            .monitor_task
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(task);
 
         service
     }
@@ -139,7 +145,77 @@ impl PlaybackService {
 
     /// Restore metadata/controls only. Audio and history begin on an explicit Play.
     fn online_catalog(&self) -> Option<Arc<crate::providers::online_catalog::OnlineCatalog>> {
-        self.stream_manager.read().unwrap().as_ref().and_then(|manager| manager.catalog.clone())
+        self.stream_manager
+            .read()
+            .unwrap()
+            .as_ref()
+            .and_then(|manager| manager.catalog.clone())
+    }
+
+    pub fn set_recommendation_user(
+        &self,
+        user: Arc<RwLock<Option<crate::database::repositories::UserProfile>>>,
+    ) {
+        *self.recommendation_user.write().unwrap() = Some(user);
+    }
+    async fn recommendation_user_id(&self) -> String {
+        let context = self.recommendation_user.read().unwrap().clone();
+        if let Some(user) = context {
+            return user
+                .read()
+                .await
+                .as_ref()
+                .map(|user| user.id.clone())
+                .unwrap_or_else(|| "default".into());
+        }
+        self.active_flow
+            .read()
+            .await
+            .as_ref()
+            .map(|flow| flow.user_id.clone())
+            .unwrap_or_else(|| "default".into())
+    }
+    pub async fn remove_recommended_songs(&self, user: &str, ids: &[String]) -> AppResult<()> {
+        if self.recommendation_user_id().await != user {
+            return Ok(());
+        }
+        let _operation = self.flow_operation.lock().await;
+        let mut queue = self.queue.write().await;
+        let current = queue.current().map(|item| item.queue_id.clone());
+        let items = queue
+            .items()
+            .iter()
+            .filter(|item| {
+                Some(&item.queue_id) == current.as_ref() || !ids.contains(&item.track_id)
+            })
+            .cloned()
+            .collect();
+        queue.reconcile_sources(items);
+        drop(queue);
+        self.emit_queue_updated().await;
+        Ok(())
+    }
+    async fn skip_blocked_queue_items(
+        &self,
+        mut item: Option<QueueItem>,
+    ) -> AppResult<Option<QueueItem>> {
+        let Some(pool) = &self.pool else {
+            return Ok(item);
+        };
+        let user = self.recommendation_user_id().await;
+        let signals = crate::recommendations::signals::SongSignals::load(pool, &user).await?;
+        let limit = self.queue.read().await.len();
+        for _ in 0..limit {
+            if !item
+                .as_ref()
+                .is_some_and(|item| signals.blocked(&item.track_id, &item.title, &item.artist))
+            {
+                return Ok(item);
+            }
+            // Bypass repeat-one for a song the user has explicitly excluded.
+            item = self.queue.write().await.next().cloned();
+        }
+        Ok(None)
     }
 
     async fn prepare_track_source(&self, id: &str) -> AppResult<()> {
@@ -147,7 +223,11 @@ impl PlaybackService {
             if catalog.bind(id).await?.is_none() {
                 if let Some(pool) = &self.pool {
                     let unavailable: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tracks WHERE id=? AND file_path LIKE 'online://%')").bind(id).fetch_one(pool).await?;
-                    if unavailable { return Err(AppError::Playback("This song is not available from JioSaavn".into())); }
+                    if unavailable {
+                        return Err(AppError::Playback(
+                            "This song is not available from JioSaavn".into(),
+                        ));
+                    }
                 }
             }
         }
@@ -155,27 +235,46 @@ impl PlaybackService {
     }
 
     pub async fn initialize_saved_playback(&self) {
-        self.restore_ready.get_or_init(|| async {
-            if let Err(error) = self.restore_saved_playback().await {
-                tracing::warn!(%error, "Could not restore playback bookmark; starting empty");
-            }
-        }).await;
+        self.restore_ready
+            .get_or_init(|| async {
+                if let Err(error) = self.restore_saved_playback().await {
+                    tracing::warn!(%error, "Could not restore playback bookmark; starting empty");
+                }
+            })
+            .await;
     }
 
     async fn restore_saved_playback(&self) -> AppResult<()> {
-        let Some(pool) = &self.pool else { return Ok(()); };
-        let Some(value) = SqliteSettingsRepository::new(pool.clone()).get_setting(SETTING_KEY).await? else { return Ok(()); };
+        let Some(pool) = &self.pool else {
+            return Ok(());
+        };
+        let Some(value) = SqliteSettingsRepository::new(pool.clone())
+            .get_setting(SETTING_KEY)
+            .await?
+        else {
+            return Ok(());
+        };
         let mut saved: SavedPlayback = serde_json::from_str(&value)
             .map_err(|_| AppError::Validation("Invalid saved playback bookmark".into()))?;
         if !saved.valid() {
-            return Err(AppError::Validation("Invalid saved playback bookmark".into()));
+            return Err(AppError::Validation(
+                "Invalid saved playback bookmark".into(),
+            ));
         }
         if let Some(catalog) = self.online_catalog() {
-            let values = catalog.present(serde_json::to_value(saved.queue.items()).map_err(|e| AppError::Internal(e.to_string()))?).await?;
-            let items = serde_json::from_value(values).map_err(|e| AppError::Internal(e.to_string()))?;
+            let values = catalog
+                .present(
+                    serde_json::to_value(saved.queue.items())
+                        .map_err(|e| AppError::Internal(e.to_string()))?,
+                )
+                .await?;
+            let items =
+                serde_json::from_value(values).map_err(|e| AppError::Internal(e.to_string()))?;
             saved.queue.reconcile_sources(items);
             saved.has_current_track = saved.has_current_track && saved.queue.current().is_some();
-            if let Some(current) = saved.queue.current() { saved.duration_secs = current.duration_secs; }
+            if let Some(current) = saved.queue.current() {
+                saved.duration_secs = current.duration_secs;
+            }
         }
         let _operation = self.flow_operation.lock().await;
         self.backend.lock().await.set_volume(saved.volume)?;
@@ -196,8 +295,14 @@ impl PlaybackService {
 
     /// Called under the queue operation lock, periodically and before clean Stop.
     async fn save_playback_bookmark(&self) -> AppResult<()> {
-        if self.restore_ready.get().is_none() || self.is_resolving.load(std::sync::atomic::Ordering::Acquire) { return Ok(()); }
-        let Some(pool) = &self.pool else { return Ok(()); };
+        if self.restore_ready.get().is_none()
+            || self.is_resolving.load(std::sync::atomic::Ordering::Acquire)
+        {
+            return Ok(());
+        }
+        let Some(pool) = &self.pool else {
+            return Ok(());
+        };
         let state = self.get_playback_state().await;
         let saved = SavedPlayback {
             version: 1,
@@ -207,11 +312,17 @@ impl PlaybackService {
             duration_secs: state.duration_secs,
             volume: state.volume,
         };
-        if !saved.valid() { return Ok(()); }
+        if !saved.valid() {
+            return Ok(());
+        }
         let value = serde_json::to_string(&saved).map_err(|e| AppError::Internal(e.to_string()))?;
         let mut previous = self.last_saved_bookmark.lock().await;
-        if previous.as_ref() == Some(&value) { return Ok(()); }
-        SqliteSettingsRepository::new(pool.clone()).set_setting(SETTING_KEY, &value).await?;
+        if previous.as_ref() == Some(&value) {
+            return Ok(());
+        }
+        SqliteSettingsRepository::new(pool.clone())
+            .set_setting(SETTING_KEY, &value)
+            .await?;
         *previous = Some(value);
         Ok(())
     }
@@ -238,7 +349,9 @@ impl PlaybackService {
             .flow_generation
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
             + 1;
-        if let Some(catalog) = self.online_catalog() { catalog.prepare_existing().await?; }
+        if let Some(catalog) = self.online_catalog() {
+            catalog.prepare_existing().await?;
+        }
         let operation = self.flow_operation.lock().await;
         if self
             .flow_generation
@@ -415,7 +528,13 @@ impl PlaybackService {
                 .as_ref()
                 .map(|f| f.user_id.as_str())
                 == Some(user_id);
-            s.generation = self.active_flow.read().await.as_ref().filter(|f| f.user_id == user_id).map(|f| f.generation);
+            s.generation = self
+                .active_flow
+                .read()
+                .await
+                .as_ref()
+                .filter(|f| f.user_id == user_id)
+                .map(|f| f.generation);
             // Track metadata comes from the playback queue, never duplicated persistence.
             s.last_track_id = None;
             s.last_track_title = None;
@@ -439,14 +558,22 @@ impl PlaybackService {
         if flow.generated_queue_ids.contains(&current.queue_id) {
             flow.reasons.get(track_id).cloned()
         } else if flow.manual_queue_ids.contains(&current.queue_id) {
-            Some(FlowExplanation { primary: "existing_queue".into(), from_existing_queue: true, ..Default::default() })
+            Some(FlowExplanation {
+                primary: "existing_queue".into(),
+                from_existing_queue: true,
+                ..Default::default()
+            })
         } else {
-            Some(FlowExplanation { primary: "continuing_track".into(), ..Default::default() })
+            Some(FlowExplanation {
+                primary: "continuing_track".into(),
+                ..Default::default()
+            })
         }
     }
 
     async fn stop_flow_inner(&self) {
-        self.flow_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.flow_generation
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if let Some(flow) = self.active_flow.write().await.take() {
             let mut q = self.queue.write().await;
             let start = q.current_index().map_or(0, |i| i + 1);
@@ -460,7 +587,8 @@ impl PlaybackService {
     }
 
     pub async fn stop_flow(&self) {
-        self.flow_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.flow_generation
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let _operation = self.flow_operation.lock().await;
         self.stop_flow_inner().await;
         self.emit_queue_updated().await;
@@ -530,8 +658,10 @@ impl PlaybackService {
         let mut rebuilt = q.items()[..start].to_vec();
         // Keep original evidence for the current/history entries. Replace only
         // generated upcoming slots, preserving manual entries at their positions.
-        flow.generated_queue_ids.retain(|id| rebuilt.iter().any(|item| &item.queue_id == id));
-        flow.reasons.retain(|id, _| rebuilt.iter().any(|item| &item.track_id == id));
+        flow.generated_queue_ids
+            .retain(|id| rebuilt.iter().any(|item| &item.queue_id == id));
+        flow.reasons
+            .retain(|id, _| rebuilt.iter().any(|item| &item.track_id == id));
         let mut replacements = Vec::with_capacity(tracks.len());
         for track in tracks {
             let item = Self::flow_item(&track);
@@ -542,7 +672,9 @@ impl PlaybackService {
         let mut replacements = replacements.into_iter();
         for old in q.items().iter().skip(start) {
             if generated_ids.contains(&old.queue_id) {
-                if let Some(item) = replacements.next() { rebuilt.push(item); }
+                if let Some(item) = replacements.next() {
+                    rebuilt.push(item);
+                }
             } else {
                 rebuilt.push(old.clone());
             }
@@ -575,7 +707,10 @@ impl PlaybackService {
         loop {
             interval.tick().await;
             let operation = self.flow_operation.lock().await;
-            if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+            if self
+                .shutting_down
+                .load(std::sync::atomic::Ordering::Acquire)
+            {
                 break;
             }
             if last_checkpoint.elapsed() >= Duration::from_secs(10) {
@@ -584,7 +719,12 @@ impl PlaybackService {
                 }
                 last_checkpoint = tokio::time::Instant::now();
             }
-            let session_queue_id = self.active_session_id.read().await.as_ref().map(|(_, q)| q.clone());
+            let session_queue_id = self
+                .active_session_id
+                .read()
+                .await
+                .as_ref()
+                .map(|(_, q)| q.clone());
             if let Some(queue_id) = &session_queue_id {
                 if self.queue.read().await.current().map(|i| &i.queue_id) != Some(queue_id) {
                     // A queue selection is pending; do not finalize/advance a different entry.
@@ -611,7 +751,8 @@ impl PlaybackService {
                     .active_session_id
                     .read()
                     .await
-                    .as_ref().map(|(id, _)| id.clone())
+                    .as_ref()
+                    .map(|(id, _)| id.clone())
                     .unwrap_or_default();
 
                 let _ = self.event_bus.publish(Event::PlaybackPositionChanged {
@@ -645,9 +786,13 @@ impl PlaybackService {
                 }
 
                 // A manual selection after this snapshot must supersede automatic advancement.
-                let generation = self.play_generation.load(std::sync::atomic::Ordering::SeqCst);
+                let generation = self
+                    .play_generation
+                    .load(std::sync::atomic::Ordering::SeqCst);
                 drop(operation);
-                let _ = self.advance_after_finished(generation, session_queue_id.as_deref()).await;
+                let _ = self
+                    .advance_after_finished(generation, session_queue_id.as_deref())
+                    .await;
             }
         }
     }
@@ -807,7 +952,10 @@ impl PlaybackService {
     async fn play_item_at(&self, item: &QueueItem, start_position: Option<f64>) -> AppResult<()> {
         self.prepare_track_source(&item.track_id).await?;
         let operation = self.flow_operation.lock().await;
-        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
             return Err(AppError::Playback("Kaze is shutting down".into()));
         }
 
@@ -890,27 +1038,47 @@ impl PlaybackService {
         // A saved online position requires a seekable source. A cold cache may
         // buffer fully here; never silently replay it from the beginning.
         let prepared_res = match prepared_res {
-            Ok(crate::playback::stream::PreparedPlayback::ProgressiveStream { target_path, duration, state, .. })
-                if start_position.is_some_and(|position| position > 0.0) => {
+            Ok(crate::playback::stream::PreparedPlayback::ProgressiveStream {
+                target_path,
+                duration,
+                state,
+                ..
+            }) if start_position.is_some_and(|position| position > 0.0) => {
                 let ready = tokio::time::timeout(Duration::from_secs(120), async {
                     loop {
-                        if self.play_generation.load(std::sync::atomic::Ordering::SeqCst) != generation
-                            || self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+                        if self
+                            .play_generation
+                            .load(std::sync::atomic::Ordering::SeqCst)
+                            != generation
+                            || self
+                                .shutting_down
+                                .load(std::sync::atomic::Ordering::Acquire)
+                        {
                             return Err(AppError::Playback("Playback request superseded".into()));
                         }
                         match state.status.lock().unwrap().clone() {
                             crate::playback::progressive::StreamStatus::Completed => return Ok(()),
-                            crate::playback::progressive::StreamStatus::Failed(error) => return Err(AppError::Playback(error)),
-                            crate::playback::progressive::StreamStatus::Cancelled => return Err(AppError::Playback("Stream cancelled".into())),
+                            crate::playback::progressive::StreamStatus::Failed(error) => {
+                                return Err(AppError::Playback(error))
+                            }
+                            crate::playback::progressive::StreamStatus::Cancelled => {
+                                return Err(AppError::Playback("Stream cancelled".into()))
+                            }
                             _ => {}
                         }
                         tokio::time::sleep(Duration::from_millis(100)).await;
                     }
-                }).await;
+                })
+                .await;
                 match ready {
-                    Ok(Ok(())) => Ok(crate::playback::stream::PreparedPlayback::LocalFile { path: target_path, duration }),
+                    Ok(Ok(())) => Ok(crate::playback::stream::PreparedPlayback::LocalFile {
+                        path: target_path,
+                        duration,
+                    }),
                     Ok(Err(error)) => Err(error),
-                    Err(_) => Err(AppError::Playback("Timed out buffering the saved song. Try playing again.".into())),
+                    Err(_) => Err(AppError::Playback(
+                        "Timed out buffering the saved song. Try playing again.".into(),
+                    )),
                 }
             }
             other => other,
@@ -955,7 +1123,9 @@ impl PlaybackService {
                 let mut backend = self.backend.lock().await;
                 backend.load_and_play(&path)?;
                 if let Some(position) = start_position {
-                    if let Err(error) = backend.seek(Duration::from_secs_f64(position.min(duration).max(0.0))) {
+                    if let Err(error) =
+                        backend.seek(Duration::from_secs_f64(position.min(duration).max(0.0)))
+                    {
                         let _ = backend.stop();
                         return Err(error);
                     }
@@ -1004,7 +1174,9 @@ impl PlaybackService {
 
         if start_position.is_some() {
             let position_secs = self.backend.lock().await.position().as_secs_f64();
-            let _ = self.event_bus.publish(Event::PlaybackSeeked { position_secs });
+            let _ = self
+                .event_bus
+                .publish(Event::PlaybackSeeked { position_secs });
         }
 
         self.emit_queue_updated().await;
@@ -1028,7 +1200,8 @@ impl PlaybackService {
             .active_session_id
             .read()
             .await
-            .as_ref().map(|(id, _)| id.clone())
+            .as_ref()
+            .map(|(id, _)| id.clone())
             .unwrap_or_default();
 
         let _ = self.event_bus.publish(Event::PlaybackPaused {
@@ -1042,13 +1215,22 @@ impl PlaybackService {
     pub async fn resume(&self) -> AppResult<()> {
         let restored = self.restored_track.read().await.clone();
         if let Some(restored) = restored {
-            let item = self.queue.read().await.current().filter(|item| item.queue_id == restored.queue_id).cloned();
+            let item = self
+                .queue
+                .read()
+                .await
+                .current()
+                .filter(|item| item.queue_id == restored.queue_id)
+                .cloned();
             if let Some(item) = item {
                 return self.play_item_at(&item, Some(restored.position_secs)).await;
             }
         }
         let mut backend = self.backend.lock().await;
-        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire) {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
             return Err(AppError::Playback("Kaze is shutting down".into()));
         }
 
@@ -1067,7 +1249,8 @@ impl PlaybackService {
             .active_session_id
             .read()
             .await
-            .as_ref().map(|(id, _)| id.clone())
+            .as_ref()
+            .map(|(id, _)| id.clone())
             .unwrap_or_default();
 
         let _ = self.event_bus.publish(Event::PlaybackResumed {
@@ -1087,18 +1270,31 @@ impl PlaybackService {
 
     /// Cancel pending media preparation before the core waits for commands to drain.
     pub fn request_shutdown(&self) {
-        if !self.shutting_down.swap(true, std::sync::atomic::Ordering::AcqRel) {
-            self.play_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if !self
+            .shutting_down
+            .swap(true, std::sync::atomic::Ordering::AcqRel)
+        {
+            self.play_generation
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
     }
 
     /// Stop the monitor and invalidate pending resolution before stopping audio.
     pub async fn shutdown(&self) -> AppResult<()> {
         let mut done = self.shutdown_done.lock().await;
-        if *done { return Ok(()); }
+        if *done {
+            return Ok(());
+        }
         self.request_shutdown();
-        let task = self.monitor_task.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some(task) = task { task.abort(); let _ = task.await; }
+        let task = self
+            .monitor_task
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(task) = task {
+            task.abort();
+            let _ = task.await;
+        }
         let bookmark = {
             let _operation = self.flow_operation.lock().await;
             self.save_playback_bookmark().await
@@ -1155,7 +1351,9 @@ impl PlaybackService {
             let mut restored = self.restored_track.write().await;
             if let Some(restored) = restored.as_mut() {
                 restored.position_secs = position_secs.clamp(0.0, restored.duration_secs);
-                let _ = self.event_bus.publish(Event::PlaybackSeeked { position_secs: restored.position_secs });
+                let _ = self.event_bus.publish(Event::PlaybackSeeked {
+                    position_secs: restored.position_secs,
+                });
                 return Ok(());
             }
         }
@@ -1199,6 +1397,7 @@ impl PlaybackService {
             q_guard.next().cloned()
         };
 
+        next_item = self.skip_blocked_queue_items(next_item).await?;
         if next_item.is_none() {
             let src = self.current_source.read().await.clone();
             if src == "flow" {
@@ -1221,11 +1420,27 @@ impl PlaybackService {
         Ok(())
     }
 
-    async fn advance_after_finished(&self, generation: u64, queue_id: Option<&str>) -> AppResult<()> {
+    async fn advance_after_finished(
+        &self,
+        generation: u64,
+        queue_id: Option<&str>,
+    ) -> AppResult<()> {
         let operation = self.flow_operation.lock().await;
-        if self.shutting_down.load(std::sync::atomic::Ordering::Acquire)
-            || self.play_generation.load(std::sync::atomic::Ordering::SeqCst) != generation
-            || self.queue.read().await.current().map(|i| i.queue_id.as_str()) != queue_id {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+            || self
+                .play_generation
+                .load(std::sync::atomic::Ordering::SeqCst)
+                != generation
+            || self
+                .queue
+                .read()
+                .await
+                .current()
+                .map(|i| i.queue_id.as_str())
+                != queue_id
+        {
             return Ok(());
         }
         let mut next_item = {
@@ -1233,6 +1448,7 @@ impl PlaybackService {
             q_guard.next_after_finish().cloned()
         };
 
+        next_item = self.skip_blocked_queue_items(next_item).await?;
         if next_item.is_none() {
             let src = self.current_source.read().await.clone();
             if src == "flow" {
@@ -1291,7 +1507,13 @@ impl PlaybackService {
                 .await?;
         }
         let mut flow = self.active_flow.write().await;
-        let Some(f) = flow.as_mut().filter(|f| f.generation == generation && self.flow_generation.load(std::sync::atomic::Ordering::SeqCst) == generation) else {
+        let Some(f) = flow.as_mut().filter(|f| {
+            f.generation == generation
+                && self
+                    .flow_generation
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    == generation
+        }) else {
             return Ok(None);
         };
         let next = {
@@ -1322,13 +1544,35 @@ impl PlaybackService {
         };
         let linked: HashSet<String> = if let Some(pool) = &self.pool {
             sqlx::query_scalar("SELECT id FROM external_tracks WHERE provider='jiosaavn' UNION SELECT track_id FROM online_track_sources").fetch_all(pool).await?.into_iter().collect()
-        } else { HashSet::new() };
+        } else {
+            HashSet::new()
+        };
+        let feedback = if let Some(pool) = &self.pool {
+            Some(
+                crate::recommendations::signals::SongSignals::load(
+                    pool,
+                    &self.recommendation_user_id().await,
+                )
+                .await?,
+            )
+        } else {
+            None
+        };
         let mut candidates = self
             .track_repo
             .list_tracks(0, 10_000, None, true)
             .await?
             .into_iter()
             .filter(|track| current_track_id.as_deref() != Some(track.id.as_str()))
+            .filter(|track| {
+                !feedback.as_ref().is_some_and(|feedback| {
+                    feedback.blocked(
+                        &track.id,
+                        &track.title,
+                        track.artist_name.as_deref().unwrap_or(""),
+                    )
+                })
+            })
             .filter(|track| !track.file_path.starts_with("online://") || linked.contains(&track.id))
             .collect::<Vec<_>>();
         candidates.shuffle(&mut thread_rng());
@@ -1455,14 +1699,27 @@ impl PlaybackService {
     }
 
     pub async fn refresh_queue_metadata(&self) {
-        let ids: std::collections::HashSet<String> = self.queue.read().await.items().iter().map(|item| item.track_id.clone()).collect();
+        let ids: std::collections::HashSet<String> = self
+            .queue
+            .read()
+            .await
+            .items()
+            .iter()
+            .map(|item| item.track_id.clone())
+            .collect();
         let mut changed = false;
         for id in ids {
             if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await {
-                changed |= self.queue.write().await.update_metadata(&id, &track.title, track.artist_name.as_deref().unwrap_or("Unknown Artist"));
+                changed |= self.queue.write().await.update_metadata(
+                    &id,
+                    &track.title,
+                    track.artist_name.as_deref().unwrap_or("Unknown Artist"),
+                );
             }
         }
-        if changed { self.emit_queue_updated().await; }
+        if changed {
+            self.emit_queue_updated().await;
+        }
     }
 
     pub async fn clear_queue(&self) {
@@ -1509,7 +1766,11 @@ impl PlaybackService {
         let mut duration = *self.current_duration_secs.read().await;
         let vol = *self.volume.read().await;
         let q_guard = self.queue.read().await;
-        if let Some(restored) = restored.filter(|saved| q_guard.current().is_some_and(|item| item.queue_id == saved.queue_id)) {
+        if let Some(restored) = restored.filter(|saved| {
+            q_guard
+                .current()
+                .is_some_and(|item| item.queue_id == saved.queue_id)
+        }) {
             is_paused = true;
             is_finished = false;
             pos = restored.position_secs;
@@ -1567,9 +1828,23 @@ impl PlaybackService {
     }
 
     async fn emit_queue_updated(&self) {
-        let ids: HashSet<String> = self.queue.read().await.items().iter().map(|item| item.track_id.clone()).collect();
+        let ids: HashSet<String> = self
+            .queue
+            .read()
+            .await
+            .items()
+            .iter()
+            .map(|item| item.track_id.clone())
+            .collect();
         for id in ids {
-            if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await { self.queue.write().await.update_source_metadata(&id, &track.title, track.artist_name.as_deref().unwrap_or("Unknown Artist"), track.duration_secs); }
+            if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await {
+                self.queue.write().await.update_source_metadata(
+                    &id,
+                    &track.title,
+                    track.artist_name.as_deref().unwrap_or("Unknown Artist"),
+                    track.duration_secs,
+                );
+            }
         }
         let (items, current_index, queue_track_ids) = {
             let q_guard = self.queue.read().await;

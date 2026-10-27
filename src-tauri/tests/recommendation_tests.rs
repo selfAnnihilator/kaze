@@ -109,13 +109,16 @@ async fn setup_test_library(processor: &CoreProcessor) -> (Vec<String>, Vec<Stri
 async fn test_taste_profile_generation() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
-    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+    let processor =
+        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
 
     // Log 3 completed listens for Pink Floyd
-    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(processor.db_pool().clone());
+    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(
+        processor.db_pool().clone(),
+    );
     for id in &pink_floyd_ids {
         history_repo
             .record_playback(&PlaybackHistoryRecord {
@@ -164,12 +167,21 @@ async fn test_taste_profile_generation() {
             serde_json::from_value(val).expect("parse taste profile");
 
         // Assert Pink Floyd is #1 top artist
-        assert!(!profile.top_artists.is_empty(), "Top artists should not be empty");
+        assert!(
+            !profile.top_artists.is_empty(),
+            "Top artists should not be empty"
+        );
         assert_eq!(profile.top_artists[0].display_name, "Pink Floyd");
-        assert!(profile.top_artists[0].affinity > 0.5, "Pink Floyd affinity should be high");
+        assert!(
+            profile.top_artists[0].affinity > 0.5,
+            "Pink Floyd affinity should be high"
+        );
 
         // Assert Rock is #1 top genre
-        assert!(!profile.top_genres.is_empty(), "Top genres should not be empty");
+        assert!(
+            !profile.top_genres.is_empty(),
+            "Top genres should not be empty"
+        );
         assert_eq!(profile.top_genres[0].display_name, "Rock");
 
         // Assert 1970s era was recorded
@@ -183,13 +195,16 @@ async fn test_taste_profile_generation() {
 async fn test_offline_local_recommendations_and_diversity() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
-    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+    let processor =
+        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
 
     // Log listens for Pink Floyd
-    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(processor.db_pool().clone());
+    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(
+        processor.db_pool().clone(),
+    );
     history_repo
         .record_playback(&PlaybackHistoryRecord {
             id: Uuid::new_v4().to_string(),
@@ -237,14 +252,20 @@ async fn test_offline_local_recommendations_and_diversity() {
         // Check for disliked track exclusion
         for item in &items {
             let track_id = item["track_id"].as_str().unwrap();
-            assert_ne!(track_id, noise_id, "Disliked track must NEVER be recommended");
+            assert_ne!(
+                track_id, noise_id,
+                "Disliked track must NEVER be recommended"
+            );
 
             // Verify score and explanations exist
             let score = item["score"].as_f64().unwrap();
             assert!(score > 0.0, "Score must be positive");
 
             let reasons = item["reasons"].as_array().expect("reasons array");
-            assert!(!reasons.is_empty(), "Explainability reasons must be provided");
+            assert!(
+                !reasons.is_empty(),
+                "Explainability reasons must be provided"
+            );
         }
 
         // Check artist diversity: Pink Floyd tracks should be capped at 2
@@ -266,13 +287,16 @@ async fn test_offline_local_recommendations_and_diversity() {
 async fn test_smart_mix_generation_and_persistence() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
-    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+    let processor =
+        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
 
     let (pink_floyd_ids, _other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
 
     // Add some history
-    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(processor.db_pool().clone());
+    let history_repo = music_player_backend::database::repositories::SqliteHistoryRepository::new(
+        processor.db_pool().clone(),
+    );
     for id in &pink_floyd_ids {
         history_repo
             .record_playback(&PlaybackHistoryRecord {
@@ -302,7 +326,10 @@ async fn test_smart_mix_generation_and_persistence() {
         .expect("generate daily mix");
 
     let daily_playlist_id = match daily_res {
-        CommandResponse::MixGenerated { playlist_id, track_count } => {
+        CommandResponse::MixGenerated {
+            playlist_id,
+            track_count,
+        } => {
             assert!(track_count > 0, "Daily mix should contain tracks");
             playlist_id
         }
@@ -318,7 +345,10 @@ async fn test_smart_mix_generation_and_persistence() {
         .expect("generate on repeat mix");
 
     let on_repeat_playlist_id = match on_repeat_res {
-        CommandResponse::MixGenerated { playlist_id, track_count } => {
+        CommandResponse::MixGenerated {
+            playlist_id,
+            track_count,
+        } => {
             assert!(track_count > 0, "On Repeat mix should contain tracks");
             playlist_id
         }
@@ -359,11 +389,14 @@ async fn test_smart_mix_generation_and_persistence() {
 fn test_scoring_repetition_penalty_and_discovery_bonus() {
     let now = 1_000_000;
     let mut profile = TasteProfile::default();
-    profile.artist_affinities.insert("artist_pink_floyd".to_string(), 0.90);
+    profile
+        .artist_affinities
+        .insert("artist_pink_floyd".to_string(), 0.90);
     profile.genre_affinities.insert("Rock".to_string(), 0.80);
 
     // Case 1: Freshly played candidate (< 24 hours ago) -> should have -50% repetition penalty
     let recent_candidate = CandidateTrack {
+        language: None,
         id: "track_1".to_string(),
         title: "Time".to_string(),
         artist_id: Some("artist_pink_floyd".to_string()),
@@ -378,11 +411,15 @@ fn test_scoring_repetition_penalty_and_discovery_bonus() {
     };
 
     let score_recent = ScoringEngine::score_track(&recent_candidate, &profile, now);
-    let has_penalty = score_recent.reasons.iter().any(|r| r.factor == "repetition_penalty");
+    let has_penalty = score_recent
+        .reasons
+        .iter()
+        .any(|r| r.factor == "repetition_penalty");
     assert!(has_penalty, "Recent candidate must have repetition penalty");
 
     // Case 2: Unplayed track matching artist/genre -> should have exploration bonus and is_discovery = true
     let discovery_candidate = CandidateTrack {
+        language: None,
         id: "track_2".to_string(),
         title: "Echoes".to_string(),
         artist_id: Some("artist_pink_floyd".to_string()),
@@ -397,16 +434,28 @@ fn test_scoring_repetition_penalty_and_discovery_bonus() {
     };
 
     let score_discovery = ScoringEngine::score_track(&discovery_candidate, &profile, now);
-    assert!(score_discovery.is_discovery, "Unplayed high-affinity candidate should be marked as discovery");
-    let has_discovery_reason = score_discovery.reasons.iter().any(|r| r.factor == "exploration_pick");
-    assert!(has_discovery_reason, "Discovery pick explanation must be present in reasons");
+    assert!(
+        score_discovery.is_discovery,
+        "Unplayed high-affinity candidate should be marked as discovery"
+    );
+    let has_discovery_reason = score_discovery
+        .reasons
+        .iter()
+        .any(|r| r.factor == "exploration_pick");
+    assert!(
+        has_discovery_reason,
+        "Discovery pick explanation must be present in reasons"
+    );
 }
 
 #[tokio::test]
 async fn test_multi_user_taste_and_stats_isolation() {
-    let pool = create_in_memory_pool().await.expect("create in-memory pool");
+    let pool = create_in_memory_pool()
+        .await
+        .expect("create in-memory pool");
     let backend = Box::new(MockAudioBackend::new());
-    let processor = CoreProcessor::new_with_backend(pool.clone(), AppConfig::default_with_dirs(), backend);
+    let processor =
+        CoreProcessor::new_with_backend(pool.clone(), AppConfig::default_with_dirs(), backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let pf_track = &pink_floyd_ids[0];
@@ -420,7 +469,9 @@ async fn test_multi_user_taste_and_stats_isolation() {
 
     {
         use music_player_backend::database::models::PlaybackHistoryRecord;
-        use music_player_backend::database::repositories::{HistoryRepository, SqliteHistoryRepository};
+        use music_player_backend::database::repositories::{
+            HistoryRepository, SqliteHistoryRepository,
+        };
         let history_repo = SqliteHistoryRepository::new(pool.clone());
         let rec = PlaybackHistoryRecord {
             id: uuid::Uuid::new_v4().to_string(),
@@ -436,7 +487,10 @@ async fn test_multi_user_taste_and_stats_isolation() {
             playlist_id: None,
             recommendation_session_id: None,
         };
-        history_repo.record_session(&rec, "2023-11-14", true).await.expect("record playback for user A");
+        history_repo
+            .record_session(&rec, "2023-11-14", true)
+            .await
+            .expect("record playback for user A");
     }
 
     processor
@@ -451,7 +505,9 @@ async fn test_multi_user_taste_and_stats_isolation() {
 
     {
         use music_player_backend::database::models::PlaybackHistoryRecord;
-        use music_player_backend::database::repositories::{HistoryRepository, SqliteHistoryRepository};
+        use music_player_backend::database::repositories::{
+            HistoryRepository, SqliteHistoryRepository,
+        };
         let history_repo = SqliteHistoryRepository::new(pool.clone());
         let rec = PlaybackHistoryRecord {
             id: uuid::Uuid::new_v4().to_string(),
@@ -467,7 +523,10 @@ async fn test_multi_user_taste_and_stats_isolation() {
             playlist_id: None,
             recommendation_session_id: None,
         };
-        history_repo.record_session(&rec, "2023-11-14", true).await.expect("record playback for user B");
+        history_repo
+            .record_session(&rec, "2023-11-14", true)
+            .await
+            .expect("record playback for user B");
     }
 
     processor
@@ -481,27 +540,49 @@ async fn test_multi_user_taste_and_stats_isolation() {
     *processor.current_user.write().await = Some(user_a.clone());
 
     // User A's taste profile
-    let taste_a_res = processor.execute_query(Query::GetTasteProfile).await.expect("query taste A");
+    let taste_a_res = processor
+        .execute_query(Query::GetTasteProfile)
+        .await
+        .expect("query taste A");
     if let QueryResponse::TasteProfile(val) = taste_a_res {
-        let profile: TasteProfile = serde_json::from_value(val).expect("deserialize taste profile A");
-        assert!(profile.genre_affinities.contains_key("Rock"), "User A must have Rock affinity");
-        assert!(!profile.genre_affinities.contains_key("Electronic"), "User A must NOT have Electronic affinity");
+        let profile: TasteProfile =
+            serde_json::from_value(val).expect("deserialize taste profile A");
+        assert!(
+            profile.genre_affinities.contains_key("Rock"),
+            "User A must have Rock affinity"
+        );
+        assert!(
+            !profile.genre_affinities.contains_key("Electronic"),
+            "User A must NOT have Electronic affinity"
+        );
     } else {
         panic!("expected TasteProfile response");
     }
 
     // User A's track view (Pink Floyd liked = 1, Daft Punk liked = 0)
-    let tracks_a_res = processor.execute_query(Query::GetTracks {
-        offset: 0,
-        limit: 100,
-        sort_by: None,
-        ascending: true,
-    }).await.expect("query tracks A");
+    let tracks_a_res = processor
+        .execute_query(Query::GetTracks {
+            offset: 0,
+            limit: 100,
+            sort_by: None,
+            ascending: true,
+        })
+        .await
+        .expect("query tracks A");
     if let QueryResponse::Tracks(tracks) = tracks_a_res {
-        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
-        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
+        let pf = tracks
+            .iter()
+            .find(|t| t["id"] == *pf_track)
+            .expect("find pf track");
+        let dp = tracks
+            .iter()
+            .find(|t| t["id"] == *dp_track)
+            .expect("find dp track");
         assert_eq!(pf["manual_like"], 1, "Pink Floyd must be liked for User A");
-        assert_eq!(dp["manual_like"], 0, "Daft Punk must not be liked for User A");
+        assert_eq!(
+            dp["manual_like"], 0,
+            "Daft Punk must not be liked for User A"
+        );
     } else {
         panic!("expected Tracks response");
     }
@@ -510,26 +591,48 @@ async fn test_multi_user_taste_and_stats_isolation() {
     *processor.current_user.write().await = Some(user_b.clone());
 
     // User B's taste profile
-    let taste_b_res = processor.execute_query(Query::GetTasteProfile).await.expect("query taste B");
+    let taste_b_res = processor
+        .execute_query(Query::GetTasteProfile)
+        .await
+        .expect("query taste B");
     if let QueryResponse::TasteProfile(val) = taste_b_res {
-        let profile: TasteProfile = serde_json::from_value(val).expect("deserialize taste profile B");
-        assert!(profile.genre_affinities.contains_key("Electronic"), "User B must have Electronic affinity");
-        assert!(!profile.genre_affinities.contains_key("Rock"), "User B must NOT have Rock affinity");
+        let profile: TasteProfile =
+            serde_json::from_value(val).expect("deserialize taste profile B");
+        assert!(
+            profile.genre_affinities.contains_key("Electronic"),
+            "User B must have Electronic affinity"
+        );
+        assert!(
+            !profile.genre_affinities.contains_key("Rock"),
+            "User B must NOT have Rock affinity"
+        );
     } else {
         panic!("expected TasteProfile response");
     }
 
     // User B's track view (Pink Floyd liked = 0, Daft Punk liked = 1)
-    let tracks_b_res = processor.execute_query(Query::GetTracks {
-        offset: 0,
-        limit: 100,
-        sort_by: None,
-        ascending: true,
-    }).await.expect("query tracks B");
+    let tracks_b_res = processor
+        .execute_query(Query::GetTracks {
+            offset: 0,
+            limit: 100,
+            sort_by: None,
+            ascending: true,
+        })
+        .await
+        .expect("query tracks B");
     if let QueryResponse::Tracks(tracks) = tracks_b_res {
-        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
-        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
-        assert_eq!(pf["manual_like"], 0, "Pink Floyd must not be liked for User B");
+        let pf = tracks
+            .iter()
+            .find(|t| t["id"] == *pf_track)
+            .expect("find pf track");
+        let dp = tracks
+            .iter()
+            .find(|t| t["id"] == *dp_track)
+            .expect("find dp track");
+        assert_eq!(
+            pf["manual_like"], 0,
+            "Pink Floyd must not be liked for User B"
+        );
         assert_eq!(dp["manual_like"], 1, "Daft Punk must be liked for User B");
     } else {
         panic!("expected Tracks response");
@@ -538,55 +641,97 @@ async fn test_multi_user_taste_and_stats_isolation() {
     // 5. Verify Guest isolation
     *processor.current_user.write().await = None;
 
-    let tracks_guest_res = processor.execute_query(Query::GetTracks {
-        offset: 0,
-        limit: 100,
-        sort_by: None,
-        ascending: true,
-    }).await.expect("query tracks guest");
+    let tracks_guest_res = processor
+        .execute_query(Query::GetTracks {
+            offset: 0,
+            limit: 100,
+            sort_by: None,
+            ascending: true,
+        })
+        .await
+        .expect("query tracks guest");
     if let QueryResponse::Tracks(tracks) = tracks_guest_res {
-        let pf = tracks.iter().find(|t| t["id"] == *pf_track).expect("find pf track");
-        let dp = tracks.iter().find(|t| t["id"] == *dp_track).expect("find dp track");
-        assert_eq!(pf["manual_like"], 0, "Pink Floyd must not be liked for Guest");
-        assert_eq!(dp["manual_like"], 0, "Daft Punk must not be liked for Guest");
+        let pf = tracks
+            .iter()
+            .find(|t| t["id"] == *pf_track)
+            .expect("find pf track");
+        let dp = tracks
+            .iter()
+            .find(|t| t["id"] == *dp_track)
+            .expect("find dp track");
+        assert_eq!(
+            pf["manual_like"], 0,
+            "Pink Floyd must not be liked for Guest"
+        );
+        assert_eq!(
+            dp["manual_like"], 0,
+            "Daft Punk must not be liked for Guest"
+        );
     } else {
         panic!("expected Tracks response");
     }
 
     // 6. Verify Smart Mix Isolation
     *processor.current_user.write().await = Some(user_a.clone());
-    let mix_a_res = processor.dispatch_command(Command::GenerateSmartMix {
-        mix_type: SmartMixType::Daily,
-    }).await.expect("generate mix for User A");
+    let mix_a_res = processor
+        .dispatch_command(Command::GenerateSmartMix {
+            mix_type: SmartMixType::Daily,
+        })
+        .await
+        .expect("generate mix for User A");
     let mix_a_id = match mix_a_res {
         CommandResponse::MixGenerated { playlist_id, .. } => playlist_id,
         _ => panic!("expected MixGenerated"),
     };
 
     *processor.current_user.write().await = Some(user_b.clone());
-    let mix_b_res = processor.dispatch_command(Command::GenerateSmartMix {
-        mix_type: SmartMixType::Daily,
-    }).await.expect("generate mix for User B");
+    let mix_b_res = processor
+        .dispatch_command(Command::GenerateSmartMix {
+            mix_type: SmartMixType::Daily,
+        })
+        .await
+        .expect("generate mix for User B");
     let mix_b_id = match mix_b_res {
         CommandResponse::MixGenerated { playlist_id, .. } => playlist_id,
         _ => panic!("expected MixGenerated"),
     };
 
-    assert_ne!(mix_a_id, mix_b_id, "User A and User B daily mixes must have distinct IDs");
+    assert_ne!(
+        mix_a_id, mix_b_id,
+        "User A and User B daily mixes must have distinct IDs"
+    );
 
     // Check that User A's playlists contain mix_a_id and NOT mix_b_id
     *processor.current_user.write().await = Some(user_a.clone());
-    let playlists_a = processor.execute_query(Query::GetPlaylists).await.expect("get playlists user A");
+    let playlists_a = processor
+        .execute_query(Query::GetPlaylists)
+        .await
+        .expect("get playlists user A");
     if let QueryResponse::Playlists(list) = playlists_a {
-        assert!(list.iter().any(|p| p["id"] == mix_a_id), "User A playlists must contain User A's mix");
-        assert!(!list.iter().any(|p| p["id"] == mix_b_id), "User A playlists must NOT contain User B's mix");
+        assert!(
+            list.iter().any(|p| p["id"] == mix_a_id),
+            "User A playlists must contain User A's mix"
+        );
+        assert!(
+            !list.iter().any(|p| p["id"] == mix_b_id),
+            "User A playlists must NOT contain User B's mix"
+        );
     }
 
     // Check that User B's playlists contain mix_b_id and NOT mix_a_id
     *processor.current_user.write().await = Some(user_b.clone());
-    let playlists_b = processor.execute_query(Query::GetPlaylists).await.expect("get playlists user B");
+    let playlists_b = processor
+        .execute_query(Query::GetPlaylists)
+        .await
+        .expect("get playlists user B");
     if let QueryResponse::Playlists(list) = playlists_b {
-        assert!(list.iter().any(|p| p["id"] == mix_b_id), "User B playlists must contain User B's mix");
-        assert!(!list.iter().any(|p| p["id"] == mix_a_id), "User B playlists must NOT contain User A's mix");
+        assert!(
+            list.iter().any(|p| p["id"] == mix_b_id),
+            "User B playlists must contain User B's mix"
+        );
+        assert!(
+            !list.iter().any(|p| p["id"] == mix_a_id),
+            "User B playlists must NOT contain User A's mix"
+        );
     }
 }

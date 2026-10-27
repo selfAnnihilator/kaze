@@ -25,19 +25,19 @@ pub async fn ensure_online_track(
         let clean = a_name.trim();
         if !clean.is_empty() {
             let normalized = clean.to_lowercase();
-            if let Some((existing_id,)) = sqlx::query_as::<_, (String,)>(
-                "SELECT id FROM artists WHERE normalized_name = ?"
-            )
-            .bind(&normalized)
-            .fetch_optional(pool)
-            .await
-            .unwrap_or(None) {
+            if let Some((existing_id,)) =
+                sqlx::query_as::<_, (String,)>("SELECT id FROM artists WHERE normalized_name = ?")
+                    .bind(&normalized)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None)
+            {
                 Some(existing_id)
             } else {
                 let a_id = uuid::Uuid::new_v4().to_string();
                 let _ = sqlx::query(
                     "INSERT INTO artists (id, name, normalized_name, created_at)
-                     VALUES (?, ?, ?, ?)"
+                     VALUES (?, ?, ?, ?)",
                 )
                 .bind(&a_id)
                 .bind(clean)
@@ -178,13 +178,14 @@ pub async fn repair_legacy_online_tracks(pool: &SqlitePool) -> AppResult<()> {
             duration_secs,
             cover_art_url.as_deref(),
             preview_url.as_deref(),
-        ).await;
+        )
+        .await;
     }
 
     // Ensure external tracks incorrectly matched against online track placeholders are reset
     let _ = sqlx::query(
         "UPDATE external_tracks SET match_status = 'NOT_FOUND', matched_local_track_id = NULL
-         WHERE matched_local_track_id LIKE 'itunes:%' OR matched_local_track_id LIKE 'online:%'"
+         WHERE matched_local_track_id LIKE 'itunes:%' OR matched_local_track_id LIKE 'online:%'",
     )
     .execute(pool)
     .await;
@@ -213,7 +214,11 @@ impl SmartMixGenerator {
     }
 
     /// Generates a smart mix according to the specified type and persists it as a smart playlist.
-    pub async fn generate_mix(&self, user_id: &str, mix_type: &SmartMixType) -> AppResult<PlaylistRecord> {
+    pub async fn generate_mix(
+        &self,
+        user_id: &str,
+        mix_type: &SmartMixType,
+    ) -> AppResult<PlaylistRecord> {
         let now = Utc::now().timestamp();
         let (name, description, mix_type_str, generation_reason, track_ids) = match mix_type {
             SmartMixType::Daily => {
@@ -250,9 +255,15 @@ impl SmartMixGenerator {
                 let track_ids = self.generate_genre_mix(user_id, genre_name).await?;
                 (
                     format!("{} Mix", genre_name),
-                    Some(format!("Curated tracks and highlights from the {} genre", genre_name)),
+                    Some(format!(
+                        "Curated tracks and highlights from the {} genre",
+                        genre_name
+                    )),
                     format!("genre:{}", genre_name.to_lowercase()),
-                    format!("Personalized selection of top-ranked and discovery tracks in {}", genre_name),
+                    format!(
+                        "Personalized selection of top-ranked and discovery tracks in {}",
+                        genre_name
+                    ),
                     track_ids,
                 )
             }
@@ -260,9 +271,15 @@ impl SmartMixGenerator {
                 let track_ids = self.generate_artist_mix(user_id, artist_name).await?;
                 (
                     format!("{} Radio", artist_name),
-                    Some(format!("Tracks by {} and artists sharing similar musical styles", artist_name)),
+                    Some(format!(
+                        "Tracks by {} and artists sharing similar musical styles",
+                        artist_name
+                    )),
                     format!("artist:{}", artist_name.to_lowercase()),
-                    format!("Curated playlist centered around {} and related artist affinities", artist_name),
+                    format!(
+                        "Curated playlist centered around {} and related artist affinities",
+                        artist_name
+                    ),
                     track_ids,
                 )
             }
@@ -270,7 +287,10 @@ impl SmartMixGenerator {
                 let track_ids = self.generate_late_night_mix(user_id).await?;
                 (
                     "Late Night Chill".to_string(),
-                    Some("Relaxing, deep-cut tracks tailored for evening and late-night listening".to_string()),
+                    Some(
+                        "Relaxing, deep-cut tracks tailored for evening and late-night listening"
+                            .to_string(),
+                    ),
                     "late_night".to_string(),
                     "Selection of mellow, unhurried tracks and deep cuts".to_string(),
                     track_ids,
@@ -280,17 +300,39 @@ impl SmartMixGenerator {
                 let track_ids = self.generate_discovery_mix(user_id).await?;
                 (
                     "Local Discoveries".to_string(),
-                    Some("Unheard gems hidden in your local music library matching your taste".to_string()),
+                    Some(
+                        "Unheard gems hidden in your local music library matching your taste"
+                            .to_string(),
+                    ),
                     "discovery".to_string(),
-                    "Local tracks with 0 plays that align with your favorite artists and genres".to_string(),
+                    "Local tracks with 0 plays that align with your favorite artists and genres"
+                        .to_string(),
                     track_ids,
                 )
             }
         };
 
+        let feedback = super::signals::SongSignals::load(&self.pool, user_id).await?;
+        let mut seen = std::collections::HashSet::new();
+        let track_ids = track_ids
+            .into_iter()
+            .filter(|id| !feedback.blocked_id(id))
+            .filter(|id| {
+                let key = feedback
+                    .identities
+                    .get(id)
+                    .and_then(|song| super::signals::song_key(&song.title, &song.artist))
+                    .unwrap_or_else(|| id.clone());
+                seen.insert(key)
+            })
+            .collect::<Vec<_>>();
+
         // Reuse existing mix ID and record for this smart mix so we update its contents in-place,
         // without creating a duplicate mix collection beside it
-        let existing = self.playlist_repo.find_smart_mix_for_user(user_id, &mix_type_str, &name).await?;
+        let existing = self
+            .playlist_repo
+            .find_smart_mix_for_user(user_id, &mix_type_str, &name)
+            .await?;
         let mix_id = match existing {
             Some(ref e) => e.id.clone(),
             None => format!("mix_{}", uuid::Uuid::new_v4()),
@@ -317,13 +359,18 @@ impl SmartMixGenerator {
         };
 
         // Persist playlist record (updates existing in-place) scoped to user
-        self.playlist_repo.create_playlist_with_user(&playlist, user_id).await?;
+        self.playlist_repo
+            .create_playlist_with_user(&playlist, user_id)
+            .await?;
 
         // Update the contents inside the mix (replaces tracks for this mix_id)
         self.playlist_repo.set_tracks(&mix_id, &track_ids).await?;
 
         // Clean up any historical duplicate entries with the same mix_type or name for this user
-        let _ = self.playlist_repo.delete_duplicate_smart_mixes_for_user(user_id, &mix_type_str, &playlist.name, &mix_id).await;
+        let _ = self
+            .playlist_repo
+            .delete_duplicate_smart_mixes_for_user(user_id, &mix_type_str, &playlist.name, &mix_id)
+            .await;
 
         Ok(playlist)
     }
@@ -345,7 +392,7 @@ impl SmartMixGenerator {
             sqlx::query_as(
                 "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
                  FROM external_tracks
-                 WHERE match_status != 'IGNORE'
+                 WHERE match_status != 'IGNORE' AND (provider='jiosaavn' OR EXISTS(SELECT 1 FROM online_track_sources s WHERE s.track_id=external_tracks.id))
                  ORDER BY RANDOM()
                  LIMIT 12"
             )
@@ -364,19 +411,19 @@ impl SmartMixGenerator {
                     odur,
                     ocover.as_deref(),
                     opreview.as_deref(),
-                ).await;
+                )
+                .await;
                 track_ids.push(oid);
             }
         }
 
         // If library has fewer recommendations, pad with random unplayed tracks
         if track_ids.len() < 10 {
-            let padding: Vec<String> = sqlx::query_scalar(
-                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 20"
-            )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            let padding: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM tracks ORDER BY RANDOM() LIMIT 20")
+                    .fetch_all(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?;
 
             for id in padding {
                 if seen.insert(id.clone()) {
@@ -399,7 +446,7 @@ impl SmartMixGenerator {
              GROUP BY h.track_id
              HAVING SUM(h.completed) >= 1 OR COUNT(h.id) >= 2
              ORDER BY COUNT(h.id) DESC, SUM(h.percentage_listened) DESC
-             LIMIT 25"
+             LIMIT 25",
         )
         .bind(user_id)
         .bind(cutoff)
@@ -422,12 +469,11 @@ impl SmartMixGenerator {
             }
 
             // Fallback 2: random tracks from tracks
-            let random_fallback: Vec<String> = sqlx::query_scalar(
-                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
-            )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            let random_fallback: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25")
+                    .fetch_all(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?;
 
             return Ok(random_fallback);
         }
@@ -447,7 +493,7 @@ impl SmartMixGenerator {
                AND (ts.last_played_at IS NULL OR ts.last_played_at < ?)
                AND ts.manual_like != -1
              ORDER BY ts.play_count DESC, ts.total_time_listened DESC
-             LIMIT 25"
+             LIMIT 25",
         )
         .bind(user_id)
         .bind(cutoff)
@@ -464,7 +510,7 @@ impl SmartMixGenerator {
                  WHERE (LOWER(t.file_path) LIKE '%/fav/%' OR ts.manual_like = 1)
                    AND COALESCE(ts.manual_like, 0) != -1
                  ORDER BY RANDOM()
-                 LIMIT 25"
+                 LIMIT 25",
             )
             .bind(user_id)
             .fetch_all(&self.pool)
@@ -475,12 +521,11 @@ impl SmartMixGenerator {
                 return Ok(fallback);
             }
 
-            let general: Vec<String> = sqlx::query_scalar(
-                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
-            )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            let general: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25")
+                    .fetch_all(&self.pool)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?;
 
             return Ok(general);
         }
@@ -506,7 +551,7 @@ impl SmartMixGenerator {
              )
              AND COALESCE(ts.manual_like, 0) != -1
              ORDER BY COALESCE(ts.play_count, 0) DESC, RANDOM()
-             LIMIT 30"
+             LIMIT 30",
         )
         .bind(user_id)
         .bind(&pattern)
@@ -518,12 +563,10 @@ impl SmartMixGenerator {
 
         let mut track_ids = if rows.is_empty() {
             // Fallback: random tracks
-            sqlx::query_scalar(
-                "SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25"
-            )
-            .fetch_all(&self.pool)
-            .await
-            .unwrap_or_default()
+            sqlx::query_scalar("SELECT id FROM tracks ORDER BY RANDOM() LIMIT 25")
+                .fetch_all(&self.pool)
+                .await
+                .unwrap_or_default()
         } else {
             rows
         };
@@ -558,7 +601,8 @@ impl SmartMixGenerator {
                     odur,
                     ocover.as_deref(),
                     opreview.as_deref(),
-                ).await;
+                )
+                .await;
                 track_ids.push(oid);
             }
         }
@@ -567,7 +611,11 @@ impl SmartMixGenerator {
     }
 
     /// Artist mix: tracks by artist, plus related artists sharing genres.
-    async fn generate_artist_mix(&self, user_id: &str, artist_name: &str) -> AppResult<Vec<String>> {
+    async fn generate_artist_mix(
+        &self,
+        user_id: &str,
+        artist_name: &str,
+    ) -> AppResult<Vec<String>> {
         let mut track_ids: Vec<String> = Vec::new();
 
         // 1. Direct tracks by artist
@@ -579,7 +627,7 @@ impl SmartMixGenerator {
              WHERE LOWER(a.name) = LOWER(?)
                AND COALESCE(ts.manual_like, 0) != -1
              ORDER BY RANDOM()
-             LIMIT 15"
+             LIMIT 15",
         )
         .bind(user_id)
         .bind(artist_name)
@@ -605,7 +653,7 @@ impl SmartMixGenerator {
                )
                AND COALESCE(ts.manual_like, 0) != -1
              ORDER BY RANDOM()
-             LIMIT 15"
+             LIMIT 15",
         )
         .bind(user_id)
         .bind(artist_name)
@@ -635,7 +683,7 @@ impl SmartMixGenerator {
                    OR t.duration_secs >= 240.0
                )
              ORDER BY RANDOM()
-             LIMIT 25"
+             LIMIT 25",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -648,7 +696,10 @@ impl SmartMixGenerator {
     /// Discovery mix: local tracks with 0 plays that align with user taste.
     async fn generate_discovery_mix(&self, user_id: &str) -> AppResult<Vec<String>> {
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
-        let recs = self.recommender.recommend_with_profile(user_id, &profile, 50).await?;
+        let recs = self
+            .recommender
+            .recommend_with_profile(user_id, &profile, 50)
+            .await?;
 
         let mut discovery_tracks: Vec<String> = recs
             .into_iter()
@@ -666,7 +717,7 @@ impl SmartMixGenerator {
                  WHERE (ts.play_count IS NULL OR ts.play_count = 0)
                    AND COALESCE(ts.manual_like, 0) != -1
                  ORDER BY RANDOM()
-                 LIMIT 25"
+                 LIMIT 25",
             )
             .bind(user_id)
             .fetch_all(&self.pool)
@@ -683,7 +734,7 @@ impl SmartMixGenerator {
             sqlx::query_as(
                 "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
                  FROM external_tracks
-                 WHERE match_status != 'IGNORE'
+                 WHERE match_status != 'IGNORE' AND (provider='jiosaavn' OR EXISTS(SELECT 1 FROM online_track_sources s WHERE s.track_id=external_tracks.id))
                  ORDER BY RANDOM()
                  LIMIT 15"
             )
@@ -702,7 +753,8 @@ impl SmartMixGenerator {
                     odur,
                     ocover.as_deref(),
                     opreview.as_deref(),
-                ).await;
+                )
+                .await;
                 discovery_tracks.push(oid);
             }
         }
@@ -727,8 +779,12 @@ impl SmartMixGenerator {
                             "forgotten_favorites" => Some(SmartMixType::ForgottenFavorites),
                             "late_night" => Some(SmartMixType::LateNight),
                             "discovery" => Some(SmartMixType::Discovery),
-                            s if s.starts_with("genre:") => Some(SmartMixType::Genre(s[6..].to_string())),
-                            s if s.starts_with("artist:") => Some(SmartMixType::Artist(s[7..].to_string())),
+                            s if s.starts_with("genre:") => {
+                                Some(SmartMixType::Genre(s[6..].to_string()))
+                            }
+                            s if s.starts_with("artist:") => {
+                                Some(SmartMixType::Artist(s[7..].to_string()))
+                            }
                             _ => None,
                         };
                         if let Some(smt) = smart_mix_type {
@@ -754,15 +810,23 @@ impl SmartMixGenerator {
             return Ok(existing);
         }
 
-        tracing::info!("Auto-generating recommended smart mixes based on library for user {}...", user_id);
+        tracing::info!(
+            "Auto-generating recommended smart mixes based on library for user {}...",
+            user_id
+        );
 
         // 1. Daily Mix
-        if !existing.iter().any(|m| m.mix_type.as_deref() == Some("daily") || m.name.eq_ignore_ascii_case("Daily Mix")) {
+        if !existing.iter().any(|m| {
+            m.mix_type.as_deref() == Some("daily") || m.name.eq_ignore_ascii_case("Daily Mix")
+        }) {
             let _ = self.generate_mix(user_id, &SmartMixType::Daily).await;
         }
 
         // 2. Local Discoveries
-        if !existing.iter().any(|m| m.mix_type.as_deref() == Some("discovery") || m.name.eq_ignore_ascii_case("Local Discoveries")) {
+        if !existing.iter().any(|m| {
+            m.mix_type.as_deref() == Some("discovery")
+                || m.name.eq_ignore_ascii_case("Local Discoveries")
+        }) {
             let _ = self.generate_mix(user_id, &SmartMixType::Discovery).await;
         }
 
@@ -775,8 +839,14 @@ impl SmartMixGenerator {
         .await
         .unwrap_or(0);
 
-        if phonk_count > 0 && !existing.iter().any(|m| m.name.to_lowercase().contains("phonk")) {
-            let _ = self.generate_mix(user_id, &SmartMixType::Genre("Phonk".to_string())).await;
+        if phonk_count > 0
+            && !existing
+                .iter()
+                .any(|m| m.name.to_lowercase().contains("phonk"))
+        {
+            let _ = self
+                .generate_mix(user_id, &SmartMixType::Genre("Phonk".to_string()))
+                .await;
         }
 
         let lofi_count: i64 = sqlx::query_scalar(
@@ -787,8 +857,14 @@ impl SmartMixGenerator {
         .await
         .unwrap_or(0);
 
-        if lofi_count > 0 && !existing.iter().any(|m| m.name.to_lowercase().contains("lofi") || m.name.to_lowercase().contains("lo-fi")) {
-            let _ = self.generate_mix(user_id, &SmartMixType::Genre("Lo-Fi".to_string())).await;
+        if lofi_count > 0
+            && !existing.iter().any(|m| {
+                m.name.to_lowercase().contains("lofi") || m.name.to_lowercase().contains("lo-fi")
+            })
+        {
+            let _ = self
+                .generate_mix(user_id, &SmartMixType::Genre("Lo-Fi".to_string()))
+                .await;
         }
 
         // 4. Query top library genres
@@ -800,15 +876,20 @@ impl SmartMixGenerator {
              GROUP BY g.name \
              HAVING COUNT(t.id) >= 3 \
              ORDER BY COUNT(t.id) DESC \
-             LIMIT 3"
+             LIMIT 3",
         )
         .fetch_all(&self.pool)
         .await
         .unwrap_or_default();
 
         for genre in top_genres {
-            if !existing.iter().any(|m| m.name.to_lowercase().contains(&genre.to_lowercase())) {
-                let _ = self.generate_mix(user_id, &SmartMixType::Genre(genre)).await;
+            if !existing
+                .iter()
+                .any(|m| m.name.to_lowercase().contains(&genre.to_lowercase()))
+            {
+                let _ = self
+                    .generate_mix(user_id, &SmartMixType::Genre(genre))
+                    .await;
             }
         }
 

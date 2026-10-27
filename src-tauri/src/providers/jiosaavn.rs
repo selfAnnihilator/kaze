@@ -71,7 +71,7 @@ impl JioSaavnProvider {
         // Dropping this future cancels both the request and backoff.
         let mut response = None;
         for attempt in 0..2 {
-            let r = self
+            let request = self
                 .client
                 .get(&self.endpoint)
                 .query(&[
@@ -80,7 +80,15 @@ impl JioSaavnProvider {
                     ("_marker", "0"),
                     ("cc", "in"),
                 ])
-                .query(params)
+                .query(params);
+            // This endpoint reads its editorial language from L, ignoring the query alone.
+            let request =
+                if let Some((_, language)) = params.iter().find(|(key, _)| *key == "language") {
+                    request.header(reqwest::header::COOKIE, format!("L={language}"))
+                } else {
+                    request
+                };
+            let r = request
                 .send()
                 .await
                 .map_err(|e| JioSaavnError::Network(e.without_url().to_string()))?;
@@ -211,45 +219,162 @@ impl JioSaavnProvider {
             .collect()
     }
 
-    /// Provider-owned chart IDs/titles; never synthesize country chart claims.
+    /// Request international/English programming explicitly, then merge regional charts.
+    /// Titles and IDs always come from editorial responses, never invented rankings.
     pub async fn charts(&self, refresh: bool) -> Result<Vec<Value>> {
-        let data = self.request("content.getCharts", &[("languages", "english,hindi,malayalam,tamil,telugu,kannada,punjabi")], refresh).await?;
-        let items = data.as_array().ok_or_else(|| JioSaavnError::Malformed("missing charts".into()))?;
-        Ok(items.iter().filter(|item| text(item,"id").is_some() && text(item,"title").is_some()).take(30).cloned().collect())
+        let (english, regional, launch) = tokio::join!(
+            self.request(
+                "content.getCharts",
+                &[
+                    ("language", "english"),
+                    ("languages", "english"),
+                    ("ctx", "web6dot0")
+                ],
+                refresh
+            ),
+            self.request(
+                "content.getCharts",
+                &[
+                    ("language", "hindi"),
+                    ("languages", "hindi,malayalam,tamil,telugu,kannada,punjabi"),
+                    ("ctx", "web6dot0")
+                ],
+                refresh
+            ),
+            self.request(
+                "webapi.getLaunchData",
+                &[
+                    ("language", "english"),
+                    ("languages", "english"),
+                    ("ctx", "web6dot0")
+                ],
+                refresh
+            ),
+        );
+        let mut feeds = Vec::new();
+        let mut first_error = None;
+        for result in [english, regional] {
+            match result {
+                Ok(value) => feeds.push(value),
+                Err(error) => {
+                    if first_error.is_none() {
+                        first_error = Some(error);
+                    }
+                }
+            }
+        }
+        if let Ok(launch) = launch {
+            for key in ["charts", "top_playlists"] {
+                if let Some(items) = launch.get(key).and_then(Value::as_array) {
+                    feeds.push(Value::Array(
+                        items
+                            .iter()
+                            .filter(|item| {
+                                key == "charts" || {
+                                    let title = text(item, "title")
+                                        .or_else(|| text(item, "listname"))
+                                        .unwrap_or_default()
+                                        .to_lowercase();
+                                    ["global", "international", "english", "worldwide"]
+                                        .iter()
+                                        .any(|word| title.contains(word))
+                                        && ["top", "chart", "hits", "trending"]
+                                            .iter()
+                                            .any(|word| title.contains(word))
+                                }
+                            })
+                            .cloned()
+                            .collect(),
+                    ));
+                }
+            }
+        }
+        let charts = merge_charts(&feeds);
+        if charts.is_empty() {
+            if let Some(error) = first_error {
+                return Err(error);
+            }
+        }
+        Ok(charts)
     }
 
-    pub async fn playlist_reference(&self, reference: &str) -> Result<(String, String, Option<String>, Vec<ExternalTrackMetadata>)> {
+    pub async fn playlist_reference(
+        &self,
+        reference: &str,
+    ) -> Result<(String, String, Option<String>, Vec<ExternalTrackMetadata>)> {
         let reference = reference.trim();
         let data = if reference.chars().all(|c| c.is_ascii_digit()) && !reference.is_empty() {
-            self.request("playlist.getDetails", &[("listid",reference),("n","50")],false).await?
+            self.request(
+                "playlist.getDetails",
+                &[("listid", reference), ("n", "50")],
+                false,
+            )
+            .await?
         } else {
-            let url = reqwest::Url::parse(reference).map_err(|_| JioSaavnError::Malformed("use a JioSaavn playlist URL or numeric ID".into()))?;
-            if url.scheme() != "https" || !matches!(url.host_str(),Some("www.jiosaavn.com" | "jiosaavn.com")) {
-                return Err(JioSaavnError::Malformed("use a JioSaavn playlist URL".into()));
+            let url = reqwest::Url::parse(reference).map_err(|_| {
+                JioSaavnError::Malformed("use a JioSaavn playlist URL or numeric ID".into())
+            })?;
+            if url.scheme() != "https"
+                || !matches!(url.host_str(), Some("www.jiosaavn.com" | "jiosaavn.com"))
+            {
+                return Err(JioSaavnError::Malformed(
+                    "use a JioSaavn playlist URL".into(),
+                ));
             }
-            let token = url.path_segments().and_then(|segments| segments.filter(|s| !s.is_empty()).last()).unwrap_or("");
-            if token.is_empty() || !token.chars().all(|c| c.is_ascii_alphanumeric() || "_,-=".contains(c)) {
+            let token = url
+                .path_segments()
+                .and_then(|segments| segments.filter(|s| !s.is_empty()).last())
+                .unwrap_or("");
+            if token.is_empty()
+                || !token
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "_,-=".contains(c))
+            {
                 return Err(JioSaavnError::Malformed("invalid playlist URL".into()));
             }
-            self.request("webapi.get", &[("token",token),("type","playlist"),("n","50")],false).await?
+            self.request(
+                "webapi.get",
+                &[("token", token), ("type", "playlist"), ("n", "50")],
+                false,
+            )
+            .await?
         };
-        let id = text(&data,"id").or_else(|| text(&data,"listid")).ok_or_else(|| JioSaavnError::Malformed("missing playlist ID".into()))?;
-        let title = text(&data,"title").or_else(|| text(&data,"listname")).unwrap_or_else(|| "JioSaavn playlist".into());
-        let tracks = self.playlist(&id,50,false).await?;
-        Ok((id,title,text(&data,"image"),tracks))
+        let id = text(&data, "id")
+            .or_else(|| text(&data, "listid"))
+            .ok_or_else(|| JioSaavnError::Malformed("missing playlist ID".into()))?;
+        let title = text(&data, "title")
+            .or_else(|| text(&data, "listname"))
+            .unwrap_or_else(|| "JioSaavn playlist".into());
+        let tracks = self.playlist(&id, 50, false).await?;
+        Ok((id, title, text(&data, "image"), tracks))
     }
 
-    pub async fn playlist(&self, id: &str, limit: usize, refresh: bool) -> Result<Vec<ExternalTrackMetadata>> {
+    pub async fn playlist(
+        &self,
+        id: &str,
+        limit: usize,
+        refresh: bool,
+    ) -> Result<Vec<ExternalTrackMetadata>> {
         if id.is_empty() || !id.chars().all(|c| c.is_ascii_digit()) {
             return Err(JioSaavnError::Malformed("invalid playlist ID".into()));
         }
         let n = limit.clamp(1, 50).to_string();
-        let data = self.request("playlist.getDetails", &[("listid", id), ("n", &n)], refresh).await?;
-        let items = data.get("list").or_else(|| data.get("songs")).and_then(Value::as_array)
+        let data = self
+            .request("playlist.getDetails", &[("listid", id), ("n", &n)], refresh)
+            .await?;
+        let items = data
+            .get("list")
+            .or_else(|| data.get("songs"))
+            .and_then(Value::as_array)
             .ok_or_else(|| JioSaavnError::Malformed("missing playlist songs".into()))?;
         let mut seen = HashSet::new();
-        Ok(items.iter().filter(|item| full_track_source(item).is_ok()).filter_map(|item| parse_track(item).ok())
-            .filter(|track| seen.insert(track.provider_track_id.clone())).take(limit.min(50)).collect())
+        Ok(items
+            .iter()
+            .filter(|item| full_track_source(item).is_ok())
+            .filter_map(|item| parse_track(item).ok())
+            .filter(|track| seen.insert(track.provider_track_id.clone()))
+            .take(limit.min(50))
+            .collect())
     }
 
     pub async fn resolve(&self, id: &str, refresh: bool) -> Result<(String, f64)> {
@@ -283,7 +408,10 @@ fn full_track_source(value: &Value) -> Result<(String, f64)> {
     let encrypted = text(value, "encrypted_media_url")
         .or_else(|| text(info, "encrypted_media_url"))
         .ok_or_else(|| JioSaavnError::Unavailable("ordinary full-track media absent".into()))?;
-    let url = decode_media_url(&encrypted, truthy(value.get("320kbps").unwrap_or(&info["320kbps"])))?;
+    let url = decode_media_url(
+        &encrypted,
+        truthy(value.get("320kbps").unwrap_or(&info["320kbps"])),
+    )?;
     Ok((url, duration))
 }
 
@@ -291,6 +419,39 @@ impl Default for JioSaavnProvider {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn merge_charts(feeds: &[Value]) -> Vec<Value> {
+    let mut seen = HashSet::new();
+    let mut charts: Vec<_> = feeds
+        .iter()
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(|item| {
+            let id = text(item, "id").or_else(|| text(item, "listid"))?;
+            let title = text(item, "title").or_else(|| text(item, "listname"))?;
+            if !id.chars().all(|c| c.is_ascii_digit()) || !seen.insert(id.clone()) {
+                return None;
+            }
+            let image = text(item, "image")
+                .filter(|image| image.starts_with("https://"))
+                .map(|image| {
+                    image
+                        .replace("150x150", "500x500")
+                        .replace("50x50", "500x500")
+                });
+            Some(serde_json::json!({"id":id,"title":title,"image":image,"perma_url":text(item,"perma_url")}))
+        })
+        .take(90)
+        .collect();
+    charts.sort_by_key(|chart| {
+        let title = chart["title"].as_str().unwrap_or("").to_lowercase();
+        !["global", "english", "international", "worldwide"]
+            .iter()
+            .any(|word| title.contains(word))
+    });
+    charts.truncate(30);
+    charts
 }
 
 fn text(v: &Value, key: &str) -> Option<String> {
@@ -321,7 +482,18 @@ pub fn parse_track(v: &Value) -> Result<ExternalTrackMetadata> {
     let artist = text(v, "primary_artists")
         .or_else(|| text(info, "primary_artists"))
         .or_else(|| text(v, "singers"))
-        .or_else(|| info.pointer("/artistMap/primary_artists").and_then(Value::as_array).map(|artists| artists.iter().filter_map(|artist| text(artist,"name")).collect::<Vec<_>>().join(", ")).filter(|name| !name.is_empty()))
+        .or_else(|| {
+            info.pointer("/artistMap/primary_artists")
+                .and_then(Value::as_array)
+                .map(|artists| {
+                    artists
+                        .iter()
+                        .filter_map(|artist| text(artist, "name"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .filter(|name| !name.is_empty())
+        })
         .unwrap_or_default();
     let cover = text(v, "image")
         .filter(|u| u.starts_with("https://"))
@@ -407,5 +579,30 @@ mod tests {
         let s = "ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq";
         assert!(decode_media_url(s, true).unwrap().ends_with("_320.mp4"));
         assert!(decode_media_url(s, false).unwrap().ends_with("_160.mp4"));
+    }
+}
+
+#[cfg(test)]
+mod chart_feed_tests {
+    use super::*;
+    #[test]
+    fn merges_international_and_regional_editorial_lists_with_real_artwork() {
+        let charts = merge_charts(&[
+            serde_json::json!([
+                {"id":"12","title":"Global Hits","image":"https://example.test/global-150x150.jpg"},
+                {"listid":"13","listname":"English Top 50"}
+            ]),
+            serde_json::json!([
+                {"id":12,"title":"Duplicate"},{"id":"14","title":"India Top 50"},
+                {"id":"https://untrusted.test","title":"Invalid"}
+            ]),
+        ]);
+        assert_eq!(charts.len(), 3);
+        assert_eq!(charts[0]["title"], "Global Hits");
+        assert_eq!(
+            charts[0]["image"],
+            "https://example.test/global-500x500.jpg"
+        );
+        assert_eq!(charts[2]["title"], "India Top 50");
     }
 }

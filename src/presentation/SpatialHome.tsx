@@ -1,3 +1,4 @@
+import { NotInterestedButton } from "../components/NotInterestedButton";
 import { memo } from "react";
 import {
   ArrowDownRight,
@@ -109,6 +110,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
           <Info size={15} />
         </button>
       )}
+      <NotInterestedButton trackId={item.id} title={item.title} />
       {onEnqueueTrack && (
         <button
           className="player-icon-btn"
@@ -437,7 +439,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
       <div className="spatial-home-extras">
         <section>
           <h2>For You</h2>
-          <p>Library picks informed by your listening.</p>
+          <p>Songs informed by your listening.</p>
           {overview?.for_you.length ? (
             overview.for_you.slice(0, 5).map((rec) => {
               const isCurrent = isCurrentPlaybackTrack(rec, currentTrack);
@@ -453,6 +455,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
                     <strong>{rec.title}</strong>
                     <span>{rec.artist_name || "Unknown artist"}</span>
                   </div>
+                  <NotInterestedButton trackId={rec.track_id} title={rec.title} />
                   <button
                     className="player-icon-btn"
                     aria-label={`Why: ${presentFlowExplanation(rec.explanation).title}`}

@@ -23,7 +23,7 @@ impl SyncManager {
             "SELECT user_id, username, session_id, device_id, device_name,
                     idle_expires_at, absolute_expires_at, last_cloud_validation_at,
                     worker_url, synced_at, authenticated_before, created_at
-             FROM cloud_sessions ORDER BY created_at DESC LIMIT 1"
+             FROM cloud_sessions ORDER BY created_at DESC LIMIT 1",
         )
         .fetch_optional(pool)
         .await
@@ -50,7 +50,7 @@ impl SyncManager {
                  last_cloud_validation_at = excluded.last_cloud_validation_at,
                  worker_url = excluded.worker_url,
                  synced_at = excluded.synced_at,
-                 authenticated_before = excluded.authenticated_before"
+                 authenticated_before = excluded.authenticated_before",
         )
         .bind(&metadata.user_id)
         .bind(&metadata.username)
@@ -71,13 +71,19 @@ impl SyncManager {
         Ok(())
     }
 
-    pub async fn update_validation_timestamp(pool: &SqlitePool, user_id: &str, timestamp: i64) -> AppResult<()> {
+    pub async fn update_validation_timestamp(
+        pool: &SqlitePool,
+        user_id: &str,
+        timestamp: i64,
+    ) -> AppResult<()> {
         sqlx::query("UPDATE cloud_sessions SET last_cloud_validation_at = ? WHERE user_id = ?")
             .bind(timestamp)
             .bind(user_id)
             .execute(pool)
             .await
-            .map_err(|e| AppError::Database(format!("Failed to update validation timestamp: {}", e)))?;
+            .map_err(|e| {
+                AppError::Database(format!("Failed to update validation timestamp: {}", e))
+            })?;
 
         Ok(())
     }
@@ -196,13 +202,12 @@ impl SyncManager {
     ) -> AppResult<SyncReport> {
         tracing::info!("SYNC START: user_id = {}", user_id);
 
-        let local_before: (i64,) = sqlx::query_as(
-            "SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
-        )
-        .bind(user_id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((0,));
+        let local_before: (i64,) =
+            sqlx::query_as("SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0")
+                .bind(user_id)
+                .fetch_one(pool)
+                .await
+                .unwrap_or((0,));
         let local_playlists_before = local_before.0 as usize;
 
         // Step 1: PULL cloud state FIRST.
@@ -212,24 +217,37 @@ impl SyncManager {
         let cloud_playlist_songs_returned = remote_data.playlist_songs.len();
 
         tracing::info!("cloud playlists returned: {}", cloud_playlists_returned);
-        tracing::info!("cloud playlist_songs returned: {}", cloud_playlist_songs_returned);
+        tracing::info!(
+            "cloud playlist_songs returned: {}",
+            cloud_playlist_songs_returned
+        );
         tracing::info!("local playlists before sync: {}", local_playlists_before);
 
         // Step 2: Reconcile local SQLite with remote cloud data
         let (playlists_inserted_updated, playlist_memberships_inserted_updated) =
             Self::apply_remote_sync_payload(pool, user_id, &remote_data).await?;
 
-        tracing::info!("playlists inserted/updated locally: {}", playlists_inserted_updated);
-        tracing::info!("playlist memberships inserted/updated: {}", playlist_memberships_inserted_updated);
+        tracing::info!(
+            "playlists inserted/updated locally: {}",
+            playlists_inserted_updated
+        );
+        tracing::info!(
+            "playlist memberships inserted/updated: {}",
+            playlist_memberships_inserted_updated
+        );
 
         // Step 3: Prepare local changes (including any local playlists and pending tombstones)
         let local_payload = Self::prepare_local_sync_payload(pool, user_id).await?;
-        let pending_local_changes_uploaded =
-            local_payload.playlists.len() + local_payload.deleted_playlists.len() + local_payload.deleted_playlist_songs.len();
+        let pending_local_changes_uploaded = local_payload.playlists.len()
+            + local_payload.deleted_playlists.len()
+            + local_payload.deleted_playlist_songs.len();
 
         // Step 4: PUSH legitimate local changes to cloud
         let synced_at = client.push_sync(worker_url, token, &local_payload).await?;
-        tracing::info!("pending local changes uploaded: {}", pending_local_changes_uploaded);
+        tracing::info!(
+            "pending local changes uploaded: {}",
+            pending_local_changes_uploaded
+        );
 
         // Step 5: Clear tombstones that have now been pushed
         let _ = Self::clear_tombstones(pool, user_id).await;
@@ -237,13 +255,12 @@ impl SyncManager {
         // Step 6: Update session synced_at timestamp
         Self::update_session_synced_at(pool, user_id, synced_at).await?;
 
-        let local_after: (i64,) = sqlx::query_as(
-            "SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
-        )
-        .bind(user_id)
-        .fetch_one(pool)
-        .await
-        .unwrap_or((0,));
+        let local_after: (i64,) =
+            sqlx::query_as("SELECT count(*) FROM playlists WHERE user_id = ? AND is_smart_mix = 0")
+                .bind(user_id)
+                .fetch_one(pool)
+                .await
+                .unwrap_or((0,));
         let local_playlists_after = local_after.0 as usize;
 
         tracing::info!("local playlists after sync: {}", local_playlists_after);
@@ -283,15 +300,22 @@ impl SyncManager {
         let now = Utc::now().timestamp();
 
         // 1. Playlists: user-owned custom playlists (non-smart mixes)
-        let playlist_rows: Vec<(String, String, Option<String>, i64, Option<String>, i64, i64)> =
-            sqlx::query_as(
-                "SELECT id, name, description, is_smart_mix, mix_type, created_at, updated_at
+        let playlist_rows: Vec<(
+            String,
+            String,
+            Option<String>,
+            i64,
+            Option<String>,
+            i64,
+            i64,
+        )> = sqlx::query_as(
+            "SELECT id, name, description, is_smart_mix, mix_type, created_at, updated_at
                  FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
-            )
-            .bind(user_id)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| AppError::Database(format!("Failed to load playlists: {}", e)))?;
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| AppError::Database(format!("Failed to load playlists: {}", e)))?;
 
         let playlists: Vec<CloudPlaylist> = playlist_rows
             .into_iter()
@@ -585,7 +609,9 @@ impl SyncManager {
         let now = Utc::now().timestamp();
 
         // Retrieve local tombstones so explicitly deleted items are never re-inserted
-        let tombstones = Self::get_tombstones(pool, user_id).await.unwrap_or_default();
+        let tombstones = Self::get_tombstones(pool, user_id)
+            .await
+            .unwrap_or_default();
         let deleted_playlists_set: std::collections::HashSet<String> = tombstones
             .iter()
             .filter(|(_, t, _)| t == "playlist")
@@ -689,7 +715,7 @@ impl SyncManager {
                  VALUES (?, ?, ?, ?)
                  ON CONFLICT(playlist_id, position) DO UPDATE SET
                      track_id = excluded.track_id,
-                     added_at = excluded.added_at"
+                     added_at = excluded.added_at",
             )
             .bind(&ps.playlist_id)
             .bind(&ps.song_id)
@@ -705,7 +731,11 @@ impl SyncManager {
 
         // 4. Song stats (stores and syncs liked: 1, disliked: -1, and neutral: 0 across users)
         for ss in &payload.song_stats {
-            let stat_user_id = if ss.user_id.is_empty() { user_id } else { &ss.user_id };
+            let stat_user_id = if ss.user_id.is_empty() {
+                user_id
+            } else {
+                &ss.user_id
+            };
             let _ = sqlx::query(
                 "INSERT INTO track_statistics (user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -728,6 +758,8 @@ impl SyncManager {
             .execute(pool)
             .await;
         }
+
+        crate::recommendations::signals::remember_imported_dislikes(pool, user_id).await?;
 
         // 4.5. Daily user stats
         for ds in &payload.daily_stats {
@@ -821,10 +853,22 @@ impl SyncManager {
             for item in items {
                 let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("stat_1");
                 let year = item.get("year").and_then(|v| v.as_i64()).unwrap_or(2026);
-                let total_seconds = item.get("total_seconds").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let top_songs = item.get("top_songs_json").and_then(|v| v.as_str()).unwrap_or("[]");
-                let top_artists = item.get("top_artists_json").and_then(|v| v.as_str()).unwrap_or("[]");
-                let archived_at = item.get("updated_at").and_then(|v| v.as_i64()).unwrap_or(now);
+                let total_seconds = item
+                    .get("total_seconds")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+                let top_songs = item
+                    .get("top_songs_json")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("[]");
+                let top_artists = item
+                    .get("top_artists_json")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("[]");
+                let archived_at = item
+                    .get("updated_at")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(now);
 
                 let _ = sqlx::query(
                     "INSERT INTO yearly_stats_archive (id, user_id, year, total_seconds, top_songs_json, top_artists_json, archived_at)
@@ -865,7 +909,7 @@ impl SyncManager {
                          VALUES (?, ?, ?)
                          ON CONFLICT(key) DO UPDATE SET
                              value = excluded.value,
-                             updated_at = excluded.updated_at"
+                             updated_at = excluded.updated_at",
                     )
                     .bind(k)
                     .bind(v)

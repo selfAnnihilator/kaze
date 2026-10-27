@@ -162,27 +162,17 @@ impl Default for ResolutionCache {
     }
 }
 
-/// Attempt to parse the `expire` query-parameter from a provider/googlevideo CDN
-/// URL and return it as a UNIX timestamp (seconds).
-///
-/// provider signed URLs look like:
-///   `https://rr*.aac.saavncdn.com/…?…&expire=1747123456&…`
-///
-/// Returns `None` for non-provider URLs or when the parameter is absent/invalid.
+/// Parse an optional expiry from a media URL. Source validation belongs to the
+/// provider adapter; the cache must not hardcode retired CDN host names.
 pub fn parse_url_expiry(url: &str) -> Option<u64> {
-    // Fast reject for non-provider CDN URLs.
-    if !url.contains("aac.saavncdn.com") && !url.contains("provider.com") {
-        return None;
-    }
-    // Parse the query string without pulling in a URL crate — we only need one
-    // specific parameter.
-    let query = url.split('?').nth(1)?;
-    for pair in query.split('&') {
-        if let Some(val) = pair.strip_prefix("expire=") {
-            return val.parse::<u64>().ok();
+    let parsed = reqwest::Url::parse(url).ok()?;
+    parsed.query_pairs().find_map(|(key, value)| {
+        if key == "expire" {
+            value.parse::<u64>().ok()
+        } else {
+            None
         }
-    }
-    None
+    })
 }
 
 #[cfg(test)]
@@ -208,7 +198,11 @@ mod tests {
             // expiry in the past
             expires_at: Instant::now() - Duration::from_secs(1),
         };
-        cache.inner.lock().unwrap().insert("key2".to_string(), entry);
+        cache
+            .inner
+            .lock()
+            .unwrap()
+            .insert("key2".to_string(), entry);
         assert!(cache.get("key2").is_none());
         // Should have been removed.
         assert!(cache.inner.lock().unwrap().get("key2").is_none());
@@ -218,11 +212,7 @@ mod tests {
     fn cap_is_enforced_by_evicting_oldest() {
         let cache = ResolutionCache::new();
         for i in 0..RESOLUTION_CACHE_MAX {
-            let entry = ResolvedEntry::new(
-                format!("https://example.com/{}.m4a", i),
-                210.0,
-                None,
-            );
+            let entry = ResolvedEntry::new(format!("https://example.com/{}.m4a", i), 210.0, None);
             cache.insert(format!("key{}", i), entry);
         }
         assert_eq!(cache.valid_len(), RESOLUTION_CACHE_MAX);
@@ -254,7 +244,11 @@ mod tests {
             .unwrap()
             .as_secs()
             + 100 * 365 * 24 * 3600;
-        let entry = ResolvedEntry::new("https://rr.aac.saavncdn.com/x".to_string(), 180.0, Some(far_future_unix));
+        let entry = ResolvedEntry::new(
+            "https://rr.aac.saavncdn.com/x".to_string(),
+            180.0,
+            Some(far_future_unix),
+        );
         // expires_at must be <= now + FALLBACK_TTL_SECS + tiny epsilon.
         let max_allowed = Instant::now() + Duration::from_secs(FALLBACK_TTL_SECS + 5);
         assert!(entry.expires_at <= max_allowed);

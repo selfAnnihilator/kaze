@@ -226,6 +226,7 @@ impl FlowEngine {
         }
         let ratio = familiarity_ratio.clamp(0.0, 1.0);
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        let signals = super::signals::SongSignals::load(&self.pool, user_id).await?;
         let now = Utc::now().timestamp();
 
         let mut candidates = sqlx::query_as::<_, FlowCandidateRow>(
@@ -276,24 +277,43 @@ impl FlowEngine {
                  LIMIT 2000"
             ).bind(user_id).bind(user_id).fetch_all(&self.pool).await
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            candidates.extend(online.into_iter().filter(|c| {
-                let known = c.manual_like == Some(1)
-                    || c.last_played_at.is_some()
-                    || c.play_count.unwrap_or(0) > 0;
-                let artist_match = c
-                    .artist_id
-                    .as_ref()
-                    .and_then(|id| profile.artist_affinities.get(id))
-                    .copied()
-                    .unwrap_or(0.0)
-                    > 0.15;
-                let genre_match = c.genre_name.as_ref().is_some_and(|genre| {
-                    profile.genre_affinities.iter().any(|(name, affinity)| {
-                        name.eq_ignore_ascii_case(genre.trim()) && *affinity > 0.15
+            candidates.extend(
+                online
+                    .into_iter()
+                    .map(|mut c| {
+                        let signal =
+                            signals.signal(&c.id, &c.title, c.artist_name.as_deref().unwrap_or(""));
+                        c.play_count = Some(signal.play_count);
+                        c.completion_count = Some(signal.completion_count);
+                        c.skip_count = Some(signal.skip_count);
+                        c.manual_like = Some(signal.manual_like);
+                        c.last_played_at = signal.last_played_at;
+                        c
                     })
-                });
-                known || artist_match || genre_match
-            }));
+                    .filter(|c| {
+                        let known = c.manual_like == Some(1)
+                            || c.last_played_at.is_some()
+                            || c.play_count.unwrap_or(0) > 0;
+                        let artist_match =
+                            profile.artist_affinity(c.artist_name.as_deref().unwrap_or("")) > 0.15;
+                        let language_match = signals
+                            .identities
+                            .get(&c.id)
+                            .and_then(|song| song.language.as_ref())
+                            .and_then(|language| {
+                                profile.language_affinities.get(&language.to_lowercase())
+                            })
+                            .copied()
+                            .unwrap_or(0.0)
+                            > 0.15;
+                        let genre_match = c.genre_name.as_ref().is_some_and(|genre| {
+                            profile.genre_affinities.iter().any(|(name, affinity)| {
+                                name.eq_ignore_ascii_case(genre.trim()) && *affinity > 0.15
+                            })
+                        });
+                        known || artist_match || genre_match || language_match
+                    }),
+            );
         }
 
         if candidates.is_empty() {
@@ -306,6 +326,38 @@ impl FlowEngine {
             .filter(|c| exclude_set.contains(c.id.as_str()) || c.manual_like == Some(-1))
             .map(|c| Self::song_key(&c.title, c.artist_name.as_deref().unwrap_or("")))
             .collect();
+        let mut preferred: HashMap<String, (u8, String)> = HashMap::new();
+        for candidate in &candidates {
+            if !candidate.is_online
+                || candidate.play_count.unwrap_or(0) > 0
+                || candidate.manual_like == Some(1)
+            {
+                continue;
+            }
+            let key = Self::song_key(
+                &candidate.title,
+                candidate.artist_name.as_deref().unwrap_or(""),
+            );
+            let rank = crate::recommendations::signals::release_preference(
+                &candidate.title,
+                candidate.album_title.as_deref(),
+            );
+            if preferred.get(&key).is_none_or(|(old, _)| rank > *old) {
+                preferred.insert(key, (rank, candidate.id.clone()));
+            }
+        }
+        candidates.retain(|candidate| {
+            !candidate.is_online
+                || candidate.play_count.unwrap_or(0) > 0
+                || candidate.manual_like == Some(1)
+                || preferred
+                    .get(&Self::song_key(
+                        &candidate.title,
+                        candidate.artist_name.as_deref().unwrap_or(""),
+                    ))
+                    .is_none_or(|(_, id)| id == &candidate.id)
+        });
+
         let mut seen_songs = HashSet::new();
 
         struct ScoredCandidate {
@@ -318,7 +370,17 @@ impl FlowEngine {
 
         let mut scored: Vec<ScoredCandidate> = Vec::new();
 
-        for c in candidates {
+        for mut c in candidates {
+            if signals.blocked(&c.id, &c.title, c.artist_name.as_deref().unwrap_or("")) {
+                continue;
+            }
+            let signal = signals.signal(&c.id, &c.title, c.artist_name.as_deref().unwrap_or(""));
+            c.play_count = Some(signal.play_count);
+            c.completion_count = Some(signal.completion_count);
+            c.skip_count = Some(signal.skip_count);
+            c.last_played_at = signal.last_played_at;
+            c.manual_like = Some(signal.manual_like);
+
             // Disliked tracks are strictly excluded
             if c.manual_like == Some(-1) {
                 continue;
@@ -360,7 +422,13 @@ impl FlowEngine {
                 artist_id: c.artist_id.clone(),
                 artist_name: c.artist_name.clone(),
                 genre_name: c.genre_name.clone(),
-                year: c.year,
+                year: c
+                    .year
+                    .or_else(|| signals.identities.get(&c.id).and_then(|song| song.year)),
+                language: signals
+                    .identities
+                    .get(&c.id)
+                    .and_then(|song| song.language.clone()),
                 play_count,
                 completion_count,
                 skip_count,
@@ -668,7 +736,7 @@ impl FlowEngine {
             .unwrap_or(true)
         {
             let for_you = self
-                .generate_flow_tracks(user_id, 1.0, 8, &[])
+                .generate_playback_tracks_after(user_id, 1.0, 8, &[], None)
                 .await?
                 .into_iter()
                 .map(|t| RecommendedTrackDetail {
@@ -819,6 +887,13 @@ impl FlowEngine {
         user_id: &str,
         track_id: &str,
     ) -> AppResult<FlowExplanation> {
+        let feedback = super::signals::SongSignals::load(&self.pool, user_id).await?;
+        if feedback.blocked_id(track_id) {
+            return Ok(FlowExplanation {
+                primary: "not_interested".into(),
+                ..Default::default()
+            });
+        }
         let candidate = sqlx::query_as::<_, FlowCandidateRow>(
             "SELECT t.id, t.title, t.artist_id, a.name as artist_name,
                     t.album_id, al.title as album_title, g.name as genre_name, t.year,
@@ -838,6 +913,7 @@ impl FlowEngine {
     pub async fn get_why_this_track(&self, user_id: &str, track_id: &str) -> AppResult<String> {
         let e = self.get_track_explanation(user_id, track_id).await?;
         Ok(match e.primary.as_str() {
+            "not_interested" => "You marked this song Not interested".into(),
             "liked" => "One of your liked tracks".into(),
             "rediscovery" => format!(
                 "You haven't played this in {} days",

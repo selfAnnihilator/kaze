@@ -50,17 +50,30 @@ impl LocalRecommender {
     pub fn new(pool: SqlitePool) -> Self {
         let taste_engine = TasteProfileEngine::new(pool.clone());
         let rec_repo = SqliteRecommendationRepository::new(pool.clone());
-        Self { pool, taste_engine, rec_repo }
+        Self {
+            pool,
+            taste_engine,
+            rec_repo,
+        }
     }
 
     /// Fetches all candidates, evaluates scores against user's taste profile,
     /// enforces diversity (max 2 tracks per artist), and logs the session.
-    pub async fn recommend(&self, user_id: &str, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
+    pub async fn recommend(
+        &self,
+        user_id: &str,
+        limit: usize,
+    ) -> AppResult<Vec<RecommendedTrackDetail>> {
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
         self.recommend_with_profile(user_id, &profile, limit).await
     }
 
-    pub async fn recommend_with_profile(&self, user_id: &str, profile: &TasteProfile, limit: usize) -> AppResult<Vec<RecommendedTrackDetail>> {
+    pub async fn recommend_with_profile(
+        &self,
+        user_id: &str,
+        profile: &TasteProfile,
+        limit: usize,
+    ) -> AppResult<Vec<RecommendedTrackDetail>> {
         let candidates = sqlx::query_as::<_, CandidateRow>(
             "SELECT t.id, t.title, t.artist_id, a.name as artist_name, al.title as album_title,
                     g.name as genre_name, t.year, t.duration_secs,
@@ -70,7 +83,7 @@ impl LocalRecommender {
              LEFT JOIN artists a ON a.id = t.artist_id
              LEFT JOIN albums al ON al.id = t.album_id
              LEFT JOIN genres g ON g.id = t.genre_id
-             LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?"
+             LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -78,9 +91,21 @@ impl LocalRecommender {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         let now = Utc::now().timestamp();
+        let signals = super::signals::SongSignals::load(&self.pool, user_id).await?;
         let mut scored_tracks: Vec<(CandidateRow, TrackRecommendationScore)> = Vec::new();
 
-        for c in candidates {
+        for mut c in candidates {
+            if signals.blocked(&c.id, &c.title, c.artist_name.as_deref().unwrap_or("")) {
+                continue;
+            }
+            let signal = signals.signal(&c.id, &c.title, c.artist_name.as_deref().unwrap_or(""));
+            c.play_count = Some(signal.play_count);
+            c.completion_count = Some(signal.completion_count);
+            c.skip_count = Some(signal.skip_count);
+            c.last_played_at = signal.last_played_at;
+            c.manual_like = Some(signal.manual_like);
+            let identity = signals.identities.get(&c.id);
+
             let feedback = match c.manual_like {
                 Some(1) => Some("like".to_string()),
                 Some(-1) => Some("dislike".to_string()),
@@ -93,7 +118,8 @@ impl LocalRecommender {
                 artist_id: c.artist_id.clone(),
                 artist_name: c.artist_name.clone(),
                 genre_name: c.genre_name.clone(),
-                year: c.year,
+                year: c.year.or_else(|| identity.and_then(|song| song.year)),
+                language: identity.and_then(|song| song.language.clone()),
                 play_count: c.play_count.unwrap_or(0),
                 completion_count: c.completion_count.unwrap_or(0),
                 skip_count: c.skip_count.unwrap_or(0),
@@ -108,14 +134,31 @@ impl LocalRecommender {
         }
 
         // Sort descending by final score
-        scored_tracks.sort_by(|a, b| b.1.final_score.partial_cmp(&a.1.final_score).unwrap_or(std::cmp::Ordering::Equal));
+        scored_tracks.sort_by(|a, b| {
+            b.1.final_score
+                .partial_cmp(&a.1.final_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Enforce artist diversity: max 2 tracks per artist
+        let mut seen_songs = std::collections::HashSet::new();
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut selected: Vec<(CandidateRow, TrackRecommendationScore)> = Vec::new();
 
         for (candidate, score) in scored_tracks {
-            let artist_key = candidate.artist_id.clone().unwrap_or_else(|| "unknown".to_string());
+            if !seen_songs.insert(
+                super::signals::song_key(
+                    &candidate.title,
+                    candidate.artist_name.as_deref().unwrap_or(""),
+                )
+                .unwrap_or_else(|| candidate.id.clone()),
+            ) {
+                continue;
+            }
+            let artist_key = candidate
+                .artist_id
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
             let count = artist_counts.entry(artist_key).or_insert(0);
             if *count < 2 {
                 *count += 1;
@@ -132,7 +175,8 @@ impl LocalRecommender {
         let mut result = Vec::new();
 
         for (candidate, score) in selected {
-            let reasons_json = serde_json::to_string(&score.reasons).unwrap_or_else(|_| "[]".to_string());
+            let reasons_json =
+                serde_json::to_string(&score.reasons).unwrap_or_else(|_| "[]".to_string());
 
             new_recs.push(NewRecommendation {
                 id: uuid::Uuid::new_v4().to_string(),
@@ -158,7 +202,10 @@ impl LocalRecommender {
         }
 
         // Record session
-        let _ = self.rec_repo.record_session(user_id, &session_id, "local_mix", &new_recs).await;
+        let _ = self
+            .rec_repo
+            .record_session(user_id, &session_id, "local_mix", &new_recs)
+            .await;
 
         Ok(result)
     }

@@ -1,3 +1,4 @@
+import { NotInterestedButton } from "../components/NotInterestedButton";
 import { memo } from "react";
 import {
   ArrowUpRight,
@@ -281,6 +282,7 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
                         <Info size={18} />
                       </button>
                     )}
+                    <NotInterestedButton trackId={t.id} title={t.title} />
                     {p.onEnqueueTrack && (
                       <button
                         className="press-icon"

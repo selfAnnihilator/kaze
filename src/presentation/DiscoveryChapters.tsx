@@ -41,6 +41,7 @@ export type DiscoveryChapter = {
   title: string;
   subtitle: string;
   previews: DiscoveryPreview[];
+  onRefresh?: () => Promise<void>;
 };
 const PreviewContext = createContext<
   ((preview: DiscoveryPreview) => void) | null
@@ -73,6 +74,8 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
   children: ReactNode;
   selections: DiscoveryChapter[];
 }) {
+  const [refreshing, setRefreshing] = useState<number | null>(null);
+  const [refreshError, setRefreshError] = useState("");
   const style = useInterfaceStyle();
   const memory = useDiscoveryMemory();
   const [active, setActive] = useState(memory.chapter);
@@ -184,6 +187,15 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
       ))}
     </nav>
   );
+  const refreshControl = <span className="discovery-refresh-control">
+    <button type="button" className="scroll-arrow-btn" aria-label={`Refresh ${selections[active].title}`} title={`Refresh ${selections[active].title}`} disabled={refreshing !== null} onClick={async () => {
+      const index = active; setRefreshing(index); setRefreshError("");
+      try { await selections[index].onRefresh?.(); }
+      catch { setRefreshError("Couldn’t refresh. Try again."); }
+      finally { setRefreshing(null); }
+    }}><RefreshCw size={16} className={refreshing === active ? "spin-animation" : ""} /></button>
+    {refreshError && <span role="alert">{refreshError}</span>}
+  </span>;
   const content = Children.toArray(children).flatMap((child, index) =>
     active !== index
       ? []
@@ -345,6 +357,7 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
                 </span>
                 <h1>{selections[active].title}</h1>
                 <p>{selections[active].subtitle}</p>
+                {refreshControl}
               </div>
               <div
                 className="spatial-discovery-detail"
@@ -419,6 +432,7 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
               <div>
                 <h2>{selections[active].title}</h2>
                 <p>{selections[active].subtitle}</p>
+                {refreshControl}
               </div>
               <div className="press-bin-controls">
                 <button

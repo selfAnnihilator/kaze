@@ -1,3 +1,6 @@
+import { recommendationPreferences } from "./services/recommendationPreferences";
+import "./App.css";
+import { removeRecommendationTracks } from "./recommendationFeedback";
 import { useRouteScroll } from "./presentation/useRouteScroll";
 import { ViewMemoryProvider } from "./presentation/ViewMemory";
 import { useVisualActivity } from "./presentation/useVisualActivity";
@@ -39,7 +42,6 @@ import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { filterAndRankDownloadResults } from "./downloadMatch";
 import { attachLocalSearchMatches } from "./localTrackMatch";
-import { DownloadModalTrack } from "./components/modals/DownloadOptionsModal";
 import { AddToPlaylistModalTrack } from "./components/modals/AddToPlaylistModal";
 import {
   CollectionDetailView,
@@ -96,9 +98,6 @@ const LyricsView = lazy(() => import("./components/views/LyricsView").then((m) =
   })),
 );
 const AuthModal = lazy(() => import("./components/modals/AuthModal").then((m) => ({ default: m.AuthModal,
-  })),
-);
-const DownloadOptionsModal = lazy(() => import("./components/modals/DownloadOptionsModal").then((m) => ({ default: m.DownloadOptionsModal,
   })),
 );
 const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistModal").then((m) => ({ default: m.AddToPlaylistModal,
@@ -220,6 +219,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
 
   // Home & Flow State
+  const [recommendationNotice, setRecommendationNotice] = useState<{ id: string; title: string } | null>(null);
   const [homeOverview, setHomeOverview] = useState<HomeOverview | null>(null);
   const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
   const [flowSteering, setFlowSteering] = useState<number>(0.5);
@@ -301,9 +301,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [toasts, setToasts] = useState<AppNotification[]>([]);
 
-  // Middle Modal Popup for Track Download
-  const [downloadModalTrack, setDownloadModalTrack] = useState<DownloadModalTrack | null>(null);
-
   // Global Top Search Bar State
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
@@ -318,7 +315,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const destinationRef = useRef(destination);
   destinationRef.current = destination;
   useEffect(() => { setGlobalSearchQuery(destination.searchQuery); }, [destination.searchQuery]);
-  const [downloadTargets, setDownloadTargets] = useState<Record<string, { title: string; artist: string }>>({});
   const currentSearchResults = useMemo(
     () => attachLocalSearchMatches(globalSearchResults, tracks),
     [globalSearchResults, tracks],
@@ -624,6 +620,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   const fetchPlaylists = useCallback(async () => {
+    void recommendationPreferences.refresh().catch(console.error);
     try {
       const res = await executeQuery({ query: "GetPlaylists" });
       if (Array.isArray(res.data)) {
@@ -660,7 +657,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     try {
       const res = await executeQuery({
         query: "GetDownloads",
-        payload: { limit: 50 },
+        payload: { limit: 10000 },
       });
       if (Array.isArray(res.data)) {
         downloadProgress.replace(res.data);
@@ -717,6 +714,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   ]);
 
   const discoveryRequestRef = useRef(0);
+  const chartRequestRef = useRef(0);
   const fetchPersonalRecommendations = useCallback(async (forceRefresh = false) => {
     const request = ++discoveryRequestRef.current;
     const userId = currentUserIdRef.current;
@@ -733,17 +731,21 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     const userId = currentUser?.id || "default";
     if (userId === currentUserIdRef.current) return;
     currentUserIdRef.current = userId;
+    recommendationPreferences.reset();
+    void recommendationPreferences.refresh().catch(console.error);
     ++discoveryRequestRef.current;
     setDiscoveryRecs([]);
     void fetchPersonalRecommendations().catch(console.error);
   }, [currentUser?.id, fetchPersonalRecommendations]);
 
   const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
+    const chartRequest = ++chartRequestRef.current;
+    const user = currentUserIdRef.current;
     const [discovery, charts] = await Promise.allSettled([
       fetchPersonalRecommendations(forceRefresh),
       executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts },
         }).then((res) => {
-        if (Array.isArray(res.data)) setWorldTrending(res.data);
+        if (chartRequest === chartRequestRef.current && user === currentUserIdRef.current && Array.isArray(res.data)) setWorldTrending(res.data);
       }),
     ]);
     if (discovery.status === "rejected") {
@@ -1199,11 +1201,31 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           fetchWishlist();
           break;
 
+        case "RecommendationFeedbackChanged": {
+          if (event.payload?.user_id !== currentUserIdRef.current) break;
+          ++homeRequestRef.current; ++discoveryRequestRef.current; ++chartRequestRef.current;
+          recommendationPreferences.update(event.payload?.track_ids || [], !!event.payload?.disliked);
+          const ids = new Set<string>(event.payload?.track_ids || []);
+          if (event.payload?.disliked) {
+            setDiscoveryRecs(previous => removeRecommendationTracks(previous, ids));
+            setWorldTrending(previous => removeRecommendationTracks(previous, ids));
+            setHomeOverview(previous => removeRecommendationTracks(previous, ids));
+            setRecommendationNotice({ id: event.payload.track_id, title: event.payload.title });
+          } else {
+            setRecommendationNotice(null);
+            void fetchDiscovery(false, false);
+          }
+          setPlaybackState(previous => previous.current_track && ids.has(previous.current_track.id)
+            ? { ...previous, current_track: { ...previous.current_track, manual_like: event.payload.manual_like } } : previous);
+          void fetchPlaylists();
+          break;
+        }
         case "TasteProfileChanged": {
           if (event.payload?.user_id !== currentUserIdRef.current) break;
           // The writer emits this after commit: no race with history persistence.
           // Coalesce rapid skips without subscribing App to position ticks.
           ++discoveryRequestRef.current;
+          ++homeRequestRef.current;
           clearTimeout(tasteRefreshTimer);
           tasteRefreshTimer = setTimeout(() => {
             void fetchPersonalRecommendations().catch(console.error);
@@ -1213,11 +1235,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         }
 
         case "SessionChanged": {
+          recommendationPreferences.reset();
+          void recommendationPreferences.refresh().catch(console.error);
           currentUserIdRef.current = event.payload?.user?.id || "default";
+          ++chartRequestRef.current; setWorldTrending([]); setRecommendationNotice(null);
           ++discoveryRequestRef.current;
           setDiscoveryRecs([]);
           clearTimeout(tasteRefreshTimer);
-          void fetchPersonalRecommendations().catch(console.error);
+          void fetchDiscovery(false, false);
           ++homeRequestRef.current;
           ++flowSessionRequestRef.current;
           void fetchHomeOverview();
@@ -3148,37 +3173,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     return [];
   };
 
-  // Navigation shortcut to search & download directly via centered modal popup
-  const handleInitiateDirectDownloadSearch = (
-    artist: string,
-    title: string,
-    album?: string,
-  ) => {
-    setDownloadModalTrack({ artist, title, album });
-  };
-
-  const handleModalStartDownload = async (
-    searchResultId: string,
-    track: DownloadModalTrack,
-  ) => {
-    const response = await dispatchCommand({
-      command: "StartDownload",
-      payload: {
-        search_result_id: searchResultId,
-      },
-    });
-    if (response?.data?.task_id) {
-      setDownloadTargets((previous) => ({
-        ...previous,
-        [response.data.task_id]: { title: track.title, artist: track.artist },
-      }));
-    }
-    addAppNotification(
-      "info",
-      "Download Queued",
-      `"${track.title}" by ${track.artist} has been queued for download.`,
-    );
-    fetchDownloads();
+  // Metadata-only legacy wishlist entries open explicit search, never select a recording silently.
+  const handleInitiateDirectDownloadSearch = (artist: string, title: string) => {
+    navigate({ ...viewDestination("discovery"), searchQuery: `${title} ${artist}`, searchResults: [] });
+    setSearchRefreshRevision(revision => revision + 1);
   };
 
   const handleGlobalOnlineSearch = async (queryOverride?: string) => {
@@ -3237,6 +3235,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           );
         });
 
+        if (!cancelled) void recommendationPreferences.refresh().catch(console.error);
         updateDestination((current) =>
           !cancelled &&
           current.view === "discovery" &&
@@ -3249,7 +3248,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         );
       } catch (err) {
         console.error("Global online music search failed:", err);
-        if (!cancelled) addAppNotification("error", "Online search unavailable", typeof err === "string" ? err : "Couldn’t reach JioSaavn. Please try again.");
+        if (!cancelled) addAppNotification("error", "Online search unavailable", typeof err === "string" ? err : "Couldn’t reach online music. Please try again.");
         updateDestination((current) =>
           !cancelled &&
           current.view === "discovery" &&
@@ -3861,7 +3860,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       searchQuery={globalSearchQuery}
                       setSearchQuery={setGlobalSearchQuery}
                       searchResults={currentSearchResults}
-                      downloadTargets={downloadTargets}
                       setSearchResults={setGlobalSearchResults}
                       isSearchingOnline={isGlobalSearching}
                       onSearchOnline={handleGlobalOnlineSearch}
@@ -4007,7 +4005,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           onLikeOnline={handleLikeOnline}
           isOnlineLiked={isCurrentTrackLiked}
           onRemoveFeedback={handleRemoveFeedback}
-          onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
           isInPlaylist={isCurrentTrackInPlaylist}
           onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
           onOpenOrigin={
@@ -4074,8 +4071,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               onLikeOnline={handleLikeOnline}
               isOnlineLiked={isCurrentTrackLiked}
               onRemoveFeedback={handleRemoveFeedback}
-              onDownloadOnlineTrack={handleInitiateDirectDownloadSearch}
-              onOpenOrigin={
+                  onOpenOrigin={
                 playingOrigin?.type === "playlist" ||
                 playingOrigin?.type === "mix" ||
                 playingOrigin?.type === "chart" ||
@@ -4134,15 +4130,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             />
           )}
 
-          {/* Center Modal Popup for Track Download */}
-          <DownloadOptionsModal
-            isOpen={!!downloadModalTrack}
-            track={downloadModalTrack}
-            onClose={() => setDownloadModalTrack(null)}
-            onSearchDownloads={handleSearchDownloads}
-            onStartDownload={handleModalStartDownload}
-          />
         </Suspense>
+
+        {recommendationNotice && <div className="recommendation-feedback-toast" role="status">
+          <span>Won’t recommend “{recommendationNotice.title}” again.</span>
+          <button onClick={() => { void dispatchCommand({ command: "RemoveTrackFeedback", payload: { track_id: recommendationNotice.id } }).catch(error => addAppNotification("error", "Couldn’t update recommendations", String(error))); }}>Allow again</button>
+          <button aria-label="Dismiss recommendation message" onClick={() => setRecommendationNotice(null)}>×</button>
+        </div>}
 
         {/* Onboarding Modal */}
         {showOnboarding && onboardingStatus && (

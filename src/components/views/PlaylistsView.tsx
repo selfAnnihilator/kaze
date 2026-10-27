@@ -1,3 +1,4 @@
+import { DownloadButton } from "../DownloadButton";
 import { useInterfaceStyle } from "../../presentation/InterfaceContext";
 import { WindowedGallery } from "../../presentation/WindowedGallery";
 import { useDebouncedValue } from "../../presentation/useDebouncedValue";
@@ -270,11 +271,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         setJioSaavnResult(res);
       } else {
         setJioSaavnMessage(
-          "Could not retrieve JioSaavn playlist. Please verify the URL or ID.",
+          "Could not retrieve playlist. Please verify the URL or ID.",
         );
       }
     } catch (err: any) {
-      setJioSaavnMessage(err?.message || "Failed to fetch JioSaavn playlist.");
+      setJioSaavnMessage(err?.message || "Failed to fetch playlist.");
     } finally {
       setInspectingJioSaavn(false);
     }
@@ -381,7 +382,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 marginTop: "4px",
               }}
             >
-              Your custom playlists and imported JioSaavn collections
+              Your custom playlists and imported collections
             </p>
           </div>
         )}
@@ -394,7 +395,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
               <Share2 size={16} color="var(--accent-secondary)" />
-              <span>Import from JioSaavn</span>
+              <span>Import playlist</span>
             </button>
 
             <button
@@ -746,7 +747,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               </div>
               <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
                 Create custom playlists manually, save a Smart Mix as a
-                permanent playlist, or import directly from JioSaavn.
+                permanent playlist, or import a playlist link.
               </p>
               <div
                 style={{
@@ -767,7 +768,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                   onClick={() => setShowJioSaavnModal(true)}
                 >
                   <Share2 size={16} color="var(--accent-secondary)" />
-                  <span>Import from JioSaavn</span>
+                  <span>Import playlist</span>
                 </button>
               </div>
             </div>
@@ -1406,7 +1407,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               >
                 <Share2 size={24} color="var(--accent-secondary)" />
                 <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>
-                  Import JioSaavn Playlist (up to 50 songs)
+                  Import playlist (up to 50 songs)
                 </h3>
               </div>
               <button
@@ -1435,9 +1436,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 lineHeight: 1.5,
               }}
             >
-              Paste a public JioSaavn playlist URL or ID. Kaze will inspect the
+              Paste a public playlist link or ID. Kaze will inspect the
               tracks, match them against your local library, and let you
-              save the selected JioSaavn versions.
+              save the selected recordings.
             </p>
 
             {/* Input Form */}
@@ -1447,7 +1448,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
             >
               <input
                 type="text"
-                placeholder="JioSaavn playlist URL or numeric ID"
+                placeholder="Playlist link or numeric ID"
                 value={jiosaavnInput}
                 onChange={(e) => setJioSaavnInput(e.target.value)}
                 className="input-field"
@@ -1660,23 +1661,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                               }}
                             >
                               {onSearchDirect ? (
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{
-                                    padding: "4px 10px",
-                                    fontSize: "0.75rem",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "5px",
-                                  }}
-                                  onClick={() =>
-                                    onSearchDirect(tr.artist, tr.title)
-                                  }
-                                  title="Download this track to your local library"
-                                >
-                                  <DownloadCloud size={13} />
-                                  <span>Download</span>
-                                </button>
+                                <DownloadButton key={tr.track_id} trackId={tr.track_id} title={tr.title} />
                               ) : (
                                 <button
                                   className="btn btn-secondary"

@@ -142,6 +142,7 @@ pub struct ExternalTrackRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct DownloadTaskRecord {
+    pub source_track_id: Option<String>,
     pub id: String,
     pub provider: String,
     pub provider_task_id: Option<String>,

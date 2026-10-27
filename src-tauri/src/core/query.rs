@@ -64,8 +64,10 @@ pub enum Query {
         entity: RankingEntity,
         limit: u32,
     },
+    GetRecommendationFeedback,
     GetTasteProfile,
     GetSmartMixes,
+    RefreshSmartMixes,
     GetLocalRecommendations {
         limit: u32,
     },
@@ -90,6 +92,7 @@ pub enum Query {
     },
     GetSettings,
     GetCharts,
+    RefreshCharts,
     GetPlaybackState,
     ImportJioSaavnPlaylist {
         url_or_id: String,
@@ -161,6 +164,7 @@ pub enum QueryResponse {
     Playlists(Vec<serde_json::Value>),
     PlaylistTracks(Vec<serde_json::Value>),
     Rankings(Vec<serde_json::Value>),
+    RecommendationFeedback(Vec<String>),
     TasteProfile(serde_json::Value),
     SmartMixes(Vec<serde_json::Value>),
     Recommendations(Vec<serde_json::Value>),

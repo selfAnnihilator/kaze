@@ -85,6 +85,8 @@ export interface WishlistItem {
 }
 
 export interface DownloadTask {
+  source_track_id?: string;
+  track_ids?: string[];
   id: string;
   provider: string;
   provider_task_id?: string;
@@ -211,6 +213,7 @@ export interface JioSaavnPlaylistImport {
 }
 
 export type Command =
+  | { command: "DownloadTrack"; payload: { track_id: string } }
   | { command: "FillLibraryGaps"; payload: { retry: boolean } }
   | { command: "RemoveProviderEnrichment" }
   | { command: "SetMetadataPreference"; payload: { key: string; enabled: boolean } }
@@ -337,6 +340,8 @@ export type Command =
     };
 
 export type Query =
+  | { query: "GetRecommendationFeedback" }
+  | { query: "RefreshCharts" }
   | { query: "GetOnboardingStatus" }
   | { query: "GetPlaybackState" }
   | { query: "GetTracks"; payload: { offset: number; limit: number; sort_by?: string; ascending: boolean;
@@ -347,6 +352,7 @@ export type Query =
   | { query: "GetPlaylists" }
   | { query: "GetPlaylistTracks"; payload: { playlist_id: string } }
   | { query: "GetSmartMixes" }
+  | { query: "RefreshSmartMixes" }
   | { query: "GetTasteProfile" }
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
   | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean };

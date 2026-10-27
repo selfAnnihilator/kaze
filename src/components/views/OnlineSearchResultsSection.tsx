@@ -1,3 +1,5 @@
+import { DownloadButton } from "../DownloadButton";
+import { NotInterestedButton } from "../NotInterestedButton";
 import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState, useMemo } from "react";
 import {
@@ -5,7 +7,6 @@ import {
   Pause,
   Plus,
   Check,
-  DownloadCloud,
   X,
   Disc,
   User,
@@ -15,7 +16,6 @@ import {
 } from "lucide-react";
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask,
 } from "../../types";
-import { sameSongMetadata } from "../../localTrackMatch";
 
 interface OnlineSearchResultsSectionProps {
   searchQuery: string;
@@ -57,9 +57,6 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   isLocalPlaying = false,
   onAddToPlaylist,
   onAddToWishlist: _onAddToWishlist,
-  onSearchDirect,
-  downloads,
-  downloadTargets,
   trackPlaylistMap,
   playlists = [],
   onSelectArtist,
@@ -107,34 +104,6 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         (!!rec.matched_local_track_id &&
           loadingTrackId === rec.matched_local_track_id))
     );
-  };
-
-  const getDownloadStatus = (rec: DiscoveryRecommendation) => {
-    const inLibrary =
-      !!rec.matched_local_track_id &&
-      rec.match_status === "EXACT_MATCH" &&
-      !rec.matched_local_track_id.startsWith("itunes:") &&
-      !rec.matched_local_track_id.startsWith("online:");
-    const activeDownload = downloads?.find((d) => {
-      if (d.status === "FAILED" || d.status === "CANCELLED") return false;
-      const target = downloadTargets?.[d.id];
-      if (target)
-        return sameSongMetadata(
-          target.title,
-          target.artist,
-          rec.title,
-          rec.artist,
-        );
-      return sameSongMetadata(d.title, d.artist, rec.title, rec.artist);
-    });
-
-    const isDownloading =
-      activeDownload &&
-      (activeDownload.status === "DOWNLOADING" ||
-        activeDownload.status === "QUEUED");
-    const isCompleted = inLibrary || activeDownload?.status === "COMPLETED";
-
-    return { isDownloading, isCompleted };
   };
 
   const handleTogglePlay = (rec: DiscoveryRecommendation) => {
@@ -373,7 +342,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
       {/* Empty State if 0 Results */}
       {isSearching ? (
-        <p role="status" style={{ padding: "32px 24px", textAlign: "center", color: "var(--text-muted)" }}>Searching JioSaavn…</p>
+        <p role="status" style={{ padding: "32px 24px", textAlign: "center", color: "var(--text-muted)" }}>Searching music…</p>
       ) : searchResults.length === 0 ? (
         <div
           style={{
@@ -387,7 +356,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         >
           <Music size={40} color="var(--text-dim)" />
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>
-            No songs found on JioSaavn for “{searchQuery}”
+            No songs found for “{searchQuery}”
           </h3>
           <p
             style={{
@@ -396,7 +365,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
               maxWidth: "420px",
             }}
           >
-            Try another song title or artist. Only songs available for full playback on JioSaavn appear here.
+            Try another song title or artist. Only songs available for full playback appear here.
           </p>
         </div>
       ) : (
@@ -592,52 +561,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               <Plus size={16} />
                             </button>
                           )}
-                          {onSearchDirect && (
-                            <button
-                              type="button"
-                              disabled={
-                                !!getDownloadStatus(topResult).isCompleted ||
-                                !!getDownloadStatus(topResult).isDownloading
-                              }
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSearchDirect(
-                                  topResult.artist,
-                                  topResult.title,
-                                );
-                              }}
-                              style={{
-                                width: "34px",
-                                height: "34px",
-                                borderRadius: "50%",
-                                border: "1px solid rgba(255, 255, 255, 0.15)",
-                                backgroundColor: "rgba(255, 255, 255, 0.06)",
-                                color: getDownloadStatus(topResult).isCompleted
-                                  ? "var(--accent-secondary)"
-                                  : getDownloadStatus(topResult).isDownloading
-                                    ? "var(--accent-light)"
-                                    : "var(--text-muted)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                              }}
-                              title={
-                                getDownloadStatus(topResult).isCompleted
-                                  ? "Downloaded"
-                                  : getDownloadStatus(topResult).isDownloading
-                                    ? "Downloading..."
-                                    : "Download track"
-                              }
-                            >
-                              {getDownloadStatus(topResult).isCompleted ? (
-                                <Check size={16} />
-                              ) : (
-                                <DownloadCloud size={16} />
-                              )}
-                            </button>
-                          )}
+                          <DownloadButton key={topResult.external_track_id} trackId={topResult.external_track_id} sourceId={topResult.playback_source?.track_id} title={topResult.title} compact />
+                          <NotInterestedButton trackId={topResult.external_track_id} title={topResult.title} />
                         </div>
 
                         {/* Prominent Play Button (Spotify green circular) */}
@@ -907,47 +832,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           )}
 
                           {/* Download Button */}
-                          {onSearchDirect && (
-                            <button
-                              type="button"
-                              disabled={
-                                !!getDownloadStatus(rec).isCompleted ||
-                                !!getDownloadStatus(rec).isDownloading
-                              }
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSearchDirect(rec.artist, rec.title);
-                              }}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: getDownloadStatus(rec).isCompleted
-                                  ? "var(--accent-secondary)"
-                                  : getDownloadStatus(rec).isDownloading
-                                    ? "var(--accent-light)"
-                                    : "var(--text-dim)",
-                                cursor: "pointer",
-                                padding: "6px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "color 0.15s ease",
-                              }}
-                              title={
-                                getDownloadStatus(rec).isCompleted
-                                  ? "Downloaded"
-                                  : getDownloadStatus(rec).isDownloading
-                                    ? "Downloading..."
-                                    : "Download track"
-                              }
-                            >
-                              {getDownloadStatus(rec).isCompleted ? (
-                                <Check size={16} />
-                              ) : (
-                                <DownloadCloud size={16} />
-                              )}
-                            </button>
-                          )}
+                          <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} compact />
+                          <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
 
                           {/* Duration */}
                           <div
@@ -1336,43 +1222,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         </button>
                       )}
 
-                      {onSearchDirect && (
-                        <button
-                          type="button"
-                          disabled={
-                            !!getDownloadStatus(rec).isCompleted ||
-                            !!getDownloadStatus(rec).isDownloading
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSearchDirect(rec.artist, rec.title);
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: getDownloadStatus(rec).isCompleted
-                              ? "var(--accent-secondary)"
-                              : "var(--text-dim)",
-                            cursor: getDownloadStatus(rec).isCompleted
-                              ? "default"
-                              : "pointer",
-                            padding: "6px",
-                          }}
-                          title={
-                            getDownloadStatus(rec).isCompleted
-                              ? "In your library"
-                              : getDownloadStatus(rec).isDownloading
-                                ? "Downloading..."
-                                : "Download track"
-                          }
-                        >
-                          {getDownloadStatus(rec).isCompleted ? (
-                            <Check size={16} />
-                          ) : (
-                            <DownloadCloud size={16} />
-                          )}
-                        </button>
-                      )}
+                      <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} compact />
+                          <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
 
                       <div
                         style={{

@@ -41,7 +41,10 @@ fn test_resolution_cache_hit_miss_and_invalidation() {
 
     // Hit
     let cached = cache.get(&key).expect("should hit resolution cache");
-    assert_eq!(cached.url, "https://rr1.googlevideo.com/videoplayback?id=123");
+    assert_eq!(
+        cached.url,
+        "https://rr1.googlevideo.com/videoplayback?id=123"
+    );
     assert_eq!(cached.duration, 243.0);
     assert!(cached.is_valid());
 
@@ -79,22 +82,14 @@ fn test_resolution_cache_max_capacity_eviction() {
 
     // Fill to RESOLUTION_CACHE_MAX
     for i in 0..RESOLUTION_CACHE_MAX {
-        let entry = ResolvedEntry::new(
-            format!("https://example.com/song_{}.m4a", i),
-            180.0,
-            None,
-        );
+        let entry = ResolvedEntry::new(format!("https://example.com/song_{}.m4a", i), 180.0, None);
         cache.insert(format!("key_{}", i), entry);
     }
 
     assert_eq!(cache.valid_len(), RESOLUTION_CACHE_MAX);
 
     // Inserting one more must trigger eviction
-    let extra = ResolvedEntry::new(
-        "https://example.com/extra.m4a".to_string(),
-        210.0,
-        None,
-    );
+    let extra = ResolvedEntry::new("https://example.com/extra.m4a".to_string(), 210.0, None);
     cache.insert("extra_key".to_string(), extra);
 
     assert_eq!(cache.valid_len(), RESOLUTION_CACHE_MAX);
@@ -102,15 +97,15 @@ fn test_resolution_cache_max_capacity_eviction() {
 }
 
 #[test]
-fn test_parse_url_expiry_from_googlevideo() {
-    let valid_yt = "https://rr3.googlevideo.com/videoplayback?expire=1742233445&itag=140&ratebypass=yes";
-    assert_eq!(parse_url_expiry(valid_yt), Some(1742233445));
+fn test_parse_url_expiry_from_media_url() {
+    let valid_media = "https://aac.saavncdn.com/song.mp4?expire=1742233445&quality=320";
+    assert_eq!(parse_url_expiry(valid_media), Some(1742233445));
 
-    let direct_audius = "https://api.audius.co/v1/tracks/abc123/stream";
-    assert_eq!(parse_url_expiry(direct_audius), None);
+    let direct_media = "https://aac.saavncdn.com/song.mp4";
+    assert_eq!(parse_url_expiry(direct_media), None);
 
-    let direct_archive = "https://archive.org/download/test_item/song.mp3";
-    assert_eq!(parse_url_expiry(direct_archive), None);
+    let without_expiry = "https://aac.saavncdn.com/song.mp4?other=value";
+    assert_eq!(parse_url_expiry(without_expiry), None);
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +161,6 @@ fn test_peek_next_repeat_all_and_repeat_one() {
     assert_eq!(queue.current_index(), Some(1));
 }
 
-
 #[test]
 fn test_peek_next_with_shuffle() {
     let mut queue = PlaybackQueue::new();
@@ -207,7 +201,10 @@ async fn test_resolve_source_only_disk_cache_hit_bypasses_network() {
     let artist = "Famous Artist";
 
     // Write a valid decodable audio file into the disk cache
-    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
+    let cache_key = format!(
+        "full:v3:jiosaavn:{}",
+        track_id.strip_prefix("jiosaavn:").unwrap_or(track_id)
+    );
     let cache_path = manager.get_cache_path(&cache_key);
 
     std::fs::create_dir_all(manager.cache_dir()).unwrap();
@@ -267,7 +264,10 @@ async fn test_resolve_source_only_memory_cache_hit_bypasses_provider() {
     let title = "Cached Song";
     let artist = "Cached Artist";
 
-    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
+    let cache_key = format!(
+        "full:v3:jiosaavn:{}",
+        track_id.strip_prefix("jiosaavn:").unwrap_or(track_id)
+    );
 
     // Pre-populate resolution cache directly via resolve_source_only's cache key
     let test_url = "https://aac.saavncdn.com/test.m4a".to_string();
@@ -281,7 +281,11 @@ async fn test_resolve_source_only_memory_cache_hit_bypasses_provider() {
         .expect("Memory cache hit must succeed without network/provider");
 
     match resolved {
-        ResolvedAudioSource::RemoteStream { url, duration, from_cache } => {
+        ResolvedAudioSource::RemoteStream {
+            url,
+            duration,
+            from_cache,
+        } => {
             assert_eq!(url, test_url);
             assert_eq!(duration, 215.0);
             assert!(from_cache);
@@ -303,7 +307,10 @@ async fn test_resolve_source_only_never_creates_part_file() {
     let title = "Virtual Track";
     let artist = "Ghost Artist";
 
-    let cache_key = format!("full:v3:jiosaavn:{}", track_id.strip_prefix("jiosaavn:").unwrap_or(track_id));
+    let cache_key = format!(
+        "full:v3:jiosaavn:{}",
+        track_id.strip_prefix("jiosaavn:").unwrap_or(track_id)
+    );
     let target_path = manager.get_cache_path(&cache_key);
     let part_path = StreamPlaybackManager::get_part_path(&target_path);
 
@@ -319,16 +326,33 @@ async fn test_resolve_source_only_never_creates_part_file() {
 async fn legacy_identity_cannot_reuse_old_disk_or_memory_audio() {
     let dir = tempdir().unwrap();
     let manager = StreamPlaybackManager::new(dir.path().to_path_buf(), None, None);
-    let key = format!("full:v2:{}", StreamPlaybackManager::compute_cache_key("itunes:old", "Artist", "Song"));
+    let key = format!(
+        "full:v2:{}",
+        StreamPlaybackManager::compute_cache_key("itunes:old", "Artist", "Song")
+    );
     std::fs::create_dir_all(manager.cache_dir()).unwrap();
     let old_path = manager.get_cache_path(&key);
     std::fs::write(&old_path, vec![0u8; 20_000]).unwrap();
-    manager.resolution_cache().insert(key, ResolvedEntry::new(
-        "https://example.invalid/old-provider-audio".into(), 200.0, None,
-    ));
-    let error = manager.resolve_source_only("itunes:old", "Song", "Artist").await.unwrap_err();
+    manager.resolution_cache().insert(
+        key,
+        ResolvedEntry::new(
+            "https://example.invalid/old-provider-audio".into(),
+            200.0,
+            None,
+        ),
+    );
+    let error = manager
+        .resolve_source_only("itunes:old", "Song", "Artist")
+        .await
+        .unwrap_err();
     assert!(error.to_string().contains("not available from JioSaavn"));
-    assert!(manager.resolve_and_prepare_playback("itunes:old", "Song", "Artist").await.is_err());
-    assert!(old_path.exists(), "selection must not modify unrelated cache files");
+    assert!(manager
+        .resolve_and_prepare_playback("itunes:old", "Song", "Artist")
+        .await
+        .is_err());
+    assert!(
+        old_path.exists(),
+        "selection must not modify unrelated cache files"
+    );
     assert_eq!(std::fs::read_dir(manager.cache_dir()).unwrap().count(), 1);
 }

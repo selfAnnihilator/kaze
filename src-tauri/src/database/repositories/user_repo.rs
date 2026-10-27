@@ -132,17 +132,22 @@ impl UserRepository for SqliteUserRepository {
             return Err(AppError::Validation("Username cannot be empty".to_string()));
         }
         if password.len() < 3 {
-            return Err(AppError::Validation("Password must be at least 3 characters".to_string()));
+            return Err(AppError::Validation(
+                "Password must be at least 3 characters".to_string(),
+            ));
         }
 
-        let existing: Option<(String,)> = sqlx::query_as("SELECT id FROM users WHERE username = ? COLLATE NOCASE")
-            .bind(trimmed_name)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+        let existing: Option<(String,)> =
+            sqlx::query_as("SELECT id FROM users WHERE username = ? COLLATE NOCASE")
+                .bind(trimmed_name)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
 
         if existing.is_some() {
-            return Err(AppError::Validation("Username is already taken".to_string()));
+            return Err(AppError::Validation(
+                "Username is already taken".to_string(),
+            ));
         }
 
         let user_id = Uuid::new_v4().to_string();
@@ -151,7 +156,7 @@ impl UserRepository for SqliteUserRepository {
         let now = Utc::now().timestamp();
 
         sqlx::query(
-            "INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)"
+            "INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
         )
         .bind(&user_id)
         .bind(trimmed_name)
@@ -203,10 +208,14 @@ impl UserRepository for SqliteUserRepository {
                         avatar_data_url: None,
                     })
                 } else {
-                    Err(AppError::Validation("Invalid username or password".to_string()))
+                    Err(AppError::Validation(
+                        "Invalid username or password".to_string(),
+                    ))
                 }
             }
-            None => Err(AppError::Validation("Invalid username or password".to_string())),
+            None => Err(AppError::Validation(
+                "Invalid username or password".to_string(),
+            )),
         }
     }
 
@@ -259,15 +268,25 @@ impl UserRepository for SqliteUserRepository {
     }
 
     async fn claim_guest_data_for_user(&self, user_id: &str) -> AppResult<()> {
+        sqlx::query("INSERT INTO recommendation_feedback(user_id,song_key,track_id,source_id,title,artist,manual_like,updated_at)
+            SELECT ?,song_key,track_id,source_id,title,artist,manual_like,updated_at FROM recommendation_feedback WHERE user_id='default'
+            ON CONFLICT(user_id,song_key) DO UPDATE SET track_id=excluded.track_id,source_id=excluded.source_id,title=excluded.title,artist=excluded.artist,manual_like=excluded.manual_like,updated_at=excluded.updated_at
+            WHERE excluded.updated_at>recommendation_feedback.updated_at")
+            .bind(user_id).execute(&self.pool).await?;
+        sqlx::query("DELETE FROM recommendation_feedback WHERE user_id='default' AND ?!='default'")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
         let _ = sqlx::query(
-            "UPDATE playlists SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL"
+            "UPDATE playlists SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL",
         )
         .bind(user_id)
         .execute(&self.pool)
         .await;
 
         let _ = sqlx::query(
-            "UPDATE playback_history SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL"
+            "UPDATE playback_history SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL",
         )
         .bind(user_id)
         .execute(&self.pool)

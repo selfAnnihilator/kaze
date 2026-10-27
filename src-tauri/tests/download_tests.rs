@@ -80,11 +80,13 @@ async fn test_core_processor_search_soulseek() -> AppResult<()> {
     let pool = setup_test_db().await;
     let config = AppConfig::default_with_dirs();
     let processor = CoreProcessor::new(pool, config);
-    let res = processor.dispatch_command(Command::SearchDownloads {
-        artist: "John Michael Howell".to_string(),
-        title: "Pinky Up".to_string(),
-        album: None,
-    }).await?;
+    let res = processor
+        .dispatch_command(Command::SearchDownloads {
+            artist: "John Michael Howell".to_string(),
+            title: "Pinky Up".to_string(),
+            album: None,
+        })
+        .await?;
     match res {
         CommandResponse::SearchResults(results) => {
             println!("Got {} results!", results.len());
@@ -344,5 +346,61 @@ async fn test_core_processor_download_commands_and_queries() -> AppResult<()> {
         other => panic!("Expected Downloads response, got: {:?}", other),
     }
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn direct_download_uses_saved_recording_without_search_and_reuses_transfer() -> AppResult<()>
+{
+    let pool = setup_test_db().await;
+    let directory = tempdir().unwrap();
+    let bus = Arc::new(music_player_backend::core::EventBus::default());
+    let repo = Arc::new(SqliteDownloadRepository::new(pool.clone()));
+    let provider = Arc::new(MockDownloadProvider::new());
+    // Search is unavailable: a pinned recording must still enqueue directly.
+    provider.set_available(false);
+    let library = Arc::new(LibraryService::new(pool.clone(), bus.clone()));
+    let wishlist = Arc::new(WishlistManager::new(Arc::new(
+        SqliteWishlistRepository::new(pool.clone()),
+    )));
+    let service = DownloadService::new(
+        repo.clone(),
+        provider.clone(),
+        bus,
+        library,
+        wishlist,
+        directory.path().into(),
+        false,
+    );
+    let metadata: music_player_backend::providers::ExternalTrackMetadata=serde_json::from_value(serde_json::json!({
+        "provider":"jiosaavn","provider_track_id":"chosen123","title":"Song","artist_name":"Artist","album_title":"Single"
+    })).unwrap();
+    let (a, b) = tokio::join!(
+        service.download_track(&metadata),
+        service.download_track(&metadata)
+    );
+    let a = a?;
+    let b = b?;
+    assert_eq!(a.id, b.id, "repeated clicks share the exact transfer");
+    assert_eq!(a.source_track_id.as_deref(), Some("chosen123"));
+    assert_eq!(a.filename, "Artist - Song (chosen123).m4a");
+    assert_eq!(a.title, "Song");
+    assert_eq!(
+        repo.get_task_by_id(&a.id)
+            .await?
+            .unwrap()
+            .source_track_id
+            .as_deref(),
+        Some("chosen123")
+    );
+    let mut other = metadata.clone();
+    other.provider_track_id = "different456".into();
+    let other = service.download_track(&other).await?;
+    assert_ne!(
+        a.id, other.id,
+        "same title on another release is a separate recording"
+    );
+    service.cancel_download(&a.id).await?;
+    service.cancel_download(&other.id).await?;
     Ok(())
 }

@@ -27,6 +27,7 @@ pub struct CandidateTrack {
     pub artist_name: Option<String>,
     pub genre_name: Option<String>,
     pub year: Option<i64>,
+    pub language: Option<String>,
     pub play_count: i64,
     pub completion_count: i64,
     pub skip_count: i64,
@@ -38,7 +39,11 @@ pub struct ScoringEngine;
 
 impl ScoringEngine {
     /// Computes the personalized recommendation score and explanation reasons for a candidate track.
-    pub fn score_track(candidate: &CandidateTrack, profile: &TasteProfile, current_time: i64) -> TrackRecommendationScore {
+    pub fn score_track(
+        candidate: &CandidateTrack,
+        profile: &TasteProfile,
+        current_time: i64,
+    ) -> TrackRecommendationScore {
         let mut reasons = Vec::new();
 
         // 1. Check for dislike: immediately drops to 0
@@ -61,18 +66,37 @@ impl ScoringEngine {
         let mut base_score = 0.0;
 
         // 2. Artist Affinity (Weight: 35%)
-        let mut artist_score = 0.0;
-        if let Some(artist_id) = &candidate.artist_id {
-            if let Some(&aff) = profile.artist_affinities.get(artist_id) {
-                artist_score = aff;
-                if aff > 0.1 {
-                    let artist_name = candidate.artist_name.as_deref().unwrap_or("Artist");
-                    reasons.push(RecommendationReason {
-                        factor: "artist_affinity".to_string(),
-                        description: format!("High affinity for {}: {:.0}%", artist_name, aff * 100.0),
-                        weight: aff * 0.35,
-                    });
-                }
+        let artist_score = candidate
+            .artist_id
+            .as_ref()
+            .and_then(|id| profile.artist_affinities.get(id))
+            .copied()
+            .unwrap_or(0.0)
+            .max(profile.artist_affinity(candidate.artist_name.as_deref().unwrap_or("")));
+        if artist_score > 0.1 {
+            reasons.push(RecommendationReason {
+                factor: "artist_affinity".into(),
+                description: format!(
+                    "Listening affinity for {}: {:.0}%",
+                    candidate.artist_name.as_deref().unwrap_or("Artist"),
+                    artist_score * 100.0
+                ),
+                weight: artist_score * 0.35,
+            });
+        }
+        if let Some(language) = candidate.language.as_ref() {
+            let affinity = profile
+                .language_affinities
+                .get(&language.to_lowercase())
+                .copied()
+                .unwrap_or(0.0);
+            if affinity > 0.0 {
+                base_score += affinity * 0.10;
+                reasons.push(RecommendationReason {
+                    factor: "language_affinity".into(),
+                    description: format!("Matches your {language} listening"),
+                    weight: affinity * 0.10,
+                });
             }
         }
         base_score += artist_score * 0.35;
@@ -111,12 +135,16 @@ impl ScoringEngine {
         // 5. Track Performance & Completion (Weight: 20%)
         let mut perf_score = 0.5; // default neutral for unplayed
         if candidate.play_count > 0 {
-            let completion_ratio = (candidate.completion_count as f64 / candidate.play_count as f64).clamp(0.0, 1.0);
+            let completion_ratio =
+                (candidate.completion_count as f64 / candidate.play_count as f64).clamp(0.0, 1.0);
             perf_score = completion_ratio;
             if completion_ratio >= 0.7 {
                 reasons.push(RecommendationReason {
                     factor: "completion_rate".to_string(),
-                    description: format!("Consistently completed ({:.0}% completion rate)", completion_ratio * 100.0),
+                    description: format!(
+                        "Consistently completed ({:.0}% completion rate)",
+                        completion_ratio * 100.0
+                    ),
                     weight: completion_ratio * 0.20,
                 });
             }
@@ -143,7 +171,8 @@ impl ScoringEngine {
                 is_discovery = true;
                 reasons.push(RecommendationReason {
                     factor: "exploration_pick".to_string(),
-                    description: "Discovery pick: Unplayed local track matching your musical taste".to_string(),
+                    description: "Discovery pick: Unplayed local track matching your musical taste"
+                        .to_string(),
                     weight: 0.20,
                 });
             }
@@ -157,7 +186,8 @@ impl ScoringEngine {
                 base_score *= 0.50;
                 reasons.push(RecommendationReason {
                     factor: "repetition_penalty".to_string(),
-                    description: "Repetition penalty: Played in the last 24 hours (-50%)".to_string(),
+                    description: "Repetition penalty: Played in the last 24 hours (-50%)"
+                        .to_string(),
                     weight: -0.50,
                 });
             } else if age_secs < (3 * 86400) {
@@ -181,7 +211,8 @@ impl ScoringEngine {
                 base_score += 0.15;
                 reasons.push(RecommendationReason {
                     factor: "forgotten_favorite".to_string(),
-                    description: "Forgotten favorite: Not listened to in over 30 days (+15%)".to_string(),
+                    description: "Forgotten favorite: Not listened to in over 30 days (+15%)"
+                        .to_string(),
                     weight: 0.15,
                 });
             }
@@ -191,7 +222,8 @@ impl ScoringEngine {
         if reasons.is_empty() && base_score > 0.0 {
             reasons.push(RecommendationReason {
                 factor: "library_exploration".to_string(),
-                description: "Library catalog exploration: Unheard track ready for discovery".to_string(),
+                description: "Library catalog exploration: Unheard track ready for discovery"
+                    .to_string(),
                 weight: base_score,
             });
         }

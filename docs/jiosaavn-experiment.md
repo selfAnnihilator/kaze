@@ -4,6 +4,10 @@ Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public de
 
 Search and online playback use JioSaavn exclusively during this trial. Alternative sources and legacy download-provider routing are removed from the active backend. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.
 
+## Source-aware scores and Not interested — 2026-10-27
+
+Recommendation scores now combine the account’s shared song history with JioSaavn artist credits, language and release year. Not interested is a durable exclusion across saved aliases and matching releases, with an Allow again action; generated queues/mixes honor it and manual playlists/direct playback remain available. Explicit preferences survive stale neutral sync counters. See [ADR 0018](adr/0018-source-aware-recommendations-and-feedback.md) for persistence, scope and verification.
+
 ## Source consolidation — 2026-10-27
 
 JioSaavn supplies the catalog, charts, playlist imports, downloads and metadata enrichment as well as playback. Retired provider implementations and their launch/settings controls are removed. Saved aliases and original tag columns remain compatible. See [ADR 0017](adr/0017-jiosaavn-catalog-consolidation.md). Earlier feed/fallback descriptions below are dated history.
@@ -124,3 +128,16 @@ Its eleven groups verify actual playback, queue/position/Flow preservation, MPRI
 - The broader pre-existing `test-dual-interface.mjs` browser script passed eighteen groups, then stopped at a missing Brutalist “Smart Mixes” navigation target. The new JioSaavn checks, Settings checks and native eleven-group suite pass separately. This experiment does not claim a complete browser-suite or release sign-off.
 
 Architecture and source attribution: [ADR 0015](adr/0015-jiosaavn-and-reversible-enrichment.md).
+
+
+## 2026-10-27 — Catalog cleanup, taste feedback and direct song controls
+
+Cleanup was committed first as `6f105cb`, removing the retired online providers/adapters and keeping the unified Rust playback, cache/history and local-library paths. Source-aware scoring and durable account-scoped feedback follow ADR 0018. The Not interested icon is reversible, hydrates its saved state across views/accounts, excludes related recordings from generated suggestions, and affects taste/scoring. Search/manual playback remain available.
+
+Download now uses the displayed recording's saved identity and saves native AAC as M4A directly; the options modal is removed. Recording identity persists in download tasks, including saved aliases. Each memoized button displays its own percentage and transform-based fill, then the downloaded icon. Stale task snapshots cannot rewind byte progress or undo terminal completion. UTF-8 filename limits cover multilingual titles. Discovery has refresh for all four chapters, real chart covers, source-bound alias artwork and original-release preference during recommendation selection. Normal UI labels no longer display provider brands. See ADR 0019.
+
+Live investigation confirmed two causes of India-only charts: the service reads language from its `L` cookie rather than the query alone, and most rows use `listid`/`listname` instead of `id`/`title`. The adapter handles both shapes and explicitly requests English/international programming. Actual returned lists include International : India Superhits Top 50, Most Searched Songs - English, Most Streamed Love Songs - English and English decade lists. Their names, identities and images are preserved. A local-server regression asserts the cookie, both response shapes, international editorial lists, artwork normalization and forced cache refresh.
+
+Verification: all 208 Rust tests across 26 groups passed (eight optional/manual tests ignored), plus the live catalog/playlist/direct-download gate. That gate downloads the exact source behind the displayed chart song without another title search, checks its stored source ID and decodes the saved M4A through Kaze. Subsequent focused recommendation/Flow/feedback checks also verify missing online artwork does not borrow another recording's enrichment cover. All fifteen Node test files pass. Both interfaces pass controlled UI checks for persisted toggle on/off, exact direct download, independent same-title releases, percentage/fill/completion, all refresh chapters and chart covers, plus existing source/settings, feedback, buffering and delayed-scoring checks. Frontend/embedded native builds pass. The native eleven-group gate verifies real playback, queue/Flow/MPRIS continuity, ten hide/restore cycles, paused history/session identity, profile/fullscreen and cold style persistence.
+
+An earlier native run failed its Playing assertion during hide/restore, then the unchanged assertion passed on rerun; cause remains unconfirmed and failure diagnostics were added. A browser buffering fixture had one startup timeout during a combined run and passed in isolation; no product fix or confirmed cause is claimed for that timeout. An automatic approval-review usage limit temporarily prevented the native rerun; approved checks resumed after its stated reset time. Tests use disposable data and do not edit the user's real profile, purge caches, install or publish a build.

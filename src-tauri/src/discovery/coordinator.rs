@@ -32,8 +32,10 @@ pub struct DiscoveryCoordinator {
     taste_engine: Arc<TasteProfileEngine>,
     #[allow(dead_code)]
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
-    artist_candidate_cache: tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
-    world_chart_cache: tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
+    artist_candidate_cache:
+        tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
+    world_chart_cache:
+        tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
 }
 
 /// Checks if a candidate genre fuzzy matches a user's library genre
@@ -48,23 +50,57 @@ pub fn genre_matches(candidate_genre: &str, user_genre: &str) -> bool {
     }
     let is_rap_hiphop = (cg.contains("hip-hop") || cg.contains("hip hop") || cg.contains("rap"))
         && (ug.contains("hip-hop") || ug.contains("hip hop") || ug.contains("rap"));
-    let is_electronic = (cg.contains("dance") || cg.contains("electronic") || cg.contains("electro"))
-        && (ug.contains("dance") || ug.contains("electronic") || ug.contains("electro"));
+    let is_electronic =
+        (cg.contains("dance") || cg.contains("electronic") || cg.contains("electro"))
+            && (ug.contains("dance") || ug.contains("electronic") || ug.contains("electro"));
     let is_rock_alt = (cg.contains("rock") || cg.contains("alternative"))
         && (ug.contains("rock") || ug.contains("alternative"));
-    let is_rnb = (cg.contains("r&b") || cg.contains("soul"))
-        && (ug.contains("r&b") || ug.contains("soul"));
+    let is_rnb =
+        (cg.contains("r&b") || cg.contains("soul")) && (ug.contains("r&b") || ug.contains("soul"));
 
-    let is_asian = (cg.contains("asian") || cg.contains("j-pop") || cg.contains("anime") || cg.contains("k-pop") || cg.contains("japanese"))
-        && (ug.contains("asian") || ug.contains("j-pop") || ug.contains("anime") || ug.contains("k-pop") || ug.contains("japanese"));
-    let is_latin_brazil = (cg.contains("brazil") || cg.contains("latin") || cg.contains("samba") || cg.contains("bossa"))
-        && (ug.contains("brazil") || ug.contains("latin") || ug.contains("samba") || ug.contains("bossa"));
-    let is_indian = (cg.contains("bollywood") || cg.contains("indian") || cg.contains("desi") || cg.contains("hindi") || cg.contains("punjabi"))
-        && (ug.contains("bollywood") || ug.contains("indian") || ug.contains("desi") || ug.contains("hindi") || ug.contains("punjabi"));
-    let is_malayalam = (cg.contains("malayalam") || cg.contains("regional indian") || cg.contains("indian"))
-        && (ug.contains("malayalam") || ug.contains("asian") || ug.contains("indian") || ug.contains("soundtrack"));
+    let is_asian = (cg.contains("asian")
+        || cg.contains("j-pop")
+        || cg.contains("anime")
+        || cg.contains("k-pop")
+        || cg.contains("japanese"))
+        && (ug.contains("asian")
+            || ug.contains("j-pop")
+            || ug.contains("anime")
+            || ug.contains("k-pop")
+            || ug.contains("japanese"));
+    let is_latin_brazil = (cg.contains("brazil")
+        || cg.contains("latin")
+        || cg.contains("samba")
+        || cg.contains("bossa"))
+        && (ug.contains("brazil")
+            || ug.contains("latin")
+            || ug.contains("samba")
+            || ug.contains("bossa"));
+    let is_indian = (cg.contains("bollywood")
+        || cg.contains("indian")
+        || cg.contains("desi")
+        || cg.contains("hindi")
+        || cg.contains("punjabi"))
+        && (ug.contains("bollywood")
+            || ug.contains("indian")
+            || ug.contains("desi")
+            || ug.contains("hindi")
+            || ug.contains("punjabi"));
+    let is_malayalam =
+        (cg.contains("malayalam") || cg.contains("regional indian") || cg.contains("indian"))
+            && (ug.contains("malayalam")
+                || ug.contains("asian")
+                || ug.contains("indian")
+                || ug.contains("soundtrack"));
 
-    is_rap_hiphop || is_electronic || is_rock_alt || is_rnb || is_asian || is_latin_brazil || is_indian || is_malayalam
+    is_rap_hiphop
+        || is_electronic
+        || is_rock_alt
+        || is_rnb
+        || is_asian
+        || is_latin_brazil
+        || is_indian
+        || is_malayalam
 }
 
 impl DiscoveryCoordinator {
@@ -165,83 +201,177 @@ impl DiscoveryCoordinator {
     }
 
     /// Fetches trending hits and popular new music across overall charts and targeted user genres.
-    /// Also extracts 30-second AAC audio preview links for instant in-app listening before download.
     pub async fn charts(&self, refresh: bool) -> AppResult<Vec<serde_json::Value>> {
-        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
-        if !providers.enabled().await { return Ok(vec![]); }
+        let Some(providers) = &self.provider_coordinator else {
+            return Ok(vec![]);
+        };
+        if !providers.enabled().await {
+            return Ok(vec![]);
+        }
         Ok(providers.jiosaavn.charts(refresh).await?)
     }
-    pub async fn get_chart_songs(&self, chart_id: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
-        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
-        if !providers.enabled().await { return Ok(vec![]); }
-        let id = chart_id.strip_prefix("jiosaavn:playlist:").ok_or_else(|| crate::core::AppError::Validation("Unknown JioSaavn chart".into()))?;
+    pub async fn get_chart_songs(
+        &self,
+        chart_id: &str,
+        limit: usize,
+    ) -> AppResult<Vec<DiscoveryRecommendation>> {
+        self.chart_songs(chart_id, limit, false).await
+    }
+    async fn chart_songs(
+        &self,
+        chart_id: &str,
+        limit: usize,
+        refresh: bool,
+    ) -> AppResult<Vec<DiscoveryRecommendation>> {
+        let Some(providers) = &self.provider_coordinator else {
+            return Ok(vec![]);
+        };
+        if !providers.enabled().await {
+            return Ok(vec![]);
+        }
+        let id = chart_id
+            .strip_prefix("jiosaavn:playlist:")
+            .ok_or_else(|| crate::core::AppError::Validation("Unknown JioSaavn chart".into()))?;
         let mut rows = Vec::new();
-        for track in providers.jiosaavn.playlist(id, limit.min(50), false).await? {
-            rows.push(recommendation(providers.persist(track).await?, "JioSaavn chart"));
+        for track in providers
+            .jiosaavn
+            .playlist(id, limit.min(50), refresh)
+            .await?
+        {
+            rows.push(recommendation(
+                providers.persist(track).await?,
+                "Chart selection",
+            ));
         }
         Ok(rows)
     }
     /// Provider chart order is separate from personal recommendation ranking.
-    pub async fn get_world_trending(&self, limit: usize, refresh: bool) -> AppResult<Vec<DiscoveryRecommendation>> {
+    pub async fn get_world_trending(
+        &self,
+        limit: usize,
+        refresh: bool,
+    ) -> AppResult<Vec<DiscoveryRecommendation>> {
         if !refresh {
             if let Some((at, songs)) = &*self.world_chart_cache.read().await {
-                if at.elapsed().as_secs() < 900 { return Ok(songs.iter().take(limit).cloned().collect()); }
+                if at.elapsed().as_secs() < 900 {
+                    return Ok(songs.iter().take(limit).cloned().collect());
+                }
             }
         }
         let charts = self.charts(refresh).await?;
-        let mut songs = Vec::new(); let mut seen = HashSet::new();
+        let mut songs = Vec::new();
+        let mut seen = HashSet::new();
         for chart in charts.iter().take(3) {
-            let Some(id) = chart["id"].as_str() else { continue };
-            for mut row in self.get_chart_songs(&format!("jiosaavn:playlist:{id}"), 20).await.unwrap_or_default() {
+            let Some(id) = chart["id"].as_str() else {
+                continue;
+            };
+            for mut row in self
+                .chart_songs(&format!("jiosaavn:playlist:{id}"), 20, refresh)
+                .await
+                .unwrap_or_default()
+            {
                 if seen.insert(row.provider_id.clone()) {
-                    row.recommendation_reason = chart["title"].as_str().unwrap_or("JioSaavn chart").into();
+                    row.recommendation_reason =
+                        chart["title"].as_str().unwrap_or("Chart selection").into();
                     songs.push(row);
                 }
             }
         }
         if songs.is_empty() {
-            if let Some((_, cached)) = &*self.world_chart_cache.read().await { return Ok(cached.iter().take(limit).cloned().collect()); }
-        } else { *self.world_chart_cache.write().await = Some((std::time::Instant::now(), songs.clone())); }
+            if let Some((_, cached)) = &*self.world_chart_cache.read().await {
+                return Ok(cached.iter().take(limit).cloned().collect());
+            }
+        } else {
+            *self.world_chart_cache.write().await =
+                Some((std::time::Instant::now(), songs.clone()));
+        }
         Ok(songs.into_iter().take(limit).collect())
     }
     async fn fetch_catalog_candidates(&self, queries: &[String]) -> AppResult<usize> {
-        let Some(providers) = &self.provider_coordinator else { return Ok(0); };
-        if !providers.enabled().await { return Ok(0); }
+        let Some(providers) = &self.provider_coordinator else {
+            return Ok(0);
+        };
+        if !providers.enabled().await {
+            return Ok(0);
+        }
         let mut count = 0;
         for query in queries.iter().take(3) {
-            for track in providers.jiosaavn.search(query, 25).await.unwrap_or_default() {
-                providers.persist(track).await?; count += 1;
+            for track in providers
+                .jiosaavn
+                .search(query, 25)
+                .await
+                .unwrap_or_default()
+            {
+                providers.persist(track).await?;
+                count += 1;
             }
         }
         Ok(count)
     }
     async fn artist_candidates(&self, artist: &str, refresh: bool) -> Vec<ExternalTrackRecord> {
         let key = artist.trim().to_lowercase();
-        let Some(providers) = &self.provider_coordinator else { return vec![]; };
-        if !providers.enabled().await { return vec![]; }
+        let Some(providers) = &self.provider_coordinator else {
+            return vec![];
+        };
+        if !providers.enabled().await {
+            return vec![];
+        }
         if !refresh {
             if let Some((at, tracks)) = self.artist_candidate_cache.lock().await.get(&key) {
-                if at.elapsed().as_secs() < 900 { return tracks.clone(); }
+                if at.elapsed().as_secs() < 900 {
+                    return tracks.clone();
+                }
             }
         }
         let mut rows = Vec::new();
-        for track in providers.jiosaavn.search(artist, 50).await.unwrap_or_default() {
-            if track.artist_name.to_lowercase().split(',').any(|name| name.trim() == key) {
-                if let Ok(row) = providers.persist(track).await { rows.push(row); }
+        for track in providers
+            .jiosaavn
+            .search(artist, 50)
+            .await
+            .unwrap_or_default()
+        {
+            if track
+                .artist_name
+                .to_lowercase()
+                .split(',')
+                .any(|name| name.trim() == key)
+            {
+                if let Ok(row) = providers.persist(track).await {
+                    rows.push(row);
+                }
             }
         }
         let mut cache = self.artist_candidate_cache.lock().await;
-        if rows.is_empty() { return cache.get(&key).map(|(_, rows)| rows.clone()).unwrap_or_default(); }
-        cache.retain(|_,(at,_)| at.elapsed().as_secs() < 900);
-        if cache.len() >= 64 { cache.clear(); }
-        cache.insert(key,(std::time::Instant::now(), rows.clone())); rows
+        if rows.is_empty() {
+            return cache
+                .get(&key)
+                .map(|(_, rows)| rows.clone())
+                .unwrap_or_default();
+        }
+        cache.retain(|_, (at, _)| at.elapsed().as_secs() < 900);
+        if cache.len() >= 64 {
+            cache.clear();
+        }
+        cache.insert(key, (std::time::Instant::now(), rows.clone()));
+        rows
     }
-    pub async fn search_online_music(&self, query: &str, limit: usize) -> AppResult<Vec<DiscoveryRecommendation>> {
-        let Some(providers) = &self.provider_coordinator else { return Ok(vec![]); };
-        if !providers.enabled().await { return Ok(vec![]); }
+    pub async fn search_online_music(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> AppResult<Vec<DiscoveryRecommendation>> {
+        let Some(providers) = &self.provider_coordinator else {
+            return Ok(vec![]);
+        };
+        if !providers.enabled().await {
+            return Ok(vec![]);
+        }
         let mut results = Vec::new();
         for track in providers.jiosaavn.search(query, limit.min(50)).await? {
-            results.push(recommendation(providers.persist(track).await?, "JioSaavn search"));
+            results.push(recommendation(
+                providers.persist(track).await?,
+                "Search result",
+            ));
         }
         Ok(results)
     }
@@ -273,7 +403,10 @@ impl DiscoveryCoordinator {
         let mut genre_counts: HashMap<String, usize> = HashMap::new();
         let mut library_artists: HashSet<String> = HashSet::new();
 
-        for t in local_tracks.iter().filter(|t| t.format != "online" && !t.file_path.starts_with("online://")) {
+        for t in local_tracks
+            .iter()
+            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://"))
+        {
             if let Some(ref g) = t.genre_name {
                 let clean = g.to_lowercase().trim().to_string();
                 if !clean.is_empty() {
@@ -289,10 +422,13 @@ impl DiscoveryCoordinator {
         }
 
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
-        let listened_artists: HashMap<String, f64> = profile.top_artists.iter()
+        let listened_artists: HashMap<String, f64> = profile
+            .top_artists
+            .iter()
             .map(|a| (a.display_name.to_lowercase().trim().to_string(), a.affinity))
             .collect();
-        let mut genre_weights: HashMap<String, f64> = genre_counts.into_iter()
+        let mut genre_weights: HashMap<String, f64> = genre_counts
+            .into_iter()
             .map(|(genre, count)| (genre, (count as f64).min(10.0)))
             .collect();
         for g in &profile.top_genres {
@@ -302,28 +438,67 @@ impl DiscoveryCoordinator {
                 genre_weights.insert(clean, g.affinity * 100.0);
             }
         }
-        let mut ranked_user_genres: Vec<(String, f64)> = genre_weights.into_iter()
-            .filter(|(_, weight)| *weight > 0.0).collect();
+        let mut ranked_user_genres: Vec<(String, f64)> = genre_weights
+            .into_iter()
+            .filter(|(_, weight)| *weight > 0.0)
+            .collect();
         ranked_user_genres.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-        let has_malayalam = ranked_user_genres.iter().any(|(genre, _)| genre.contains("malayalam"));
         let mut ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
-        if self.provider_coordinator.is_some() && (force_refresh || ext_tracks.len() < limit.max(30)) {
-            let mut queries: Vec<String> = ranked_user_genres.iter().take(3).map(|(genre,_)| genre.clone()).collect();
-            if queries.is_empty() { queries.push("English hits".into()); }
+        if self.provider_coordinator.is_some()
+            && (force_refresh || ext_tracks.len() < limit.max(30))
+        {
+            let mut queries: Vec<String> = ranked_user_genres
+                .iter()
+                .take(3)
+                .map(|(genre, _)| genre.clone())
+                .collect();
+            if queries.is_empty() {
+                queries.push("English hits".into());
+            }
             let _ = self.fetch_catalog_candidates(&queries).await;
             ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
         }
 
         if self.provider_coordinator.is_some() {
             let mut seen: HashSet<String> = ext_tracks.iter().map(|t| t.id.clone()).collect();
-            for artist in profile.top_artists.iter().filter(|a| a.affinity > 0.0).take(4) {
-                for track in self.artist_candidates(&artist.display_name, force_refresh).await {
-                    if seen.insert(track.id.clone()) { ext_tracks.push(track); }
+            for artist in profile
+                .top_artists
+                .iter()
+                .filter(|a| a.affinity > 0.0)
+                .take(4)
+            {
+                for track in self
+                    .artist_candidates(&artist.display_name, force_refresh)
+                    .await
+                {
+                    if seen.insert(track.id.clone()) {
+                        ext_tracks.push(track);
+                    }
                 }
             }
         }
 
+        // Prefer a single/original album over compilation duplicates before scoring.
+        let mut releases: HashMap<String, ExternalTrackRecord> = HashMap::new();
+        for track in ext_tracks {
+            let key = crate::recommendations::signals::song_key(&track.title, &track.artist)
+                .unwrap_or_else(|| track.id.clone());
+            let rank = crate::recommendations::signals::release_preference(
+                &track.title,
+                track.album.as_deref(),
+            );
+            let replace = releases.get(&key).is_none_or(|old| {
+                rank > crate::recommendations::signals::release_preference(
+                    &old.title,
+                    old.album.as_deref(),
+                )
+            });
+            if replace {
+                releases.insert(key, track);
+            }
+        }
+        let ext_tracks: Vec<_> = releases.into_values().collect();
         // 5. Listening strength drives ordering; refreshing never adds random score noise.
         struct ScoredCandidate {
             track: ExternalTrackRecord,
@@ -335,7 +510,12 @@ impl DiscoveryCoordinator {
 
         let candidate_local_tuples: Vec<(&str, &str, &str, f64)> = local_tracks
             .iter()
-            .filter(|t| t.format != "online" && !t.file_path.starts_with("online://") && !t.id.starts_with("itunes:") && !t.id.starts_with("online:"))
+            .filter(|t| {
+                t.format != "online"
+                    && !t.file_path.starts_with("online://")
+                    && !t.id.starts_with("itunes:")
+                    && !t.id.starts_with("online:")
+            })
             .map(|t| {
                 (
                     t.id.as_str(),
@@ -346,12 +526,24 @@ impl DiscoveryCoordinator {
             })
             .collect();
 
-
+        let signals =
+            crate::recommendations::signals::SongSignals::load(self.taste_engine.pool(), user_id)
+                .await?;
         for mut track in ext_tracks {
+            if signals.blocked(&track.id, &track.title, &track.artist) {
+                continue;
+            }
+            let listening = signals.signal(&track.id, &track.title, &track.artist);
+            if listening.skip_count >= 3 && listening.skip_count > listening.play_count {
+                continue;
+            }
+
             let is_lofi = FuzzyTrackMatcher::is_lofi_indicator(&track.title)
                 || FuzzyTrackMatcher::is_lofi_indicator(&track.artist);
             // Older chart rows stored the preview length as the song length.
-            if track.preview_url.is_some() && track.duration_secs.is_some_and(|seconds| seconds <= 35.0) {
+            if track.preview_url.is_some()
+                && track.duration_secs.is_some_and(|seconds| seconds <= 35.0)
+            {
                 track.duration_secs = None;
             }
             let match_res = FuzzyTrackMatcher::find_best_match(
@@ -364,7 +556,9 @@ impl DiscoveryCoordinator {
 
             let status = match_res.status;
             let status_str = status.as_str().to_string();
-            if track.match_status != status_str || track.matched_local_track_id != match_res.matched_track_id {
+            if track.match_status != status_str
+                || track.matched_local_track_id != match_res.matched_track_id
+            {
                 track.match_status = status_str;
                 track.matched_local_track_id = match_res.matched_track_id.clone();
                 let _ = self.wishlist_repo.upsert_external_track(&track).await;
@@ -374,7 +568,7 @@ impl DiscoveryCoordinator {
             let track_genre = track.genre.as_deref().unwrap_or("").to_lowercase();
             let track_album = track.album.as_deref().unwrap_or("").to_lowercase();
 
-            let artist_affinity = listened_artists.get(&artist_lower).copied().unwrap_or(0.0);
+            let artist_affinity = profile.artist_affinity(&track.artist);
             let is_listened_artist = artist_affinity > 0.0;
             let is_library_artist = library_artists.contains(&artist_lower);
 
@@ -384,44 +578,75 @@ impl DiscoveryCoordinator {
             for (ug, weight) in &ranked_user_genres {
                 if genre_matches(&track_genre, ug) || genre_matches(&track_album, ug) {
                     genre_score = *weight;
-                    matched_genre_display =
-                        Some(track.genre.clone().unwrap_or_else(|| ug.clone()));
+                    matched_genre_display = Some(track.genre.clone().unwrap_or_else(|| ug.clone()));
                     break;
                 }
             }
 
-            if has_malayalam && (track_genre.contains("malayalam") || track_album.contains("malayalam")) {
-                genre_score = genre_score.max(10.0);
+            let language = signals
+                .identities
+                .get(&track.id)
+                .and_then(|song| song.language.as_ref());
+            let language_affinity = language
+                .and_then(|language| profile.language_affinities.get(&language.to_lowercase()))
+                .copied()
+                .unwrap_or(0.0);
+            let known = listening.manual_like == 1 || listening.play_count > 0;
+            let library_signal = is_library_artist && !listened_artists.contains_key(&artist_lower);
+            if !is_listened_artist
+                && !library_signal
+                && genre_score <= 0.0
+                && language_affinity <= 0.0
+                && !known
+            {
+                continue;
             }
-
-            let mut base_score = 15.0; // baseline chart presence
-            if is_listened_artist {
-                base_score += 150.0 * artist_affinity;
-            } else if is_library_artist && !listened_artists.contains_key(&artist_lower) {
-                base_score += 15.0;
-            }
-            base_score += genre_score;
-
-            // Slight boost if audio preview is ready to play
-            if track.preview_url.is_some() {
-                base_score += 5.0;
-            }
+            let input = crate::recommendations::scoring::CandidateTrack {
+                id: track.id.clone(),
+                title: track.title.clone(),
+                artist_id: None,
+                artist_name: Some(track.artist.clone()),
+                genre_name: track.genre.clone(),
+                year: signals.identities.get(&track.id).and_then(|song| song.year),
+                language: language.cloned(),
+                play_count: listening.play_count,
+                completion_count: listening.completion_count,
+                skip_count: listening.skip_count,
+                last_played_at: listening.last_played_at,
+                user_feedback: if listening.manual_like == 1 {
+                    Some("like".into())
+                } else {
+                    None
+                },
+            };
+            let recording_score = crate::recommendations::scoring::ScoringEngine::score_track(
+                &input,
+                &profile,
+                chrono::Utc::now().timestamp(),
+            )
+            .final_score;
+            let base_score = 150.0 * artist_affinity
+                + genre_score
+                + 25.0 * language_affinity
+                + if library_signal { 15.0 } else { 0.0 }
+                + recording_score * 50.0;
 
             let reason = match status {
                 MatchStatus::NotFound => {
                     if is_listened_artist {
                         format!(
                             "Based on your listening habit for {} ({:.0}% affinity)",
-                            track.artist, artist_affinity * 100.0
+                            track.artist,
+                            artist_affinity * 100.0
                         )
                     } else if is_library_artist && !listened_artists.contains_key(&artist_lower) {
                         format!("By your library artist {}", track.artist)
-                    } else if has_malayalam && (track_genre.contains("malayalam") || track_album.contains("malayalam")) {
-                        format!("🔥 Trending in Malayalam • Matches your library favorites")
-                    } else if let Some(ref gd) = matched_genre_display {
-                        format!("🔥 Trending in {} • Matches your top genre", gd)
+                    } else if let Some(ref genre) = matched_genre_display {
+                        format!("Matches your {genre} listening")
+                    } else if let Some(language) = language.filter(|_| language_affinity > 0.0) {
+                        format!("Matches your {language} listening")
                     } else {
-                        format!("🔥 Trending Chart Hit • Popular discovery across charts")
+                        "A recording from your listening history".into()
                     }
                 }
                 MatchStatus::PossibleMatch => {
@@ -438,8 +663,9 @@ impl DiscoveryCoordinator {
             });
         }
 
-        let mut taste_candidates: Vec<_> = scored_list.into_iter()
-            .filter(|candidate| !candidate.reason.contains("Popular discovery across charts"))
+        let mut taste_candidates: Vec<_> = scored_list
+            .into_iter()
+            .filter(|candidate| candidate.score > 0.0)
             .collect();
 
         taste_candidates.sort_by(|a, b| {
@@ -452,6 +678,7 @@ impl DiscoveryCoordinator {
         // 6. Keep artist diversity (maximum two tracks per artist).
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut recs = Vec::new();
+        let mut seen_songs = HashSet::new();
 
         let to_recommendation = |scored: &ScoredCandidate| {
             let in_wishlist = (scored.track.provider_id.as_str() != ""
@@ -489,23 +716,49 @@ impl DiscoveryCoordinator {
 
         // For You uses only personalized candidates, ordered by actual affinity.
         for scored in &taste_candidates {
-            if recs.len() >= limit { break; }
-            let artist_key = scored.track.artist.to_lowercase().trim().to_string();
+            if recs.len() >= limit {
+                break;
+            }
+            if !seen_songs.insert(
+                crate::recommendations::signals::song_key(
+                    &scored.track.title,
+                    &scored.track.artist,
+                )
+                .unwrap_or_else(|| scored.track.id.clone()),
+            ) {
+                continue;
+            }
+            let artist_key = crate::recommendations::signals::artist_credits(&scored.track.artist)
+                .into_iter()
+                .next()
+                .unwrap_or_default();
             let count = artist_counts.entry(artist_key).or_insert(0);
-            if *count >= 2 { continue; }
+            if *count >= 2 {
+                continue;
+            }
             *count += 1;
             recs.push(to_recommendation(scored));
         }
 
         Ok(recs)
     }
-
 }
 
 fn recommendation(row: ExternalTrackRecord, reason: &str) -> DiscoveryRecommendation {
-    DiscoveryRecommendation { external_track_id: row.id, provider: row.provider, provider_id: row.provider_id,
-        title: row.title, artist: row.artist, album: row.album, duration_secs: row.duration_secs,
-        cover_art_url: row.cover_art_url, preview_url: None, genre: row.genre,
-        match_status: MatchStatus::NotFound, matched_local_track_id: None,
-        recommendation_reason: reason.into(), in_wishlist: false }
+    DiscoveryRecommendation {
+        external_track_id: row.id,
+        provider: row.provider,
+        provider_id: row.provider_id,
+        title: row.title,
+        artist: row.artist,
+        album: row.album,
+        duration_secs: row.duration_secs,
+        cover_art_url: row.cover_art_url,
+        preview_url: None,
+        genre: row.genre,
+        match_status: MatchStatus::NotFound,
+        matched_local_track_id: None,
+        recommendation_reason: reason.into(),
+        in_wishlist: false,
+    }
 }

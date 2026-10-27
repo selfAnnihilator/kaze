@@ -40,10 +40,10 @@ impl DownloadRepository for SqliteDownloadRepository {
     async fn create_task(&self, task: &DownloadTaskRecord) -> AppResult<()> {
         sqlx::query(
             "INSERT INTO download_tasks (
-                id, provider, provider_task_id, title, artist, album,
+                id, provider, provider_task_id, title, artist, album, source_track_id,
                 filename, destination_path, file_size, bytes_downloaded,
                 status, error_message, wishlist_id, created_at, completed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&task.id)
         .bind(&task.provider)
@@ -51,6 +51,7 @@ impl DownloadRepository for SqliteDownloadRepository {
         .bind(&task.title)
         .bind(&task.artist)
         .bind(&task.album)
+        .bind(&task.source_track_id)
         .bind(&task.filename)
         .bind(&task.destination_path)
         .bind(task.file_size)
@@ -69,7 +70,7 @@ impl DownloadRepository for SqliteDownloadRepository {
 
     async fn get_task_by_id(&self, id: &str) -> AppResult<Option<DownloadTaskRecord>> {
         let task = sqlx::query_as::<_, DownloadTaskRecord>(
-            "SELECT id, provider, provider_task_id, title, artist, album,
+            "SELECT id, provider, provider_task_id, title, artist, album, source_track_id,
                     filename, destination_path, file_size, bytes_downloaded,
                     status, error_message, wishlist_id, created_at, completed_at
              FROM download_tasks WHERE id = ?"
@@ -89,7 +90,7 @@ impl DownloadRepository for SqliteDownloadRepository {
     ) -> AppResult<Vec<DownloadTaskRecord>> {
         let tasks = if let Some(status) = status_filter {
             sqlx::query_as::<_, DownloadTaskRecord>(
-                "SELECT id, provider, provider_task_id, title, artist, album,
+                "SELECT id, provider, provider_task_id, title, artist, album, source_track_id,
                         filename, destination_path, file_size, bytes_downloaded,
                         status, error_message, wishlist_id, created_at, completed_at
                  FROM download_tasks
@@ -103,7 +104,7 @@ impl DownloadRepository for SqliteDownloadRepository {
             .await
         } else {
             sqlx::query_as::<_, DownloadTaskRecord>(
-                "SELECT id, provider, provider_task_id, title, artist, album,
+                "SELECT id, provider, provider_task_id, title, artist, album, source_track_id,
                         filename, destination_path, file_size, bytes_downloaded,
                         status, error_message, wishlist_id, created_at, completed_at
                  FROM download_tasks

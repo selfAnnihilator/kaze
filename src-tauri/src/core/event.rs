@@ -15,6 +15,14 @@ pub struct QueueItem {
 #[serde(tag = "event", content = "payload")]
 pub enum Event {
     LibraryMetadataUpdated,
+    RecommendationFeedbackChanged {
+        user_id: String,
+        track_id: String,
+        title: String,
+        track_ids: Vec<String>,
+        disliked: bool,
+        manual_like: i64,
+    },
     // --- Playback State Changes ---
     PlaybackStarted {
         session_id: String,
