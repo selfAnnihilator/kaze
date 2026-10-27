@@ -15,3 +15,9 @@ Every Discovery chapter exposes refresh. Personal suggestions re-query taste-bas
 Chart sleeves now display their supplied artwork. Online aliases can request the artwork saved with their exact recording, before unrelated enrichment fallback. Recommendation selection prefers original singles/albums over recognizable compilation duplicates, while keeping artwork, album and audio attached to the chosen ID. Existing displayed recordings are never silently retargeted. Source brands are removed from normal UI labels; internal source identities and technical documentation remain.
 
 Validation is recorded in the dated implementation checkpoint in `docs/jiosaavn-experiment.md`. Fixtures and live downloads use disposable storage. Original audio tags/files and the user's live profile are not changed by these tests.
+
+## Player identity regression follow-up
+
+The first implementation gave the dislike and download components the same track-ID key in the Brutalist tools row. On song changes, React reported duplicate sibling keys and retained orphan dislike controls; a real-App replay grew from one to ten icons. Keys now include the action role (`dislike:<id>` and `download:<id>`) in both players, preserving per-song request isolation without key collisions. Missing or whitespace-only artist metadata displays Unknown Artist when a song is selected; the selection prompt is reserved for an empty player. No artist is inferred from a filename or written back to an audio file.
+
+`scripts/test-player-identity-ui.mjs` reproduces twelve online/local transitions in each presentation, including the missing/blank artist cases. It asserts exactly one dislike button, the correct download-control count and artist text, one backend subscription, and no duplicate-key warnings. The regression failed before the fix and passes afterward. Existing single-song checks did not exercise reconciliation across track identities.

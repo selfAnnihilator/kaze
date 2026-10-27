@@ -51,6 +51,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
 ) {
   const { playbackState: state, currentTrack: track } = p;
   const liked = track?.manual_like === 1 || p.isOnlineLiked;
+  const artist = track?.artist_name?.trim() || (track ? "Unknown Artist" : "Select a track to start playback");
   const online =
     track?.format === "online" || track?.file_path?.startsWith("online://");
   const toggleLike = () => {
@@ -122,7 +123,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
                   <OverflowTitle text={track?.title || "No Track Selected"} />
                 </button>
               </h2>
-              <p title={track?.artist_name}>{track?.artist_name || "Select a track to start playback"}</p>
+              <p title={artist}>{artist}</p>
             </div>
           </div>
         </div>
@@ -208,7 +209,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
             </button>
           </div>
           <div className="press-track-tools">
-            {track && <NotInterestedButton key={track.id} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
+            {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
             {p.onInspectWhyTrack && (
               <button
                 className="press-icon"
@@ -245,7 +246,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
                 )}
               </button>
             )}
-            {online && track && <DownloadButton key={track.id} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} compact />}
+            {online && track && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} compact />}
             {p.onToggleLyrics && (
               <button
                 className="press-icon"

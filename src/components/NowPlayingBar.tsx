@@ -169,7 +169,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
         currentTrack.file_path?.startsWith("online://"));
     const activeTitle = currentTrack?.title || "No Track Selected";
     const activeArtist =
-      currentTrack?.artist_name ||
+      currentTrack?.artist_name?.trim() ||
       (currentTrack ? "Unknown Artist" : "Select a track to start playback");
     const activeArtworkUrl =
       currentTrack?.cover_art_url || coverArtUrl || undefined;
@@ -279,7 +279,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
           {/* Heart — works for all tracks */}
           {currentTrack && (
             <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
-              <NotInterestedButton key={currentTrack.id} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} />
+              <NotInterestedButton key={`dislike:${currentTrack.id}`} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} />
               <button
                 className="player-icon-btn"
                 title={
@@ -340,7 +340,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               )}
             </div>
           )}
-          {isOnline && currentTrack && <DownloadButton key={currentTrack.id} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}
+          {isOnline && currentTrack && <DownloadButton key={`download:${currentTrack.id}`} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}
           {onOpenAddToPlaylist && currentTrack && (
             <button
               className="player-icon-btn"
