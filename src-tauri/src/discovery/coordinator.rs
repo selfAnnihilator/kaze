@@ -32,6 +32,7 @@ pub struct DiscoveryCoordinator {
     taste_engine: Arc<TasteProfileEngine>,
     #[allow(dead_code)]
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
+    artist_edition_cache: tokio::sync::Mutex<HashMap<String, std::time::Instant>>,
     artist_candidate_cache:
         tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
     world_chart_cache:
@@ -115,6 +116,7 @@ impl DiscoveryCoordinator {
             track_repo,
             taste_engine,
             provider_coordinator,
+            artist_edition_cache: tokio::sync::Mutex::new(HashMap::new()),
             artist_candidate_cache: tokio::sync::Mutex::new(HashMap::new()),
             world_chart_cache: tokio::sync::RwLock::new(None),
         }
@@ -375,6 +377,78 @@ impl DiscoveryCoordinator {
         }
         Ok(results)
     }
+    async fn seed_artist_editions(&self, user: &str, force: bool) -> AppResult<()> {
+        let Some(providers) = &self.provider_coordinator else {
+            return Ok(());
+        };
+        if !providers.enabled().await {
+            return Ok(());
+        }
+        let snapshots:Vec<String>=sqlx::query_scalar("SELECT s.metadata_json FROM online_track_sources s JOIN (
+            SELECT track_id,MAX(at) AS at FROM (
+                SELECT track_id,updated_at AS at FROM active_playback_journal WHERE user_id=?
+                UNION ALL SELECT track_id,COALESCE(last_played_at,0) AS at FROM track_statistics WHERE user_id=? AND (play_count>0 OR manual_like=1)
+            ) GROUP BY track_id
+        ) recent ON recent.track_id=s.track_id ORDER BY recent.at DESC LIMIT 6")
+            .bind(user).bind(user).fetch_all(self.taste_engine.pool()).await?;
+        let mut seen = HashSet::new();
+        let mut tasks = tokio::task::JoinSet::new();
+        for snapshot in snapshots {
+            let Ok(source) =
+                serde_json::from_str::<crate::providers::ExternalTrackMetadata>(&snapshot)
+            else {
+                continue;
+            };
+            if !seen.insert(crate::recommendations::signals::song_key(
+                &source.title,
+                &source.artist_name,
+            )) {
+                continue;
+            }
+            if self
+                .artist_edition_cache
+                .lock()
+                .await
+                .get(&source.provider_track_id)
+                .is_some_and(|at| !force && at.elapsed().as_secs() < 3600)
+            {
+                continue;
+            }
+            let provider = providers.jiosaavn.clone();
+            tasks.spawn(async move {
+                let result = tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    provider.artist_edition(&source),
+                )
+                .await;
+                (
+                    source.provider_track_id,
+                    result.ok().and_then(Result::ok).flatten(),
+                )
+            });
+            if tasks.len() >= 3 {
+                break;
+            }
+        }
+        while let Some(Ok((id, edition))) = tasks.join_next().await {
+            if let Some(track) = edition {
+                let preferred = track.provider_track_id.clone();
+                providers.persist(track).await?;
+                sqlx::query("INSERT INTO catalog_artist_editions(source_id,preferred_source_id,checked_at) VALUES(?,?,?) ON CONFLICT(source_id) DO UPDATE SET preferred_source_id=excluded.preferred_source_id,checked_at=excluded.checked_at")
+                    .bind(&id).bind(preferred).bind(chrono::Utc::now().timestamp()).execute(self.taste_engine.pool()).await?;
+            }
+            let mut cache = self.artist_edition_cache.lock().await;
+            if cache.len() >= 128 {
+                cache.retain(|_, at| at.elapsed().as_secs() < 3600);
+                if cache.len() >= 128 {
+                    cache.clear();
+                }
+            }
+            cache.insert(id, std::time::Instant::now());
+        }
+        Ok(())
+    }
+
     /// Ranks catalog candidates by listening affinity, with library signals for cold start.
     pub async fn get_discovery_recommendations(
         &self,
@@ -444,6 +518,7 @@ impl DiscoveryCoordinator {
             .collect();
         ranked_user_genres.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
+        self.seed_artist_editions(user_id, force_refresh).await?;
         let mut ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
         if self.provider_coordinator.is_some()
             && (force_refresh || ext_tracks.len() < limit.max(30))
@@ -479,19 +554,26 @@ impl DiscoveryCoordinator {
             }
         }
 
+        let signals =
+            crate::recommendations::signals::SongSignals::load(self.taste_engine.pool(), user_id)
+                .await?;
         // Prefer a single/original album over compilation duplicates before scoring.
         let mut releases: HashMap<String, ExternalTrackRecord> = HashMap::new();
         for track in ext_tracks {
             let key = crate::recommendations::signals::song_key(&track.title, &track.artist)
                 .unwrap_or_else(|| track.id.clone());
-            let rank = crate::recommendations::signals::release_preference(
+            let rank = signals.release_rank(
+                &track.id,
                 &track.title,
                 track.album.as_deref(),
+                signals.identities.get(&track.id).and_then(|song| song.year),
             );
             let replace = releases.get(&key).is_none_or(|old| {
-                rank > crate::recommendations::signals::release_preference(
+                rank > signals.release_rank(
+                    &old.id,
                     &old.title,
                     old.album.as_deref(),
+                    signals.identities.get(&old.id).and_then(|song| song.year),
                 )
             });
             if replace {
@@ -526,9 +608,6 @@ impl DiscoveryCoordinator {
             })
             .collect();
 
-        let signals =
-            crate::recommendations::signals::SongSignals::load(self.taste_engine.pool(), user_id)
-                .await?;
         for mut track in ext_tracks {
             if signals.blocked(&track.id, &track.title, &track.artist) {
                 continue;

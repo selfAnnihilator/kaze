@@ -387,7 +387,9 @@ async fn online_liked_songs_are_familiar_without_claiming_another_accounts_playl
     .unwrap();
     let repo = SqlitePlaylistRepository::new(p.db_pool().clone());
     let liked = repo.ensure_liked_songs_playlist("listener").await.unwrap();
-    repo.add_track(&liked, "jiosaavn:liked", None).await.unwrap();
+    repo.add_track(&liked, "jiosaavn:liked", None)
+        .await
+        .unwrap();
     let engine = p.flow_engine();
     let own = engine
         .generate_playback_tracks_after("listener", 1.0, 10, &[], None)
@@ -444,4 +446,69 @@ async fn rediscover_keeps_room_for_online_songs_even_with_many_equal_scoring_loc
     );
     assert!(online_count(&explore) > online_count(&familiar));
     p.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn artist_release_flow_keeps_familiarity_without_locking_to_a_compilation_cover() {
+    let (core, _dir) = setup().await;
+    for (id, album, year, cover) in [
+        ("jiosaavn:compilation", "Night Train", 2026, "train"),
+        ("jiosaavn:single", "Breathe Me", 2006, "sia-single"),
+    ] {
+        external(&core, id, "Breathe Me", "Sia", "Pop").await;
+        ensure_online_track(
+            core.db_pool(),
+            id,
+            "Breathe Me",
+            Some("Sia"),
+            Some(album),
+            Some(272.0),
+            Some(&format!("https://example.test/{cover}.jpg")),
+            None,
+        )
+        .await
+        .unwrap();
+        sqlx::query("UPDATE external_tracks SET album=?,cover_art_url=?,release_year=? WHERE id=?")
+            .bind(album)
+            .bind(format!("https://example.test/{cover}.jpg"))
+            .bind(year)
+            .bind(id)
+            .execute(core.db_pool())
+            .await
+            .unwrap();
+    }
+    stats(&core, "default", "jiosaavn:compilation", 12, 1, 7).await;
+    let picks = core
+        .flow_engine()
+        .generate_playback_tracks_after("default", 1.0, 20, &[], None)
+        .await
+        .unwrap();
+    let song = picks
+        .iter()
+        .find(|song| song.title == "Breathe Me")
+        .expect("familiar song");
+    assert_eq!(song.track_id, "jiosaavn:single");
+    assert_eq!(
+        song.cover_art_url.as_deref(),
+        Some("https://example.test/sia-single.jpg")
+    );
+    let signals = music_player_backend::recommendations::signals::SongSignals::load(
+        core.db_pool(),
+        "default",
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        signals
+            .signal("jiosaavn:single", "Breathe Me", "Sia")
+            .play_count,
+        12
+    );
+    assert_eq!(
+        signals
+            .signal("jiosaavn:single", "Breathe Me", "Sia")
+            .manual_like,
+        1
+    );
+    core.shutdown().await.unwrap();
 }

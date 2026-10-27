@@ -55,6 +55,8 @@ impl ProviderCoordinator {
     }
     /// Reuse any pre-existing saved provider identity, including cloud aliases.
     pub async fn persist(&self, track: ExternalTrackMetadata) -> AppResult<ExternalTrackRecord> {
+        let snapshot = serde_json::to_string(&track)
+            .map_err(|error| crate::core::AppError::Internal(error.to_string()))?;
         let existing: Option<String> = sqlx::query_scalar(
             "SELECT id FROM external_tracks WHERE provider='jiosaavn' AND provider_id=?",
         )
@@ -81,6 +83,8 @@ impl ProviderCoordinator {
             .await?;
         sqlx::query("UPDATE external_tracks SET language=COALESCE(?,language), release_year=COALESCE(?,release_year) WHERE id=?")
             .bind(track.language).bind(track.year).bind(&row.id).execute(&self.pool).await?;
+        sqlx::query("INSERT INTO online_track_sources(track_id,provider_id,metadata_json,linked_at) VALUES(?,?,?,?) ON CONFLICT(track_id) DO NOTHING")
+            .bind(&row.id).bind(&row.provider_id).bind(snapshot).bind(chrono::Utc::now().timestamp()).execute(&self.pool).await?;
         Ok(row)
     }
 }

@@ -2604,6 +2604,7 @@ impl CoreProcessor {
                         force_refresh.unwrap_or(false),
                     )
                     .await?;
+                self.flow_engine.invalidate_home_picks(&user_id).await;
                 let val: Vec<serde_json::Value> = recs
                     .into_iter()
                     .filter_map(|r| serde_json::to_value(r).ok())

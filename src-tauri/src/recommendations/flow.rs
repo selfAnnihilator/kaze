@@ -326,21 +326,24 @@ impl FlowEngine {
             .filter(|c| exclude_set.contains(c.id.as_str()) || c.manual_like == Some(-1))
             .map(|c| Self::song_key(&c.title, c.artist_name.as_deref().unwrap_or("")))
             .collect();
-        let mut preferred: HashMap<String, (u8, String)> = HashMap::new();
+        let mut preferred: HashMap<String, ((bool, u8, i64), String)> = HashMap::new();
         for candidate in &candidates {
-            if !candidate.is_online
-                || candidate.play_count.unwrap_or(0) > 0
-                || candidate.manual_like == Some(1)
-            {
+            if !candidate.is_online {
                 continue;
             }
             let key = Self::song_key(
                 &candidate.title,
                 candidate.artist_name.as_deref().unwrap_or(""),
             );
-            let rank = crate::recommendations::signals::release_preference(
+            let rank = signals.release_rank(
+                &candidate.id,
                 &candidate.title,
                 candidate.album_title.as_deref(),
+                signals
+                    .identities
+                    .get(&candidate.id)
+                    .and_then(|song| song.year)
+                    .or(candidate.year),
             );
             if preferred.get(&key).is_none_or(|(old, _)| rank > *old) {
                 preferred.insert(key, (rank, candidate.id.clone()));
@@ -348,8 +351,6 @@ impl FlowEngine {
         }
         candidates.retain(|candidate| {
             !candidate.is_online
-                || candidate.play_count.unwrap_or(0) > 0
-                || candidate.manual_like == Some(1)
                 || preferred
                     .get(&Self::song_key(
                         &candidate.title,

@@ -157,14 +157,85 @@ impl JioSaavnProvider {
     /// Availability is present in the search response: no per-song requests or audio downloads.
     pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<ExternalTrackMetadata>> {
         let mut seen = HashSet::new();
-        Ok(self
+        let mut tracks: Vec<_> = self
             .search_items(query, limit)
             .await?
             .iter()
             .filter(|item| full_track_source(item).is_ok())
             .filter_map(|item| parse_track(item).ok())
             .filter(|track| seen.insert(track.provider_track_id.clone()))
-            .collect())
+            .collect();
+        super::releases::prefer_artist_editions(&mut tracks, query);
+        Ok(tracks)
+    }
+
+    /// Find an artist-owned edition for automatic recommendations only.
+    /// The compilation's saved source is never rewritten or given another cover.
+    pub async fn artist_edition(
+        &self,
+        source: &ExternalTrackMetadata,
+    ) -> Result<Option<ExternalTrackMetadata>> {
+        let enriched;
+        let source = if source.album_id.is_none() {
+            enriched = parse_track(&self.detail(&source.provider_track_id, false).await?)?;
+            &enriched
+        } else {
+            source
+        };
+        let Some(album_id) = source.album_id.as_deref() else {
+            return Ok(None);
+        };
+        let album = self
+            .request("content.getAlbumDetails", &[("albumid", album_id)], false)
+            .await?;
+        let credits = album_credits(&album);
+        if !credits
+            .iter()
+            .any(|artist| super::strict_match::normalized(artist) == "various artists")
+        {
+            return Ok(None);
+        }
+        let candidates = self
+            .search(&format!("{} {}", source.title, source.artist_name), 50)
+            .await?;
+        let mut checked = HashSet::new();
+        for track in candidates.into_iter().filter(|track| {
+            super::strict_match::normalized(&track.title)
+                == super::strict_match::normalized(&source.title)
+                && super::strict_match::normalized(&track.artist_name)
+                    == super::strict_match::normalized(&source.artist_name)
+                && track
+                    .duration_secs
+                    .zip(source.duration_secs)
+                    .is_some_and(|(a, b)| (a - b).abs() <= 3.0)
+        }) {
+            let Some(album_id) = track.album_id.as_deref() else {
+                continue;
+            };
+            if !checked.insert(album_id.to_string()) {
+                continue;
+            }
+            if checked.len() > 4 {
+                break;
+            }
+            let album = self
+                .request("content.getAlbumDetails", &[("albumid", album_id)], false)
+                .await?;
+            let credits = album_credits(&album);
+            if credits
+                .iter()
+                .any(|artist| super::strict_match::normalized(artist) == "various artists")
+            {
+                continue;
+            }
+            if credits.iter().any(|artist| {
+                super::strict_match::normalized(artist)
+                    == super::strict_match::normalized(&source.artist_name)
+            }) {
+                return Ok(Some(track));
+            }
+        }
+        Ok(None)
     }
 
     /// Local-file enrichment can use catalog metadata even when streaming is unavailable.
@@ -419,6 +490,29 @@ impl Default for JioSaavnProvider {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn album_credits(value: &Value) -> Vec<String> {
+    if let Some(artists) =
+        text(value, "primary_artists").or_else(|| text(&value["more_info"], "primary_artists"))
+    {
+        return artists
+            .split(',')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(str::to_string)
+            .collect();
+    }
+    value
+        .pointer("/more_info/artistMap/primary_artists")
+        .and_then(Value::as_array)
+        .map(|artists| {
+            artists
+                .iter()
+                .filter_map(|artist| text(artist, "name"))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn merge_charts(feeds: &[Value]) -> Vec<Value> {

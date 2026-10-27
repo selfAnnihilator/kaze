@@ -728,3 +728,158 @@ async fn editorial_charts_send_language_cookie_parse_legacy_rows_and_refresh_cac
     );
     server.abort();
 }
+
+#[tokio::test]
+async fn artist_release_search_prefers_single_over_recent_compilation_without_mixing_artwork() {
+    let mut compilation = candidate("compilation", "Breathe Me");
+    compilation["primary_artists"] = json!("Sia");
+    compilation["album"] = json!("Night Train");
+    compilation["year"] = json!("2026");
+    compilation["image"] = json!("https://example.test/train.jpg");
+    compilation["encrypted_media_url"]=json!("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq");
+    compilation["is_drm"] = json!("0");
+    let mut single = compilation.clone();
+    single["id"] = json!("single");
+    single["album"] = json!("Breathe Me");
+    single["year"] = json!("2006");
+    single["image"] = json!("https://example.test/sia-single.jpg");
+    let (url, count, server_task) = server(json!({"results":[compilation,single]}), 200).await;
+    let songs = JioSaavnProvider::with_endpoint(&url)
+        .search("Breathe Me Sia", 25)
+        .await
+        .unwrap();
+    assert_eq!(songs[0].provider_track_id, "single");
+    assert_eq!(
+        songs[0].cover_art_url.as_deref(),
+        Some("https://example.test/sia-single.jpg")
+    );
+    assert_eq!(
+        songs[1].provider_track_id, "compilation",
+        "explicit compilation results remain accessible"
+    );
+    assert_eq!(
+        count.load(Ordering::SeqCst),
+        1,
+        "search ranking must not add per-song requests"
+    );
+    server_task.abort();
+}
+
+#[tokio::test]
+async fn artist_release_discovery_checks_album_credits_and_preserves_the_saved_compilation() {
+    use music_player_backend::{
+        config::AppConfig,
+        core::{CoreProcessor, EventBus},
+        database::repositories::SqliteWishlistRepository,
+        discovery::DiscoveryCoordinator,
+        playback::backend::MockAudioBackend,
+        providers::{jiosaavn::parse_track, online_catalog::OnlineCatalog},
+    };
+    let mut compilation = candidate("compilation", "Breathe Me");
+    compilation["primary_artists"] = json!("Sia");
+    compilation["album"] = json!("Night Train");
+    compilation["albumid"] = json!("99");
+    compilation["year"] = json!("2026");
+    compilation["image"] = json!("https://example.test/train.jpg");
+    compilation["encrypted_media_url"]=json!("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq");
+    let mut single = compilation.clone();
+    single["id"] = json!("single");
+    single["album"] = json!("Artist Collection");
+    single["albumid"] = json!("11");
+    single["year"] = json!("2026");
+    single["image"] = json!("https://example.test/sia-single.jpg");
+    let source = parse_track(&compilation).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let count = Arc::new(AtomicUsize::new(0));
+    let requests = count.clone();
+    let server_task = tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let mut buffer = [0u8; 8192];
+            let n = socket.read(&mut buffer).await.unwrap();
+            let request = String::from_utf8_lossy(&buffer[..n]);
+            let path = request.split_whitespace().nth(1).unwrap();
+            let url = reqwest::Url::parse(&format!("http://fixture{path}")).unwrap();
+            let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+            requests.fetch_add(1, Ordering::SeqCst);
+            let body=match query.get("__call").map(String::as_str) {
+                Some("content.getAlbumDetails") => json!({"primary_artists":if query.get("albumid").is_some_and(|id|id=="99") {"Various Artists"} else {"Sia"}}),
+                Some("search.getResults") if query.get("q").is_some_and(|q|q=="Breathe Me Sia") => json!({"results":[compilation,single]}),
+                _=>json!({"results":[]}),
+            }.to_string();
+            socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).as_bytes()).await.unwrap();
+        }
+    });
+    let pool = create_in_memory_pool().await.unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = temp.path().join("cache");
+    let core =
+        CoreProcessor::new_with_backend(pool.clone(), config, Box::new(MockAudioBackend::new()));
+    let mut providers = ProviderCoordinator::new(
+        pool.clone(),
+        Arc::new(EventBus::default()),
+        temp.path().into(),
+    );
+    providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
+    let providers = Arc::new(providers);
+    let saved = providers.persist(source).await.unwrap();
+    ensure_online_track(
+        &pool,
+        &saved.id,
+        &saved.title,
+        Some(&saved.artist),
+        saved.album.as_deref(),
+        saved.duration_secs,
+        saved.cover_art_url.as_deref(),
+        None,
+    )
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO track_statistics(user_id,track_id,play_count,completion_count,manual_like,last_played_at) VALUES('default',?,12,10,1,?)").bind(&saved.id).bind(chrono::Utc::now().timestamp()).execute(&pool).await.unwrap();
+    let discovery = DiscoveryCoordinator::new(
+        Arc::new(SqliteWishlistRepository::new(pool.clone())),
+        core.library_service().track_repo(),
+        core.taste_engine(),
+        Some(providers.clone()),
+    );
+    let recommendations = discovery
+        .get_discovery_recommendations("default", 20, false)
+        .await
+        .unwrap();
+    let preferred = recommendations
+        .iter()
+        .find(|song| song.title == "Breathe Me")
+        .expect("artist-owned familiar release");
+    assert_eq!(preferred.provider_id, "single");
+    assert_eq!(
+        preferred.cover_art_url.as_deref(),
+        Some("https://example.test/sia-single.jpg")
+    );
+    let catalog = OnlineCatalog::new(pool.clone(), providers.jiosaavn.clone());
+    let chosen = catalog
+        .bind(&preferred.external_track_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(chosen.album_id.as_deref(), Some("11"));
+    assert_eq!(chosen.year, Some(2026));
+    let original = catalog.bind(&saved.id).await.unwrap().unwrap();
+    assert_eq!(original.provider_track_id, "compilation");
+    assert_eq!(
+        original.cover_art_url.as_deref(),
+        Some("https://example.test/train.jpg")
+    );
+    let calls = count.load(Ordering::SeqCst);
+    discovery
+        .get_discovery_recommendations("default", 20, false)
+        .await
+        .unwrap();
+    assert_eq!(
+        count.load(Ordering::SeqCst),
+        calls,
+        "normal refreshes reuse bounded edition/artist caches"
+    );
+    core.shutdown().await.unwrap();
+    server_task.abort();
+}

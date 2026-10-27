@@ -92,6 +92,7 @@ fn same_recording(a_title: &str, a_artist: &str, b_title: &str, b_artist: &str) 
 }
 #[derive(Default)]
 pub struct SongSignals {
+    artist_releases: HashSet<String>,
     preferences: Vec<FeedbackPreference>,
     preference_lookup: HashMap<String, usize>,
     pub identities: HashMap<String, SongIdentity>,
@@ -105,6 +106,13 @@ pub struct SongSignals {
 impl SongSignals {
     pub async fn load(pool: &SqlitePool, user: &str) -> AppResult<Self> {
         let mut index = Self::default();
+        index.artist_releases = sqlx::query_scalar::<_, String>(
+            "SELECT DISTINCT preferred_source_id FROM catalog_artist_editions",
+        )
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .collect();
         index.preferences=sqlx::query_as::<_,FeedbackPreference>("SELECT song_key,track_id,source_id,title,artist,manual_like,updated_at FROM recommendation_feedback WHERE user_id=?").bind(user).fetch_all(pool).await?;
         for (position, preference) in index.preferences.iter().enumerate() {
             let mut keys = vec![format!("id:{}", preference.track_id)];
@@ -235,6 +243,22 @@ impl SongSignals {
                         .is_some_and(|source| self.blocked_sources.contains(source))
             })
     }
+    pub fn release_rank(
+        &self,
+        id: &str,
+        title: &str,
+        album: Option<&str>,
+        year: Option<i64>,
+    ) -> (bool, u8, i64) {
+        let verified = self
+            .identities
+            .get(id)
+            .and_then(|song| song.source_id.as_ref())
+            .is_some_and(|source| self.artist_releases.contains(source));
+        let (quality, year) = crate::providers::releases::release_rank(title, album, year);
+        (verified, quality, year)
+    }
+
     pub fn blocked_id(&self, id: &str) -> bool {
         self.identities
             .get(id)
@@ -386,35 +410,7 @@ pub async fn remember_imported_dislikes(pool: &SqlitePool, user: &str) -> AppRes
     Ok(())
 }
 
-/// Preference is only used while selecting a recommendation, never to replace a displayed recording.
-pub fn release_preference(title: &str, album: Option<&str>) -> u8 {
-    let Some(album) = album.filter(|album| !album.trim().is_empty()) else {
-        return 0;
-    };
-    let normalized = crate::providers::strict_match::normalized;
-    if normalized(title) == normalized(album) {
-        return 3;
-    }
-    let album = album.to_lowercase();
-    if [
-        "compilation",
-        "greatest hits",
-        "best of",
-        "top hits",
-        "pop 20",
-        "workout",
-        "viral hits",
-        "party hits",
-        "summer hits",
-    ]
-    .iter()
-    .any(|marker| album.contains(marker))
-    {
-        0
-    } else {
-        2
-    }
-}
+pub use crate::providers::releases::release_preference;
 
 #[cfg(test)]
 mod release_tests {

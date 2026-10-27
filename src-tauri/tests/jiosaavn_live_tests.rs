@@ -614,3 +614,93 @@ async fn catalog_playlist_and_exact_download_gate() {
     core.shutdown().await.unwrap();
     println!("PASS provider charts, exact playlist identities and selected JioSaavn full-audio download/decoder");
 }
+
+#[tokio::test]
+#[ignore = "requires live artist-edition metadata, cover and full audio"]
+async fn sia_artist_edition_keeps_artwork_and_download_on_the_verified_release() {
+    use music_player_backend::{
+        downloads::{
+            DownloadProvider, DownloadSearchResult, DownloadStatus, JioSaavnDownloadProvider,
+        },
+        providers::jiosaavn::{parse_track, JioSaavnProvider},
+    };
+    let provider = std::sync::Arc::new(JioSaavnProvider::new());
+    let compilation = parse_track(&provider.detail("uegtrjK9", false).await.unwrap()).unwrap();
+    assert_eq!(compilation.album_title.as_deref(), Some("Night Train"));
+    let artist_release = provider
+        .artist_edition(&compilation)
+        .await
+        .unwrap()
+        .expect("available artist-owned Sia edition");
+    assert_eq!(artist_release.artist_name, "Sia");
+    assert_eq!(artist_release.title, "Breathe Me");
+    assert_ne!(
+        artist_release.provider_track_id,
+        compilation.provider_track_id
+    );
+    assert_ne!(artist_release.album_title, compilation.album_title);
+    let exact = parse_track(
+        &provider
+            .detail(&artist_release.provider_track_id, false)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(artist_release.cover_art_url, exact.cover_art_url);
+    assert_eq!(artist_release.album_id, exact.album_id);
+    let cover = reqwest::get(artist_release.cover_art_url.as_ref().unwrap())
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    assert!(cover.len() < 2 * 1024 * 1024);
+    let cover = image::load_from_memory(&cover).unwrap();
+    assert!(cover.width() >= 150 && cover.height() >= 150);
+    let directory = tempfile::tempdir().unwrap();
+    let downloader = JioSaavnDownloadProvider::new(provider);
+    let selected = DownloadSearchResult {
+        id: format!("jiosaavn:{}", artist_release.provider_track_id),
+        provider: "jiosaavn".into(),
+        username: artist_release.artist_name.clone(),
+        filename: "artist-release.m4a".into(),
+        file_size: 0,
+        bitrate: None,
+        sample_rate: None,
+        format: "m4a".into(),
+        slots_free: true,
+        speed_bps: 0,
+    };
+    let transfer = downloader
+        .start_download(&selected, directory.path())
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(90), async {
+        loop {
+            let progress = downloader.get_progress(&transfer).await.unwrap().unwrap();
+            assert_ne!(progress.status, DownloadStatus::Failed);
+            if progress.status == DownloadStatus::Completed {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(
+        SymphoniaSource::new(&directory.path().join("artist-release.m4a"))
+            .unwrap()
+            .next()
+            .is_some()
+    );
+    println!(
+        "PASS artist edition: {} / {} / {}; decoded cover {}x{} and exact M4A",
+        artist_release.provider_track_id,
+        artist_release.artist_name,
+        artist_release.album_title.unwrap_or_default(),
+        cover.width(),
+        cover.height()
+    );
+}

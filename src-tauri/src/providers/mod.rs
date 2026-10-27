@@ -8,3 +8,5 @@ pub use coordinator::*;
 pub use types::*;
 
 pub mod online_catalog;
+
+pub mod releases;
