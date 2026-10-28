@@ -1,5 +1,15 @@
 # JioSaavn experiment
 
+## 2026-10-28 — Library Moment playback and exact album opening
+
+Library Moment now spotlights actual local-library album members, counts those rows instead of using an unset metadata total, and supplies a real first-track ID for playback/artwork. Online placeholders created for metadata/history cannot become an unplayable library spotlight. No stored albums, tracks or files are removed.
+
+Per the user's interaction choice, clicking the cover plays that song directly in the shared Rust player; subsequent clicks pause/resume it. Open record is a separate action in both themes and opens that album without interrupting playback. Album navigation no longer silently depends on the first 200 cached summaries or uses a capped title search. The existing `GetAlbumDetails` query is implemented with exact album-ID membership, disc/track ordering, complete results and current-account feedback. Online rows retain the common source-presentation path. The destination remains the windowed Library track list; missing albums report a visible error. A supplied first-track pointer also lets artwork load without depending on the current/recent recommendations containing that album.
+
+The Brutalist archive number now follows Albums, Tracks, Playlists and Liked instead of always showing the album count. It reflects the displayed section, including an opened album's exact tracks, and excludes smart mixes/the special liked list from regular playlists. The featured song pointer respects existing account-scoped dislike exclusions without restricting manual library browsing.
+
+Verification: 26 Flow and two recommendation-feedback tests pass, including real member counts, ignoring online placeholders, a 105-track exact album, another artist's same-title album, current-account feedback and blocked spotlight pointers. All fifteen frontend test files pass. The focused browser gate passes both themes' cover play/pause/resume, uncached exact album opening, missing-album errors and metadata refresh retention, plus all four archive counts. Navigation restoration and windowing checks pass. Frontend and embedded native builds pass, followed by all fourteen private native continuity groups, including actual Rust cover playback and independent album opening. Tests use disposable data; the live app, profile, music and queue were not modified or restarted. Earlier full Rust coverage completed across runs with an unchanged recommendation-feedback recheck after a transient missing-table error; its cause remains unknown. The final focused suite passes without that error.
+
 ## 2026-10-28 — Spatial artwork fits narrow, tall windows
 
 The Discover preview no longer overlaps the right-hand thumbnails/text in narrow native windows. WebKitGTK's implicit artwork grid column made the rotated cover about 543px wide inside a 333px column at 940×1000; Chromium did not reproduce it. An explicit shrinkable grid column contains the existing cover without changing playback, artwork identity or the theme composition.

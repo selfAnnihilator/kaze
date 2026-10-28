@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import socket
 import sqlite3
+import struct
 import subprocess
 import sys
 import tempfile
@@ -73,7 +74,19 @@ def main():
                     with wave.open(str(path), 'wb') as audio:
                         audio.setnchannels(1); audio.setsampwidth(2); audio.setframerate(8000)
                         audio.writeframes(b'\x00\x00' * 8000 * 120)
+                    if i < 2:
+                        # Startup recovers original metadata from disk. Give the
+                        # fixture real RIFF album tags so its album link survives.
+                        info = b'INFO'
+                        for key, value in [(b'INAM', f'Interface Track {i}'), (b'IPRD', 'Native Library Moment')]:
+                            encoded = value.encode() + b'\0'
+                            info += key + struct.pack('<I', len(encoded)) + encoded + (b'\0' if len(encoded) % 2 else b'')
+                        with path.open('r+b') as tagged:
+                            tagged.seek(0, 2); tagged.write(b'LIST' + struct.pack('<I', len(info)) + info)
+                            tagged.seek(4); tagged.write(struct.pack('<I', path.stat().st_size - 8))
                     db.execute("INSERT INTO tracks (id,file_path,file_size,modified_timestamp,title,normalized_title,duration_secs,format,created_at,updated_at) VALUES (?,?,?,1,?,?,120,'wav',1,1)", (f'track-{i}', str(path), path.stat().st_size, f'Interface Track {i}', f'interface track {i}'))
+                db.execute("INSERT INTO albums(id,title,normalized_title,total_tracks,created_at) VALUES('native-moment','Native Library Moment','native library moment',0,1)")
+                db.execute("UPDATE tracks SET album_id='native-moment' WHERE id IN ('track-0','track-1')")
             app, browser = launch()
             click('Discover Music')
             tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".spatial-discovery-fixed"))'), 'restored native Discovery')
@@ -99,6 +112,21 @@ def main():
                 assert browser.evaluate("document.querySelector('.main-content').scrollTop") == 0
                 time.sleep(.21)
             print('PASS native rapid vertical wheel bursts change one chapter per gesture without outer scrolling', flush=True)
+            click('Home')
+            moment = browser.query('GetHomeOverview')['library_moment']
+            with sqlite3.connect(db_path) as db:
+                fixture_members = db.execute("SELECT id,album_id,format FROM tracks WHERE id IN ('track-0','track-1')").fetchall()
+            assert moment, {'missing_library_moment':fixture_members}
+            tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".spatial-library-moment button"))'), 'real Library Moment')
+            assert moment['album_id'] == 'native-moment' and moment['total_tracks'] == 2, moment
+            browser.evaluate("document.querySelector('.spatial-library-moment button').click();true")
+            tray.wait_for(lambda: watcher.status() == 'Playing', 'Library Moment cover starts actual Rust playback')
+            assert browser.query('GetPlaybackState')['current_track_id'] == moment['first_track_id']
+            assert browser.evaluate('Boolean(document.querySelector(".spatial-home"))'), 'cover plays without navigating'
+            click('Open record')
+            tray.wait_for(lambda: browser.evaluate('document.querySelectorAll(".library-view .track-row").length') == 2, 'exact native album members')
+            assert browser.query('GetPlaybackState')['current_track_id'] == moment['first_track_id']
+            print('PASS native Library Moment cover plays directly; Open record opens its exact album without interrupting', flush=True)
             browser.command('PlayTrack', track_id='track-0', source='library')
             browser.command('EnqueueTrack', track_id='track-1', play_next=False)
             browser.command('EnqueueTrack', track_id='track-2', play_next=False)

@@ -2406,6 +2406,16 @@ impl CoreProcessor {
                     .collect();
                 Ok(QueryResponse::Albums(val))
             }
+            Query::GetAlbumDetails { album_id } => {
+                let repo = self.library_service.album_repo();
+                let album = repo.find_by_id(&album_id).await?
+                    .ok_or_else(|| AppError::NotFound("Album is no longer in the library".into()))?;
+                let user_id = self.current_user_id().await;
+                let tracks = repo.tracks_scoped(&album_id, &user_id).await?;
+                let rows: Vec<_> = tracks.into_iter().filter_map(|track| serde_json::to_value(track).ok()).collect();
+                let tracks = self.online_catalog.present(serde_json::Value::Array(rows)).await?;
+                Ok(QueryResponse::AlbumDetails(serde_json::json!({"album":album,"tracks":tracks})))
+            }
             Query::SearchLibrary { query_text, limit } => {
                 let user_id = self.current_user_id().await;
                 let results = self

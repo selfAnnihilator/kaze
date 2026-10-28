@@ -349,6 +349,7 @@ export type Query =
     }
   | { query: "GetArtists"; payload: { offset: number; limit: number } }
   | { query: "GetAlbums"; payload: { offset: number; limit: number } }
+  | { query: "GetAlbumDetails"; payload: { album_id: string } }
   | { query: "GetPlaylists" }
   | { query: "GetPlaylistTracks"; payload: { playlist_id: string } }
   | { query: "GetSmartMixes" }
@@ -592,6 +593,7 @@ export interface RediscoverTrackItem {
 
 export interface LibraryMoment {
   album_id: string;
+  first_track_id?: string;
   album_title: string;
   artist_name: string;
   cover_art_path?: string;

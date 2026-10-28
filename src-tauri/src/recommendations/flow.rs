@@ -85,6 +85,7 @@ pub struct RediscoverTrackItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LibraryMoment {
     pub album_id: String,
+    pub first_track_id: Option<String>,
     pub album_title: String,
     pub artist_name: String,
     pub cover_art_path: Option<String>,
@@ -763,35 +764,26 @@ impl FlowEngine {
         let for_you = picks.get(user_id).unwrap().2.clone();
         drop(picks);
 
-        // 5. Library Moment: Spotlight on an album from user's library
-        // Prefer an album with tracks that was either listened to in the past or has never been finished
-        let library_moment_row: Option<(String, String, Option<String>, Option<String>, Option<i64>, Option<i64>)> =
+        // Only real library files can provide a library spotlight. Online rows
+        // created for metadata/history are not an owned album collection.
+        let library_moment_row: Option<(String, String, Option<String>, Option<String>, i64, Option<i64>, String)> =
             sqlx::query_as(
-                "SELECT al.id, al.title, a.name as artist, al.cover_art_path, al.total_tracks, al.release_year
-                 FROM albums al
-                 LEFT JOIN artists a ON a.id = al.artist_id
-                 WHERE al.id IN (
-                     SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL
-                 )
-                 ORDER BY RANDOM()
-                 LIMIT 1"
-            )
-            .fetch_optional(&self.pool)
-            .await
-            .unwrap_or(None);
-
-        let library_moment =
-            library_moment_row.map(|(aid, atitle, aname, art_path, ttracks, ryear)| {
-                LibraryMoment {
-                    album_id: aid,
-                    album_title: atitle,
-                    artist_name: aname.unwrap_or_else(|| "Various Artists".into()),
-                    cover_art_path: art_path,
-                    total_tracks: ttracks.unwrap_or(0),
-                    release_year: ryear,
-                    subtitle: "Revisit an album from your library".to_string(),
-                }
-            });
+                "SELECT al.id,al.title,a.name,al.cover_art_path,COUNT(t.id),al.release_year,
+                    (SELECT t2.id FROM tracks t2 WHERE t2.album_id=al.id
+                     AND lower(t2.format)!='online' AND t2.file_path!='' AND t2.file_path NOT LIKE 'online://%'
+                     AND t2.file_path NOT LIKE 'http://%' AND t2.file_path NOT LIKE 'https://%'
+                     ORDER BY t2.has_cover_art DESC,COALESCE(t2.disc_number,1),COALESCE(t2.track_number,2147483647),t2.id LIMIT 1)
+                 FROM albums al JOIN tracks t ON t.album_id=al.id
+                 LEFT JOIN artists a ON a.id=al.artist_id
+                 WHERE lower(t.format)!='online' AND t.file_path!='' AND t.file_path NOT LIKE 'online://%'
+                   AND t.file_path NOT LIKE 'http://%' AND t.file_path NOT LIKE 'https://%'
+                 GROUP BY al.id ORDER BY RANDOM() LIMIT 1"
+            ).fetch_optional(&self.pool).await?;
+        let library_moment = library_moment_row.map(|(aid,atitle,aname,art_path,count,year,first)| LibraryMoment {
+            album_id:aid, first_track_id:Some(first), album_title:atitle,
+            artist_name:aname.unwrap_or_else(|| "Various Artists".into()), cover_art_path:art_path,
+            total_tracks:count, release_year:year, subtitle:"Revisit an album from your library".into(),
+        });
 
         // 6. Your Week: Last 7 days summary from playback_history
         let week_cutoff = now - (7 * 86400);

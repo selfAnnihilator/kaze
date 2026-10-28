@@ -88,6 +88,12 @@ Run `scripts/test-brutalist-parity.mjs` against the same local server as the oth
 Spatial Discover's artwork grid needs an explicit `minmax(0, 1fr)` column. An implicit auto column lets WebKitGTK resolve its percentage/height-limited cover wider than the assigned pane in narrow, tall windows, overlapping the right-hand song shelf. Keep the large cover and caption inside their column, and verify native 940×1000 and 800×1000 viewports as well as short/wide windows. `scripts/test-spatial-narrow-webkit.py` runs the real App/CSS with a fixture backend in ephemeral offscreen native views; Chromium alone did not reproduce this sizing defect.
 
 
+## Library Moment
+
+Library Moment's cover is a direct play/pause/resume action for its supplied `first_track_id`; Open record independently opens the album and leaves playback alone. Both themes expose these actions. The backend spotlights albums with real local-library members and reports their counted tracks, rather than catalog placeholders or an unset metadata total. Opening any album uses `GetAlbumDetails` and its exact album ID, including albums outside the cached first 200; do not fall back to a title search or silently require a cached album summary. The resulting track list stays windowed and keeps account-scoped feedback/source identities.
+
+The Brutalist archive's large number follows its selected category: displayed albums, displayed tracks (including an opened album's exact membership), regular playlists or the active Liked Songs collection. Smart mixes and the special Liked Songs playlist do not count as regular playlists. Derive this from existing view data without introducing playback-driven state. Library Moment's direct song pointer also follows recommendation exclusions; a blocked featured recording hides that spotlight while manual album browsing remains available.
+
 ## Focus feedback
 
 Keep visible focus when navigating with Tab/Shift+Tab. Mouse-clicked buttons must not gain a focus outline merely because an unrelated key was pressed afterward. `usePointerFocus` marks pointer-origin controls until focus leaves or Tab navigation begins; text fields and sliders retain their native focus behavior. Preserve DOM focus and keyboard activation rather than blurring controls or globally removing focus outlines. Track this through DOM listeners, without React state or playback-driven updates.

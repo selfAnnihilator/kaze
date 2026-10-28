@@ -164,6 +164,7 @@ pub enum QueryResponse {
     Track(Option<serde_json::Value>),
     Artists(Vec<serde_json::Value>),
     Albums(Vec<serde_json::Value>),
+    AlbumDetails(serde_json::Value),
     Playlists(Vec<serde_json::Value>),
     PlaylistTracks(Vec<serde_json::Value>),
     Rankings(Vec<serde_json::Value>),

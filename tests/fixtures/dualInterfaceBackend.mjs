@@ -254,6 +254,10 @@ export function installDualInterfaceFixture() {
                   cover_art_path: tracks[i % 10].cover_art_url,
                 })),
           };
+        case "GetAlbumDetails": {
+          const i = Number(p.album_id.replace("a", "")) || 0;
+          return {type:"AlbumDetails",data:{album:{id:p.album_id,title:covers[i % 10]},tracks:tracks.filter(t=>t.album_title===covers[i % 10])}};
+        }
         case "GetAlbumTracks":
           return { type: "Tracks", data: f.empty ? [] : tracks };
         case "GetPlaylistTracks":

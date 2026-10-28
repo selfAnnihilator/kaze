@@ -1,3 +1,4 @@
+use super::track_repo::TrackDetail;
 use crate::core::error::{AppError, AppResult};
 use crate::database::models::AlbumRecord;
 use async_trait::async_trait;
@@ -19,6 +20,7 @@ pub struct AlbumSummary {
 pub trait AlbumRepository: Send + Sync {
     async fn list_albums(&self, offset: u32, limit: u32) -> AppResult<Vec<AlbumSummary>>;
     async fn find_by_id(&self, album_id: &str) -> AppResult<Option<AlbumRecord>>;
+    async fn tracks_scoped(&self, album_id: &str, user_id: &str) -> AppResult<Vec<TrackDetail>>;
 }
 
 #[derive(Clone)]
@@ -65,11 +67,30 @@ impl AlbumRepository for SqliteAlbumRepository {
         Ok(records)
     }
 
+    async fn tracks_scoped(&self, album_id: &str, user_id: &str) -> AppResult<Vec<TrackDetail>> {
+        sqlx::query_as::<_, TrackDetail>(
+            "SELECT t.id,t.file_path,t.file_size,t.modified_timestamp,t.title,
+                a.name AS artist_name,al.title AS album_title,g.name AS genre_name,
+                t.track_number,t.disc_number,t.year,t.duration_secs,t.bitrate,t.sample_rate,
+                t.format,t.has_cover_art,t.musicbrainz_track_id,t.spotify_id,
+                COALESCE(ts.manual_like,0) AS manual_like,t.created_at,ext.cover_art_url,ext.preview_url
+             FROM tracks t
+             LEFT JOIN artists a ON a.id=t.artist_id
+             LEFT JOIN albums al ON al.id=t.album_id
+             LEFT JOIN genres g ON g.id=t.genre_id
+             LEFT JOIN track_statistics ts ON ts.track_id=t.id AND ts.user_id=?
+             LEFT JOIN external_tracks ext ON ext.id=t.id
+             WHERE t.album_id=?
+             ORDER BY COALESCE(t.disc_number,1),COALESCE(t.track_number,2147483647),t.title,t.id"
+        ).bind(user_id).bind(album_id).fetch_all(&self.pool).await
+            .map_err(|e| AppError::Database(e.to_string()))
+    }
+
     async fn find_by_id(&self, album_id: &str) -> AppResult<Option<AlbumRecord>> {
         let record = sqlx::query_as::<_, AlbumRecord>(
             "SELECT id, title, normalized_title, artist_id, album_artist, release_year,
                     total_tracks, cover_art_path, musicbrainz_id, created_at
-             FROM albums WHERE id = ?"
+             FROM albums WHERE id = ?",
         )
         .bind(album_id)
         .fetch_optional(&self.pool)

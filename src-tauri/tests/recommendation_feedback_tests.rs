@@ -149,6 +149,12 @@ async fn not_interested_blocks_aliases_future_releases_mixes_and_queue_but_prese
         assert!(index.blocked_id(id));
     }
     assert!(!index.blocked_id("allowed"));
+    assert!(index.filter(serde_json::json!({
+        "album_id":"saved-album", "album_title":"Saved album", "first_track_id":"jiosaavn:actual"
+    })).is_none(), "Library Moment must not directly recommend a blocked recording");
+    assert!(index.filter(serde_json::json!({
+        "album_id":"other-album", "album_title":"Other album", "first_track_id":"allowed"
+    })).is_some(), "eligible library albums remain available");
     assert!(!SongSignals::load(&pool, "other")
         .await
         .unwrap()

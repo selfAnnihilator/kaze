@@ -403,6 +403,14 @@ impl SongSignals {
                     .collect(),
             )),
             serde_json::Value::Object(mut object) => {
+                // Library Moment now has a direct song action. Respect the same
+                // account-scoped exclusions as the other recommendation rows.
+                if object.contains_key("album_id") && object.contains_key("album_title")
+                    && object.get("first_track_id").and_then(|value| value.as_str())
+                        .is_some_and(|id| self.blocked_id(id))
+                {
+                    return None;
+                }
                 let id = object
                     .get("track_id")
                     .or_else(|| object.get("external_track_id"))

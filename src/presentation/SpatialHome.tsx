@@ -98,6 +98,8 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
           (item) =>
             item.album?.toLowerCase() === moment?.album_title.toLowerCase(),
         )?.id;
+  const momentPlayId = moment?.first_track_id || momentTrack;
+  const momentLoading = !!momentPlayId && props.loadingTrackId === momentPlayId;
   const actions = (item: MusicItem, source: string) => (
     <div className="spatial-music-actions">
       {item.explanation && (
@@ -397,13 +399,17 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
             <>
               <button
                 className="spatial-music-cover"
-                disabled={!props.onOpenAlbum}
-                onClick={() => props.onOpenAlbum?.(moment.album_id)}
-                aria-label={`Open ${moment.album_title}`}
+                disabled={!momentPlayId || momentLoading}
+                onClick={() => {
+                  if (!momentPlayId) return;
+                  if (momentPlayId === currentTrack?.id) props.onTogglePlayback();
+                  else props.onPlayTrack(momentPlayId, "home_library_moment");
+                }}
+                aria-label={`${momentLoading ? "Loading" : momentPlayId === currentTrack?.id && isPlaying ? "Pause" : "Play"} ${moment.album_title}`}
               >
                 <Artwork
                   src={moment.cover_art_path}
-                  trackId={momentTrack}
+                  trackId={moment.first_track_id || momentTrack}
                   alt={`${moment.album_title} by ${moment.artist_name}`}
                 />
               </button>
@@ -413,6 +419,9 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
               </h2>
               <p>{moment.artist_name}</p>
               <p>{moment.subtitle || `${moment.total_tracks} tracks`}</p>
+              <button className="spatial-text-action" disabled={!props.onOpenAlbum} onClick={() => props.onOpenAlbum?.(moment.album_id)}>
+                Open record <ArrowUpRight size={16} />
+              </button>
             </>
           ) : (
             <p>Add music folders to your library to unlock album spotlights.</p>

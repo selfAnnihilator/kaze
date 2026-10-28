@@ -1480,3 +1480,126 @@ async fn ready_flow_does_not_wait_for_unrelated_legacy_catalog_network() {
     started.unwrap().unwrap();
     assert_eq!(calls, 0);
 }
+
+#[tokio::test]
+async fn library_moment_counts_real_library_songs_and_ignores_online_placeholders() {
+    let processor = setup_processor().await;
+    add_track(&processor, "One", "Real Artist", "Real Album", "Rock", 2020).await;
+    add_track(&processor, "Two", "Real Artist", "Real Album", "Rock", 2020).await;
+    let ghost = add_track(
+        &processor,
+        "Metadata Only",
+        "Remote Artist",
+        "Ghost Album",
+        "Pop",
+        2024,
+    )
+    .await;
+    sqlx::query("UPDATE tracks SET format='online',file_path='online://ghost' WHERE id=?")
+        .bind(&ghost)
+        .execute(processor.db_pool())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE albums SET total_tracks=0")
+        .execute(processor.db_pool())
+        .await
+        .unwrap();
+    for _ in 0..8 {
+        let home = processor
+            .flow_engine()
+            .get_home_overview("default")
+            .await
+            .unwrap();
+        let moment = home.library_moment.unwrap();
+        assert_eq!(
+            moment.album_title, "Real Album",
+            "metadata placeholders are not playable library albums"
+        );
+        assert_eq!(
+            moment.total_tracks, 2,
+            "count actual album members instead of unset metadata"
+        );
+    }
+}
+
+#[tokio::test]
+async fn album_details_uses_exact_id_all_members_and_current_account_feedback() {
+    let processor = setup_processor().await;
+    let first = add_track(
+        &processor,
+        "First",
+        "Sean Paul",
+        "No Lie (feat. Dua Lipa) - Single",
+        "Pop",
+        2020,
+    )
+    .await;
+    let second = add_track(
+        &processor,
+        "Second",
+        "Sean Paul",
+        "No Lie (feat. Dua Lipa) - Single",
+        "Pop",
+        2020,
+    )
+    .await;
+    add_track(
+        &processor,
+        "Wrong album",
+        "Another Artist",
+        "No Lie (feat. Dua Lipa) - Single",
+        "Pop",
+        2020,
+    )
+    .await;
+    let album_id: String = sqlx::query_scalar("SELECT album_id FROM tracks WHERE id=?")
+        .bind(&first)
+        .fetch_one(processor.db_pool())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE tracks SET track_number=2 WHERE id=?")
+        .bind(&first)
+        .execute(processor.db_pool())
+        .await
+        .unwrap();
+    for number in 3..=105 {
+        let track = add_track(
+            &processor, &format!("Song {number}"), "Sean Paul",
+            "No Lie (feat. Dua Lipa) - Single", "Pop", 2020,
+        ).await;
+        sqlx::query("UPDATE tracks SET track_number=? WHERE id=?")
+            .bind(number).bind(track).execute(processor.db_pool()).await.unwrap();
+    }
+    sqlx::query("INSERT INTO track_statistics(user_id,track_id,manual_like) VALUES('default',?,1),('another-user',?,-1)").bind(&first).bind(&first).execute(processor.db_pool()).await.unwrap();
+    let result = processor
+        .execute_query(Query::GetAlbumDetails {
+            album_id: album_id.clone(),
+        })
+        .await
+        .unwrap();
+    let QueryResponse::AlbumDetails(value) = result else {
+        panic!("expected album details")
+    };
+    let rows = value["tracks"].as_array().unwrap();
+    assert_eq!(
+        rows.len(),
+        105,
+        "return every exact album member beyond the former 100-result title-search cap"
+    );
+    assert_eq!(rows[0]["id"], second);
+    assert_eq!(rows[1]["id"], first);
+    assert_eq!(
+        rows[1]["manual_like"], 1,
+        "feedback belongs to the current account"
+    );
+    assert_eq!(value["album"]["id"], album_id);
+    assert!(
+        processor
+            .execute_query(Query::GetAlbumDetails {
+                album_id: "removed-album".into()
+            })
+            .await
+            .is_err(),
+        "missing albums report an error instead of silently doing nothing"
+    );
+}

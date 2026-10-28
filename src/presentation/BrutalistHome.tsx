@@ -89,6 +89,9 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
       t.artist.toLowerCase() === moment?.artist_name.toLowerCase(),
   );
   const momentCover = moment?.cover_art_path || momentTrack?.cover_art_url;
+  const momentPlayId = moment?.first_track_id || momentTrack?.track_id;
+  const momentIsCurrent = !!momentPlayId && momentPlayId === p.currentTrack?.id;
+  const momentLoading = !!momentPlayId && p.loadingTrackId === momentPlayId;
   return (
     <div className="home-view press-home">
       <section className="press-listen home-flow" aria-label="Your Flow">
@@ -362,15 +365,17 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
         </div>
         <button
           className="press-home-moment-art"
-          disabled={!moment || !p.onOpenAlbum}
-          onClick={() => moment && p.onOpenAlbum?.(moment.album_id)}
-          aria-label={
-            moment ? `Open album ${moment.album_title}` : "No featured album"
-          }
+          disabled={!momentPlayId || momentLoading}
+          onClick={() => {
+            if (!momentPlayId) return;
+            if (momentIsCurrent) p.onTogglePlayback();
+            else p.onPlayTrack(momentPlayId, "home_library_moment");
+          }}
+          aria-label={moment ? `${momentLoading ? "Loading" : momentIsCurrent && p.isPlaying ? "Pause" : "Play"} ${moment.album_title}` : "No featured album"}
         >
           <Artwork
             src={momentCover}
-            trackId={momentTrack?.track_id}
+            trackId={moment?.first_track_id || momentTrack?.track_id}
             alt={moment?.album_title || "No featured album"}
           />
         </button>

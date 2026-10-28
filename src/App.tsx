@@ -602,14 +602,19 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   const fetchTracks = useCallback(async () => {
+    const browsing = destinationRef.current;
+    const inLibrary = browsing.view === "library" && !browsing.collection && !browsing.lyrics;
+    const albumId = inLibrary ? browsing.libraryAlbumId : undefined;
     try {
-      const res = await executeQuery({
-        query: "GetTracks",
-        payload: { offset: 0, limit: 1000, ascending: true },
-      });
-      if (Array.isArray(res.data)) {
-        setTracks(res.data);
-      }
+      const res = await executeQuery(albumId
+        ? { query: "GetAlbumDetails", payload: { album_id: albumId } }
+        : inLibrary && browsing.libraryQuery
+          ? { query: "SearchLibrary", payload: { query_text: browsing.libraryQuery, limit: 100 } }
+          : { query: "GetTracks", payload: { offset: 0, limit: 1000, ascending: true } });
+      const rows = albumId ? res.data?.tracks : res.data;
+      // Metadata/download refresh must not replace an open album with all tracks,
+      // or let an older route's response overwrite the current destination.
+      if (browsing === destinationRef.current && Array.isArray(rows)) setTracks(rows);
     } catch (err) {
       console.error("Failed to fetch tracks:", err);
     }
@@ -1788,7 +1793,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     const load = async () => {
       try {
         const res = await executeQuery(
-          destination.libraryQuery
+          destination.libraryAlbumId
+            ? { query: "GetAlbumDetails", payload: { album_id: destination.libraryAlbumId } }
+            : destination.libraryQuery
             ? {
                 query: "SearchLibrary",
                 payload: { query_text: destination.libraryQuery, limit: 100 },
@@ -1798,9 +1805,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                 payload: { limit: 1000, offset: 0, ascending: true },
               },
         );
-        if (!cancelled && Array.isArray(res.data)) setTracks(res.data);
+        const rows = destination.libraryAlbumId ? res.data?.tracks : res.data;
+        if (!cancelled && Array.isArray(rows)) setTracks(rows);
       } catch (err) {
         console.error("Library navigation failed:", err);
+        if (!cancelled && destination.libraryAlbumId) {
+          setTracks([]);
+          addAppNotification("error", "Couldn’t open album", "Refresh your library and try again.");
+        }
       }
     };
     void load();
@@ -1813,19 +1825,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     destination.lyrics,
     destination.libraryQuery,
     destination.libraryAlbumId,
+    addAppNotification,
   ]);
 
   const handleSelectAlbum = useCallback(
     (albumId: string) => {
       const album = albums.find((al) => al.id === albumId);
-      if (album)
-        navigate({
-          ...viewDestination("library"),
-          libraryQuery: album.title,
-          libraryAlbumId: album.id,
-        });
+      const moment = homeOverview?.library_moment;
+      navigate({
+        ...viewDestination("library"),
+        libraryQuery: album?.title || (moment?.album_id === albumId ? moment.album_title : ""),
+        libraryAlbumId: albumId,
+      });
     },
-    [albums, navigate],
+    [albums, homeOverview?.library_moment?.album_id, homeOverview?.library_moment?.album_title, navigate],
   );
 
   const handleStartFlow = useCallback(
@@ -3574,6 +3587,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     !isLyricsActive &&
     (isArchiveLiked ||
       (!activeCollection && ["library", "albums", "playlists"].includes(currentView)));
+  const archiveCount = isArchiveLiked
+    ? activeCollection?.tracks?.length ?? likedSongs?.track_count ?? 0
+    : currentView === "albums"
+      ? albums.length
+      : currentView === "playlists"
+        ? regularPlaylistIds.size
+        : tracks.length;
 
   const handleDeckFlow = useCallback(() => {
     if (homeOverview?.flow_session?.is_active) void handleToggleFlowPlayback();
@@ -3654,7 +3674,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             </div>
             {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albums.length} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
-            {interfacePreference.style === "brutalist" && isArchiveSurface && <BrutalistLibraryHeader view={currentView} count={albums.length} likedSelected={isArchiveLiked} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
+            {interfacePreference.style === "brutalist" && isArchiveSurface && <BrutalistLibraryHeader view={currentView} count={archiveCount} likedSelected={isArchiveLiked} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
             <ViewMemoryProvider>
             <Suspense fallback={null}>
