@@ -1,10 +1,10 @@
 # Listening scores and For You
 
-Current behavior, 2026-10-18. Playback stays in the shared Rust PlaybackService; recommendation updates use the same account-scoped history writer.
+Current behavior, 2026-10-28. Playback stays in the shared Rust PlaybackService; recommendation updates use the same account-scoped history writer.
 
 ## What counts
 
-Every saved playback session for the active account contributes, regardless of source: local library, downloaded files, online songs, playlists, collections, and Flow. A session is saved when it ends, is stopped, or is replaced by another song. Paused time and seeking are not listening signals. Playlist membership alone is not a listen.
+Every saved playback session for the active account is considered, regardless of source: local library, downloaded files, online songs, playlists, collections, and Flow. Brief neutral previews earn no automatic preference. A session is saved when it ends, is stopped, or is replaced by another song. Paused time and seeking are not listening signals. Playlist membership alone is not a listen.
 
 The profile reads all retained account history on this device. It does not discard sessions after 90 days. Cloud synchronization currently transfers aggregate statistics rather than raw playback sessions; this change does not reconstruct other devices' missing raw history.
 
@@ -12,9 +12,9 @@ The profile reads all retained account history on this device. It does not disca
 
 Each session contributes to its artist, available genre, and decade:
 
-- Completed listen: `+1`.
-- Partial listen: the actual fraction heard, from `0` to `1`. Native fractions and legacy percentages are both accepted. If duration/fraction is unavailable, actual seconds divided by four minutes provide a bounded fallback.
-- Early skip, as classified by HistoryService: `-0.2`.
+- Below the positive listening threshold: neutral. The threshold is `min(30 seconds, max(10 seconds, 25% of duration))`; unknown durations need 30 seconds.
+- Qualified partial listen: `+0.35`; at least 75% actually heard: `+0.75`; at least 95%: `+1`.
+- Intentional skip before ten seconds: `-0.75`. Playback errors and leaving a buffering stream do not imply dislike.
 - Explicit like/dislike: `+2` / `-2` to artist and genre totals.
 
 Artist and genre totals are normalized against the strongest positive total, clamped to `[0, 1]`, and blended:
@@ -24,13 +24,19 @@ Artist and genre totals are normalized against the strongest positive total, cla
 
 Decade affinity uses lifetime weighting. Genre metadata can come from the local track or its external catalog record. Missing artist/genre metadata limits what can be learned from a song; audio similarity is not analyzed.
 
+Actual heard seconds determine these tiers, never seek position or an EOF flag alone. See [ADR 0022](adr/0022-listening-time-preference.md) for history reconciliation and usage-statistics compatibility.
+
 ## How recommendations use the scores
 
 Discover's For You ranks candidates using up to `150 × artist_affinity` plus up to `100 × genre_affinity`. Local-library artists/genres provide smaller cold-start signals. Online placeholders belonging to another account do not become library preference signals. Scores are deterministic: refreshing does not add random ranking noise.
 
+Manual Refresh requests a fresh selection as well as refreshed source metadata. Within each taste-ranked artist's slots, it prefers least recently shown song families whose scores are at least 85% of that artist's best candidate. This changes the selection without changing any taste score or inventing listening history. Repeated clicks rotate beyond two batches when alternatives exist. Ordinary reads retain the chosen batch while the underlying ranked pool is unchanged; changed listening/feedback/catalog ordering can supersede it. Selection memory is process-local, bounded to sixteen accounts and pruned to available candidates. Dislike, source identity, song deduplication and the two-per-artist cap still apply. Small eligible pools may legitimately repeat.
+
 Candidates come from the existing metadata pool and catalog searches for the four strongest positive artists. Artist results are cached for 15 minutes, bounded to 64 artists, and kept alongside the pool so the latest 300 unrelated metadata records cannot evict them. Existing regional/genre candidates remain available. Failed artist lookups retain cached candidates where possible. Catalog coverage and network availability still constrain fresh discoveries.
 
 The backend retains at most two songs per artist and reserves no For You quota for generic chart hits. The frontend continues to exclude saved, local, liked, and downloading songs. Trending and Top Charts use their independent popularity feeds.
+
+The frontend accepts the current backend's genre/language explanations (`Matches your … listening`) as personal evidence, alongside artist/taste explanations. Those valid picks were previously dropped by an outdated explanation filter.
 
 Home retains local recommendations. Runtime Flow combines the shared multi-factor taste scorer with recorded song familiarity and online exploration, as described below. Home's short cache checks the account's history count so a new session triggers recomputation before the ordinary 60-second expiry.
 
@@ -64,16 +70,20 @@ Run `python3 scripts/test-familiarity-webkit.py` against the local Vite server t
 
 HistoryService emits `TasteProfileChanged { user_id }` only after its history/statistics transaction commits successfully. Explicit feedback also emits the event after saving. App coalesces bursts for 250ms and refreshes personal recommendations and Home; it does not refetch public charts for listening changes. Account identity and request sequencing prevent a slow, older response from replacing newer results. Initial account hydration also refreshes the personal feed.
 
+Automatic personal refresh passes `force_refresh: false`; only explicit refresh requests a new batch. Both layouts retain existing cards while their refresh icon is busy, then replace them when the response arrives. Network/catalog availability determines request latency; waiting alone does not guarantee different results. Run `scripts/test-for-you-refresh-ui.mjs` for manual/background refresh isolation and the `manual_for_you_refresh_rotates_relevant_songs_without_changing_taste` Rust regression for rotation, account isolation and exclusions.
+
 Playback position ticks do not trigger scoring, recommendation requests, or new root component state. The single backend event subscription and leaf playback-progress emitter remain in place.
 
 ## Verification
 
+2026-10-28: all 226 Rust tests passed (nine optional/manual checks ignored), all 56 frontend tests passed, and both layouts passed manual-refresh/busy/background separation, active scoring and startup checks. Frontend/embedded native builds and all thirteen private native continuity groups passed. The current discovery integration test is included in this full regression run.
+
 For runtime Flow and playback continuity, run `cargo test --offline --manifest-path src-tauri/Cargo.toml --test flow_online_tests --test flow_tests --test playback_tests --test playback_restore_tests --test lifecycle_tests`. Use disposable XDG data/cache locations for these tests. `node scripts/test-flow-steering.mjs` checks real-App familiarity controls, debounce, confirmed status refresh, current-track continuity and one backend subscription in both themes. The online-only Rust regression uses a valid full-song cache fixture with the mock audio backend; audible native output and live provider playback are separate checks.
 
 
-- `cargo test --offline --manifest-path src-tauri/Cargo.toml --test active_scoring_tests --test recommendation_tests --test history_tests --test flow_tests --test statistics_audit_tests --test discovery_tests -- --skip test_core_processor_discovery_and_wishlist_integration`
+- `cargo test --offline --manifest-path src-tauri/Cargo.toml --test active_scoring_tests --test recommendation_tests --test history_tests --test flow_tests --test statistics_audit_tests --test discovery_tests -- --test-threads=1`
 - `node --test --test-isolation=none tests/*.test.mjs`
 - `npm run build`
 - Start the local preview, then run `node scripts/test-active-scoring.mjs` to exercise both presentations, committed-history refresh, debounce, independent charts, account isolation, progress ticks, and stale-response protection.
 
-The omitted legacy discovery integration test requires live provider search and failed without sandbox network access. The shared browser harness separately stops at a stale `Library and more` navigation locator in its Brutalist playlist scenario; focused scoring checks cover both presentations. Neither failure establishes a playback/scoring regression.
+Historical verification limit (2026-10-18): an older discovery integration test failed without network access, and the then-current shared browser harness stopped at a stale `Library and more` locator. Those observations describe that earlier revision; the current checks above supersede them.

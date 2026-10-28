@@ -69,3 +69,9 @@ test("a generic chart copy cannot hide a taste-matched song", () => {
     downloads: [], localTracks: [],
   }).forYou.map((rec) => rec.external_track_id), ["personal"]);
 });
+
+test("current backend genre and language reasons remain eligible for For You", () => {
+  const rows = [recommendation("genre-current", "Genre discovery", "Matches your jazz listening"),
+    recommendation("language-current", "Language discovery", "Matches your english listening")];
+  assert.deepEqual(splitDiscoveryRecommendations({recommendations: rows, playlistTrackIds: new Set(), likedTrackIds: new Set(), downloads: [], localTracks: []}).forYou.map(r=>r.external_track_id), ["genre-current","language-current"]);
+});

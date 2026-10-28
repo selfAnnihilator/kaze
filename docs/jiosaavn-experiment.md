@@ -1,5 +1,11 @@
 # JioSaavn experiment
 
+## 2026-10-28 — For You manual refresh selects fresh relevant songs
+
+Refresh previously forced a source fetch and recomputed deterministic ranking, so the same strongest songs could return indefinitely. It now prefers least recently shown song families within each artist's relevant scoring band, preserving taste-ranked artist slots, score values, source/version identity, dislikes and the two-per-artist cap. Automatic reads preserve that batch until underlying listening/feedback/catalog ranking changes. Selection memory is process-local, account-scoped and bounded; small eligible pools may repeat. Existing cards stay visible with the refresh icon busy while the request runs. Automatic personal refresh no longer inadvertently requests a manual batch. The For You filter also accepts current genre/language explanation strings that it previously discarded. See [recommendation scoring](recommendation-scoring.md).
+
+Verification: the unchanged-list Rust regression and missing-genre/language frontend regression failed before repair and pass afterward. All 226 Rust tests passed (nine optional/manual checks ignored), plus all 56 frontend tests, both layouts' manual/busy/background/stale-scoring/Flow-startup browser checks, frontend and embedded native builds, and thirteen private native continuity groups. Tests verify multiple distinct batches, account isolation, no unrelated/disliked picks, stable automatic reads, unchanged taste/history, retained cards while pending and independent playback/charts. The test executable was rebuilt without changing or restarting the live app/profile, music or queue.
+
 ## 2026-10-28 — Playback Space shortcut and draggable album shelves
 
 After a mouse-selected action, Space now pauses/resumes the current song instead of activating that action again. The existing pointer-focus marker distinguishes mouse actions from Tab/Shift+Tab navigation, which retains ordinary button activation. A capture handler intercepts only the pointer-origin playback shortcut; typing, sliders, modal actions, modified/composing keys and held-key repeat are protected. The earlier outline fix preserved focus but the old global shortcut explicitly skipped buttons, explaining the user's repeated-Next report.

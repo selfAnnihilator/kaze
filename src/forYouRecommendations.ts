@@ -23,7 +23,7 @@ const songKey = (rec: DiscoveryRecommendation): string =>
     .map(normalized).filter(Boolean).sort().join("+")}`;
 
 const isTasteBased = (rec: DiscoveryRecommendation): boolean =>
-  /listening habit|library artist|library favorites|top genre|similar|your taste/i
+  /listening habit|library artist|library favorites|top genre|similar|your taste|^Matches your .+ listening$/i
     .test(rec.recommendation_reason);
 
 /** Keep only fresh recommendations supported by the user's taste signals. */

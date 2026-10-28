@@ -260,3 +260,132 @@ async fn recommendation_refresh_event_follows_successful_history_commit() {
         );
     }
 }
+
+#[tokio::test]
+async fn manual_for_you_refresh_rotates_relevant_songs_without_changing_taste() {
+    let pool = create_in_memory_pool().await.unwrap();
+    song(&pool, "seed", "Favorite Artist").await;
+    listen(&pool, "seed", "default", "online", 1.0, 0, false).await;
+    listen(&pool, "seed", "other-user", "online", 1.0, 0, false).await;
+    let wishlist = Arc::new(SqliteWishlistRepository::new(pool.clone()));
+    for i in 0..10 {
+        wishlist
+            .upsert_external_track(&ExternalTrackRecord {
+                id: format!("fresh-{i}"),
+                provider: "jiosaavn".into(),
+                provider_id: format!("fresh-{i}"),
+                title: format!("Fresh song {i}"),
+                artist: if i == 9 {
+                    "Unrelated Artist"
+                } else {
+                    "Favorite Artist"
+                }
+                .into(),
+                album: None,
+                duration_secs: Some(240.0),
+                cover_art_url: None,
+                preview_url: None,
+                genre: None,
+                match_status: "NOT_FOUND".into(),
+                matched_local_track_id: None,
+                created_at: chrono::Utc::now().timestamp(),
+            })
+            .await
+            .unwrap();
+    }
+    sqlx::query("INSERT INTO tracks(id,file_path,file_size,modified_timestamp,title,normalized_title,duration_secs,format,created_at,updated_at) VALUES('fresh-8','online://fresh-8',0,0,'Fresh song 8','fresh song 8',240,'online',0,0)")
+        .execute(&pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO track_statistics(user_id,track_id,manual_like) VALUES('default','fresh-8',-1)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let engine = Arc::new(TasteProfileEngine::new(pool.clone()));
+    let coordinator = DiscoveryCoordinator::new(
+        wishlist,
+        Arc::new(SqliteTrackRepository::new(pool.clone())),
+        engine.clone(),
+        None,
+    );
+    let ids = |rows: Vec<music_player_backend::discovery::DiscoveryRecommendation>| {
+        rows.into_iter()
+            .map(|r| r.external_track_id)
+            .collect::<Vec<_>>()
+    };
+    let initial = ids(coordinator
+        .get_discovery_recommendations("default", 100, false)
+        .await
+        .unwrap());
+    assert_eq!(initial.len(), 2);
+    assert_eq!(
+        ids(coordinator
+            .get_discovery_recommendations("default", 100, false)
+            .await
+            .unwrap()),
+        initial,
+        "ordinary reads remain stable"
+    );
+    let before = engine
+        .compute_taste_profile("default")
+        .await
+        .unwrap()
+        .artist_affinity("Favorite Artist");
+    let refreshed = ids(coordinator
+        .get_discovery_recommendations("default", 100, true)
+        .await
+        .unwrap());
+    assert_eq!(refreshed.len(), 2);
+    assert!(refreshed.iter().all(|id|!initial.contains(id)), "manual refresh should replace recently shown songs when relevant alternatives exist: {initial:?} -> {refreshed:?}");
+    assert_eq!(
+        ids(coordinator
+            .get_discovery_recommendations("default", 100, false)
+            .await
+            .unwrap()),
+        refreshed,
+        "automatic reads retain the selected batch"
+    );
+    let next = ids(coordinator
+        .get_discovery_recommendations("default", 100, true)
+        .await
+        .unwrap());
+    assert!(
+        next.iter()
+            .all(|id| !initial.contains(id) && !refreshed.contains(id)),
+        "prefer least recently shown relevant candidates, not a two-batch loop"
+    );
+    for _ in 0..8 {
+        let rows = coordinator
+            .get_discovery_recommendations("default", 100, true)
+            .await
+            .unwrap();
+        assert!(
+            rows.iter()
+                .all(|r| r.external_track_id != "fresh-8" && r.external_track_id != "fresh-9"),
+            "rotation never overrides dislike or taste eligibility"
+        );
+    }
+    let other = ids(coordinator
+        .get_discovery_recommendations("other-user", 100, false)
+        .await
+        .unwrap());
+    assert_eq!(other, initial, "manual refresh choices are account scoped");
+    assert_eq!(
+        engine
+            .compute_taste_profile("default")
+            .await
+            .unwrap()
+            .artist_affinity("Favorite Artist"),
+        before,
+        "refresh is not listening or feedback"
+    );
+    assert!(
+        !next.contains(&"fresh-9".into()),
+        "freshness cannot introduce an unrelated artist"
+    );
+    let history: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM playback_history")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(history, 2, "refresh must not manufacture play history");
+}

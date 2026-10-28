@@ -760,7 +760,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
   const refreshTrending = useCallback(() => fetchTrending(true), [fetchTrending]);
-  const refreshPersonalRecommendations = useCallback(() => fetchPersonalRecommendations(true), [fetchPersonalRecommendations]);
+  const refreshPersonalRecommendations = useCallback((forceRefresh = false) => fetchPersonalRecommendations(forceRefresh), [fetchPersonalRecommendations]);
   const fetchDiscovery = useCallback(async (forceRefresh = false, refreshCharts = false) => {
     const results = await Promise.allSettled([
       fetchPersonalRecommendations(forceRefresh), fetchTrending(refreshCharts),

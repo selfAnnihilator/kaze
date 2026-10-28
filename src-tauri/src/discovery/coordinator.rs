@@ -26,6 +26,15 @@ pub struct DiscoveryRecommendation {
     pub in_wishlist: bool,
 }
 
+#[derive(Default)]
+struct ForYouSelection {
+    generation: u64,
+    last_shown: HashMap<String, u64>,
+    current: HashMap<String, usize>,
+    ranked_ids: Vec<String>,
+    touched: Option<std::time::Instant>,
+}
+
 pub struct DiscoveryCoordinator {
     wishlist_repo: Arc<dyn WishlistRepository>,
     track_repo: Arc<dyn TrackRepository>,
@@ -35,6 +44,7 @@ pub struct DiscoveryCoordinator {
     artist_edition_cache: tokio::sync::Mutex<HashMap<String, std::time::Instant>>,
     artist_candidate_cache:
         tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
+    for_you_selections: tokio::sync::Mutex<HashMap<String, ForYouSelection>>,
     world_fetch_lock: tokio::sync::Mutex<()>,
     world_chart_cache:
         tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
@@ -119,6 +129,7 @@ impl DiscoveryCoordinator {
             provider_coordinator,
             artist_edition_cache: tokio::sync::Mutex::new(HashMap::new()),
             artist_candidate_cache: tokio::sync::Mutex::new(HashMap::new()),
+            for_you_selections: tokio::sync::Mutex::new(HashMap::new()),
             world_fetch_lock: tokio::sync::Mutex::new(()),
             world_chart_cache: tokio::sync::RwLock::new(None),
         }
@@ -547,6 +558,9 @@ impl DiscoveryCoordinator {
         limit: usize,
         force_refresh: bool,
     ) -> AppResult<Vec<DiscoveryRecommendation>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
         // 1. Fetch current wishlist to cross-reference
         let wishlist_items = self.wishlist_repo.get_all(None).await?;
         let wishlist_ext_ids: HashSet<String> = wishlist_items
@@ -673,6 +687,7 @@ impl DiscoveryCoordinator {
         }
         let ext_tracks: Vec<_> = releases.into_values().collect();
         // 5. Listening strength drives ordering; refreshing never adds random score noise.
+        #[derive(Clone)]
         struct ScoredCandidate {
             track: ExternalTrackRecord,
             score: f64,
@@ -846,6 +861,91 @@ impl DiscoveryCoordinator {
                 .then_with(|| a.track.id.cmp(&b.track.id))
         });
 
+        // Manual refresh is a new selection, not a new taste score. Rotate only
+        // among similarly relevant songs by the same artist, retaining the global
+        // taste-ranked artist slots and the existing two-song diversity cap.
+        let family = |candidate: &ScoredCandidate| {
+            crate::recommendations::signals::song_key(
+                &candidate.track.title,
+                &candidate.track.artist,
+            )
+            .unwrap_or_else(|| candidate.track.id.clone())
+        };
+        let artist = |candidate: &ScoredCandidate| {
+            crate::recommendations::signals::artist_credits(&candidate.track.artist)
+                .into_iter()
+                .next()
+                .unwrap_or_default()
+        };
+        let ranked_ids: Vec<_> = taste_candidates
+            .iter()
+            .map(|c| c.track.id.clone())
+            .collect();
+        let mut selections = self.for_you_selections.lock().await;
+        if !selections.contains_key(user_id) && selections.len() >= 16 {
+            if let Some(oldest) = selections
+                .iter()
+                .min_by_key(|(_, state)| state.touched)
+                .map(|(user, _)| user.clone())
+            {
+                selections.remove(&oldest);
+            }
+        }
+        let selection = selections.entry(user_id.to_string()).or_default();
+        // New listening/feedback/catalog ordering can supersede the current batch.
+        if selection.ranked_ids != ranked_ids {
+            selection.current.clear();
+        }
+        selection.ranked_ids = ranked_ids;
+        let available: HashSet<_> = taste_candidates.iter().map(&family).collect();
+        selection
+            .last_shown
+            .retain(|key, _| available.contains(key));
+        let mut artists: HashMap<String, Vec<usize>> = HashMap::new();
+        for (index, candidate) in taste_candidates.iter().enumerate() {
+            artists.entry(artist(candidate)).or_default().push(index);
+        }
+        for indices in artists.values() {
+            let best = taste_candidates[indices[0]].score;
+            let eligible: Vec<_> = indices
+                .iter()
+                .copied()
+                .filter(|&i| taste_candidates[i].score >= best * 0.85)
+                .collect();
+            if eligible.len() <= limit.min(2) {
+                continue;
+            }
+            let mut choices: Vec<_> = eligible
+                .iter()
+                .map(|&i| taste_candidates[i].clone())
+                .collect();
+            choices.sort_by(|a, b| {
+                let ka = family(a);
+                let kb = family(b);
+                let priority = if force_refresh {
+                    selection
+                        .last_shown
+                        .get(&ka)
+                        .copied()
+                        .unwrap_or(0)
+                        .cmp(&selection.last_shown.get(&kb).copied().unwrap_or(0))
+                } else {
+                    selection
+                        .current
+                        .get(&ka)
+                        .copied()
+                        .unwrap_or(usize::MAX)
+                        .cmp(&selection.current.get(&kb).copied().unwrap_or(usize::MAX))
+                };
+                priority
+                    .then_with(|| b.score.total_cmp(&a.score))
+                    .then_with(|| a.track.id.cmp(&b.track.id))
+            });
+            for (index, candidate) in eligible.into_iter().zip(choices) {
+                taste_candidates[index] = candidate;
+            }
+        }
+
         // 6. Keep artist diversity (maximum two tracks per artist).
         let mut artist_counts: HashMap<String, usize> = HashMap::new();
         let mut recs = Vec::new();
@@ -911,6 +1011,17 @@ impl DiscoveryCoordinator {
             recs.push(to_recommendation(scored));
         }
 
+        if force_refresh || selection.generation == 0 {
+            selection.generation = selection.generation.saturating_add(1);
+        }
+        selection.current.clear();
+        for (index, rec) in recs.iter().enumerate() {
+            let key = crate::recommendations::signals::song_key(&rec.title, &rec.artist)
+                .unwrap_or_else(|| rec.external_track_id.clone());
+            selection.last_shown.insert(key.clone(), selection.generation);
+            selection.current.insert(key, index);
+        }
+        selection.touched = Some(std::time::Instant::now());
         Ok(recs)
     }
 }
