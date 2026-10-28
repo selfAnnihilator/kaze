@@ -111,6 +111,24 @@ def main():
             tray.wait_for(lambda: browser.query('GetFlowSession')['familiarity_ratio'] == 1, 'native dial updates real Flow steering')
             assert browser.evaluate("document.querySelector('.familiarity-dial').getAttribute('aria-valuenow')") == '1'
             print('PASS native four-destination rail and circular familiarity dial update actual Flow steering', flush=True)
+            # Start after stopping a paused Flow must resume the same native
+            # session, without another Play/Continue command or history row.
+            before_restart = browser.query('GetPlaybackState')
+            browser.command('Pause')
+            browser.command('StopFlow')
+            with sqlite3.connect(db_path) as db:
+                restart_journal = db.execute('SELECT session_id FROM active_playback_journal').fetchall()
+                restart_history = db.execute('SELECT count(*) FROM playback_history').fetchone()[0]
+            tray.wait_for(lambda: browser.evaluate("document.querySelector('.spatial-flow-actions button')?.textContent.trim()==='Start Flow'"), 'stopped Flow offers Start')
+            browser.evaluate("document.querySelector('.spatial-flow-actions button').click();true")
+            tray.wait_for(lambda: browser.query('GetPlaybackState')['is_playing'] and watcher.status() == 'Playing', 'Start Flow resumes native playback')
+            after_restart = browser.query('GetPlaybackState')
+            assert after_restart['current_track_id'] == before_restart['current_track_id']
+            assert after_restart['position_secs'] >= before_restart['position_secs'] - .1
+            with sqlite3.connect(db_path) as db:
+                assert db.execute('SELECT session_id FROM active_playback_journal').fetchall() == restart_journal
+                assert db.execute('SELECT count(*) FROM playback_history').fetchone()[0] == restart_history
+            print('PASS native Home Start Flow resumes stopped/paused Flow in the same audio/history session without a second Play click', flush=True)
             click('Settings')
             tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".settings-style-options"))'), 'interface settings')
             browser.evaluate("window.nativeApp=document.querySelector('.kaze-interface');window.nativeMain=document.querySelector('.main-content');window.nativeMain.scrollTop=100;true")

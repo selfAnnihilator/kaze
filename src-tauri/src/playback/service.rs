@@ -349,9 +349,8 @@ impl PlaybackService {
             .flow_generation
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
             + 1;
-        if let Some(catalog) = self.online_catalog() {
-            catalog.prepare_existing().await?;
-        }
+        // Catalog migration runs in the background; the selected recording is
+        // bound by play_item. Unrelated legacy songs must not delay Start Flow.
         let operation = self.flow_operation.lock().await;
         if self
             .flow_generation
@@ -366,18 +365,16 @@ impl PlaybackService {
             .unwrap_or(0.5);
         let current = self.queue.read().await.current().cloned();
         let preserve_current = if let Some(item) = current.as_ref() {
-            self.active_session_id
-                .read()
-                .await
-                .as_ref()
-                .is_some_and(|(_, id)| id == &item.queue_id)
+            let loaded = self.active_session_id.read().await.as_ref()
+                .is_some_and(|(_, id)| id == &item.queue_id);
+            (loaded && !self.backend.lock().await.is_finished())
                 || self.is_resolving.load(std::sync::atomic::Ordering::SeqCst)
         } else {
             false
         };
 
-        // Clear all old upcoming entries before generating. Preserve the current
-        // queue ID/audio token and Previous history; no playback event is emitted.
+        // Clear old upcoming entries while preserving the current recording,
+        // queue ID, audio token and Previous history.
         *self.active_flow.write().await = None;
         *self.current_source.write().await = "library".into();
         self.queue.write().await.clear_upcoming();
@@ -407,7 +404,7 @@ impl PlaybackService {
         {
             return Ok(());
         }
-        if tracks.is_empty() {
+        if tracks.is_empty() && !preserve_current {
             return Err(AppError::Playback(
                 "No eligible songs for Flow. Play or like more music, or add songs to your library.".into(),
             ));
@@ -449,6 +446,22 @@ impl PlaybackService {
         *self.current_source.write().await = "flow".into();
         *self.active_flow.write().await = Some(flow);
         self.emit_queue_updated().await;
+        // Start is a playback action, including after Stop Flow. Resume a loaded
+        // paused session in place; do not create another history/stats session.
+        // A resolving song already has an active play request. Restored bookmarks
+        // go through play_item above instead, avoiding a recursive operation lock.
+        if preserve_current
+            && !self.is_resolving.load(std::sync::atomic::Ordering::SeqCst)
+            && self.restored_track.read().await.is_none()
+        {
+            let paused = {
+                let backend = self.backend.lock().await;
+                backend.is_paused() && !backend.is_finished()
+            };
+            if paused {
+                self.resume().await?;
+            }
+        }
         drop(operation);
         if let Some(first) = first {
             if let Err(error) = self.play_item(&first).await {

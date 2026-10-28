@@ -357,6 +357,7 @@ export type Query =
   | { query: "GetLocalRecommendations"; payload: { limit: number } }
   | { query: "GetDiscoveryRecommendations"; payload: { limit: number; force_refresh?: boolean };
     }
+  | { query: "GetCachedWorldTrending"; payload: { limit: number } }
   | { query: "GetWorldTrending"; payload: { limit: number; force_refresh?: boolean };
     }
   | { query: "GetChartSongs"; payload: { chart_id: string; limit: number } }

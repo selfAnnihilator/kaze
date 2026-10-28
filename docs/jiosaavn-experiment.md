@@ -1,5 +1,15 @@
 # JioSaavn experiment
 
+## 2026-10-28 — Flow startup and Trending loading
+
+Start Flow now resumes a paused current session after Stop Flow without a second Play/Resume click or a new history session. Whole-catalog legacy preparation was removed from the interactive start path; selected online recordings retain exact source binding. Home immediately shows the pending action and no longer waits for its artwork/recommendation refresh to enable playback controls.
+
+Trending loads independent chart playlists together and restores its saved public feed before checking the network. Cold requests show loading, refreshes retain existing cards, and personal recommendation refresh runs separately. Initial account discovery now reissues Trending after discarding a default-account result. Saved responses still filter the current user's dislikes. The duplicate Trending refresh icon was removed. See [ADR 0021](adr/0021-flow-startup-and-trending-latency.md).
+
+Verification: 214 Rust tests across 26 groups passed (nine optional checks ignored), plus the focused single-song resume case and 55 Node tests. Both layouts passed delayed Start/Home/network, cold/warm Trending, independent refresh and retained-card checks. Existing direct-download/dislike, buffering, delayed-scoring, player-identity and recommendation-feedback interface gates passed. Frontend and embedded native builds passed; all twelve private native groups passed, including the actual Home Start button resuming paused/stopped Flow with unchanged audio/history session identity. The rebuilt testing executable is `target/debug/kaze`; the user's running app/profile was not replaced or restarted.
+
+
+
 Branch: `codex/jiosaavn-playback-experiment`. No release/version bump, public deployment or installation. The current source-link repair upgrades saved online identities in the testing profile while preserving playlist/history/statistics IDs.
 
 Search and online playback use JioSaavn exclusively during this trial. Alternative sources and legacy download-provider routing are removed from the active backend. Settings → Online music & library details controls availability, automatic gap filling, manual filling, retry and removal. Both new switches default on. Kaze accounts, Home/Flow logic and chart feeds retain their existing roles.

@@ -31,6 +31,7 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
   onPreviousTrack: () => void;
   onNextTrack: () => void;
   isLoading: boolean;
+  isFlowPending?: boolean;
   isPlaying: boolean;
   flowAction: string;
   onFlow: () => void;
@@ -178,10 +179,11 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
             <div className="press-home-flow-actions">
               <button
                 className="press-solid-button"
-                disabled={p.isLoading}
+                disabled={p.isFlowPending}
+                aria-busy={!!p.isFlowPending}
                 onClick={p.onFlow}
               >
-                {p.flowAction === "Pause Flow" ? (
+                {p.isFlowPending ? (<RefreshCw size={18} className="spin-animation" />) : p.flowAction === "Pause Flow" ? (
                   <Pause size={18} />
                 ) : (
                   <Play size={18} />
@@ -189,7 +191,7 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
                 {p.flowAction}
               </button>
               {overview?.flow_session?.is_active && (
-                <button className="press-text-button" onClick={p.onStopFlow}>
+                <button className="press-text-button" disabled={p.isFlowPending} onClick={p.onStopFlow}>
                   Stop Flow
                 </button>
               )}

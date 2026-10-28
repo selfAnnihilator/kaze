@@ -1194,8 +1194,8 @@ async fn new_start_changes_generation_but_continue_does_not_and_inactive_continu
         .await
         .unwrap();
     assert!(
-        !service.get_playback_state().await.is_playing,
-        "new Flow must leave paused audio paused"
+        service.get_playback_state().await.is_playing,
+        "Start Flow must resume paused audio"
     );
     let second = service
         .flow_session(&processor.flow_engine(), "default")
@@ -1348,4 +1348,135 @@ async fn home_for_you_recomputes_when_listening_changes_before_cache_expiry() {
         new_score > old_score,
         "Home cannot retain a stale taste score for the cache's 60-second lifetime"
     );
+}
+
+#[tokio::test]
+async fn start_flow_resumes_paused_current_without_a_second_play_or_new_history_session() {
+    use music_player_backend::core::Event;
+    let processor = setup_processor().await;
+    let current = add_track(&processor, "Current", "One", "Album", "Rock", 2020).await;
+    // Even a one-song library can resume its loaded song: excluding the
+    // current recording leaves no additional candidates, which is not an error.
+    let service = processor.playback_service();
+    let mut events = processor.event_bus().subscribe();
+    processor
+        .dispatch_command(Command::PlayTrack {
+            track_id: current.clone(),
+            source: None,
+        })
+        .await
+        .unwrap();
+    processor.dispatch_command(Command::Pause).await.unwrap();
+    while events.try_recv().is_ok() {}
+    for _ in 0..2 {
+        processor
+            .dispatch_command(Command::StartFlow {
+                familiarity_ratio: Some(0.5),
+            })
+            .await
+            .unwrap();
+        assert!(
+            service.get_playback_state().await.is_playing,
+            "Start Flow must play without a separate Resume click"
+        );
+        assert_eq!(
+            service
+                .get_playback_state()
+                .await
+                .current_track_id
+                .as_deref(),
+            Some(current.as_str())
+        );
+        let mut resumed = 0;
+        while let Ok(event) = events.try_recv() {
+            match event {
+                Event::PlaybackResumed { .. } => resumed += 1,
+                Event::PlaybackStarted { .. } => panic!("preserved current song must not restart"),
+                _ => {}
+            }
+        }
+        assert_eq!(resumed, 1);
+        processor.dispatch_command(Command::Pause).await.unwrap();
+        processor.dispatch_command(Command::StopFlow).await.unwrap();
+    }
+    processor.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn ready_flow_does_not_wait_for_unrelated_legacy_catalog_network() {
+    use music_player_backend::{
+        database::{
+            models::ExternalTrackRecord,
+            repositories::{SqliteWishlistRepository, WishlistRepository},
+        },
+        playback::stream::StreamPlaybackManager,
+        providers::{jiosaavn::JioSaavnProvider, online_catalog::OnlineCatalog},
+    };
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+    use tokio::{io::AsyncReadExt, net::TcpListener};
+    let processor = setup_processor().await;
+    let directory = tempfile::tempdir().unwrap();
+    add_track(&processor, "Ready One", "One", "Album", "Rock", 2020).await;
+    add_track(&processor, "Ready Two", "Two", "Album", "Pop", 2021).await;
+    SqliteWishlistRepository::new(processor.db_pool().clone())
+        .upsert_external_track(&ExternalTrackRecord {
+            id: "legacy-unrelated".into(),
+            provider: "itunes".into(),
+            provider_id: "legacy-unrelated".into(),
+            title: "Unrelated slow catalog entry".into(),
+            artist: "Artist".into(),
+            album: None,
+            duration_secs: Some(200.0),
+            cover_art_url: None,
+            preview_url: None,
+            genre: None,
+            match_status: "NOT_FOUND".into(),
+            matched_local_track_id: None,
+            created_at: 0,
+        })
+        .await
+        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let calls = Arc::new(AtomicUsize::new(0));
+    let requests = calls.clone();
+    let server = tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let mut buffer = [0u8; 4096];
+            let _ = socket.read(&mut buffer).await;
+            requests.fetch_add(1, Ordering::SeqCst);
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        }
+    });
+    let mut manager = StreamPlaybackManager::new(
+        directory.path().into(),
+        Some(processor.db_pool().clone()),
+        None,
+    );
+    manager.catalog = Some(OnlineCatalog::new(
+        processor.db_pool().clone(),
+        Arc::new(JioSaavnProvider::with_endpoint(&endpoint)),
+    ));
+    processor
+        .playback_service()
+        .set_stream_manager(Arc::new(manager));
+    let started = tokio::time::timeout(
+        std::time::Duration::from_secs(1),
+        processor.dispatch_command(Command::StartFlow {
+            familiarity_ratio: Some(0.5),
+        }),
+    )
+    .await;
+    let calls = calls.load(Ordering::SeqCst);
+    server.abort();
+    processor.shutdown().await.unwrap();
+    assert!(
+        started.is_ok(),
+        "a ready local Flow must not wait for unrelated catalog work; requests={calls}"
+    );
+    started.unwrap().unwrap();
+    assert_eq!(calls, 0);
 }

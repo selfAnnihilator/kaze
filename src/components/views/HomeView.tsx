@@ -13,6 +13,7 @@ interface HomeViewProps {
   onDiscover?: () => void;
   overview: HomeOverview | null;
   isLoading: boolean;
+  flowPendingAction?: "start" | "resume" | "pause" | "stop" | null;
   onRefresh: () => void;
   onStartFlow: (familiarityRatio: number) => void;
   onTogglePlayback: () => void;
@@ -39,6 +40,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
   overview,
   onDiscover,
   isLoading,
+  flowPendingAction = null,
   onRefresh,
   onStartFlow,
   onTogglePlayback,
@@ -69,7 +71,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
   const flowSession = overview?.flow_session;
   const hasPreviousSession = !!flowSession?.is_active;
   const isFlowCurrent = hasPreviousSession && !!flowSession?.last_track_id && flowSession.last_track_id === currentTrack?.id;
-  const flowAction = isFlowCurrent ? isPlaying
+  const flowAction = flowPendingAction ? ({ start: "Starting Flow…", resume: "Resuming Flow…", pause: "Pausing Flow…", stop: "Stopping Flow…" })[flowPendingAction] : isFlowCurrent ? isPlaying
         ? "Pause Flow"
         : "Resume Flow"
       : "Start Flow";
@@ -194,7 +196,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
             </div>
           </div>
         ));
-  if (interfaceStyle === "spatial") return <><SpatialHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
+  if (interfaceStyle === "spatial") return <><SpatialHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
 
-  return <><BrutalistHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
+  return <><BrutalistHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
 });

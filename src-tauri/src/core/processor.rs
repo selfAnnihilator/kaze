@@ -2640,6 +2640,26 @@ impl CoreProcessor {
             Query::GetCharts => Ok(QueryResponse::Charts(
                 self.discovery_coordinator.charts(false).await?,
             )),
+            Query::GetCachedWorldTrending { limit } => {
+                let recs = self
+                    .discovery_coordinator
+                    .cached_world_trending(limit as usize)
+                    .await?;
+                let val = recs
+                    .into_iter()
+                    .filter_map(|r| serde_json::to_value(r).ok())
+                    .collect();
+                Ok(QueryResponse::DiscoveryRecommendations(
+                    self.present_recommendations(
+                        serde_json::Value::Array(val),
+                        &self.current_user_id().await,
+                    )
+                    .await?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default(),
+                ))
+            }
             Query::GetWorldTrending {
                 limit,
                 force_refresh,

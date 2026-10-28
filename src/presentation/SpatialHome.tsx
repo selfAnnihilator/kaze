@@ -35,6 +35,7 @@ type Props = {
   onPreviousTrack: () => void;
   onNextTrack: () => void;
   isLoading: boolean;
+  isFlowPending?: boolean;
   isPlaying: boolean;
   flowAction: string;
   onFlow: () => void;
@@ -199,9 +200,10 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
             <button
               className="btn btn-primary"
               onClick={props.onFlow}
-              disabled={isLoading}
+              disabled={props.isFlowPending}
+              aria-busy={!!props.isFlowPending}
             >
-              {props.flowAction === "Pause Flow" ? (
+              {props.isFlowPending ? (<RefreshCw size={18} className="spin-animation" />) : props.flowAction === "Pause Flow" ? (
                 <Pause size={18} fill="currentColor" />
               ) : (
                 <Play size={18} fill="currentColor" />
@@ -212,6 +214,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
               <button
                 className="spatial-text-action"
                 onClick={props.onStopFlow}
+                disabled={props.isFlowPending}
               >
                 Stop Flow
               </button>

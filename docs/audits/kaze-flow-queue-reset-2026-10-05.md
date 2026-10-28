@@ -1,5 +1,7 @@
 # Fresh Flow queue semantics — 2026-10-05
 
+Current playback policy update (2026-10-28): Start Flow now resumes a paused loaded current song in place, without restarting its history session. This supersedes the paused-preservation behavior recorded below; Stop and Continue retain their distinct semantics. See [ADR 0021](../adr/0021-flow-startup-and-trending-latency.md).
+
 ## Root cause
 
 `PlaybackService::start_flow` used `PlaybackQueue::play_independent(first, true)`. That method intentionally splits and reattaches the upcoming queue for manual playback, so old manual entries remained ahead of appended Flow recommendations. Start also returned `resume()` immediately when a Flow was active, conflating a new Start with Continue. The first generated song was played immediately, unnecessarily interrupting current audio.

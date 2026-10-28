@@ -883,3 +883,119 @@ async fn artist_release_discovery_checks_album_credits_and_preserves_the_saved_c
     core.shutdown().await.unwrap();
     server_task.abort();
 }
+
+#[tokio::test]
+async fn trending_fetches_playlists_together_and_restores_cache_without_network() {
+    use music_player_backend::{
+        config::AppConfig,
+        core::{Command, CoreProcessor, Query, QueryResponse},
+        database::repositories::SqliteWishlistRepository,
+        discovery::DiscoveryCoordinator,
+        playback::backend::MockAudioBackend,
+    };
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let requests = Arc::new(AtomicUsize::new(0));
+    let count = requests.clone();
+    let barrier = Arc::new(tokio::sync::Barrier::new(3));
+    let server = tokio::spawn(async move {
+        let mut handlers = tokio::task::JoinSet::new();
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let count = count.clone();
+            let barrier = barrier.clone();
+            handlers.spawn(async move {
+                let mut buffer = [0u8; 8192];
+                let n = socket.read(&mut buffer).await.unwrap();
+                let request = String::from_utf8_lossy(&buffer[..n]);
+                let url = reqwest::Url::parse(&format!("http://fixture{}", request.split_whitespace().nth(1).unwrap())).unwrap();
+                let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+                count.fetch_add(1, Ordering::SeqCst);
+                let body = if query.get("__call").is_some_and(|c| c=="playlist.getDetails") {
+                    // A sequential implementation cannot pass this barrier.
+                    barrier.wait().await;
+                    let id = query.get("listid").unwrap();
+                    let mut song = candidate(&format!("song{id}"), &format!("Song {id}"));
+                    song["encrypted_media_url"] = json!("ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq");
+                    json!({"songs":[song]})
+                } else if query.get("__call").is_some_and(|c| c=="content.getCharts") {
+                    json!([{"id":"1","title":"Global chart"},{"id":"2","title":"English chart"},{"id":"3","title":"India chart"}])
+                } else { json!({}) }.to_string();
+                socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).as_bytes()).await.unwrap();
+            });
+        }
+    });
+    let pool = create_in_memory_pool().await.unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = temp.path().join("cache");
+    let core =
+        CoreProcessor::new_with_backend(pool.clone(), config, Box::new(MockAudioBackend::new()));
+    let mut providers = ProviderCoordinator::new(
+        pool.clone(),
+        Arc::new(EventBus::default()),
+        temp.path().into(),
+    );
+    providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
+    let providers = Arc::new(providers);
+    let discovery = DiscoveryCoordinator::new(
+        Arc::new(SqliteWishlistRepository::new(pool.clone())),
+        core.library_service().track_repo(),
+        core.taste_engine(),
+        Some(providers),
+    );
+    let songs = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        discovery.get_world_trending(50, false),
+    )
+    .await
+    .expect("all three playlists must be fetched concurrently")
+    .unwrap();
+    assert_eq!(
+        songs
+            .iter()
+            .map(|s| s.provider_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["song1", "song2", "song3"]
+    );
+    let calls = requests.load(Ordering::SeqCst);
+    assert_eq!(calls, 6, "three chart feeds and three playlists");
+    assert_eq!(
+        discovery.get_world_trending(50, false).await.unwrap().len(),
+        3
+    );
+    assert_eq!(requests.load(Ordering::SeqCst), calls);
+    server.abort();
+    // A fresh coordinator reads disk immediately with no provider configured.
+    let restored = DiscoveryCoordinator::new(
+        Arc::new(SqliteWishlistRepository::new(pool.clone())),
+        core.library_service().track_repo(),
+        core.taste_engine(),
+        None,
+    );
+    assert_eq!(restored.cached_world_trending(50).await.unwrap().len(), 3);
+    assert_eq!(
+        restored.get_world_trending(50, true).await.unwrap().len(),
+        3,
+        "failed/empty refresh retains saved songs"
+    );
+    core.dispatch_command(Command::DislikeTrack {
+        track_id: songs[0].external_track_id.clone(),
+    })
+    .await
+    .unwrap();
+    match core
+        .execute_query(Query::GetCachedWorldTrending { limit: 50 })
+        .await
+        .unwrap()
+    {
+        QueryResponse::DiscoveryRecommendations(rows) => {
+            assert_eq!(
+                rows.len(),
+                2,
+                "cached public feed must respect current account dislikes"
+            );
+            assert!(rows.iter().all(|r| r["provider_id"] != "song1"));
+        }
+        other => panic!("unexpected cache response: {other:?}"),
+    }
+}

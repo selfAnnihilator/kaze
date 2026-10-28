@@ -222,6 +222,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [recommendationNotice, setRecommendationNotice] = useState<{ id: string; title: string } | null>(null);
   const [homeOverview, setHomeOverview] = useState<HomeOverview | null>(null);
   const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
+  const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | "stop" | null>(null);
+  const flowCommandPendingRef = useRef(false);
+  const [isTrendingLoading, setIsTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState<string | null>(null);
   const [flowSteering, setFlowSteering] = useState<number>(0.5);
   const [whyTrackModal, setWhyTrackModal] = useState<{
     title: string;
@@ -727,6 +731,37 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
+  const fetchTrending = useCallback(async (forceRefresh = false) => {
+    const request = ++chartRequestRef.current;
+    const user = currentUserIdRef.current;
+    const current = () => request === chartRequestRef.current && user === currentUserIdRef.current;
+    setIsTrendingLoading(true);
+    setTrendingError(null);
+    try {
+      if (!forceRefresh) {
+        try {
+          const cached = await executeQuery({ query: "GetCachedWorldTrending", payload: { limit: 50 } });
+          if (current() && Array.isArray(cached.data) && cached.data.length) setWorldTrending(cached.data);
+        } catch (error) { console.error("Failed to read saved trending songs:", error); }
+      }
+      const res = await executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: forceRefresh } });
+      if (current() && Array.isArray(res.data)) setWorldTrending(res.data);
+    } catch (error) {
+      if (current()) setTrendingError("Couldn't update trending songs. Try Refresh again.");
+      console.error("Failed to fetch world charts:", error);
+    } finally {
+      if (current()) setIsTrendingLoading(false);
+    }
+  }, []);
+  const refreshTrending = useCallback(() => fetchTrending(true), [fetchTrending]);
+  const refreshPersonalRecommendations = useCallback(() => fetchPersonalRecommendations(true), [fetchPersonalRecommendations]);
+  const fetchDiscovery = useCallback(async (forceRefresh = false, refreshCharts = false) => {
+    const results = await Promise.allSettled([
+      fetchPersonalRecommendations(forceRefresh), fetchTrending(refreshCharts),
+    ]);
+    for (const result of results) if (result.status === "rejected") console.error("Failed to refresh discovery:", result.reason);
+  }, [fetchPersonalRecommendations, fetchTrending]);
+
   useEffect(() => {
     const userId = currentUser?.id || "default";
     if (userId === currentUserIdRef.current) return;
@@ -734,28 +769,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     recommendationPreferences.reset();
     void recommendationPreferences.refresh().catch(console.error);
     ++discoveryRequestRef.current;
+    ++chartRequestRef.current;
     setDiscoveryRecs([]);
-    void fetchPersonalRecommendations().catch(console.error);
-  }, [currentUser?.id, fetchPersonalRecommendations]);
-
-  const fetchDiscovery = useCallback(async (forceRefresh: boolean = false, refreshCharts: boolean = false) => {
-    const chartRequest = ++chartRequestRef.current;
-    const user = currentUserIdRef.current;
-    const [discovery, charts] = await Promise.allSettled([
-      fetchPersonalRecommendations(forceRefresh),
-      executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: refreshCharts },
-        }).then((res) => {
-        if (chartRequest === chartRequestRef.current && user === currentUserIdRef.current && Array.isArray(res.data)) setWorldTrending(res.data);
-      }),
-    ]);
-    if (discovery.status === "rejected") {
-      console.error("Failed to fetch discovery recommendations:", discovery.reason,
-        );
-    }
-    if (charts.status === "rejected") {
-      console.error("Failed to fetch world charts:", charts.reason);
-    }
-  }, [fetchPersonalRecommendations]);
+    setWorldTrending([]);
+    void fetchDiscovery();
+  }, [currentUser?.id, fetchDiscovery]);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -1204,6 +1222,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         case "RecommendationFeedbackChanged": {
           if (event.payload?.user_id !== currentUserIdRef.current) break;
           ++homeRequestRef.current; ++discoveryRequestRef.current; ++chartRequestRef.current;
+          setIsTrendingLoading(false);
           recommendationPreferences.update(event.payload?.track_ids || [], !!event.payload?.disliked);
           const ids = new Set<string>(event.payload?.track_ids || []);
           if (event.payload?.disliked) {
@@ -1238,7 +1257,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           recommendationPreferences.reset();
           void recommendationPreferences.refresh().catch(console.error);
           currentUserIdRef.current = event.payload?.user?.id || "default";
-          ++chartRequestRef.current; setWorldTrending([]); setRecommendationNotice(null);
+          ++chartRequestRef.current; setWorldTrending([]); setIsTrendingLoading(true); setTrendingError(null); setRecommendationNotice(null);
           ++discoveryRequestRef.current;
           setDiscoveryRecs([]);
           clearTimeout(tasteRefreshTimer);
@@ -1805,15 +1824,17 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   const handleStartFlow = useCallback(
     async (familiarityRatio: number) => {
+      if (flowCommandPendingRef.current) return;
+      flowCommandPendingRef.current = true;
+      setFlowPendingAction("start");
       try {
-        setIsHomeLoading(true);
         await dispatchCommand({
           command: "StartFlow",
           payload: { familiarity_ratio: familiarityRatio },
         });
-        await fetchPlaybackState();
-        await fetchHomeOverview();
         await fetchFlowSession();
+        // Home artwork and recommendations must not hold the playback action busy.
+        void Promise.allSettled([fetchPlaybackState(), fetchHomeOverview()]);
       } catch (err) {
         console.error("Failed to start Flow:", err);
         addAppNotification(
@@ -1822,7 +1843,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           "Failed to start Flow: " + String(err),
         );
       } finally {
-        setIsHomeLoading(false);
+        flowCommandPendingRef.current = false;
+        setFlowPendingAction(null);
       }
     },
     [
@@ -1834,13 +1856,22 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   const handleToggleFlowPlayback = useCallback(async () => {
-    if (playbackState.is_playing) {
-      await handleUnifiedPlayPause();
-    } else {
-      await dispatchCommand({ command: "ContinueFlow" });
-      await fetchPlaybackState();
+    if (flowCommandPendingRef.current) return;
+    flowCommandPendingRef.current = true;
+    setFlowPendingAction(playbackState.is_playing ? "pause" : "resume");
+    try {
+      if (playbackState.is_playing) await handleUnifiedPlayPause();
+      else {
+        await dispatchCommand({ command: "ContinueFlow" });
+        void fetchPlaybackState();
+      }
+    } catch (error) {
+      addAppNotification("error", "Flow Error", String(error));
+    } finally {
+      flowCommandPendingRef.current = false;
+      setFlowPendingAction(null);
     }
-  }, [playbackState.is_playing, handleUnifiedPlayPause, fetchPlaybackState]);
+  }, [playbackState.is_playing, handleUnifiedPlayPause, fetchPlaybackState, addAppNotification]);
 
   const steeringDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -1880,12 +1911,18 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   const handleStopFlow = useCallback(async () => {
+    if (flowCommandPendingRef.current) return;
+    flowCommandPendingRef.current = true;
+    setFlowPendingAction("stop");
     try {
       await dispatchCommand({ command: "StopFlow" });
       await fetchFlowSession();
-      await fetchPlaybackState();
+      void fetchPlaybackState();
     } catch (err) {
       addAppNotification("error", "Flow Error", String(err));
+    } finally {
+      flowCommandPendingRef.current = false;
+      setFlowPendingAction(null);
     }
   }, [fetchFlowSession, fetchPlaybackState, addAppNotification]);
 
@@ -3723,6 +3760,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                     <HomeView
                       overview={homeOverview}
                       isLoading={isHomeLoading}
+                      flowPendingAction={flowPendingAction}
                       onRefresh={fetchHomeOverview}
                       onStartFlow={handleStartFlow}
                       onTogglePlayback={handleUnifiedPlayPause}
@@ -3844,7 +3882,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onSearchDirect={(artist, title) =>
                         handleInitiateDirectDownloadSearch(artist, title)
                       }
-                      onRefresh={() => fetchDiscovery(true, true)}
+                      isTrendingLoading={isTrendingLoading}
+                      trendingError={trendingError}
+                      onRefreshTrending={refreshTrending}
+                      onRefresh={refreshPersonalRecommendations}
                       onPlayOnlineTrack={handlePlayOnlineTrack}
                       onStopTrack={handleStopTrack}
                       activeOnlineTrackId={

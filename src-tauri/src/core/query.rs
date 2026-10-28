@@ -76,6 +76,9 @@ pub enum Query {
         #[serde(default)]
         force_refresh: Option<bool>,
     },
+    GetCachedWorldTrending {
+        limit: u32,
+    },
     GetWorldTrending {
         limit: u32,
         #[serde(default)]

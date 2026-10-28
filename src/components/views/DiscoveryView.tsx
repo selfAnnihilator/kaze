@@ -685,6 +685,9 @@ const ChartCard: React.FC<{
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
   worldTrending: DiscoveryRecommendation[];
+  isTrendingLoading?: boolean;
+  trendingError?: string | null;
+  onRefreshTrending?: () => Promise<void>;
   localTracks: Track[];
   playlists?: Playlist[];
   onPlayPlaylist?: (id: string) => void;
@@ -720,6 +723,9 @@ interface DiscoveryViewProps {
 export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   recommendations,
   worldTrending,
+  isTrendingLoading = false,
+  trendingError = null,
+  onRefreshTrending,
   localTracks,
   playlists = [],
   onPlayPlaylist,
@@ -759,10 +765,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   );
 
   const handleRefreshTrending = async () => {
-    if (isRefreshingTrending || !_onRefresh) return;
+    if (isRefreshingTrending || isTrendingLoading || !(onRefreshTrending || _onRefresh)) return;
     setIsRefreshingTrending(true);
     try {
-      await _onRefresh(true);
+      if (onRefreshTrending) await onRefreshTrending();
+      else await _onRefresh?.(true);
       setVisibleCount(15);
       if (songsScrollRef.current) {
         songsScrollRef.current.scrollLeft = 0;
@@ -816,7 +823,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      if (_onRefresh) _onRefresh();
+      void _onRefresh?.();
+      void onRefreshTrending?.();
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -827,7 +835,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, [_onRefresh]);
+  }, [_onRefresh, onRefreshTrending]);
 
   // Online Search State (fallback if not controlled by parent)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
@@ -1313,28 +1321,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  {_onRefresh && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={handleRefreshTrending}
-                      disabled={isRefreshingTrending}
-                      style={{
-                        padding: "5px 12px",
-                        fontSize: "0.82rem",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        borderRadius: "8px",
-                      }}
-                      title="Refresh trending songs"
-                    >
-                      <RefreshCw
-                        size={14}
-                        className={isRefreshingTrending ? "spin-animation" : ""}
-                      />
-                    </button>
-                  )}
                   <button
                     type="button"
                     className="scroll-arrow-btn"
@@ -1354,9 +1340,16 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                 </div>
               </div>
 
+              {trending.length > 0 && (isTrendingLoading || trendingError) && (
+                <p role="status" aria-busy={isTrendingLoading}>
+                  {isTrendingLoading ? "Updating trending songs…" : trendingError}
+                </p>
+              )}
               {trending.length === 0 ? (
                 <div
                   className="content-card"
+                  role="status"
+                  aria-busy={isTrendingLoading}
                   style={{
                     textAlign: "center",
                     padding: "45px 20px",
@@ -1377,7 +1370,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                       marginBottom: "4px",
                     }}
                   >
-                    No trending songs found
+                    {isTrendingLoading ? "Loading trending songs…" : trendingError ? "Trending songs unavailable" : "No trending songs found"}
                   </p>
                   <p
                     style={{
@@ -1387,7 +1380,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                       margin: "0 auto",
                     }}
                   >
-                    Click Refresh to discover fresh trending tracks.
+                    {isTrendingLoading ? "Finding the latest songs for you." : trendingError || "Click Refresh to discover fresh trending tracks."}
                   </p>
                 </div>
               ) : (
