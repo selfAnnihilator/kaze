@@ -77,3 +77,13 @@ Apply this additive migration once to an existing database. Fresh databases init
 Songs now carry their original `provider` / `provider_id` separately from an optional `online_source` object (`provider_id`, normalized `metadata`, `linked_at`). D1 stores the latter in `online_source_json`; GET `/api/sync` returns it as an object. Stable Kaze song IDs and many aliases per recording remain intact. Repeated uploads retain the first saved binding; older clients omitting the object cannot clear it.
 
 Backups made before this upgrade cannot reconstruct a converted alias's missing recording on their own. Sync again from a device that still has the saved local binding to fill it in. No title matching or live provider lookup is performed during restore. These commands are rollout instructions; preparing the patch does not deploy it.
+
+### Production rollout recorded — 2026-10-28
+
+Applied `0004_song_recording_source.sql` to the configured production `soundflow-db`, verified all three nullable TEXT columns and retained the existing 375 songs. Do not reapply this migration to that database.
+
+Deployed Worker version `06cb1863-202b-4de9-b7cb-e7923473434e` at 100% traffic to [the production endpoint](https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev). Deployment used `wrangler deploy --keep-vars`; the existing D1 and Cloudinary secret bindings were verified unchanged.
+
+Live verification passed: health, authenticated source-snapshot upload/pull for three stable IDs sharing one recording, and snapshot retention after an older-client upload. The isolated verification account, songs and sessions were removed and absence confirmed. Worker tests, type checking and deployment dry run also passed before publication. This completes the server prerequisite for the desktop update; no desktop distribution was performed.
+
+The previous Worker version is `733b9dba-1bf2-467c-965f-5141c6951cae` if a code rollback is needed. The additive schema remains compatible with that version. The pre-migration database recovery bookmark is recorded in the canonical Kaze wiki; normal Worker rollback does not require reverting the database.

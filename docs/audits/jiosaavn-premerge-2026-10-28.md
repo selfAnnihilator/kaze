@@ -1,6 +1,18 @@
 # JioSaavn pre-merge quality review — 2026-10-28
 
-Current local implementation status: the additional cross-device identity collision is corrected; see [collision reconciliation follow-up](#collision-reconciliation-follow-up--2026-10-28). Review findings below remain as dated evidence. Production rollout is still pending.
+Current review status: all identified code defects are independently verified fixed at `3594e2c`; no remaining confirmed findings in the reviewed correction. See the final independent recheck below. Production rollout remains pending; earlier findings remain dated evidence.
+
+## Independent final recheck at `3594e2c` — 2026-10-28
+
+No remaining confirmed actionable findings in the collision correction. The earlier review hold is cleared for the identified code defects. This is an assessment of the local branch and the reviewed follow-up changes, not certification of a production deployment or every possible runtime behavior.
+
+The exact reviewer reproduction that previously failed at `1fad2f4` now passes unchanged. A temporary integration test was created from `/tmp/kaze-review-cloud-collision-repro.rs`, run against the current implementation, then removed. Fresh log: `/tmp/kaze-collision-recheck/original-repro.log` (one passed). The new permanent tests cover both directions and payload orders, multiple legacy identities, repeated old/canonical payloads, absent and conflicting snapshots, offline rebinding/re-export, stable playlist/statistics/history references and rollback of source/alias/canonical write failures. Independent standards and spec inspections found no additional defect in `cloud/song_restore.rs`.
+
+Fresh full Rust verification passed: **242 tests passed, zero failed, nine ignored**, across 28 result groups. Command: `cargo test --manifest-path src-tauri/Cargo.toml --lib --tests --offline --no-fail-fast` with disposable XDG directories under `/tmp/kaze-collision-recheck`, null ALSA output and local fixture-server permission. Log: `/tmp/kaze-collision-recheck/rust.log`. The additional original reproduction passed separately and is not included in 242. Branch whitespace validation also passes.
+
+Qlty rerun against prod analyzed 120 files and returned **276 smells**, unchanged from the previous 276/118 scope. Restore orchestration complexity decreased from 44 to 39 after extraction; root App complexity remains 1500. Raw SARIF: `/tmp/kaze-collision-recheck-qlty.sarif`. Smells remain maintainability work, not newly confirmed merge blockers. No frontend or Worker implementation changed in this correction; their passing previous-recheck build/tests/typecheck evidence remains applicable, but was not rerun or represented as fresh. No live provider, native GUI, production D1 or release checks were performed.
+
+Release sequencing still applies: migrate existing D1 databases, deploy the updated Worker, then distribute the desktop client, per `worker/README.md`. Nothing was merged, pushed, migrated, installed or deployed by this recheck. Original dated failures and prior hold recommendations below remain historical evidence.
 
 ## Independent recheck at `1fad2f4` — 2026-10-28
 
@@ -141,3 +153,15 @@ Canonical IDs in older payloads labelled cloud/online or missing the provider la
 Before correction, the permanent two-device and multi-alias regressions failed with SQLite 2067 on `external_tracks.provider, external_tracks.provider_id`. After correction, **70 affected Rust tests passed, zero failed, one manual D-Bus test ignored**: library 39, cloud recording 12, cloud sync 4, JioSaavn 15. Command: `cargo test --manifest-path src-tauri/Cargo.toml --lib --test cloud_recording_tests --test cloud_sync_tests --test jiosaavn_tests --offline`, using disposable XDG storage, silent ALSA and permission for the existing local fixtures. Whitespace check passed. Logs: `/tmp/kaze-collision-before.log` and `/tmp/kaze-collision-rust-final.log`.
 
 The twelve recording tests include the original five checks plus cross-device restore in either direction, fresh payloads in either order, multiple noncanonical provider rows, missing/present snapshots, offline exact binding and serialized re-export, repeated registration/sync, playlist/feedback/statistics continuity and existing history preservation. They also cover matching incoming full snapshots, conflicting pre-existing selections, fallback metadata/timestamps, and injected source/alias/canonical write failures with rollback. Test fixture playlists use distinct names to obey the existing per-account name constraint; the initial same-name fixture failure was unrelated to recording identity. Frontend/Worker source is unchanged and prior build/Worker/browser checks were not represented as fresh runs. No live cloud/provider or cross-platform runtime certification was performed.
+
+## Production server rollout — 2026-10-28
+
+Completed the user-authorized D1 migration and Worker deployment after `3594e2c`. This supersedes earlier pending-server-rollout statements as dated history; desktop distribution remains separate.
+
+The configured production database lacked all three source columns. Applied the three ALTER statements in `worker/migrations/0004_song_recording_source.sql`, verified `provider`, `provider_id`, `online_source_json` as TEXT and an unchanged 375-song baseline. Saved the pre-migration recovery bookmark before execution. Do not reapply this migration to the now-upgraded database.
+
+Worker version `06cb1863-202b-4de9-b7cb-e7923473434e` is active at 100% in deployment `b2144eef-83e2-429d-bc17-3019ab216a2a`, published at `2026-10-28T13:10:31Z`, at [the production endpoint](https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev). Existing D1 and Cloudinary secret bindings are unchanged; deployment preserved environment variables with `--keep-vars`. Prior Worker version `733b9dba-1bf2-467c-965f-5141c6951cae` is retained for code rollback, with the additive schema compatible.
+
+Fresh checks: actual Worker/SQLite test file, Worker TypeScript check, deployment dry run, remote schema/count, active version and binding checks. Live isolated verification passed health, account/session creation, authenticated POST/GET source-snapshot roundtrip for three stable IDs sharing a recording and a subsequent older-client upload without the source object. Exact provider identities and snapshots survived. Deleted the temporary user and verified its account, song and session counts are zero. No existing account data or credentials were used for the live fixture. An initial Python health probe returned 403; curl and a probe using Kaze's user agent returned 200, and the full authenticated probe using that user agent passed. The initial 403 cause is unconfirmed; no access/security configuration was changed.
+
+Sanitized operational outcomes are in the canonical wiki. Session-local schema/deployment/verification artifacts use `/tmp/kaze-cloud-rollout-*`; they are not release artifacts or stored credentials. No desktop distribution, Git push or merge was performed.

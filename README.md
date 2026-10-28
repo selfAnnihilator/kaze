@@ -139,7 +139,7 @@ For standalone installations (Windows and AppImage), Kaze automatically checks f
 ## Optional setup
 
 **Online music and metadata**
-Settings → Online music & library details controls JioSaavn availability and reversible metadata filling. Original local audio tags stay intact. This testing branch uses JioSaavn for search, charts, playlist imports and selected-song downloads; no retired provider credentials or external download daemon are required.
+Settings → Online music & library details controls JioSaavn availability and reversible metadata filling. Original local audio tags stay intact. Kaze uses JioSaavn for search, charts, playlist imports and selected-song downloads; no retired provider credentials or external download daemon are required.
 
 ---
 
@@ -167,4 +167,4 @@ See **[Architecture Documentation](docs/ARCHITECTURE.md)** for the complete syst
 
 MIT — free to use, modify, and distribute.
 
-On the JioSaavn testing branch, song Download buttons save the exact displayed recording directly as M4A, with percentage/fill inside the button and a downloaded icon on completion. The Not interested icon toggles recommendation exclusion and taste feedback on/off. Each Discovery section has refresh, and charts include available English/international editorial programming with its actual artwork. See [ADR 0019](docs/adr/0019-exact-song-downloads-and-discovery-controls.md).
+Song Download buttons save the exact displayed recording directly as M4A, with percentage/fill inside the button and a downloaded icon on completion. The Not interested icon toggles recommendation exclusion and taste feedback on/off. Each Discovery section has refresh, and charts include available English/international editorial programming with its actual artwork. See [ADR 0019](docs/adr/0019-exact-song-downloads-and-discovery-controls.md).
