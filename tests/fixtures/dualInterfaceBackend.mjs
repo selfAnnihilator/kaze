@@ -447,9 +447,10 @@ export function installDualInterfaceFixture() {
           });
           break;
         case "Resume":
+        case "ContinueFlow":
         case "TogglePlayPause":
           playback.is_playing =
-            c.command === "Resume" ? true : !playback.is_playing;
+            ["Resume", "ContinueFlow"].includes(c.command) ? true : !playback.is_playing;
           playback.is_paused = !playback.is_playing;
           emit({
             event: playback.is_playing ? "PlaybackResumed" : "PlaybackPaused",
@@ -542,6 +543,9 @@ export function installDualInterfaceFixture() {
           queueEvent();
           break;
         case "StartFlow":
+          playback.is_playing = true;
+          playback.is_paused = false;
+          emit({ event: "PlaybackResumed", payload: { position_secs: playback.position_secs } });
           flow = {
             ...flow,
             is_active: true,

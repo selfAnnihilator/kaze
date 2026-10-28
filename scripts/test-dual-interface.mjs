@@ -150,20 +150,13 @@ try {
     await check(
       `${name}: Flow, steering, explanation and complete Home`,
       async () => {
-        if (
-          await page
-            .getByRole("button", { name: "Stop Flow", exact: true }).first()
-            .count()
-        )
-          await page
-            .getByRole("button", { name: "Stop Flow", exact: true }).first()
-            .click();
-        await page
-          .getByRole("button", { name: "Start Flow", exact: true }).first()
-          .click();
-        await page
-          .getByRole("button", { name: "Stop Flow", exact: true }).first()
-          .waitFor();
+        const homeFlow = page.locator(".home-flow");
+        if (await homeFlow.getByRole("button", { name: "Pause Flow", exact: true }).count()) {
+          await homeFlow.getByRole("button", { name: "Pause Flow", exact: true }).click();
+        }
+        await homeFlow.getByRole("button", { name: "Start Flow", exact: true }).click();
+        await homeFlow.getByRole("button", { name: "Pause Flow", exact: true }).waitFor();
+        assert.equal(await page.getByRole("button", { name: "Stop Flow", exact: true }).count(), 0);
         await page.getByRole("slider", { name: "Flow Steering" }).focus();
         await page.keyboard.press("Home");
         for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
@@ -259,7 +252,11 @@ try {
         await page.getByRole("button", { name: "Go forward", exact: true }).click();
         await page.getByRole("tab", { name: "Liked", selected: true, exact: true }).waitFor();
       }
-      await nav("Smart Mixes");
+      if (name === "Spatial") await nav("Smart Mixes");
+      else {
+        await nav("Discover Music");
+        await page.getByRole("combobox", { name: "Discovery selection" }).selectOption("2");
+      }
       assert.ok(
         await page.getByText("Rediscovery Mix", { exact: true }).count(),
       );
@@ -414,14 +411,16 @@ try {
       await nav("Home");
     });
     await check(
-      `${name}: Downloads, Wishlist, Notifications, Profile and history`,
+      `${name}: ${name === "Spatial" ? "Downloads, Wishlist, Notifications, " : ""}Profile and history`,
       async () => {
-        await nav("Downloads");
-        await page.getByRole("heading", { name: /Music Downloads/ }).waitFor();
-        await nav("Wishlist");
-        await page.getByRole("heading", { name: /Wishlist/ }).waitFor();
-        await nav("Notifications");
-        await page.getByRole("heading", { name: /Notifications/ }).waitFor();
+        if (name === "Spatial") {
+          await nav("Downloads");
+          await page.getByRole("heading", { name: "Downloads", exact: true }).waitFor();
+          await nav("Wishlist");
+          await page.getByRole("heading", { name: /Wishlist/ }).waitFor();
+          await nav("Notifications");
+          await page.getByRole("heading", { name: /Notifications/ }).waitFor();
+        }
         await nav("Profile");
         await page.getByText(/Log in|Sign in|Your listening|Profile|Music Listener/i).first().waitFor();
         await nav("Home");
@@ -494,7 +493,7 @@ try {
           name: new RegExp(prior === "spatial" ? "^Brutalist" : "^Spatial"),
         })
         .click();
-      await page.getByRole("alert").waitFor();
+      await page.getByRole("alert").filter({ hasText: "Couldn’t save Interface Style" }).waitFor();
       assert.equal(await style(), prior);
       await page.evaluate(() => (window.__kazeFixture.failStyle = false));
     },
@@ -510,15 +509,15 @@ try {
     },
   );
   for (const name of ["Spatial","Brutalist"]) {
-    await check(`${name}: windowed download sources route search and download commands`, async () => {
-      await nav("Settings"); await select(name);await nav("Wishlist");
-      await page.getByRole("button",{name:"Find",exact:true}).click();
-      const sources=page.locator('[aria-label="Download sources"]');await sources.waitFor();
-      const options=sources.getByRole("button",{name:"Download",exact:true});
-      assert.ok(await options.count()<15);
-      await options.first().click();await page.locator(".modal-overlay").waitFor({state:"detached"});
-      assert.ok((await commands()).some(command=>command.command==="SearchDownloads"));
-      assert.ok((await commands()).some(command=>command.command==="StartDownload"));
+    await check(`${name}: search rows download directly without a source dialog`, async () => {
+      await nav("Settings"); await select(name); await nav("Discover Music");
+      const search=page.getByRole("textbox",{name:"Search music online"});
+      await search.fill("Bonobo"); await search.press("Enter");
+      const download=page.locator('.online-search-song .song-download-button').first();
+      await download.waitFor(); const id=await download.getAttribute('data-track-id'); await download.click();
+      assert.ok((await commands()).some(command=>command.command==="DownloadTrack" && command.payload.track_id===id));
+      assert.equal(await page.locator('[aria-label="Download sources"]').count(),0);
+      await search.fill(""); await search.press("Enter");
     });
   }
   await check("Both presentations retain empty library/discovery/queue and failed search recovery", async () => {
@@ -536,7 +535,7 @@ try {
       await page.locator(".discovery-chapters").waitFor();
       if (await page.locator(".chapter-nav button").count()) await page.locator(".chapter-nav button").nth(0).click();
       else await page.getByRole("combobox", { name: "Discovery selection" }).selectOption("0");
-      await page.getByRole("button",{name:"Refresh trending songs",exact:true}).click();
+      await page.getByRole("button",{name:/^Refresh trending songs$/i}).click();
       await page.getByText("No trending songs found",{exact:true}).waitFor();
       if (await page.locator(".chapter-nav button").count()) await page.locator(".chapter-nav button").nth(1).click();
       else await page.getByRole("combobox", { name: "Discovery selection" }).selectOption("1");
@@ -544,7 +543,7 @@ try {
       await page.getByRole("textbox",{name:"Search music online"}).fill("unavailable");
       await page.evaluate(()=>window.__kazeFixture.failSearch=true);
       await page.getByRole("textbox",{name:"Search music online"}).press("Enter");await page.waitForTimeout(200);
-      await page.getByRole("heading", {name:/No relevant results found/i}).waitFor();
+      await page.getByRole("heading", {name:/No songs found for/i}).waitFor();
       await page.evaluate(()=>{window.__kazeFixture.failSearch=false;window.__kazeFixture.empty=false;});
       await nav("Home");
     }

@@ -43,8 +43,10 @@ try {
     assert.equal(await page.getByRole('button',{name:'Pause Flow',exact:true}).first().isEnabled(),true,'artwork refresh does not hold Start busy');
     await page.evaluate(()=>{const f=window.__kazeFixture;f.holdHome=false;for(const done of f.homeWaiters.splice(0))done();});
     await page.getByRole('button',{name:'Pause Flow',exact:true}).first().click();
-    await page.getByRole('button',{name:'Resume Flow',exact:true}).first().waitFor();
-    await page.getByRole('button',{name:'Stop Flow',exact:true}).first().click();
+    await page.getByRole('button',{name:'Start Flow',exact:true}).first().waitFor();
+    assert.equal(await page.getByRole('button',{name:'Stop Flow',exact:true}).count(),0);
+    // Direct backend Stop remains an internal action; Home exposes only Start/Pause.
+    await page.evaluate(async()=>{const f=window.__kazeFixture;await f.command({command:'StopFlow'});f.emit({event:'QueueUpdated',payload:{items:[],current_index:null}});});
     await page.getByRole('button',{name:'Start Flow',exact:true}).first().click();
     await page.evaluate(async()=>{await window.__kazeFixture.startWaiters.shift()();});
     await page.getByRole('button',{name:'Pause Flow',exact:true}).first().waitFor();

@@ -128,7 +128,18 @@ def main():
             with sqlite3.connect(db_path) as db:
                 assert db.execute('SELECT session_id FROM active_playback_journal').fetchall() == restart_journal
                 assert db.execute('SELECT count(*) FROM playback_history').fetchone()[0] == restart_history
-            print('PASS native Home Start Flow resumes stopped/paused Flow in the same audio/history session without a second Play click', flush=True)
+            flow_generation = browser.query('GetFlowSession')['generation']
+            assert browser.evaluate("document.querySelectorAll('.spatial-flow-actions button').length") == 1
+            browser.evaluate("document.querySelector('.spatial-flow-actions button').click();true")
+            tray.wait_for(lambda: watcher.status() == 'Paused', 'Home Pause Flow pauses real audio')
+            tray.wait_for(lambda: browser.evaluate("document.querySelector('.spatial-flow-actions button').textContent.trim()==='Start Flow'"), 'paused Flow offers Start')
+            browser.evaluate("document.querySelector('.spatial-flow-actions button').click();true")
+            tray.wait_for(lambda: watcher.status() == 'Playing', 'Home Start Flow continues paused session')
+            assert browser.query('GetFlowSession')['generation'] == flow_generation
+            with sqlite3.connect(db_path) as db:
+                assert db.execute('SELECT session_id FROM active_playback_journal').fetchall() == restart_journal
+                assert db.execute('SELECT count(*) FROM playback_history').fetchone()[0] == restart_history
+            print('PASS native Home exposes one Start/Pause action, resumes stopped/paused Flow and preserves audio/history identity and Continue generation', flush=True)
             click('Settings')
             tray.wait_for(lambda: browser.evaluate('Boolean(document.querySelector(".settings-style-options"))'), 'interface settings')
             browser.evaluate("window.nativeApp=document.querySelector('.kaze-interface');window.nativeMain=document.querySelector('.main-content');window.nativeMain.scrollTop=100;true")

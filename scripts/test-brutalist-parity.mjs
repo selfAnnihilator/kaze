@@ -376,11 +376,11 @@ try {
     .getByRole("button", { name: "Pause Flow", exact: true })
     .click();
   await homeFlow
-    .getByRole("button", { name: "Resume Flow", exact: true })
+    .getByRole("button", { name: "Start Flow", exact: true })
     .click();
   await page
     .locator(".press-deck-controls")
-    .getByRole("button", { name: "Stop Flow", exact: true })
+    .getByRole("button", { name: "Pause Flow", exact: true })
     .click();
   await page
     .locator(".press-deck-controls")

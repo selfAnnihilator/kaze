@@ -310,13 +310,13 @@ export const BrutalistDeck = memo(function BrutalistDeck(
         <div className="press-deck-bottom">
           <button
             className="press-flow"
-            aria-label={p.flowActive ? "Stop Flow" : "Start Flow"}
-            aria-pressed={p.flowActive}
+            aria-label={p.flowActive && state.is_playing ? "Pause Flow" : "Start Flow"}
+            aria-pressed={p.flowActive && state.is_playing}
             onClick={p.onToggleFlow}
           >
             <Wind size={23} />
             <span>FLOW</span>
-            <small>{p.flowActive ? "ON" : "OFF"}</small>
+            <small>{p.flowActive ? state.is_playing ? "ON" : "PAUSED" : "OFF"}</small>
           </button>
           <div className="press-volume">
             <button

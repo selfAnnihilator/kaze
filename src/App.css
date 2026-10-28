@@ -32,3 +32,36 @@
 .kaze-interface[data-interface="brutalist"] .chart-card-art:has(.chart-cover)::after { content: none; }
 .press-options-row .song-download-button.is-compact { min-width: 32px; padding: 4px 1px; }
 .press-options-row .song-download-button.is-compact .song-download-label { gap: 2px; font-size: .65rem; }
+
+/* Search owns the remaining viewport; only its results list scrolls. */
+.kaze-interface[data-interface] .main-content:has(.discovery-search-active) {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+.kaze-interface[data-interface] .main-content:has(.discovery-search-active) > .interface-toolbar {
+  flex-shrink: 0;
+  margin: 0 !important;
+}
+:root .kaze-interface[data-interface] .main-content .discovery-view.discovery-search-active {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 0;
+  gap: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+.online-search-results { width: 100%; box-sizing: border-box; margin: 0 !important; container-type: inline-size; }
+.online-search-results > div:first-child { flex-shrink: 0; }
+.online-search-results:not([data-category="all"]):not([data-category="songs"]) { overflow-y: auto !important; }
+.online-search-all, .online-search-songs { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; min-width: 0; }
+.online-search-overview { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 28px; flex: 1 1 0; min-height: 0; }
+.online-search-top-result { min-height: 0; overflow-y: auto; }
+.online-search-songs h3 { margin: 0 0 14px; font-size: 1.2rem; }
+.online-search-song { min-height: 64px; box-sizing: border-box; }
+@container (max-width: 760px) {
+  .online-search-overview { grid-template-columns: minmax(0, 1fr); }
+  .online-search-top-result { display: none; }
+}

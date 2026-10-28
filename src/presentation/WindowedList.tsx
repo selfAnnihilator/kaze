@@ -20,7 +20,8 @@ export function WindowedList<T>({
   renderItem,
   rowHeight = 72,
   label = "Tracks",
-}: Rows<T> & { rowHeight?: number; label?: string }) {
+  fill = false,
+}: Rows<T> & { rowHeight?: number; label?: string; fill?: boolean }) {
   return (
     <List
       aria-label={label}
@@ -30,8 +31,9 @@ export function WindowedList<T>({
       rowProps={{ items, renderItem }}
       overscanCount={3}
       style={{
-        height: Math.min(560, items.length * rowHeight),
-        minHeight: Math.min(rowHeight, items.length * rowHeight),
+        height: fill ? "100%" : Math.min(560, items.length * rowHeight),
+        flex: fill ? "1 1 0" : undefined,
+        minHeight: fill ? 0 : Math.min(rowHeight, items.length * rowHeight),
         width: "100%",
       }}
     />

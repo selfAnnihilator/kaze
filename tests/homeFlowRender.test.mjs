@@ -27,7 +27,7 @@ const overview = {
   recent_rotation: [], rediscover: [],
   for_you: [{ track_id: "a", title: "Track A", reasons: [] }, { track_id: "b", title: "Track B", reasons: [] }],
 };
-const props = { overview, isLoading: false, currentTrack, activeTrackId: "a", flowSteering: .5, onFlowSteeringChange() {}, onRefresh() {}, onStartFlow() {}, onTogglePlayback() {}, onToggleFlowPlayback() {}, onStopFlow() {}, onPlayTrack() {} };
+const props = { overview, isLoading: false, currentTrack, activeTrackId: "a", flowSteering: .5, onFlowSteeringChange() {}, onRefresh() {}, onStartFlow() {}, onTogglePlayback() {}, onToggleFlowPlayback() {}, onPlayTrack() {} };
 const render = changes => renderToStaticMarkup(React.createElement(HomeView, { ...props, ...changes }));
 
 test("Home renders Pause Flow and Pause only on the active For You row", () => {
@@ -35,12 +35,13 @@ test("Home renders Pause Flow and Pause only on the active For You row", () => {
   assert.match(markup, /Pause Flow/);
   assert.match(markup, /aria-label="Pause Track A"/);
   assert.match(markup, /aria-label="Play Track B"/);
-  assert.match(markup, /Stop Flow/);
+  assert.doesNotMatch(markup, /Stop Flow/);
   assert.doesNotMatch(markup, /Flow Playing/);
 });
-test("paused playback renders Resume Flow and play icons without restarting the session", () => {
+test("paused playback renders Start Flow and play icons without restarting the session", () => {
   const markup = render({ isPlaying: false });
-  assert.match(markup, /Resume Flow/);
+  assert.match(markup, /Start Flow/);
+  assert.doesNotMatch(markup, /Stop Flow|Resume Flow/);
   assert.match(markup, /aria-label="Resume Track A"/);
   assert.match(markup, /aria-label="Play Track B"/);
 });

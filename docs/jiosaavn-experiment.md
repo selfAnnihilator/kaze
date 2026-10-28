@@ -1,5 +1,14 @@
 # JioSaavn experiment
 
+## 2026-10-28 — One Flow action and complete search results
+
+Home and the Brutalist player's Flow control now expose Start/Pause. Starting an already active paused Flow uses ContinueFlow in the existing session; pausing keeps its generation and queue. The separate Stop Flow action and Home prop chain were removed. Explicitly playing a song outside Flow still stops automatic Flow in the backend.
+
+Search's All view keeps the top match and shows the complete returned song list beside it. The five-song preview, six-extra-results cap and Show all songs link were removed. All and Songs share one windowed row implementation, including exact-source playback, download, playlist and dislike controls. The search panel and list fill the remaining viewport and resize with it; only rows scroll. Compact content widths use a single full-width song list. Other collections keep their existing list sizing.
+
+Verification: all fifteen Node test files and the four focused Home render checks passed. Both layouts passed a 125-result search test covering the last result, bounded DOM rows, full-height All/Songs lists, tall/short/compact windows and outside-song Flow exit. Startup/Trending, direct-download/dislike and the full dual-interface navigation gate passed after aligning fixtures with current controls. Frontend/embedded native builds and all twelve private native groups passed; the extended native Home gate verifies one Start/Pause action and unchanged generation/audio/history identity when continuing. The testing executable was rebuilt without changing the live user profile or restarting the running app.
+
+
 ## 2026-10-28 — Flow startup and Trending loading
 
 Start Flow now resumes a paused current session after Stop Flow without a second Play/Resume click or a new history session. Whole-catalog legacy preparation was removed from the interactive start path; selected online recordings retain exact source binding. Home immediately shows the pending action and no longer waits for its artwork/recommendation refresh to enable playback controls.

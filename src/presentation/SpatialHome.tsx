@@ -39,7 +39,6 @@ type Props = {
   isPlaying: boolean;
   flowAction: string;
   onFlow: () => void;
-  onStopFlow: () => void;
   flowSteering: number;
   onFlowSteeringChange: (value: number) => void;
   onRefresh: () => void;
@@ -210,15 +209,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
               )}
               {props.flowAction}
             </button>
-            {overview?.flow_session?.is_active && (
-              <button
-                className="spatial-text-action"
-                onClick={props.onStopFlow}
-                disabled={props.isFlowPending}
-              >
-                Stop Flow
-              </button>
-            )}
+
           </div>
           <span
             className="spatial-flow-caption"

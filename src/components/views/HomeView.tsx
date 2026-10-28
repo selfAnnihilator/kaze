@@ -13,7 +13,7 @@ interface HomeViewProps {
   onDiscover?: () => void;
   overview: HomeOverview | null;
   isLoading: boolean;
-  flowPendingAction?: "start" | "resume" | "pause" | "stop" | null;
+  flowPendingAction?: "start" | "resume" | "pause" | null;
   onRefresh: () => void;
   onStartFlow: (familiarityRatio: number) => void;
   onTogglePlayback: () => void;
@@ -24,7 +24,6 @@ interface HomeViewProps {
   nextTrack?: PlaybackArtworkTrack;
   onPreviousTrack: () => void;
   onNextTrack: () => void;
-  onStopFlow: () => void;
   onPlayTrack: (trackId: string, source?: string) => void;
   onEnqueueTrack?: (trackId: string) => void;
   onOpenAlbum?: (albumId: string) => void;
@@ -51,7 +50,6 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
   nextTrack,
   onPreviousTrack,
   onNextTrack,
-  onStopFlow,
   onPlayTrack,
   onEnqueueTrack,
   onOpenAlbum,
@@ -71,9 +69,9 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
   const flowSession = overview?.flow_session;
   const hasPreviousSession = !!flowSession?.is_active;
   const isFlowCurrent = hasPreviousSession && !!flowSession?.last_track_id && flowSession.last_track_id === currentTrack?.id;
-  const flowAction = flowPendingAction ? ({ start: "Starting Flow…", resume: "Resuming Flow…", pause: "Pausing Flow…", stop: "Stopping Flow…" })[flowPendingAction] : isFlowCurrent ? isPlaying
+  const flowAction = flowPendingAction ? ({ start: "Starting Flow…", resume: "Starting Flow…", pause: "Pausing Flow…" })[flowPendingAction] : isFlowCurrent ? isPlaying
         ? "Pause Flow"
-        : "Resume Flow"
+        : "Start Flow"
       : "Start Flow";
 
   const handleStartOrResume = useCallback(() => {
@@ -196,7 +194,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
             </div>
           </div>
         ));
-  if (interfaceStyle === "spatial") return <><SpatialHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
+  if (interfaceStyle === "spatial") return <><SpatialHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
 
-  return <><BrutalistHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} onStopFlow={onStopFlow} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
+  return <><BrutalistHome overview={overview} currentTrack={currentTrack} currentCover={currentCover} previousTrack={previousTrack} nextTrack={nextTrack} onPreviousTrack={onPreviousTrack} onNextTrack={onNextTrack} isLoading={isLoading} isFlowPending={flowPendingAction !== null} isPlaying={isPlaying} flowAction={flowAction} onFlow={handleStartOrResume} flowSteering={flowSteering} onFlowSteeringChange={onFlowSteeringChange} onRefresh={onRefresh} onDiscover={onDiscover} onOpenAlbum={onOpenAlbum} onPlayTrack={onPlayTrack} onTogglePlayback={onTogglePlayback} onEnqueueTrack={onEnqueueTrack} queuedTrackIds={queuedTrackIds} loadingTrackId={loadingTrackId} onExplain={setWhyModalTrack} />{whyDialog}</>;
 });

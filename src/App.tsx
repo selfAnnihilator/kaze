@@ -222,7 +222,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [recommendationNotice, setRecommendationNotice] = useState<{ id: string; title: string } | null>(null);
   const [homeOverview, setHomeOverview] = useState<HomeOverview | null>(null);
   const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
-  const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | "stop" | null>(null);
+  const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | null>(null);
   const flowCommandPendingRef = useRef(false);
   const [isTrendingLoading, setIsTrendingLoading] = useState(true);
   const [trendingError, setTrendingError] = useState<string | null>(null);
@@ -1910,22 +1910,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     [],
   );
 
-  const handleStopFlow = useCallback(async () => {
-    if (flowCommandPendingRef.current) return;
-    flowCommandPendingRef.current = true;
-    setFlowPendingAction("stop");
-    try {
-      await dispatchCommand({ command: "StopFlow" });
-      await fetchFlowSession();
-      void fetchPlaybackState();
-    } catch (err) {
-      addAppNotification("error", "Flow Error", String(err));
-    } finally {
-      flowCommandPendingRef.current = false;
-      setFlowPendingAction(null);
-    }
-  }, [fetchFlowSession, fetchPlaybackState, addAppNotification]);
-
   const handleInspectWhyCurrentTrack = useCallback(async () => {
     if (!playbackState.current_track) return;
     try {
@@ -3586,9 +3570,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       (!activeCollection && ["library", "albums", "playlists"].includes(currentView)));
 
   const handleDeckFlow = useCallback(() => {
-    if (homeOverview?.flow_session?.is_active) handleStopFlow();
-    else handleStartFlow(flowSteering);
-  }, [homeOverview?.flow_session?.is_active, handleStopFlow, handleStartFlow, flowSteering]);
+    if (homeOverview?.flow_session?.is_active) void handleToggleFlowPlayback();
+    else void handleStartFlow(flowSteering);
+  }, [homeOverview?.flow_session?.is_active, handleToggleFlowPlayback, handleStartFlow, flowSteering]);
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
     <InterfaceContext.Provider value={interfacePreference.style}>
@@ -3771,7 +3755,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       nextTrack={nextQueuedTrack}
                       onPreviousTrack={handlePreviousTrack}
                       onNextTrack={handleNextTrack}
-                      onStopFlow={handleStopFlow}
                       onPlayTrack={handlePlayTrack}
                       onEnqueueTrack={handleEnqueueTrack}
                       onOpenAlbum={handleSelectAlbum}

@@ -2,6 +2,9 @@
 
 Start Flow is a playback action. A new Flow generation replaces upcoming automatic selections while preserving an already loaded current recording, position, queue identity and history/statistics session. If that session is paused, Start resumes it; a resolving selection keeps its existing play request. Stop Flow continues to disable automatic continuation without interrupting current audio. Continue Flow remains the resume-only action that preserves the generation. An eligible current song can start Flow even when there are no additional candidates.
 
+Presentation update (2026-10-28): the user requested only Start Flow and Pause Flow. Home no longer exposes a separate Stop action; a paused active Flow is labelled Start and uses ContinueFlow internally to preserve its generation/session. The Brutalist player's Flow toggle follows the same Start/Pause behavior. Manual song selection outside Flow continues to end Flow through the backend's existing source transition.
+
+
 Interactive Start must not run whole-catalog legacy preparation. That work already belongs to background catalog maintenance; selected online recordings are bound by the existing `play_item` path before playback. Regression tests require ready local playback to start without touching a deliberately blocked unrelated legacy catalog endpoint.
 
 Home uses a separate pending Flow action with synchronous command exclusion and immediate Starting/Resuming/Pausing/Stopping text. Background Home artwork/recommendation responses cannot clear this state or disable Start. Playback/session updates remain authoritative; presentation refreshes run after the command without holding the action busy. No audio-position ticks were added to App.

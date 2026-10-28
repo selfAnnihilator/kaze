@@ -35,7 +35,6 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
   isPlaying: boolean;
   flowAction: string;
   onFlow: () => void;
-  onStopFlow: () => void;
   flowSteering: number;
   onFlowSteeringChange: (value: number) => void;
   onRefresh: () => void;
@@ -190,11 +189,7 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
                 )}
                 {p.flowAction}
               </button>
-              {overview?.flow_session?.is_active && (
-                <button className="press-text-button" disabled={p.isFlowPending} onClick={p.onStopFlow}>
-                  Stop Flow
-                </button>
-              )}
+
             </div>
             <FamiliarityBar
               value={p.flowSteering}
