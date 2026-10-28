@@ -434,6 +434,7 @@ impl FlowEngine {
                 completion_count,
                 skip_count,
                 last_played_at: c.last_played_at,
+                listening_engagement: signals.signal(&c.id, &c.title, c.artist_name.as_deref().unwrap_or("")).engagement(),
                 user_feedback: if is_liked { Some("like".into()) } else { None },
             };
             let taste_score = ScoringEngine::score_track(&input, &profile, now).final_score;

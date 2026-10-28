@@ -57,9 +57,8 @@ struct HistorySessionRow {
     genre_name: Option<String>,
     year: Option<i64>,
     started_at: i64,
+    duration_secs: f64,
     seconds_listened: f64,
-    percentage_listened: f64,
-    completed: i64,
     skipped: i64,
 }
 
@@ -97,8 +96,7 @@ impl TasteProfileEngine {
         // Query listening history joined with track, artist, and genre for this specific user
         let rows = sqlx::query_as::<_, HistorySessionRow>(
             "SELECT h.track_id, t.artist_id, a.name as artist_name, COALESCE(g.name, e.genre) as genre_name,
-                    t.year, h.started_at, h.seconds_listened, h.percentage_listened,
-                    h.completed, h.skipped
+                    t.year, h.started_at, COALESCE(t.duration_secs,0) as duration_secs, h.seconds_listened, h.skipped
              FROM playback_history h
              JOIN tracks t ON t.id = h.track_id
              LEFT JOIN artists a ON a.id = t.artist_id
@@ -145,23 +143,15 @@ impl TasteProfileEngine {
         let mut language_long: HashMap<String, f64> = HashMap::new();
 
         for row in &rows {
-            // Native history stores a fraction; tolerate older percentage-based rows.
-            let fraction = if row.percentage_listened > 1.0 {
-                row.percentage_listened / 100.0
-            } else {
-                row.percentage_listened
+            let session_weight = super::engagement::Engagement::from_listening(
+                row.seconds_listened,
+                row.duration_secs,
+                row.skipped == 1,
+            )
+            .weight;
+            if session_weight == 0.0 {
+                continue;
             }
-            .clamp(0.0, 1.0);
-            let session_weight = if row.skipped == 1 {
-                -0.2
-            } else if row.completed == 1 {
-                1.0
-            } else if fraction > 0.0 {
-                fraction
-            } else {
-                // Unknown-duration sessions still contribute actual listening time.
-                (row.seconds_listened / 240.0).clamp(0.0, 1.0)
-            };
 
             let age_days = ((now - row.started_at).max(0) as f64) / 86400.0;
             let decayed_score = session_weight * (-0.05 * age_days).exp();

@@ -304,9 +304,9 @@ async fn test_smart_mix_generation_and_persistence() {
                 user_id: "default".into(),
                 track_id: id.clone(),
                 started_at: now - 1000,
-                ended_at: now - 800,
-                seconds_listened: 200.0,
-                percentage_listened: 90.0,
+                ended_at: now - 640,
+                seconds_listened: 360.0,
+                percentage_listened: 1.0,
                 completed: 1,
                 skipped: 0,
                 source: "test".into(),
@@ -396,6 +396,7 @@ fn test_scoring_repetition_penalty_and_discovery_bonus() {
 
     // Case 1: Freshly played candidate (< 24 hours ago) -> should have -50% repetition penalty
     let recent_candidate = CandidateTrack {
+        listening_engagement: None,
         language: None,
         id: "track_1".to_string(),
         title: "Time".to_string(),
@@ -419,6 +420,7 @@ fn test_scoring_repetition_penalty_and_discovery_bonus() {
 
     // Case 2: Unplayed track matching artist/genre -> should have exploration bonus and is_discovery = true
     let discovery_candidate = CandidateTrack {
+        listening_engagement: None,
         language: None,
         id: "track_2".to_string(),
         title: "Echoes".to_string(),

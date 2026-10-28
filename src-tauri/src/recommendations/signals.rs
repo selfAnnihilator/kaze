@@ -59,9 +59,17 @@ pub struct ListeningSignal {
     pub skip_count: i64,
     pub last_played_at: Option<i64>,
     pub manual_like: i64,
+    pub engagement_sum: f64,
+    pub scored_sessions: i64,
 }
 impl ListeningSignal {
+    pub fn engagement(&self) -> Option<f64> {
+        (self.scored_sessions > 0)
+            .then(|| (self.engagement_sum / self.scored_sessions as f64).clamp(-1.0, 1.0))
+    }
     fn add(&mut self, other: &Self) {
+        self.engagement_sum += other.engagement_sum;
+        self.scored_sessions = self.scored_sessions.saturating_add(other.scored_sessions);
         self.play_count = self.play_count.saturating_add(other.play_count.max(0));
         self.completion_count = self
             .completion_count
@@ -150,6 +158,34 @@ impl SongSignals {
         for song in tracks {
             index.identities.entry(song.id.clone()).or_insert(song);
         }
+        let sessions: Vec<(String,f64,f64,i64,i64,i64)> = sqlx::query_as(
+            "SELECT h.track_id,COALESCE(h.seconds_listened,0),COALESCE(t.duration_secs,e.duration_secs,0),h.completed,h.skipped,h.ended_at
+             FROM playback_history h LEFT JOIN tracks t ON t.id=h.track_id
+             LEFT JOIN external_tracks e ON e.id=h.track_id WHERE h.user_id=?")
+            .bind(user).fetch_all(pool).await?;
+        let mut history: HashMap<String, (ListeningSignal, i64, i64, i64)> = HashMap::new();
+        for (id, seconds, duration, completed, skipped, at) in sessions {
+            let heard =
+                super::engagement::Engagement::from_listening(seconds, duration, skipped == 1);
+            let (signal, observed_sessions, old_completions, old_skips) =
+                history.entry(id).or_default();
+            // Local time evidence wins over configurable/legacy play counters.
+            // Any aggregate remainder is a conservative lower bound for sessions
+            // not represented locally; do not let an old short-play rule leak back in.
+            *observed_sessions += 1;
+            *old_completions += completed;
+            *old_skips += skipped;
+            signal.play_count += i64::from(heard.qualified);
+            signal.completion_count += i64::from(heard.near_complete && completed == 1);
+            signal.skip_count += i64::from(heard.early_skip);
+            if heard.qualified {
+                signal.last_played_at = signal.last_played_at.max(Some(at));
+            }
+            if heard.weight != 0.0 {
+                signal.engagement_sum += heard.weight;
+                signal.scored_sessions += 1;
+            }
+        }
         let stats: Vec<(String,i64,i64,i64,Option<i64>,i64)>=sqlx::query_as(
             "SELECT track_id,COALESCE(play_count,0),COALESCE(completion_count,0),COALESCE(skip_count,0),last_played_at,COALESCE(manual_like,0)
              FROM track_statistics WHERE user_id=?")
@@ -166,16 +202,33 @@ impl SongSignals {
             } else {
                 0
             };
-            index.record(
-                &id,
-                ListeningSignal {
-                    play_count: plays,
-                    completion_count: completions,
-                    skip_count: skips,
-                    last_played_at: last,
-                    manual_like: feedback,
-                },
-            );
+            let mut signal = ListeningSignal {
+                play_count: plays,
+                completion_count: completions,
+                skip_count: skips,
+                last_played_at: last,
+                manual_like: feedback,
+                ..Default::default()
+            };
+            if let Some((heard, observed_sessions, old_completions, old_skips)) =
+                history.remove(&id)
+            {
+                signal.play_count = (plays - observed_sessions).max(0) + heard.play_count;
+                signal.completion_count =
+                    (completions - old_completions).max(0) + heard.completion_count;
+                signal.skip_count = (skips - old_skips).max(0) + heard.skip_count;
+                signal.last_played_at = if plays > observed_sessions {
+                    last.max(heard.last_played_at)
+                } else {
+                    heard.last_played_at
+                };
+                signal.engagement_sum = heard.engagement_sum;
+                signal.scored_sessions = heard.scored_sessions;
+            }
+            index.record(&id, signal);
+        }
+        for (id, (signal, _, _, _)) in history {
+            index.record(&id, signal);
         }
         for id in liked.difference(&accounted) {
             index.record(

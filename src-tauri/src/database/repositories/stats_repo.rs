@@ -481,6 +481,7 @@ impl StatsRepository for SqliteStatsRepository {
         let start_filter = window_start.unwrap_or(0);
 
         // Compute aggregated metrics from playback_history within the window, joined with track metadata
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 t.id as track_id,
@@ -492,17 +493,17 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(SUM(h.completed), 0) as completion_count,
                 COALESCE(SUM(h.skipped), 0) as skip_count,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) +
-                    (? * COALESCE(SUM(h.completed), 0)) +
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) +
+                    (? * COALESCE(SUM(h.scored_completion), 0)) +
                     (? * COALESCE(ts.manual_like, 0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
             FROM tracks t
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN albums al ON t.album_id = al.id
             LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
-            LEFT JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
+            LEFT JOIN ({scored_history}) h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY t.id
             HAVING score > 0 OR play_count > 0
             ORDER BY score DESC, play_count DESC
@@ -545,6 +546,7 @@ impl StatsRepository for SqliteStatsRepository {
         let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 a.id as artist_id,
@@ -552,13 +554,13 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0) as play_count,
                 COALESCE(SUM(h.seconds_listened), 0.0) as total_seconds,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) -
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
             FROM artists a
             JOIN tracks t ON t.artist_id = a.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
+            JOIN ({scored_history}) h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY a.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -597,6 +599,7 @@ impl StatsRepository for SqliteStatsRepository {
         let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 al.id as album_id,
@@ -605,14 +608,14 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0) as play_count,
                 COALESCE(SUM(h.seconds_listened), 0.0) as total_seconds,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) -
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
             FROM albums al
             LEFT JOIN artists a ON al.artist_id = a.id
             JOIN tracks t ON t.album_id = al.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
+            JOIN ({scored_history}) h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY al.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -651,6 +654,7 @@ impl StatsRepository for SqliteStatsRepository {
         let uid = user_id.unwrap_or("default");
         let start_filter = window_start.unwrap_or(0);
 
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 g.id as genre_id,
@@ -658,13 +662,13 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0) as play_count,
                 COALESCE(SUM(h.seconds_listened), 0.0) as total_seconds,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) -
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
             FROM genres g
             JOIN tracks t ON t.genre_id = g.id
-            JOIN playback_history h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
+            JOIN ({scored_history}) h ON h.track_id = t.id AND h.started_at >= ? AND h.user_id = ?
             GROUP BY g.id
             ORDER BY score DESC, play_count DESC
             LIMIT ?
@@ -909,6 +913,7 @@ impl StatsRepository for SqliteStatsRepository {
         let start_filter = window_start.unwrap_or(0);
         let end_filter = window_end.unwrap_or(i64::MAX);
 
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 COALESCE(t.id, h.track_id) as track_id,
@@ -920,13 +925,13 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(SUM(h.completed), 0) as completion_count,
                 COALESCE(SUM(h.skipped), 0) as skip_count,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) +
-                    (? * COALESCE(SUM(h.completed), 0)) +
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) +
+                    (? * COALESCE(SUM(h.scored_completion), 0)) +
                     (? * COALESCE(ts.manual_like, 0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
-            FROM playback_history h
+            FROM ({scored_history}) h
             LEFT JOIN tracks t ON h.track_id = t.id
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN albums al ON t.album_id = al.id
@@ -974,6 +979,7 @@ impl StatsRepository for SqliteStatsRepository {
         let start_filter = window_start.unwrap_or(0);
         let end_filter = window_end.unwrap_or(i64::MAX);
 
+        let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
                 COALESCE(a.id, et.artist, 'artist_' || COALESCE(a.name, et.artist, 'Unknown')) as artist_id,
@@ -981,11 +987,11 @@ impl StatsRepository for SqliteStatsRepository {
                 COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0) as play_count,
                 COALESCE(SUM(h.seconds_listened), 0.0) as total_seconds,
                 (
-                    (? * COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0)) +
-                    (? * (COALESCE(SUM(h.seconds_listened), 0.0) / 60.0)) -
-                    (? * COALESCE(SUM(h.skipped), 0))
+                    (? * COALESCE(COUNT(CASE WHEN h.qualified = 1 THEN 1 END), 0)) +
+                    (? * (COALESCE(SUM(h.qualified_seconds), 0.0) / 60.0)) -
+                    (? * COALESCE(SUM(h.scored_skip), 0))
                 ) as score
-            FROM playback_history h
+            FROM ({scored_history}) h
             LEFT JOIN tracks t ON h.track_id = t.id
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN external_tracks et ON h.track_id = et.id
@@ -1019,6 +1025,7 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedTrackItem>> {
+        let scored_stats = crate::recommendations::engagement::scored_stats_sql();
         let sql = format!("
             SELECT
                 COALESCE(t.id, et.id, ts.track_id) as track_id,
@@ -1030,13 +1037,13 @@ impl StatsRepository for SqliteStatsRepository {
                 CAST(ts.completion_count AS INTEGER) as completion_count,
                 CAST(ts.skip_count AS INTEGER) as skip_count,
                 (
-                    (? * ts.play_count) +
-                    (? * (ts.total_time_listened / 60.0)) +
-                    (? * ts.completion_count) +
+                    (? * ts.scored_play_count) +
+                    (? * (ts.qualified_time_listened / 60.0)) +
+                    (? * ts.scored_completion_count) +
                     (? * ts.manual_like) -
-                    (? * ts.skip_count)
+                    (? * ts.scored_skip_count)
                 ) as score
-            FROM track_statistics ts
+            FROM ({scored_stats}) ts
             LEFT JOIN tracks t ON ts.track_id = t.id
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN albums al ON t.album_id = al.id
@@ -1068,6 +1075,7 @@ impl StatsRepository for SqliteStatsRepository {
         weights: &RankingWeightsConfig,
         limit: u32,
     ) -> AppResult<Vec<RankedArtistItem>> {
+        let scored_stats = crate::recommendations::engagement::scored_stats_sql();
         let sql = format!("
             SELECT
                 COALESCE(a.id, et.artist, 'artist_' || COALESCE(a.name, et.artist, 'Unknown')) as artist_id,
@@ -1075,11 +1083,11 @@ impl StatsRepository for SqliteStatsRepository {
                 CAST(SUM(ts.play_count) AS INTEGER) as play_count,
                 CAST(SUM(ts.total_time_listened) AS REAL) as total_seconds,
                 (
-                    (? * SUM(ts.play_count)) +
-                    (? * (SUM(ts.total_time_listened) / 60.0)) -
-                    (? * SUM(ts.skip_count))
+                    (? * SUM(ts.scored_play_count)) +
+                    (? * (SUM(ts.qualified_time_listened) / 60.0)) -
+                    (? * SUM(ts.scored_skip_count))
                 ) as score
-            FROM track_statistics ts
+            FROM ({scored_stats}) ts
             LEFT JOIN tracks t ON ts.track_id = t.id
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN external_tracks et ON ts.track_id = et.id

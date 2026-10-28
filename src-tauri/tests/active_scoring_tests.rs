@@ -86,8 +86,8 @@ async fn partial_listens_all_sources_and_lifetime_history_keep_their_strength() 
             .affinity
     };
     assert!(
-        (affinity("Partial Artist") - 0.5).abs() < 0.01,
-        "fractional listens should retain half strength"
+        (affinity("Partial Artist") - 0.35).abs() < 0.01,
+        "qualified partial listens use baseline tier strength"
     );
     assert!(
         affinity("Old Artist") > 0.0,

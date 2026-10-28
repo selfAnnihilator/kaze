@@ -313,10 +313,22 @@ impl SmartMixGenerator {
         };
 
         let feedback = super::signals::SongSignals::load(&self.pool, user_id).await?;
+        let explicit_favorites: HashSet<String> = if matches!(mix_type, SmartMixType::ForgottenFavorites) {
+            sqlx::query_scalar("SELECT id FROM tracks WHERE LOWER(file_path) LIKE '%/fav/%'")
+                .fetch_all(&self.pool).await?.into_iter().collect()
+        } else { HashSet::new() };
         let mut seen = std::collections::HashSet::new();
         let track_ids = track_ids
             .into_iter()
             .filter(|id| !feedback.blocked_id(id))
+            .filter(|id| {
+                if !matches!(mix_type, SmartMixType::OnRepeat | SmartMixType::ForgottenFavorites) { return true; }
+                let Some(song) = feedback.identities.get(id) else { return false; };
+                let heard = feedback.signal(id, &song.title, &song.artist);
+                heard.manual_like == 1 || explicit_favorites.contains(id)
+                    || heard.play_count >= 2
+                    || (matches!(mix_type, SmartMixType::OnRepeat) && heard.completion_count >= 1)
+            })
             .filter(|id| {
                 let key = feedback
                     .identities
@@ -439,15 +451,15 @@ impl SmartMixGenerator {
     async fn generate_on_repeat_mix(&self, user_id: &str) -> AppResult<Vec<String>> {
         let cutoff = Utc::now().timestamp() - (14 * 86400);
 
-        let rows: Vec<String> = sqlx::query_scalar(
-            "SELECT h.track_id
-             FROM playback_history h
-             WHERE h.user_id = ? AND h.started_at >= ?
+        let qualified = super::engagement::qualified_sql("h.seconds_listened", "COALESCE(t.duration_secs,0)");
+        let near_complete = super::engagement::NEAR_COMPLETE_FRACTION;
+        let sql = format!(
+            "SELECT h.track_id FROM playback_history h JOIN tracks t ON t.id=h.track_id
+             WHERE h.user_id=? AND h.started_at>=? AND {qualified}
              GROUP BY h.track_id
-             HAVING SUM(h.completed) >= 1 OR COUNT(h.id) >= 2
-             ORDER BY COUNT(h.id) DESC, SUM(h.percentage_listened) DESC
-             LIMIT 25",
-        )
+             HAVING SUM(CASE WHEN h.completed=1 AND t.duration_secs>0 AND h.seconds_listened>={near_complete}*t.duration_secs THEN 1 ELSE 0 END)>=1 OR COUNT(h.id)>=2
+             ORDER BY COUNT(h.id) DESC,SUM(h.seconds_listened) DESC LIMIT 25");
+        let rows: Vec<String> = sqlx::query_scalar(&sql)
         .bind(user_id)
         .bind(cutoff)
         .fetch_all(&self.pool)

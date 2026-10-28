@@ -274,15 +274,24 @@ impl HistoryService {
                         session.listened_secs += since.elapsed().as_secs_f64();
                     }
                     // Use the greater of elapsed monotonic timer or explicit seconds_listened from the finished event.
-                    let listened = if completed {
-                        session.duration_secs.max(session.listened_secs).max(seconds_listened)
-                    } else {
-                        session.listened_secs.max(seconds_listened)
-                    };
+                    // The native EOF event carries no listening-position estimate.
+                    // Never manufacture a full listen from the duration or a seek.
+                    let listened = session.listened_secs.max(seconds_listened);
                     self.finalize_active_session(session, listened, completed, false).await;
                 } else {
                     // session_id mismatch — silently ignore stale TrackFinished events.
                     warn!(session_id = %session_id, "TrackFinished session_id mismatch; ignoring");
+                }
+            }
+            Event::PlaybackError { session_id, .. } => {
+                let session = {
+                    let mut guard = self.current_session.lock().await;
+                    if !session_id.is_empty() && guard.as_ref().is_some_and(|s| s.id == session_id) { guard.take() } else { None }
+                };
+                if let Some(mut session) = session {
+                    if let Some(since) = session.playing_since.take() { session.listened_secs += since.elapsed().as_secs_f64(); }
+                    let listened = session.listened_secs;
+                    self.finalize_active_session(session, listened, false, false).await;
                 }
             }
             Event::PlaybackStopped { session_id } => {
@@ -498,19 +507,18 @@ impl HistoryService {
         skipped_hint: bool,
     ) {
         let now = Utc::now().timestamp();
-        let dur = session.duration_secs;
-        let percentage = if dur > 0.0 {
-            (seconds_listened / dur).clamp(0.0, 1.0)
-        } else {
-            0.0
-        };
+        // Leaving a stalled stream is not reliable evidence of disliking a song.
+        let skipped_hint = skipped_hint && !session.is_buffering;
+        let heard = crate::recommendations::engagement::Engagement::from_listening(seconds_listened, session.duration_secs, skipped_hint);
+        let seconds_listened = heard.seconds;
+        let percentage = heard.fraction;
+        let completed = completed && heard.near_complete;
 
         let cfg = self.config.read().await;
-        let is_meaningful = seconds_listened >= cfg.min_meaningful_seconds
-            || percentage >= cfg.min_meaningful_percentage
-            || completed;
-
-        let is_skipped = !is_meaningful && skipped_hint;
+        let is_meaningful = heard.qualified && (seconds_listened >= cfg.min_meaningful_seconds
+            || percentage >= cfg.min_meaningful_percentage || completed);
+        drop(cfg);
+        let is_skipped = heard.early_skip;
 
         let entry = PlaybackHistoryRecord {
             id: session.id.clone(),
@@ -540,9 +548,9 @@ impl HistoryService {
             Ok(_) => {
                 // Clean up the crash-recovery journal entry ONLY on successful finalization.
                 self.delete_journal_entry(&entry.id).await;
-                let _ = self.event_bus.publish(Event::TasteProfileChanged {
-                    user_id: entry.user_id.clone(),
-                });
+                if heard.weight != 0.0 {
+                    let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: entry.user_id.clone() });
+                }
             }
             Err(err) => {
                 error!(session_id = %entry.id, %err, "Failed to commit playback session; leaving crash journal entry for recovery on next launch");

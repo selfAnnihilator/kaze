@@ -31,6 +31,7 @@ pub struct CandidateTrack {
     pub play_count: i64,
     pub completion_count: i64,
     pub skip_count: i64,
+    pub listening_engagement: Option<f64>,
     pub last_played_at: Option<i64>,
     pub user_feedback: Option<String>, // "like", "dislike", or None
 }
@@ -133,23 +134,45 @@ impl ScoringEngine {
         }
 
         // 5. Track Performance & Completion (Weight: 20%)
-        let mut perf_score = 0.5; // default neutral for unplayed
-        if candidate.play_count > 0 {
-            let completion_ratio =
-                (candidate.completion_count as f64 / candidate.play_count as f64).clamp(0.0, 1.0);
-            perf_score = completion_ratio;
-            if completion_ratio >= 0.7 {
+        let mut perf_score = 0.5;
+        if let Some(engagement) = candidate.listening_engagement {
+            perf_score = (0.5 + engagement * 0.5).clamp(0.0, 1.0);
+            if engagement < 0.0 {
+                base_score += engagement * 0.20;
                 reasons.push(RecommendationReason {
-                    factor: "completion_rate".to_string(),
-                    description: format!(
-                        "Consistently completed ({:.0}% completion rate)",
-                        completion_ratio * 100.0
-                    ),
-                    weight: completion_ratio * 0.20,
+                    factor: "early_skip".into(),
+                    description: "Quickly skipped listens reduce preference".into(),
+                    weight: engagement * 0.20,
+                });
+            } else if engagement > 0.0 {
+                reasons.push(RecommendationReason {
+                    factor: "listening_time".into(),
+                    description: "Preference earned through meaningful listening time".into(),
+                    weight: engagement * 0.10,
                 });
             }
+        } else if candidate.play_count > 0 {
+            // Aggregate-only cloud/legacy stats have no per-session time evidence.
+            perf_score =
+                (candidate.completion_count as f64 / candidate.play_count as f64).clamp(0.0, 1.0);
         }
         base_score += perf_score * 0.20;
+
+        // Repeated qualified listens strengthen a song, not just its artist.
+        if candidate.play_count >= 2
+            && candidate
+                .listening_engagement
+                .is_some_and(|weight| weight > 0.0)
+        {
+            let repeat =
+                (((candidate.play_count - 1) as f64).ln_1p() / 6.0_f64.ln()).min(1.0) * 0.10;
+            base_score += repeat;
+            reasons.push(RecommendationReason {
+                factor: "meaningful_repeats".into(),
+                description: "Repeated meaningful listens".into(),
+                weight: repeat,
+            });
+        }
 
         // 6. Explicit Like Boost (+0.25)
         if let Some(fb) = &candidate.user_feedback {
@@ -165,7 +188,7 @@ impl ScoringEngine {
 
         // 7. Discovery Bonus for Unplayed Gems (Weight: +0.20)
         let mut is_discovery = false;
-        if candidate.play_count == 0 {
+        if candidate.play_count == 0 && candidate.skip_count == 0 {
             if artist_score > 0.25 || genre_score > 0.25 {
                 base_score += 0.20;
                 is_discovery = true;

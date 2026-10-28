@@ -793,7 +793,9 @@ impl PlaybackService {
                     let _ = self.event_bus.publish(Event::TrackFinished {
                         session_id,
                         track_id,
-                        seconds_listened: duration,
+                        // History measures audible wall time, excluding pauses and
+                        // buffering. Duration/position cannot prove time listened.
+                        seconds_listened: 0.0,
                         completed: true,
                     });
                 }

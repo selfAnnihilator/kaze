@@ -782,6 +782,7 @@ impl DiscoveryCoordinator {
                 play_count: listening.play_count,
                 completion_count: listening.completion_count,
                 skip_count: listening.skip_count,
+                listening_engagement: listening.engagement(),
                 last_played_at: listening.last_played_at,
                 user_feedback: if listening.manual_like == 1 {
                     Some("like".into())

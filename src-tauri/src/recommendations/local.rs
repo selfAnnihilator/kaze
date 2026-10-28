@@ -123,6 +123,7 @@ impl LocalRecommender {
                 play_count: c.play_count.unwrap_or(0),
                 completion_count: c.completion_count.unwrap_or(0),
                 skip_count: c.skip_count.unwrap_or(0),
+                listening_engagement: signal.engagement(),
                 last_played_at: c.last_played_at,
                 user_feedback: feedback,
             };

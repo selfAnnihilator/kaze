@@ -1,5 +1,13 @@
 # JioSaavn experiment
 
+## 2026-10-28 — Listening-time scoring
+
+Preference now uses tiered actual listening: quick intentional skips are negative, brief previews are neutral, ordinary songs qualify at 30 seconds, and short songs can qualify at 25% with a ten-second floor. At least 75% heard is stronger; near-complete listening, qualified repeats and explicit likes strengthen preference further. End/seek position alone cannot manufacture a completed listen. Pauses/buffering do not accumulate heard time, and source failures/buffering exits do not imply disliking a song.
+
+Qualified evidence feeds taste, source-linked song performance, Flow/familiarity, discovery and automatic repeat/favorite eligibility. Score-based rankings also exclude unqualified preview seconds while retaining real usage time and original stored counters. Old permissive play counts cannot override available session evidence. A one-time migration expires only automatic mix caches; original history, media, manual collections and cumulative/device totals remain intact. See [ADR 0022](adr/0022-listening-time-preference.md).
+
+Verification: 225 Rust tests across 27 groups passed (nine optional/manual checks ignored), including eleven new listening-policy regressions. All fifteen Node test files, both interfaces' scoring-refresh, buffering and pointer/keyboard focus checks, frontend and embedded native builds, and all twelve private native desktop groups passed. The testing executable was rebuilt without restarting the user's running app or changing its live profile, media or queue.
+
 ## 2026-10-28 — One Flow action and complete search results
 
 Home and the Brutalist player's Flow control now expose Start/Pause. Starting an already active paused Flow uses ContinueFlow in the existing session; pausing keeps its generation and queue. The separate Stop Flow action and Home prop chain were removed. Explicitly playing a song outside Flow still stops automatic Flow in the backend.
