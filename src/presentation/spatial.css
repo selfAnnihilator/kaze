@@ -528,6 +528,7 @@
 }
 :root[data-interface="spatial"] .spatial-chapter-content .windowed-sleeve {
   transform: none;
+  height: 100%;
 }
 :root[data-interface="spatial"] .discovery-preview-target {
   width: 100%;
@@ -540,6 +541,10 @@
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
+  height: 100%;
+}
+:root[data-interface="spatial"] .discovery-track-card .discovery-card-body > div:not(:first-child) {
+  flex-shrink: 0;
 }
 :root[data-interface="spatial"]
   .discovery-track-card.discovery-preview-target
@@ -548,6 +553,9 @@
   aspect-ratio: 1 !important;
   height: auto !important;
   border-radius: 2px !important;
+  flex: 1 1 auto;
+  min-height: 48px;
+  max-height: var(--strip-item-width);
 }
 :root[data-interface="spatial"]
   .discovery-track-card.discovery-preview-target
@@ -562,7 +570,8 @@
   > div:nth-child(3) {
   font-size: 11px !important;
 }
-:root[data-interface="spatial"] .discovery-track-card .btn {
+:root[data-interface="spatial"] .discovery-track-card .btn,
+:root[data-interface="spatial"] .discovery-track-card .song-download-button {
   min-height: 30px;
   font-size: 10px !important;
   padding: 3px 5px !important;

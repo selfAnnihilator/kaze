@@ -89,3 +89,7 @@ Run `scripts/test-brutalist-parity.mjs` against the same local server as the oth
 ## Focus feedback
 
 Keep visible focus when navigating with Tab/Shift+Tab. Mouse-clicked buttons must not gain a focus outline merely because an unrelated key was pressed afterward. `usePointerFocus` marks pointer-origin controls until focus leaves or Tab navigation begins; text fields and sliders retain their native focus behavior. Preserve DOM focus and keyboard activation rather than blurring controls or globally removing focus outlines. Track this through DOM listeners, without React state or playback-driven updates.
+
+Space after a pointer action controls playback, rather than activating the clicked action again. Capture only that pointer-origin shortcut before control handlers; Tab/Shift+Tab restores ordinary Space activation. Typing, sliders, modified/composing keys and modal actions keep their own keyboard handling. Holding Space must not repeatedly toggle playback.
+
+Album-spine titles and artists stay in separate single vertical lines with ellipsis and bounded type size; full metadata remains in the button's title and accessible name. All horizontal shelves share `useHorizontalDrag`: primary mouse movement past six pixels scrolls directly, captures outside release and suppresses the resulting card click. Ordinary clicks, arrows, wheel/touch and keyboard scrolling remain available. Restore scrolling styles on release/cancellation/blur, prevent native artwork dragging, retain windowing and keep pointer positions outside React state.

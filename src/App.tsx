@@ -5,6 +5,7 @@ import { useRouteScroll } from "./presentation/useRouteScroll";
 import { ViewMemoryProvider } from "./presentation/ViewMemory";
 import { useVisualActivity } from "./presentation/useVisualActivity";
 import { usePointerFocus } from "./presentation/usePointerFocus";
+import { useHorizontalDrag } from "./presentation/useHorizontalDrag";
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy,
 } from "react";
 import {
@@ -202,6 +203,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   useRouteScroll(mainScrollRef, destination);
   useVisualActivity(mainScrollRef);
   usePointerFocus();
+  useHorizontalDrag();
   const currentView = destination.view;
   const activeCollection = destination.collection;
   const isLyricsActive = destination.lyrics;
@@ -454,32 +456,32 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }
 
       if (
-        e.code === "Space" &&
-        !e.repeat &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.metaKey &&
-        !e.shiftKey
+        e.code === "Space" && !e.defaultPrevented && !e.isComposing &&
+        !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey
       ) {
-        const target = e.target as HTMLElement | null;
-        if (
-          target &&
-          (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.tagName === "SELECT" ||
-            target.tagName === "BUTTON" ||
-            Boolean(target.closest?.("button, [role='button']")) ||
-            target.isContentEditable ||
-            Boolean(target.closest?.("[contenteditable='true'], [contenteditable='']",
-              ),
-            ))
-        ) {
-          return;
-        }
+        const target = e.target instanceof Element ? e.target : null;
+        const editing = target?.closest(
+          "input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox'], [role='searchbox'], [role='combobox'], [role='slider'], [role='menu'], [role='listbox']",
+        );
+        const dialog = document.querySelector(
+          ".modal-overlay, [role='dialog']:not(.fullscreen-player), [aria-modal='true']:not(.fullscreen-player)",
+        );
+        const action = target?.closest("button, a[href], [role='button'], [role='tab'], [role='menuitem']");
+        if (editing || dialog || (action && !action.hasAttribute("data-pointer-focus"))) return;
 
+        // A mouse-selected action must not consume the playback shortcut.
+        // Tab removes the pointer marker, restoring ordinary Space activation.
         e.preventDefault();
-        handlePlayPauseRef.current?.();
+        if (!e.repeat) handlePlayPauseRef.current?.();
       }
+    };
+
+    const handlePointerSpace = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || !(event.target instanceof Element) ||
+          !event.target.closest("[data-pointer-focus]")) return;
+      handleKeyDown(event);
+      // Run before control-level handlers and native button activation.
+      if (event.defaultPrevented) event.stopPropagation();
     };
 
     const handleFullscreenChange = () => {
@@ -488,9 +490,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }
     };
 
+    window.addEventListener("keydown", handlePointerSpace, true);
     window.addEventListener("keydown", handleKeyDown);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => {
+      window.removeEventListener("keydown", handlePointerSpace, true);
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };

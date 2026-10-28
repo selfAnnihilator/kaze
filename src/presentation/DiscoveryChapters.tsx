@@ -104,14 +104,6 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
       ),
     [active],
   );
-  const drag = useRef<{
-    el: HTMLElement;
-    x: number;
-    left: number;
-    moved: boolean;
-    behavior: string;
-  } | null>(null);
-  const suppressClick = useRef(false);
   useLayoutEffect(() => {
     if (style === "brutalist" && root.current) {
       root.current.scrollTop = 0;
@@ -123,14 +115,6 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
       ".discovery-chapter .horizontal-scroll-row:not(.windowed-strip)",
     )?.scrollTo({ left: shelfPositions.get(active) || 0, behavior: "instant" });
   }, [active, style, shelfPositions, selections[active].previews.length]);
-  useEffect(
-    () => () => {
-      if (drag.current)
-        drag.current.el.style.scrollBehavior = drag.current.behavior;
-      drag.current = null;
-    },
-    [style],
-  );
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -252,64 +236,6 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
               );
           }
         }}
-        onPointerDown={(e) => {
-          suppressClick.current = false;
-          if (e.pointerType !== "mouse" || e.button !== 0) return;
-          const el = (e.target as HTMLElement).closest<HTMLElement>(
-            ".horizontal-scroll-row",
-          );
-          if (el)
-            drag.current = {
-              el,
-              x: e.clientX,
-              left: el.scrollLeft,
-              moved: false,
-              behavior: el.style.scrollBehavior,
-            };
-        }}
-        onPointerMove={(e) => {
-          const state = drag.current;
-          if (!state || !(e.buttons & 1)) return;
-          const distance = e.clientX - state.x;
-          if (Math.abs(distance) > 6) {
-            state.moved = true;
-            // CSS smooth scrolling is for the arrow controls. Dragging follows
-            // the pointer immediately rather than continually retargeting it.
-            state.el.style.scrollBehavior = "auto";
-            state.el.setPointerCapture(e.pointerId);
-          }
-          if (state.moved) {
-            state.el.scrollLeft = state.left - distance;
-            suppressClick.current = true;
-          }
-        }}
-        onPointerUp={(e) => {
-          const el = drag.current?.el;
-          if (el?.hasPointerCapture(e.pointerId))
-            el.releasePointerCapture(e.pointerId);
-          if (drag.current)
-            drag.current.el.style.scrollBehavior = drag.current.behavior;
-          drag.current = null;
-        }}
-        onPointerCancel={() => {
-          if (drag.current)
-            drag.current.el.style.scrollBehavior = drag.current.behavior;
-          drag.current = null;
-          suppressClick.current = false;
-        }}
-        onLostPointerCapture={() => {
-          if (drag.current)
-            drag.current.el.style.scrollBehavior = drag.current.behavior;
-          drag.current = null;
-        }}
-        onClickCapture={(e) => {
-          if (suppressClick.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            suppressClick.current = false;
-          }
-        }}
-        onDragStart={(e) => e.preventDefault()}
       >
         {style === "spatial" ? (
           <>

@@ -877,11 +877,15 @@
   transition: transform 180ms ease-out;
 }
 .press-record-spine strong {
-  font-size: 21px;
+  font-size: 18px;
   letter-spacing: -0.05em;
   writing-mode: vertical-rl;
   line-height: 1.1;
   max-height: 170px;
+  width: 22px;
+  flex: 1 1 auto;
+  min-height: 0;
+  white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -894,6 +898,10 @@
     10px "Courier New",
     monospace;
   height: 160px;
+  max-width: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--press-muted);
 }
 .press-record-spine:hover,

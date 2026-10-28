@@ -589,6 +589,13 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   padding: 22px 2px 32px;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kaze-interface .horizontal-scroll-row[data-dragging],
+.kaze-interface .horizontal-scroll-row[data-dragging] * {
+  cursor: grabbing !important;
 }
 .windowed-strip {
   display: block !important;

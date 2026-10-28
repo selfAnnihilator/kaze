@@ -182,9 +182,12 @@ try {
     close(
       await rect(page, ".press-tabs"),
       await rect(reference, ".bk-tabs"),
-      ["x", "y", "width", "height"],
+      ["x", "y", "height"],
       "Library tabs",
     );
+    // Production's fixed, scrollbar-free archive uses the full pane; the
+    // original study still reserves a 15px vertical scrollbar gutter.
+    close(await rect(page, ".press-tabs"), await rect(page, ".interface-toolbar"), ["width"], "Library tabs fill the pane");
     assert.ok(
       (await page.locator(".press-record-spine").count()) < 30,
       "130 real albums stay windowed",

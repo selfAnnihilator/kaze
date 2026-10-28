@@ -178,6 +178,23 @@ def main():
                 assert browser.query('GetFlowSession')['generation'] == flow_before['generation']
             browser.evaluate('window.visibilityObserver.disconnect();true')
             print('PASS ten native hide/restore cycles suspend visual mutations and restore current progress, route, DOM and Flow', flush=True)
+            # A pointer-selected Next action retains DOM focus, but Space must
+            # use the actual Rust transport rather than dispatching Next again.
+            browser.evaluate("""(() => {
+                const next=document.querySelector('.press-deck button[aria-label="Next Track"]');
+                next.focus();next.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',button:0,isPrimary:true}));next.click();
+                return true;
+            })()""")
+            tray.wait_for(lambda: watcher.status() == 'Playing', 'native next playing')
+            time.sleep(.2)
+            shortcut_track = browser.query('GetPlaybackState')['current_track_id']
+            browser.evaluate("document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true}));true")
+            tray.wait_for(lambda: watcher.status() == 'Paused', 'pointer Space pauses actual audio')
+            assert browser.query('GetPlaybackState')['current_track_id'] == shortcut_track
+            browser.evaluate("document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true,cancelable:true}));true")
+            tray.wait_for(lambda: watcher.status() == 'Playing', 'pointer Space resumes actual audio')
+            assert browser.query('GetPlaybackState')['current_track_id'] == shortcut_track
+            print('PASS native pointer-focused Next then Space pauses/resumes Rust playback without advancing again', flush=True)
             browser.command('Pause')
             tray.wait_for(lambda: watcher.status() == 'Paused' and not browser.query('GetPlaybackState')['is_playing'], 'Pause applied before recording exact position')
             paused = browser.query('GetPlaybackState')
