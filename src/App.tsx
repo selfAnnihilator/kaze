@@ -4,6 +4,7 @@ import { removeRecommendationTracks } from "./recommendationFeedback";
 import { useRouteScroll } from "./presentation/useRouteScroll";
 import { ViewMemoryProvider } from "./presentation/ViewMemory";
 import { useVisualActivity } from "./presentation/useVisualActivity";
+import { usePointerFocus } from "./presentation/usePointerFocus";
 import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy,
 } from "react";
 import {
@@ -200,6 +201,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const mainScrollRef = useRef<HTMLElement>(null);
   useRouteScroll(mainScrollRef, destination);
   useVisualActivity(mainScrollRef);
+  usePointerFocus();
   const currentView = destination.view;
   const activeCollection = destination.collection;
   const isLyricsActive = destination.lyrics;

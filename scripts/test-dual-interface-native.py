@@ -197,7 +197,8 @@ def main():
             click('Full Screen')
             tray.wait_for(lambda: browser.evaluate("Boolean(document.querySelector('.press-fullscreen .press-deck'))"), 'independent native full screen deck')
             assert browser.evaluate("document.querySelector('.press-fullscreen .press-poster-cover')!==null&&document.querySelectorAll('.press-fullscreen .playback-stage,.press-fullscreen .player-bar').length===0")
-            assert browser.query('GetPlaybackState')['position_secs'] == paused['position_secs']
+            fullscreen_state = browser.query('GetPlaybackState')
+            assert fullscreen_state['position_secs'] == paused['position_secs'], {'paused': paused, 'fullscreen': fullscreen_state}
             click('Exit full screen')
             tray.wait_for(lambda: browser.evaluate("!document.querySelector('.fullscreen-player')"), 'native full screen exit')
             print('PASS native full screen uses the independent Brutalist poster and deck with exact paused playback', flush=True)

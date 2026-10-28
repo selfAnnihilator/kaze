@@ -65,3 +65,7 @@
   .online-search-overview { grid-template-columns: minmax(0, 1fr); }
   .online-search-top-result { display: none; }
 }
+
+/* A clicked control stays focused without gaining a ring on the next keypress.
+   Tab removes this marker and retains the normal accessible focus styles. */
+.kaze-interface [data-pointer-focus]:focus-visible { outline: none !important; }
