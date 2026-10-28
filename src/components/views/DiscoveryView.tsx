@@ -1277,7 +1277,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
             </div>
           </section>
           <DiscoveryChapters selections={[
-            { title: "Trending songs", subtitle: "Popular songs from the charts.", previews: trending.map(songPreview), onRefresh: handleRefreshTrending },
+            { title: "Trending songs", subtitle: "Popular songs from the charts.", previews: trending.map(songPreview), onRefresh: handleRefreshTrending, isRefreshing: isTrendingLoading },
             { title: "For you", subtitle: "A little familiar. A little unexpected.", previews: forYou.map(songPreview), onRefresh: () => _onRefresh?.(true) || Promise.resolve() },
             { title: "Mixes for you", subtitle: "Personal blends shaped by your listening.", previews: allMixes.map(mixPreview), onRefresh: refreshMixes },
             { title: "Top charts", subtitle: "Follow the sound around the world.", previews: topCharts.map(chartPreview), onRefresh: () => refreshCharts(true) },
@@ -1340,10 +1340,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                 </div>
               </div>
 
-              {trending.length > 0 && (isTrendingLoading || trendingError) && (
-                <p role="status" aria-busy={isTrendingLoading}>
-                  {isTrendingLoading ? "Updating trending songs…" : trendingError}
-                </p>
+              {trending.length > 0 && trendingError && (
+                <p role="alert">{trendingError}</p>
               )}
               {trending.length === 0 ? (
                 <div

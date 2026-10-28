@@ -42,6 +42,7 @@ export type DiscoveryChapter = {
   subtitle: string;
   previews: DiscoveryPreview[];
   onRefresh?: () => Promise<void>;
+  isRefreshing?: boolean;
 };
 const PreviewContext = createContext<
   ((preview: DiscoveryPreview) => void) | null
@@ -187,13 +188,14 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
       ))}
     </nav>
   );
+  const isActiveRefreshing = refreshing === active || !!selections[active].isRefreshing;
   const refreshControl = <span className="discovery-refresh-control">
-    <button type="button" className="scroll-arrow-btn" aria-label={`Refresh ${selections[active].title}`} title={`Refresh ${selections[active].title}`} disabled={refreshing !== null} onClick={async () => {
+    <button type="button" className="scroll-arrow-btn" aria-label={`Refresh ${selections[active].title}`} title={`Refresh ${selections[active].title}`} disabled={refreshing !== null || isActiveRefreshing} aria-busy={isActiveRefreshing} onClick={async () => {
       const index = active; setRefreshing(index); setRefreshError("");
       try { await selections[index].onRefresh?.(); }
       catch { setRefreshError("Couldn’t refresh. Try again."); }
       finally { setRefreshing(null); }
-    }}><RefreshCw size={16} className={refreshing === active ? "spin-animation" : ""} /></button>
+    }}><RefreshCw size={16} className={isActiveRefreshing ? "spin-animation" : ""} /></button>
     {refreshError && <span role="alert">{refreshError}</span>}
   </span>;
   const content = Children.toArray(children).flatMap((child, index) =>

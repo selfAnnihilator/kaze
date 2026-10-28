@@ -75,7 +75,8 @@ try {
     await page.waitForFunction(()=>window.__kazeFixture.listeners.size===1);
     await page.locator(".sidebar, .press-header, .press-account-navigation").getByRole('button',{name:'Discover Music',exact:true}).click();
     await page.locator('.windowed-strip[aria-label="Trending Songs"]').waitFor();
-    await page.getByText('Updating trending songs…',{exact:true}).waitFor();
+    await page.locator('.discovery-refresh-control button[aria-busy="true"]').waitFor();
+    assert.equal(await page.getByText('Updating trending songs…',{exact:true}).count(),0,'background refresh uses the existing icon instead of a loose text line');
     assert.ok(await page.evaluate(()=>window.__kazeFixture.trendWaiters.length>0),'saved cards appear before network');
     assert.equal(await page.getByText('No trending songs found',{exact:true}).count(),0);
     assert.deepEqual(errors,[]);
