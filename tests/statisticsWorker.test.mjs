@@ -6,9 +6,13 @@ import { build } from 'esbuild';
 const bundle = await build({entryPoints:['worker/src/index.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const { default: worker } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
-async function setup() {
+async function setup(useMigration = false) {
   const sqlite = new DatabaseSync(':memory:');
-  sqlite.exec(readFileSync('worker/schema.sql','utf8'));
+  let schema = readFileSync('worker/schema.sql', 'utf8');
+  if (useMigration) {
+    schema = schema.replace('    provider TEXT,\n    provider_id TEXT,\n    online_source_json TEXT,\n', '');
+  }
+  sqlite.exec(schema);
   const now = Math.floor(Date.now()/1000);
   const tokens = {};
   for (const user of ['A','B']) {
@@ -16,6 +20,10 @@ async function setup() {
     tokens[user] = user.repeat(40);
     const hash = Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(tokens[user]))).toString('hex');
     sqlite.prepare('INSERT INTO sessions (id,user_id,token_hash,device_id,device_name,client_version,created_at,last_used_at,idle_expires_at,absolute_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(user,user,hash,`device-${user}`,'test','test',now,now,now+3600,now+7200);
+  }
+  if (useMigration) {
+    sqlite.prepare('INSERT INTO songs(id,user_id,title,updated_at) VALUES(?,?,?,?)').run('old-backup', 'A', 'Old backup', now);
+    sqlite.exec(readFileSync('worker/migrations/0004_song_recording_source.sql', 'utf8'));
   }
   const DB = {prepare(sql) {
     let values=[];
@@ -130,3 +138,60 @@ test('Phase 22 Worker: track_device_stats tenant isolation and adversarial user_
   assert.equal(rowsA[0].user_id, 'A');
 });
 
+
+test('Worker: exact recording survives alias uploads, updates and older clients', async () => {
+  const { sqlite, request } = await setup();
+  const online_source = {
+    provider_id: 'exact_album_version', linked_at: 123,
+    metadata: { provider: 'jiosaavn', provider_track_id: 'exact_album_version', title: 'Song', artist_name: 'Artist', album_title: 'Selected release', duration_secs: 200, year: 2024, language: 'hindi' },
+  };
+  const songs = ['itunes:old', 'legacy:second', 'jiosaavn:exact_album_version'].map(id => ({
+    id, title: 'Song', artist: 'Artist', album: 'Selected release', duration_secs: 200,
+    provider: id.startsWith('jiosaavn:') ? 'jiosaavn' : 'online',
+    provider_id: id.startsWith('jiosaavn:') ? 'exact_album_version' : id,
+    online_source, cover_art_url: 'https://example.invalid/selected.jpg',
+  }));
+  for (let i = 0; i < 2; i++) await request('A', { songs });
+  let pulled = (await request('A')).data.songs;
+  assert.equal(pulled.length, 3);
+  for (const song of songs) {
+    const restored = pulled.find(row => row.id === song.id);
+    assert.equal(restored.provider, song.provider);
+    assert.equal(restored.provider_id, song.provider_id);
+    assert.deepEqual(restored.online_source, online_source);
+  }
+  await request('A', { songs: [{ id: 'itunes:old', title: 'Old client title' }] });
+  // Older versions also send fallback cloud identities after reading an old backup.
+  await request('A', { songs: [{ id: 'itunes:old', title: 'Old client title', provider: 'cloud', provider_id: 'itunes:old', online_source: null }] });
+  pulled = (await request('A')).data.songs;
+  const alias = pulled.find(row => row.id === 'itunes:old');
+  assert.equal(alias.provider, 'online');
+  assert.equal(alias.provider_id, 'itunes:old');
+  assert.deepEqual(alias.online_source, online_source);
+  assert.equal((await request('B')).data.songs.length, 0);
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM songs WHERE user_id='A'").get().n, 3);
+  sqlite.close();
+});
+
+test('Worker: additive migration preserves old backups and fills source on next sync', async () => {
+  const { sqlite, request } = await setup(true);
+  const old = (await request('A')).data.songs[0];
+  assert.equal(old.id, 'old-backup');
+  assert.equal(old.provider, null);
+  assert.equal(old.online_source, null);
+  const online_source = {
+    provider_id: 'selected', linked_at: 123,
+    metadata: { provider: 'jiosaavn', provider_track_id: 'selected', title: 'Song', artist_name: 'Artist' },
+  };
+  await request('A', { songs: [{ id: 'old-backup', title: 'Song', provider: 'online', provider_id: 'old-backup', online_source }] });
+  const restored = (await request('A')).data.songs[0];
+  assert.equal(restored.provider, 'online');
+  assert.equal(restored.provider_id, 'old-backup');
+  assert.deepEqual(restored.online_source, online_source);
+  await request('A', { songs: [{ id: 'jiosaavn:canonical', title: 'Canonical without snapshot', provider: 'jiosaavn', provider_id: 'canonical' }] });
+  const canonical = (await request('A')).data.songs.find(song => song.id === 'jiosaavn:canonical');
+  assert.equal(canonical.provider, 'jiosaavn');
+  assert.equal(canonical.provider_id, 'canonical');
+  assert.equal(canonical.online_source, null);
+  sqlite.close();
+});

@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS songs (
     duration_secs REAL NOT NULL DEFAULT 0.0,
     cover_art_url TEXT,
     preview_url TEXT,
+    provider TEXT,
+    provider_id TEXT,
+    online_source_json TEXT,
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (id, user_id)
 );

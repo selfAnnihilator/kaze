@@ -62,3 +62,18 @@ This worker provides cloud-backed user authentication and data synchronization f
    ```
 
 5. Copy your deployed worker URL (e.g. `https://soundflow-cloud-worker.<subdomain>.workers.dev`) and paste it into the **Settings -> Cloud Sync** field in SoundFlow Desktop!
+
+## Upgrade: exact online recording sync
+
+Existing installations must apply `migrations/0004_song_recording_source.sql` before deploying the updated Worker, then ship the updated desktop client:
+
+```sh
+npx wrangler d1 execute soundflow-db --remote --file=./migrations/0004_song_recording_source.sql
+npm run deploy
+```
+
+Apply this additive migration once to an existing database. Fresh databases initialized from the current `schema.sql` already contain these columns and must not reapply it. Test the migration locally first by replacing `--remote` with `--local` against a disposable existing-schema database.
+
+Songs now carry their original `provider` / `provider_id` separately from an optional `online_source` object (`provider_id`, normalized `metadata`, `linked_at`). D1 stores the latter in `online_source_json`; GET `/api/sync` returns it as an object. Stable Kaze song IDs and many aliases per recording remain intact. Repeated uploads retain the first saved binding; older clients omitting the object cannot clear it.
+
+Backups made before this upgrade cannot reconstruct a converted alias's missing recording on their own. Sync again from a device that still has the saved local binding to fill it in. No title matching or live provider lookup is performed during restore. These commands are rollout instructions; preparing the patch does not deploy it.

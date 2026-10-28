@@ -938,7 +938,14 @@ export default {
           user_id: userId,
           synced_at: now,
           data: {
-            songs: songs.results || [],
+            songs: (songs.results || []).map((song) => {
+              const { online_source_json, ...record } = song;
+              return {
+                ...record,
+                online_source: typeof online_source_json === "string"
+                  ? JSON.parse(online_source_json) : null,
+              };
+            }),
             playlists: playlists.results || [],
             playlist_songs: playlistSongs.results || [],
             song_stats: songStats.results || [],
@@ -998,9 +1005,17 @@ export default {
             if (s.id && s.title) {
               batchStatements.push(
                 env.DB.prepare(
-                  "INSERT INTO songs (id, user_id, title, artist, album, duration_secs, cover_art_url, preview_url, updated_at) " +
-                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                  "ON CONFLICT(id, user_id) DO UPDATE SET title = excluded.title, artist = excluded.artist, album = excluded.album, updated_at = excluded.updated_at"
+                  "INSERT INTO songs (id, user_id, title, artist, album, duration_secs, cover_art_url, preview_url, provider, provider_id, online_source_json, updated_at) " +
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                  "ON CONFLICT(id, user_id) DO UPDATE SET " +
+                  "title = excluded.title, artist = excluded.artist, album = excluded.album, " +
+                  "duration_secs = excluded.duration_secs, " +
+                  "cover_art_url = COALESCE(excluded.cover_art_url, songs.cover_art_url), " +
+                  "preview_url = COALESCE(excluded.preview_url, songs.preview_url), " +
+                  "provider = COALESCE(songs.provider, excluded.provider), " +
+                  "provider_id = COALESCE(songs.provider_id, excluded.provider_id), " +
+                  "online_source_json = COALESCE(songs.online_source_json, excluded.online_source_json), " +
+                  "updated_at = excluded.updated_at"
                 ).bind(
                   s.id,
                   userId,
@@ -1010,6 +1025,9 @@ export default {
                   s.duration_secs || 0.0,
                   s.cover_art_url || null,
                   s.preview_url || null,
+                  s.provider || null,
+                  s.provider_id || null,
+                  s.online_source ? JSON.stringify(s.online_source) : null,
                   s.updated_at || now
                 )
               );

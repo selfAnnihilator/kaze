@@ -117,6 +117,27 @@ pub enum AuthSessionState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudOnlineSource {
+    pub provider_id: String,
+    pub metadata: crate::providers::ExternalTrackMetadata,
+    pub linked_at: i64,
+}
+
+impl CloudOnlineSource {
+    pub(crate) fn validate(&self) -> crate::core::AppResult<()> {
+        if self.provider_id.trim().is_empty()
+            || self.metadata.provider != "jiosaavn"
+            || self.metadata.provider_track_id != self.provider_id
+        {
+            return Err(crate::core::AppError::Validation(
+                "Invalid saved online recording in cloud sync".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudSong {
     pub id: String,
     #[serde(default)]
@@ -132,6 +153,8 @@ pub struct CloudSong {
     pub provider: Option<String>,
     #[serde(default)]
     pub provider_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub online_source: Option<CloudOnlineSource>,
     #[serde(default)]
     pub cover_art_url: Option<String>,
     #[serde(default)]

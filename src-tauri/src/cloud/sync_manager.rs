@@ -385,6 +385,25 @@ impl SyncManager {
             .unwrap_or(None);
 
             if let Some(ext) = ext_row {
+                let source: Option<(String, String, i64)> = sqlx::query_as(
+                    "SELECT provider_id, metadata_json, linked_at FROM online_track_sources WHERE track_id=?",
+                )
+                .bind(s_id)
+                .fetch_optional(pool)
+                .await?;
+                let online_source = source
+                    .map(|(provider_id, metadata_json, linked_at)| {
+                        let source = CloudOnlineSource {
+                            provider_id,
+                            metadata: serde_json::from_str(&metadata_json).map_err(|e| {
+                                AppError::Database(format!("Invalid saved recording metadata: {e}"))
+                            })?,
+                            linked_at,
+                        };
+                        source.validate()?;
+                        Ok::<_, AppError>(source)
+                    })
+                    .transpose()?;
                 songs.push(CloudSong {
                     id: ext.0,
                     user_id: user_id.to_string(),
@@ -394,6 +413,7 @@ impl SyncManager {
                     duration_secs: ext.6.unwrap_or(0.0),
                     provider: Some(ext.1),
                     provider_id: Some(ext.2),
+                    online_source,
                     cover_art_url: ext.7,
                     preview_url: ext.8,
                     created_at: ext.9,
@@ -423,6 +443,7 @@ impl SyncManager {
                         duration_secs: trk.4,
                         provider: Some("local".to_string()),
                         provider_id: None,
+                        online_source: None,
                         cover_art_url: None,
                         preview_url: None,
                         created_at: trk.5,
@@ -625,10 +646,30 @@ impl SyncManager {
 
         // 1. Ingest remote songs into external_tracks if needed
         for song in &payload.songs {
+            // A cloud metadata placeholder must never rewrite a physical library file.
+            let physical: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM tracks WHERE id=? AND file_path NOT LIKE 'online://%')",
+            )
+            .bind(&song.id)
+            .fetch_one(pool)
+            .await?;
+            if physical {
+                continue;
+            }
+            let snapshot = song
+                .online_source
+                .as_ref()
+                .map(|source| {
+                    source.validate()?;
+                    serde_json::to_string(&source.metadata)
+                        .map_err(|e| AppError::Internal(e.to_string()))
+                })
+                .transpose()?;
+            let mut transaction = pool.begin().await?;
             let provider = song.provider.as_deref().unwrap_or("cloud");
             let provider_id = song.provider_id.as_deref().unwrap_or(&song.id);
 
-            let _ = sqlx::query(
+            sqlx::query(
                 "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
@@ -651,10 +692,19 @@ impl SyncManager {
             .bind(&song.cover_art_url)
             .bind(&song.preview_url)
             .bind(song.created_at)
-            .execute(pool)
-            .await;
+            .execute(&mut *transaction)
+            .await?;
 
-            let _ = crate::recommendations::mixes::ensure_online_track(
+            if let (Some(source), Some(snapshot)) = (&song.online_source, snapshot) {
+                // Keep the alias identity and the first selected recording. Multiple
+                // aliases may point to one provider ID without uniqueness collisions.
+                sqlx::query("INSERT INTO online_track_sources(track_id,provider_id,metadata_json,linked_at) VALUES(?,?,?,?) ON CONFLICT(track_id) DO NOTHING")
+                    .bind(&song.id).bind(&source.provider_id).bind(snapshot).bind(source.linked_at)
+                    .execute(&mut *transaction).await?;
+            }
+            transaction.commit().await?;
+
+            crate::recommendations::mixes::ensure_online_track(
                 pool,
                 &song.id,
                 &song.title,
@@ -664,7 +714,7 @@ impl SyncManager {
                 song.cover_art_url.as_deref(),
                 song.preview_url.as_deref(),
             )
-            .await;
+            .await?;
         }
 
         // 2. Playlists

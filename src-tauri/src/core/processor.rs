@@ -3342,6 +3342,11 @@ impl CoreProcessor {
     }
 
     async fn import_jiosaavn_playlist(&self, reference: &str) -> AppResult<serde_json::Value> {
+        if !self.provider_coordinator.enabled().await {
+            return Err(AppError::Validation(
+                "Enable online music in Settings to import a JioSaavn playlist".into(),
+            ));
+        }
         let (id, title, image, tracks) = self
             .provider_coordinator
             .jiosaavn
@@ -3360,3 +3365,7 @@ impl CoreProcessor {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "processor_tests.rs"]
+mod tests;
