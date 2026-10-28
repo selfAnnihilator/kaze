@@ -17,7 +17,7 @@ try {
 } finally { await rm(directory, { recursive: true, force: true }); }
 const song = { id: "transfer-one", provider: "jiosaavn", source_track_id: "recording-a", track_ids: ["saved-alias"], title: "Song", artist: "Artist", filename: "Artist - Song (recording-a).m4a", status: "DOWNLOADING", bytes_downloaded: 0, file_size: 100, created_at: 0 };
 const button = (id, props = {}) => renderToStaticMarkup(React.createElement(controls.DownloadButton, { trackId: id, title: "Song", ...props }));
-test("download fill follows the exact recording, survives saved aliases, and completes at 100%", () => {
+test("download fill follows the exact recording, survives saved aliases, and becomes a plain completed icon", () => {
   controls.downloadProgress.replace([song]);
   controls.downloadProgress.update(song.id, 41, 100);
   assert.match(button("saved-alias"), /scaleX\(0.41\)/);
@@ -28,7 +28,8 @@ test("download fill follows the exact recording, survives saved aliases, and com
   assert.doesNotMatch(button("jiosaavn:recording-b"), /41%|Downloaded Song/);
   controls.downloadProgress.replace([{ ...song, status: "COMPLETED", bytes_downloaded: 100 }]);
   assert.match(button("saved-alias"), /Downloaded Song/);
-  assert.match(button("saved-alias"), /scaleX\(1\)/);
+  assert.match(button("saved-alias"), /is-complete/);
+  assert.doesNotMatch(button("saved-alias"), /song-download-fill|<span>Downloaded<\/span>/);
   assert.doesNotMatch(button("saved-alias"), /Downloading Song/);
   controls.downloadProgress.replace([song]);
   assert.match(button("saved-alias"), /Downloaded Song/, "a stale active snapshot cannot undo completion");

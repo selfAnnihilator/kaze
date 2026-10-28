@@ -19,6 +19,15 @@
 .song-download-button { position: relative; overflow: hidden; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); min-height: 34px; padding: 6px 9px; cursor: pointer; }
 .song-download-button.is-compact { min-width: 32px; padding: 5px; background: transparent; border: 0; }
 .song-download-button:disabled { cursor: default; opacity: 1; }
+.song-download-button.is-complete,
+.kaze-interface[data-interface] .song-download-button.is-complete {
+  min-width: 32px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 1;
+  color: var(--text-main);
+}
 .song-download-fill { position: absolute; inset: 0; background: var(--accent); opacity: .3; transform-origin: left; transition: transform .2s linear; pointer-events: none; }
 .song-download-label { position: relative; display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; }
 .song-download-error { position: absolute; z-index: 5; bottom: 100%; padding: 6px; min-width: 160px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--accent); font-size: .75rem; }

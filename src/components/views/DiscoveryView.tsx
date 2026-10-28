@@ -150,20 +150,16 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       >
         <Artwork src={rec.cover_art_url} alt={rec.title} />
 
-        {/* Downloaded Symbol (tick in circle icon) on top right of thumbnail */}
+        {/* Plain downloaded indicator, matching the completed action below. */}
         {isDownloaded && (
           <div
             style={{
               position: "absolute",
               top: "7px",
               right: "7px",
-              backgroundColor: "rgba(0, 0, 0, 0.88)",
-              borderRadius: "50%",
-              padding: "3px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
               zIndex: 2,
             }}
             title="Downloaded & in your local library"

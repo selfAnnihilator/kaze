@@ -1004,6 +1004,9 @@ impl PlaybackService {
             }
         };
 
+        // Wake a decoder waiting for seek data before taking its backend lock.
+        self.cancel_active_stream().await;
+
         // Immediately stop backend playback and reset current duration / session
         // so stale audio never plays while resolving the new track
         {
@@ -1016,9 +1019,6 @@ impl PlaybackService {
                 .event_bus
                 .publish(Event::PlaybackStopped { session_id });
         }
-
-        // Cancel any active progressive stream before starting a new track
-        self.cancel_active_stream().await;
 
         // Cloud imports may retain an online label for a real local file.
         let has_local_file = PathBuf::from(&track.file_path).is_absolute()
@@ -1285,6 +1285,12 @@ impl PlaybackService {
 
     /// Cancel pending media preparation before the core waits for commands to drain.
     pub fn request_shutdown(&self) {
+        // Command draining may be waiting for a seek on the audio thread.
+        // Wake that reader before shutdown waits for in-flight commands.
+        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+            state.deactivate_playback();
+            state.set_cancelled();
+        }
         if !self
             .shutting_down
             .swap(true, std::sync::atomic::Ordering::AcqRel)
@@ -1373,11 +1379,11 @@ impl PlaybackService {
             }
         }
         let can_seek = match &*self.active_stream_state.read().unwrap() {
-            Some(state) => state.is_completed(),
+            Some(state) => state.can_seek(),
             None => true,
         };
         if !can_seek {
-            return Err(AppError::Playback("Seeking is unavailable while audio is streaming. It will become available once the track is fully cached.".into()));
+            return Err(AppError::Playback("Seeking is unavailable for this audio stream.".into()));
         }
 
         let dur = Duration::try_from_secs_f64(position_secs.max(0.0))
@@ -1810,7 +1816,7 @@ impl PlaybackService {
         };
 
         let can_seek = match &*self.active_stream_state.read().unwrap() {
-            Some(state) => state.is_completed(),
+            Some(state) => state.can_seek(),
             None => true,
         };
         let is_buffering = self.is_resolving.load(std::sync::atomic::Ordering::Relaxed)
@@ -1957,5 +1963,35 @@ impl PlaybackService {
         } else {
             Ok(crate::playback::stream::RemoteAudioCacheStats::default())
         }
+    }
+}
+
+#[cfg(test)]
+mod streaming_seek_tests {
+    use super::*;
+    use crate::database::{create_in_memory_pool, repositories::SqliteTrackRepository};
+    use crate::playback::{backend::MockAudioBackend, progressive::ProgressiveStreamState};
+
+    #[tokio::test]
+    async fn active_stream_exposes_seek_controls_and_accepts_seek_before_completion() {
+        let pool = create_in_memory_pool().await.unwrap();
+        let bus = Arc::new(EventBus::new(16));
+        let service = PlaybackService::new(
+            Box::new(MockAudioBackend::new()),
+            Arc::new(SqliteTrackRepository::new(pool.clone())),
+            bus.clone(), Some(pool),
+        );
+        let state = Arc::new(ProgressiveStreamState::new("stream".into(), None));
+        state.activate_playback("session".into());
+        *service.active_stream_state.write().unwrap() = Some(state.clone());
+        let mut events = bus.subscribe();
+        assert!(service.get_playback_state().await.can_seek);
+        service.seek(42.0).await.unwrap();
+        assert_eq!(events.try_recv().unwrap(), Event::PlaybackSeeked { position_secs: 42.0 });
+        assert!(!state.is_completed());
+        service.request_shutdown();
+        assert!(state.is_cancelled(), "shutdown must wake a decoder before command draining");
+        assert!(!service.get_playback_state().await.can_seek);
+        service.shutdown().await.unwrap();
     }
 }

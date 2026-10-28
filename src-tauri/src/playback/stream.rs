@@ -310,7 +310,7 @@ impl StreamPlaybackManager {
     pub async fn can_seek_current(&self) -> bool {
         let handle_guard = self.active_stream_handle.lock().await;
         if let Some((_, ref state, _)) = *handle_guard {
-            state.is_completed()
+            state.can_seek()
         } else {
             true
         }

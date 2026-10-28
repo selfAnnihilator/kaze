@@ -27,8 +27,9 @@ try {
         if (c.command === "DownloadTrack") {
           f.commands.push(c);
           const id = c.payload.track_id;
-          downloads.push({ id: "exact-download", source_track_id: id.slice(9), track_ids: [id], provider: "jiosaavn", title: "Ocean Test", artist: "Fixture Artist", filename: "Ocean Test.m4a", file_size: 100, bytes_downloaded: 0, status: "DOWNLOADING", created_at: 1 });
-          return { status: "DownloadStarted", data: { task_id: "exact-download" } };
+          const taskId = downloads.length ? "next-download" : "exact-download";
+          downloads.push({ id: taskId, source_track_id: id.slice(9), track_ids: [id], provider: "jiosaavn", title: "Ocean Test", artist: "Fixture Artist", filename: "Ocean Test.m4a", file_size: 100, bytes_downloaded: 0, status: "DOWNLOADING", created_at: 1 });
+          return { status: "DownloadStarted", data: { task_id: taskId } };
         }
         if (["DislikeTrack", "RemoveTrackFeedback"].includes(c.command)) {
           f.commands.push(c); const id = c.payload.track_id, disliked = c.command === "DislikeTrack";
@@ -39,7 +40,7 @@ try {
         }
         return command(c);
       };
-      f.finishDownload = () => { downloads[0].status = "COMPLETED"; downloads[0].bytes_downloaded = 100; f.emit({ event: "DownloadCompleted", payload: { task_id: "exact-download", file_path: "/fixture/Ocean Test.m4a" } }); };
+      f.finishDownload = () => { const task = downloads.at(-1); task.status = "COMPLETED"; task.bytes_downloaded = 100; f.emit({ event: "DownloadCompleted", payload: { task_id: task.id, file_path: "/fixture/Ocean Test.m4a" } }); };
     });
     await context.route("**/src/services/api.ts*", route => route.fulfill({ contentType: "text/javascript", body: `export const isTauri=()=>false;export const executeQuery=q=>window.__kazeFixture.query(q);export const dispatchCommand=c=>window.__kazeFixture.command(c);export const subscribeBackendEvents=async cb=>{window.__kazeFixture.listeners.add(cb);return ()=>window.__kazeFixture.listeners.delete(cb);};` }));
     const page = await context.newPage(), errors = [];
@@ -68,6 +69,15 @@ try {
     assert.equal(await page.locator('.song-download-button[data-track-id="jiosaavn:recordingB"]').first().getAttribute('disabled'), null);
     await page.evaluate(() => window.__kazeFixture.finishDownload());
     await page.waitForFunction(() => document.querySelector('.song-download-button[data-track-id="jiosaavn:recordingA"]')?.getAttribute("aria-label") === "Downloaded Ocean Test");
+    for (const control of [download, playerDownload]) {
+      assert.equal(await control.locator('.song-download-fill').count(), 0);
+      assert.equal((await control.textContent()).trim(), "");
+      assert.equal(await control.locator('svg').count(), 1);
+      assert.ok(await control.evaluate(button => {
+        const style = getComputedStyle(button);
+        return style.backgroundColor === "rgba(0, 0, 0, 0)" && style.boxShadow === "none" && style.opacity === "1";
+      }), "completed downloads must be plain visible icons in both layouts");
+    }
     await search.fill(""); await search.press("Enter");
     for (let chapter = 0; chapter < 4; chapter++) {
       if (style === "brutalist") await page.getByLabel("Discovery selection", { exact: true }).selectOption(String(chapter));
@@ -78,6 +88,18 @@ try {
     assert.ok(await page.evaluate(() => window.__kazeFixture.queries.some(q => q.query === "RefreshCharts")));
     assert.ok(await page.evaluate(() => window.__kazeFixture.queries.some(q => q.query === "RefreshSmartMixes")));
     assert.ok(await page.locator('.chart-cover img').count());
+    if (style === "brutalist") await page.getByLabel("Discovery selection", { exact: true }).selectOption("0");
+    else await page.locator('.chapter-nav button').nth(0).click();
+    const trendingDownload = page.locator('.discovery-track-card .song-download-button[data-track-id="jiosaavn:recordingB"]').first();
+    await trendingDownload.click();
+    await page.waitForFunction(() => document.querySelector('.discovery-track-card .song-download-button')?.textContent.includes("0%"));
+    await page.evaluate(() => window.__kazeFixture.emit({ event: "DownloadProgressChanged", payload: { task_id: "next-download", bytes_downloaded: 68, total_bytes: 100 } }));
+    await page.waitForFunction(() => document.querySelector('.discovery-track-card .song-download-button')?.textContent.includes("68%"));
+    assert.match(await trendingDownload.locator('.song-download-fill').getAttribute('style'), /scaleX\(0.68\)/);
+    await page.evaluate(() => window.__kazeFixture.finishDownload());
+    await page.waitForFunction(() => document.querySelector('.discovery-track-card .song-download-button')?.classList.contains("is-complete"));
+    assert.equal(await trendingDownload.locator('.song-download-fill').count(), 0);
+    assert.equal((await trendingDownload.textContent()).trim(), "");
     assert.deepEqual(errors, []);
     await page.screenshot({ path: `/tmp/kaze-song-controls-${style}.png` });
     console.log(`PASS ${style}: persisted toggle on/off, exact direct M4A download, per-recording percentage/fill/completion, all four refresh controls, real chart cover, no source badge`);

@@ -12,11 +12,11 @@ export const DownloadButton = memo(function DownloadButton({ trackId, sourceId, 
   const [error, setError] = useState("");
   const complete = downloaded || task?.status === "COMPLETED";
   const transferring = task?.status === "DOWNLOADING" || task?.status === "QUEUED";
-  const active = busy || transferring;
+  const active = !complete && (busy || transferring);
   const percent = complete ? 100 : active && progress.file_size && progress.file_size > 0 ? Math.min(99, Math.floor(100 * progress.bytes_downloaded / progress.file_size)) : 0;
   const label = complete ? `Downloaded ${title}` : active ? `Downloading ${title}: ${percent}%` : `Download ${title}`;
   return <span className="song-download-control">
-    <button data-track-id={trackId} type="button" className={`song-download-button ${compact ? "is-compact" : ""}`} title={error || label} aria-label={label} disabled={active || complete} onClick={async event => {
+    <button data-track-id={trackId} type="button" className={`song-download-button ${compact ? "is-compact" : ""} ${complete ? "is-complete" : ""}`} title={error || label} aria-label={label} disabled={active || complete} onClick={async event => {
       event.stopPropagation(); setError(""); setBusy(true);
       const key = sourceId || trackId;
       let request = starting.get(key);
@@ -33,8 +33,8 @@ export const DownloadButton = memo(function DownloadButton({ trackId, sourceId, 
       try { await request; } catch { setError("Couldn’t download this song. Click to retry."); }
       finally { starting.delete(key); setBusy(false); }
     }}>
-      <span className="song-download-fill" style={{ transform: `scaleX(${percent / 100})` }} />
-      <span className="song-download-label">{complete ? <CheckCircle2 size={16} /> : active ? <RotateCw size={14} className="spin-animation" /> : <Download size={16} />}{active ? <span>{percent}%</span> : !compact && <span>{complete ? "Downloaded" : "Download"}</span>}</span>
+      {!complete && <span className="song-download-fill" style={{ transform: `scaleX(${percent / 100})` }} />}
+      <span className="song-download-label">{complete ? <CheckCircle2 size={16} /> : active ? <RotateCw size={14} className="spin-animation" /> : <Download size={16} />}{active ? <span>{percent}%</span> : !compact && !complete && <span>Download</span>}</span>
     </button>
     {error && <span className="song-download-error" role="alert">{error}</span>}
   </span>;

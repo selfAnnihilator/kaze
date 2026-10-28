@@ -126,6 +126,18 @@ impl ProgressiveStreamState {
         matches!(*self.status.lock().unwrap(), StreamStatus::Completed)
     }
 
+    /// Probing runs before the background producer starts: keep it forward-only
+    /// so format probes cannot wait for bytes that nobody can download yet.
+    /// Once playback is attached, reads after a seek can buffer normally.
+    pub fn can_seek(&self) -> bool {
+        let status = self.status.lock().unwrap();
+        match &*status {
+            StreamStatus::Completed => true,
+            StreamStatus::Downloading => self.playback_session.lock().unwrap().is_some(),
+            StreamStatus::Failed(_) | StreamStatus::Cancelled => false,
+        }
+    }
+
     pub fn is_cancelled(&self) -> bool {
         matches!(*self.status.lock().unwrap(), StreamStatus::Cancelled)
     }
@@ -213,55 +225,39 @@ impl Read for ProgressiveStreamReader {
 
 impl Seek for ProgressiveStreamReader {
     fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        // Once download is fully completed, allow complete unrestricted seeking
-        if self.state.is_completed() {
-            let res = self.file.seek(pos)?;
-            self.read_pos = res;
-            return Ok(res);
+        let target = match pos {
+            SeekFrom::Start(target) => Some(target),
+            SeekFrom::Current(delta) => self.read_pos.checked_add_signed(delta),
+            SeekFrom::End(delta) => {
+                let length = match self.byte_len() {
+                    Some(length) => length,
+                    None if self.state.is_completed() => self.file.metadata()?.len(),
+                    None => return Err(std::io::Error::new(
+                        std::io::ErrorKind::Unsupported, "Stream length is not known yet",
+                    )),
+                };
+                length.checked_add_signed(delta)
+            }
+        }.ok_or_else(|| std::io::Error::new(
+            std::io::ErrorKind::InvalidInput, "Seek position is out of range",
+        ))?;
+        // Seeking only moves the disk cursor; read() waits for the requested
+        // bytes with the existing buffering, failure and cancellation handling.
+        // During initial probing retain the bounded, forward-only behavior.
+        if !self.state.can_seek() && target > self.state.downloaded_bytes.load(Ordering::Acquire) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput, "Cannot probe past buffered stream data",
+            ));
         }
-
-        match pos {
-            SeekFrom::Start(target) => {
-                let downloaded = self.state.downloaded_bytes.load(Ordering::Acquire);
-                if target <= downloaded {
-                    let res = self.file.seek(SeekFrom::Start(target))?;
-                    self.read_pos = res;
-                    Ok(res)
-                } else {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        "Cannot seek past buffered range during progressive download",
-                    ))
-                }
-            }
-            SeekFrom::Current(delta) => {
-                let downloaded = self.state.downloaded_bytes.load(Ordering::Acquire);
-                let target = (self.read_pos as i64) + delta;
-                if target >= 0 && (target as u64) <= downloaded {
-                    let res = self.file.seek(SeekFrom::Start(target as u64))?;
-                    self.read_pos = res;
-                    Ok(res)
-                } else {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        "Seek delta outside buffered stream range",
-                    ))
-                }
-            }
-            SeekFrom::End(_) => {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "SeekFrom::End unsupported while streaming is in progress",
-                ))
-            }
-        }
+        let res = self.file.seek(SeekFrom::Start(target))?;
+        self.read_pos = res;
+        Ok(res)
     }
 }
 
 impl MediaSource for ProgressiveStreamReader {
     fn is_seekable(&self) -> bool {
-        // Honest seek capability: false during active streaming, true once completed!
-        self.state.is_completed()
+        self.state.can_seek()
     }
 
     fn byte_len(&self) -> Option<u64> {

@@ -249,3 +249,201 @@ fn current_reader_buffering_is_session_scoped_and_recovers_without_resume() {
     state.set_cancelled();
     assert!(events.try_recv().is_err(), "an old session must become silent");
 }
+
+#[test]
+fn active_stream_can_seek_before_download_completion() {
+    use std::io::{Seek, SeekFrom};
+    use symphonia::core::io::MediaSource;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("seek.part");
+    std::fs::write(&path, b"abcdefgh").unwrap();
+    let state = Arc::new(ProgressiveStreamState::new("seek".into(), None));
+    state.content_length.store(16, std::sync::atomic::Ordering::Release);
+    state.update_downloaded(8);
+    let mut reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+    assert!(!reader.is_seekable(), "probing must not seek into unavailable data before the downloader starts");
+    state.activate_playback("session".into());
+    assert!(reader.is_seekable(), "active streaming playback must allow seeking");
+    assert_eq!(reader.seek(SeekFrom::End(-4)).unwrap(), 12);
+    let producer = state.clone();
+    let writer = std::thread::spawn(move || {
+        for _ in 0..500 {
+            if producer.is_buffering() { break; }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(producer.is_buffering());
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new().append(true).open(path).unwrap();
+        file.write_all(b"ijklmnop").unwrap();
+        file.flush().unwrap();
+        producer.update_downloaded(16);
+        // Keep downloading: seeking must work without a Completed transition.
+    });
+    let mut bytes = [0; 4];
+    reader.read_exact(&mut bytes).unwrap();
+    assert_eq!(&bytes, b"mnop");
+    writer.join().unwrap();
+    reader.seek(SeekFrom::Start(0)).unwrap();
+    reader.read_exact(&mut bytes).unwrap();
+    assert_eq!(&bytes, b"abcd");
+    assert!(!state.is_completed());
+}
+
+#[test]
+fn decoder_seeks_forward_and_backward_on_an_active_partial_wave() {
+    use music_player_backend::playback::decoder::SymphoniaSource;
+    use rodio::Source;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("decode.part");
+    let mut wav = Vec::new();
+    wav.extend(b"RIFF"); wav.extend((36 + 160000u32).to_le_bytes());
+    wav.extend(b"WAVEfmt "); wav.extend(16u32.to_le_bytes());
+    wav.extend(1u16.to_le_bytes()); wav.extend(1u16.to_le_bytes());
+    wav.extend(8000u32.to_le_bytes()); wav.extend(16000u32.to_le_bytes());
+    wav.extend(2u16.to_le_bytes()); wav.extend(16u16.to_le_bytes());
+    wav.extend(b"data"); wav.extend(160000u32.to_le_bytes());
+    for i in 0..80000 { wav.extend(((i / 8000 + 1) as i16).to_le_bytes()); }
+    // Only the first half has arrived. Probe while not yet active.
+    std::fs::write(&path, &wav[..80044]).unwrap();
+    let state = Arc::new(ProgressiveStreamState::new("decode".into(), None));
+    state.content_length.store(wav.len() as u64, std::sync::atomic::Ordering::Release);
+    state.update_downloaded(80044);
+    let reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+    let mut source = SymphoniaSource::from_media_source(Box::new(reader), Default::default(), "test").unwrap();
+    state.activate_playback("session".into());
+    source.try_seek(Duration::from_secs(3)).unwrap();
+    assert_eq!(source.next(), Some(4));
+    source.try_seek(Duration::from_secs(1)).unwrap();
+    assert_eq!(source.next(), Some(2));
+    assert!(!state.is_completed());
+}
+
+#[test]
+fn seeking_into_missing_data_wakes_on_cancel_or_failure() {
+    use std::io::{Seek, SeekFrom};
+    for failure in [false, true] {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("waiting.part");
+        std::fs::write(&path, b"abc").unwrap();
+        let state = Arc::new(ProgressiveStreamState::new("waiting".into(), None));
+        state.update_downloaded(3);
+        state.activate_playback("session".into());
+        let mut reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+        reader.seek(SeekFrom::Start(100)).unwrap();
+        let producer = state.clone();
+        let handle = std::thread::spawn(move || {
+            for _ in 0..500 {
+                if producer.is_buffering() { break; }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            assert!(producer.is_buffering());
+            if failure { producer.set_failed("connection lost".into()); }
+            else { producer.set_cancelled(); }
+        });
+        let started = std::time::Instant::now();
+        let error = reader.read(&mut [0; 1]).unwrap_err();
+        assert_eq!(error.kind(), if failure { std::io::ErrorKind::BrokenPipe } else { std::io::ErrorKind::Interrupted });
+        handle.join().unwrap();
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(!state.can_seek());
+        assert!(!state.is_buffering());
+    }
+}
+
+#[test]
+fn compressed_decoder_seeks_while_download_is_incomplete() {
+    use music_player_backend::playback::decoder::SymphoniaSource;
+    use rodio::Source;
+    for (extension, audio) in [
+        ("mp3", include_bytes!("fixtures/seek-tone.mp3").as_slice()),
+        ("m4a", include_bytes!("fixtures/seek-tone.m4a").as_slice()),
+    ] {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("compressed.part");
+        let split = audio.len() * 3 / 4;
+        std::fs::write(&path, &audio[..split]).unwrap();
+        let state = Arc::new(ProgressiveStreamState::new(extension.into(), None));
+        state.content_length.store(audio.len() as u64, std::sync::atomic::Ordering::Release);
+        state.update_downloaded(split as u64);
+        let reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+        let mut hint = symphonia::core::probe::Hint::new();
+        hint.with_extension(extension);
+        let mut source = SymphoniaSource::from_media_source(Box::new(reader), hint, extension).unwrap();
+        state.activate_playback("session".into());
+        for second in [4, 1] {
+            source.try_seek(Duration::from_secs(second)).unwrap();
+            assert!(source.by_ref().take(2400).any(|sample| sample != 0), "{extension} must decode after seek");
+        }
+        let producer = state.clone();
+        let tail = audio[split..].to_vec();
+        let handle = std::thread::spawn(move || {
+            // The forward seek must wait for real bytes rather than seeing EOF.
+            for _ in 0..500 {
+                if producer.is_buffering() { break; }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            assert!(producer.is_buffering());
+            use std::io::Write;
+            let mut file = std::fs::OpenOptions::new().append(true).open(path).unwrap();
+            file.write_all(&tail).unwrap();
+            file.flush().unwrap();
+            producer.update_downloaded(audio.len() as u64);
+        });
+        source.try_seek(Duration::from_secs(10)).unwrap();
+        assert!(source.take(2400).any(|sample| sample != 0));
+        handle.join().unwrap();
+        assert!(!state.is_completed(), "{extension} did not require full-cache promotion");
+    }
+}
+
+#[test]
+#[ignore = "requires native audio output; run with a disposable ALSA null device"]
+fn native_paused_stream_seeks_before_completion() {
+    use music_player_backend::playback::{
+        backend::{AudioBackend, RodioAudioBackend},
+        decoder::{PlayerSource, SymphoniaSource},
+    };
+    let audio = include_bytes!("fixtures/seek-tone.m4a");
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("native.part");
+    let split = audio.len() * 3 / 4;
+    std::fs::write(&path, &audio[..split]).unwrap();
+    let state = Arc::new(ProgressiveStreamState::new("native".into(), None));
+    state.content_length.store(audio.len() as u64, std::sync::atomic::Ordering::Release);
+    state.update_downloaded(split as u64);
+    let reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+    let source = SymphoniaSource::from_media_source(Box::new(reader), Default::default(), "native").unwrap();
+    let mut backend = RodioAudioBackend::try_new().unwrap();
+    backend.set_volume(0.0).unwrap();
+    backend.load_and_play_source(PlayerSource::Symphonia(source), Some(&path)).unwrap();
+    state.activate_playback("native-session".into());
+    backend.pause().unwrap();
+    for second in [4, 1] {
+        backend.seek(Duration::from_secs(second)).unwrap();
+        assert!(backend.is_paused());
+        assert!((backend.position().as_secs_f64() - second as f64).abs() < 0.5);
+    }
+    let producer = state.clone();
+    let tail = audio[split..].to_vec();
+    let handle = std::thread::spawn(move || {
+        for _ in 0..500 {
+            if producer.is_buffering() { break; }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(producer.is_buffering());
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new().append(true).open(path).unwrap();
+        file.write_all(&tail).unwrap();
+        file.flush().unwrap();
+        producer.update_downloaded(audio.len() as u64);
+    });
+    backend.seek(Duration::from_secs(10)).unwrap();
+    handle.join().unwrap();
+    assert!(backend.is_paused());
+    assert!((backend.position().as_secs_f64() - 10.0).abs() < 0.5);
+    assert!(!state.is_completed());
+    backend.resume().unwrap();
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(!backend.is_finished());
+    backend.stop().unwrap();
+}
