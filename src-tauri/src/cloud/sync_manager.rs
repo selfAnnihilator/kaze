@@ -646,75 +646,7 @@ impl SyncManager {
 
         // 1. Ingest remote songs into external_tracks if needed
         for song in &payload.songs {
-            // A cloud metadata placeholder must never rewrite a physical library file.
-            let physical: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM tracks WHERE id=? AND file_path NOT LIKE 'online://%')",
-            )
-            .bind(&song.id)
-            .fetch_one(pool)
-            .await?;
-            if physical {
-                continue;
-            }
-            let snapshot = song
-                .online_source
-                .as_ref()
-                .map(|source| {
-                    source.validate()?;
-                    serde_json::to_string(&source.metadata)
-                        .map_err(|e| AppError::Internal(e.to_string()))
-                })
-                .transpose()?;
-            let mut transaction = pool.begin().await?;
-            let provider = song.provider.as_deref().unwrap_or("cloud");
-            let provider_id = song.provider_id.as_deref().unwrap_or(&song.id);
-
-            sqlx::query(
-                "INSERT INTO external_tracks (id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(id) DO UPDATE SET
-                     provider = CASE WHEN external_tracks.provider IN ('online','cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider ELSE external_tracks.provider END,
-                     provider_id = CASE WHEN external_tracks.provider IN ('online','cloud') AND excluded.provider = 'jiosaavn' THEN excluded.provider_id ELSE external_tracks.provider_id END,
-                     title = excluded.title,
-                     artist = excluded.artist,
-                     album = excluded.album,
-                     duration_secs = excluded.duration_secs,
-                     cover_art_url = coalesce(excluded.cover_art_url, external_tracks.cover_art_url),
-                     preview_url = coalesce(excluded.preview_url, external_tracks.preview_url)"
-            )
-            .bind(&song.id)
-            .bind(provider)
-            .bind(provider_id)
-            .bind(&song.title)
-            .bind(song.artist.as_deref().unwrap_or("Unknown Artist"))
-            .bind(song.album.as_deref().unwrap_or(""))
-            .bind(song.duration_secs)
-            .bind(&song.cover_art_url)
-            .bind(&song.preview_url)
-            .bind(song.created_at)
-            .execute(&mut *transaction)
-            .await?;
-
-            if let (Some(source), Some(snapshot)) = (&song.online_source, snapshot) {
-                // Keep the alias identity and the first selected recording. Multiple
-                // aliases may point to one provider ID without uniqueness collisions.
-                sqlx::query("INSERT INTO online_track_sources(track_id,provider_id,metadata_json,linked_at) VALUES(?,?,?,?) ON CONFLICT(track_id) DO NOTHING")
-                    .bind(&song.id).bind(&source.provider_id).bind(snapshot).bind(source.linked_at)
-                    .execute(&mut *transaction).await?;
-            }
-            transaction.commit().await?;
-
-            crate::recommendations::mixes::ensure_online_track(
-                pool,
-                &song.id,
-                &song.title,
-                song.artist.as_deref(),
-                song.album.as_deref(),
-                Some(song.duration_secs),
-                song.cover_art_url.as_deref(),
-                song.preview_url.as_deref(),
-            )
-            .await?;
+            super::song_restore::restore_song(pool, song, now).await?;
         }
 
         // 2. Playlists

@@ -2,6 +2,7 @@ pub mod client;
 pub mod credentials;
 pub mod device;
 pub mod models;
+mod song_restore;
 pub mod sync_manager;
 
 pub use client::CloudClient;

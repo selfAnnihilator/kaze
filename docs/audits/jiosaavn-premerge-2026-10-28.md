@@ -1,5 +1,33 @@
 # JioSaavn pre-merge quality review — 2026-10-28
 
+Current local implementation status: the additional cross-device identity collision is corrected; see [collision reconciliation follow-up](#collision-reconciliation-follow-up--2026-10-28). Review findings below remain as dated evidence. Production rollout is still pending.
+
+## Independent recheck at `1fad2f4` — 2026-10-28
+
+The original P1 source-snapshot omission and P2 disabled-import bypass are corrected in the covered cases. One additional P2 regression remains; recommendation: fix it before merging into `prod`. This is a review of `1fad2f4` against previous reviewed `39dc042`, with a refreshed branch-wide Qlty scan against local `prod`. No implementation fixes or deployments were made during this recheck.
+
+### [P2] Legacy provider identities can abort cloud synchronization
+
+Location: `src-tauri/src/cloud/sync_manager.rs:672–696`, specifically the newly propagated insert error at line 696.
+
+A supported non-prefixed saved row can have `provider=jiosaavn`, `provider_id=song`, and stable Kaze ID `legacy:jio-song`. Another device can independently save the canonical `jiosaavn:song` row. The cloud Worker keys songs by Kaze ID/account and can hold both; desktop `external_tracks` additionally enforces unique `(provider, provider_id)`. Restore handles only ID conflicts and now propagates the provider-pair conflict, aborting sync before playlists/statistics are reconciled. Earlier code swallowed this insert error; that was not a complete alias solution, but it did not abort the entire sync at this point.
+
+A temporary real Rust integration test seeded the legacy row plus a valid source snapshot on one migrated in-memory database, exported through `SyncManager`, and restored into another migrated database already holding the canonical row. `apply_remote_sync_payload` failed with SQLite code 2067: `UNIQUE constraint failed: external_tracks.provider, external_tracks.provider_id`. No network/audio was used. The test was removed afterward; session evidence is `/tmp/kaze-review-cloud-collision-repro.rs` and `/tmp/kaze-review-cloud-collision.log`.
+
+Required correction: reconcile a provider-pair collision into the supported stable-alias/source-link representation while retaining playlist/history/statistics references. Continue propagating genuine persistence failures. Add coverage for both import orders with a non-prefixed `provider=jiosaavn` identity and a canonical row sharing one source. Current new round-trip fixtures use `provider=online` for their aliases, so they do not exercise this case. The historical non-prefixed identities are recognized by `ProviderCoordinator::persist` and documented in ADR 0016/project source-link history.
+
+### Recheck verification
+
+- Frontend production build passes; all 15 Node test files pass, including six actual Worker handler tests.
+- Full Rust lib/tests/binaries pass: **235 passed, zero failed, nine ignored**, across 28 result groups, with disposable XDG storage, silent ALSA and permission for local fixture servers. The additional reviewer collision regression fails independently as described above.
+- Worker TypeScript check passes against installed Workers types. Latest Cloudflare best-practices reference was consulted; latest types package retrieval was unavailable in restricted execution, so installed types were used.
+- `git diff --check prod...HEAD` passes. No frontend implementation changed in this fix, so prior browser evidence was not rerun or represented as fresh.
+- Updated `qlty smells --upstream prod --no-snippets --no-upgrade-check --sarif`: **276 findings across 118 analyzed files**, versus 269/113 at the previous review. Categories: file complexity 34, function complexity 73, returns 22, boolean logic 35, nesting 23, parameter count 15, similar code 68, identical code 6. Added regression files contribute to the changed scope; the increase is not seven confirmed bugs. App complexity remains 1500; restore-function complexity increased from 39 to 44. Raw output: `/tmp/kaze-jiosaavn-recheck-qlty.sarif`.
+
+The server rollout remains a release prerequisite: apply `worker/migrations/0004_song_recording_source.sql` once to an existing D1 schema, deploy the updated Worker, then distribute the desktop client. This documented prerequisite is separate from the remaining code defect. No live D1/provider validation, production migration, deployment or release was performed. Cloud-only backups that already lost their source snapshots require an upload from an intact device.
+
+Standards recheck: one confirmed P2 regression. Spec recheck: no remaining confirmed violation beyond the standards finding; disabled-import behavior and Worker transport pass their new regressions. The two original findings are closed in code, with production rollout pending.
+
 ## Blocker fix follow-up — 2026-10-28
 
 Both findings below are fixed in the local working tree. The original review and its evidence remain below as history; the current implementation status supersedes its hold recommendation for these two findings. No merge, push, production migration or deployment has been performed.
@@ -101,3 +129,15 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib --tests --offline --no-fai
 The temporary ALSA configuration uses `pcm.!default { type null }`. Cargo's `--offline` prevents dependency fetching, not HTTP inside tests. Optional live/manual gates remained ignored; the live profile migration test must remain opt-in. No fresh regional/provider compatibility certification, audible quality comparison, native WebKit/MPRIS continuity run, or cross-platform release build was performed. The running app/profile was not intentionally changed or restarted. Nothing was merged, pushed, installed or released.
 
 Summary: Standards 1 confirmed finding; Spec 1 confirmed finding. The worst issue is loss of a converted alias's exact source during cloud restore.
+
+## Collision reconciliation follow-up — 2026-10-28
+
+Corrected the additional P2 in the local working tree. The pre-existing independent recheck above is preserved. No commit, merge, push, database migration or deployment was performed for this correction.
+
+Desktop cloud ingestion now delegates to a private `cloud/song_restore.rs` helper. Within one transaction it normalizes incoming noncanonical JioSaavn identities to `online` / stable Kaze ID, preserves their exact source through `online_track_sources`, and moves any existing noncanonical owner out of a canonical provider pair before inserting the canonical row. Existing saved sources remain authoritative. Missing snapshots are constructed from explicit saved provider IDs and metadata, including local language/year when available, with the reconciliation timestamp. A complete incoming snapshot for the same local ID/source is retained when no local snapshot exists. No provider requests or title matching occur.
+
+Canonical IDs in older payloads labelled cloud/online or missing the provider label are also reconciled before `ensure_online_track` can promote them. Alias conversion, source persistence and the incoming external insert share the transaction; genuine failures propagate and roll back the changes. Subsequent registration and repeated cloud payloads retain both stable IDs and their references. Physical local tracks remain excluded. The existing cloud format and schema are unchanged; no additional Worker migration/deployment is introduced by this correction. The prior source-sync rollout prerequisite remains.
+
+Before correction, the permanent two-device and multi-alias regressions failed with SQLite 2067 on `external_tracks.provider, external_tracks.provider_id`. After correction, **70 affected Rust tests passed, zero failed, one manual D-Bus test ignored**: library 39, cloud recording 12, cloud sync 4, JioSaavn 15. Command: `cargo test --manifest-path src-tauri/Cargo.toml --lib --test cloud_recording_tests --test cloud_sync_tests --test jiosaavn_tests --offline`, using disposable XDG storage, silent ALSA and permission for the existing local fixtures. Whitespace check passed. Logs: `/tmp/kaze-collision-before.log` and `/tmp/kaze-collision-rust-final.log`.
+
+The twelve recording tests include the original five checks plus cross-device restore in either direction, fresh payloads in either order, multiple noncanonical provider rows, missing/present snapshots, offline exact binding and serialized re-export, repeated registration/sync, playlist/feedback/statistics continuity and existing history preservation. They also cover matching incoming full snapshots, conflicting pre-existing selections, fallback metadata/timestamps, and injected source/alias/canonical write failures with rollback. Test fixture playlists use distinct names to obey the existing per-account name constraint; the initial same-name fixture failure was unrelated to recording identity. Frontend/Worker source is unchanged and prior build/Worker/browser checks were not represented as fresh runs. No live cloud/provider or cross-platform runtime certification was performed.
