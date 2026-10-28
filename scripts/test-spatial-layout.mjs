@@ -156,6 +156,8 @@ try {
     [1440, 900],
     [1024, 600],
     [800, 700],
+    [940, 1000],
+    [800, 1000],
   ]) {
     await page.setViewportSize({ width, height });
     await nav("Discover Music");
@@ -188,6 +190,7 @@ try {
           overflow: document.documentElement.scrollWidth > innerWidth + 1,
           footer: rect(document.querySelector(".kaze-interface > .player-bar")),
           art: rect(document.querySelector(".spatial-discovery-cover")),
+          panel: rect(document.querySelector(".spatial-discovery-panel")),
           caption: rect(document.querySelector(".spatial-discovery-caption")),
           copy: rect(document.querySelector(".spatial-discovery-copy")),
           detail: rect(document.querySelector(".spatial-discovery-detail")),
@@ -204,6 +207,8 @@ try {
         geometry.art.width > 180,
         `${width} large cover remains visible`,
       );
+      assert.ok(geometry.art.right <= geometry.panel.x - 8,
+        `${width}×${height} preview overlaps the right panel: ${JSON.stringify({art:geometry.art,panel:geometry.panel})}`);
       assert.ok(
         geometry.art.bottom <= geometry.caption.y + 12,
         `${width} art/caption overlap`,

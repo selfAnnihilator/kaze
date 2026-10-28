@@ -1,5 +1,11 @@
 # JioSaavn experiment
 
+## 2026-10-28 — Spatial artwork fits narrow, tall windows
+
+The Discover preview no longer overlaps the right-hand thumbnails/text in narrow native windows. WebKitGTK's implicit artwork grid column made the rotated cover about 543px wide inside a 333px column at 940×1000; Chromium did not reproduce it. An explicit shrinkable grid column contains the existing cover without changing playback, artwork identity or the theme composition.
+
+The native real-App regression failed before repair and passes afterward across all four chapters at 940×1000, 800×1000, 1024×600 and 1440×900. The Spatial browser gate now checks horizontal separation and covers six window sizes, including both narrow/tall cases. Existing frontend regressions and frontend/embedded native builds also pass. Native checks use ephemeral offscreen views and a fixture backend; the live app/profile and music were not changed or restarted.
+
 ## 2026-10-28 — For You manual refresh selects fresh relevant songs
 
 Refresh previously forced a source fetch and recomputed deterministic ranking, so the same strongest songs could return indefinitely. It now prefers least recently shown song families within each artist's relevant scoring band, preserving taste-ranked artist slots, score values, source/version identity, dislikes and the two-per-artist cap. Automatic reads preserve that batch until underlying listening/feedback/catalog ranking changes. Selection memory is process-local, account-scoped and bounded; small eligible pools may repeat. Existing cards stay visible with the refresh icon busy while the request runs. Automatic personal refresh no longer inadvertently requests a manual batch. The For You filter also accepts current genre/language explanation strings that it previously discarded. See [recommendation scoring](recommendation-scoring.md).

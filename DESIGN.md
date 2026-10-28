@@ -85,6 +85,8 @@ The right deck reserves a consistent identity area: current title and artist are
 
 Run `scripts/test-brutalist-parity.mjs` against the same local server as the other browser checks. It measures the production header, wordmark, deck, toolbar, cover and future-ticket geometry against the unchanged study at four desktop sizes, checks Discovery/Library geometry and album windowing, and covers playlist alignment, full screen, shelf labels, Flow, drag and narrow account access. The native suite also verifies the independent full screen and actual playback continuity. Keep the separate Spatial parity checks passing.
 
+Spatial Discover's artwork grid needs an explicit `minmax(0, 1fr)` column. An implicit auto column lets WebKitGTK resolve its percentage/height-limited cover wider than the assigned pane in narrow, tall windows, overlapping the right-hand song shelf. Keep the large cover and caption inside their column, and verify native 940×1000 and 800×1000 viewports as well as short/wide windows. `scripts/test-spatial-narrow-webkit.py` runs the real App/CSS with a fixture backend in ephemeral offscreen native views; Chromium alone did not reproduce this sizing defect.
+
 
 ## Focus feedback
 
