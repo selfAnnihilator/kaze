@@ -59,7 +59,14 @@ yay -S kaze
 
 If you already use the Arch **`rustup`** package, keep it. It conflicts with `rust`,
 and installing the manager alone does not guarantee an installed toolchain.
-Configure stable, check the tools, then retry your AUR installation:
+Starting with packaging revision **2.0.2-2**, Kaze checks Cargo and `rustc` before
+building. If they fail and rustup is available, the recipe selects stable for the
+build and installs it with the minimal profile if needed. This download requires
+network access. Working toolchains are reused; the recipe does not run
+`rustup default` or add directory overrides.
+
+For older AUR recipes showing **“Kaze needs a working Rust toolchain”**, configure
+stable, check the tools, then retry your AUR installation:
 
 ```bash
 rustup default stable

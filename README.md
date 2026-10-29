@@ -60,8 +60,9 @@ The AUR package builds Kaze from source. Its build dependencies include **`rust`
 so `yay` or `paru` installs the compiler and Cargo automatically when needed;
 you do not need to install Rust first. Accept the dependency-installation prompt.
 
-If you already use **`rustup`**, it satisfies the dependency. If it has no configured
-toolchain, run `rustup default stable` and retry the build.
+If you already use **`rustup`**, it satisfies the dependency. Packaging revision
+**2.0.2-2** automatically installs/selects stable for the build if the current
+toolchain does not work. With older recipes, run `rustup default stable` and retry.
 See [Rust toolchain troubleshooting](INSTALL.md#rust-toolchain-for-aur-builds)
 for details. Prebuilt `.pkg.tar.zst` packages do not need Rust or Cargo installed.
 
