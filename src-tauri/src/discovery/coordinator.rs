@@ -45,6 +45,8 @@ pub struct DiscoveryCoordinator {
     artist_candidate_cache:
         tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
     for_you_selections: tokio::sync::Mutex<HashMap<String, ForYouSelection>>,
+    starter_fetch_lock: tokio::sync::Mutex<()>,
+    starter_attempts: tokio::sync::Mutex<HashMap<String, (i64, std::time::Instant)>>,
     world_fetch_lock: tokio::sync::Mutex<()>,
     world_chart_cache:
         tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
@@ -130,6 +132,8 @@ impl DiscoveryCoordinator {
             artist_edition_cache: tokio::sync::Mutex::new(HashMap::new()),
             artist_candidate_cache: tokio::sync::Mutex::new(HashMap::new()),
             for_you_selections: tokio::sync::Mutex::new(HashMap::new()),
+            starter_fetch_lock: tokio::sync::Mutex::new(()),
+            starter_attempts: tokio::sync::Mutex::new(HashMap::new()),
             world_fetch_lock: tokio::sync::Mutex::new(()),
             world_chart_cache: tokio::sync::RwLock::new(None),
         }
@@ -551,6 +555,151 @@ impl DiscoveryCoordinator {
         Ok(())
     }
 
+    /// Metadata preparation happens before recommendation reads / the playback operation lock.
+    /// Concurrent consumers share a bounded, revision-checked account pool.
+    pub async fn ensure_starter_candidates(&self, user: &str, force: bool) -> AppResult<()> {
+        use crate::recommendations::setup;
+        let profile = self.taste_engine.compute_taste_profile(user).await?;
+        let preferences = setup::load(self.taste_engine.pool(), user).await?;
+        if profile.has_learned_taste
+            && preferences.artists.is_empty()
+            && preferences.genres.is_empty()
+        {
+            return Ok(());
+        }
+        let _guard = self.starter_fetch_lock.lock().await;
+        let preferences = setup::load(self.taste_engine.pool(), user).await?;
+        let current = setup::members(self.taste_engine.pool(), user, &profile).await?;
+        {
+            let attempts = self.starter_attempts.lock().await;
+            if !force
+                && attempts.get(user).is_some_and(|(revision, time)| {
+                    *revision == preferences.revision
+                        && time.elapsed().as_secs() < if current.is_empty() { 30 } else { 900 }
+                })
+            {
+                return Ok(());
+            }
+        }
+        let mut chosen: HashMap<String, (String, String)> = HashMap::new();
+        // Offline matching uses only this account's explicit choices, not another account's history.
+        for track in self.wishlist_repo.list_catalog_tracks(1000).await? {
+            if let Some(artist) = preferences.artists.iter().find(|a| {
+                let credits = crate::recommendations::signals::artist_credits(a);
+                crate::recommendations::signals::artist_credits(&track.artist)
+                    .iter()
+                    .any(|a| credits.contains(a))
+            }) {
+                chosen.insert(track.id, ("artist".into(), artist.clone()));
+            } else if let Some(genre) = preferences
+                .genres
+                .iter()
+                .find(|g| genre_matches(track.genre.as_deref().unwrap_or(""), g))
+            {
+                chosen.insert(track.id, ("genre".into(), genre.clone()));
+            }
+        }
+        if let Some(providers) = &self.provider_coordinator {
+            if providers.enabled().await && chosen.len() < 30 {
+                let queries: Vec<_> = preferences
+                    .artists
+                    .iter()
+                    .map(|a| ("artist".to_owned(), a.clone()))
+                    .chain(
+                        preferences
+                            .genres
+                            .iter()
+                            .map(|g| ("genre".to_owned(), g.clone())),
+                    )
+                    .collect();
+                // At most ten short searches, three in flight; audio is never fetched here.
+                for batch in queries.chunks(3) {
+                    let mut jobs = tokio::task::JoinSet::new();
+                    for (source, value) in batch {
+                        let providers = providers.clone();
+                        let source = source.clone();
+                        let value = value.clone();
+                        jobs.spawn(async move {
+                            let tracks = providers
+                                .jiosaavn
+                                .search(&value, 25)
+                                .await
+                                .unwrap_or_default();
+                            (source, value, tracks)
+                        });
+                    }
+                    while let Some(Ok((source, value, tracks))) = jobs.join_next().await {
+                        for track in tracks {
+                            if source == "artist" {
+                                let credits =
+                                    crate::recommendations::signals::artist_credits(&value);
+                                if !crate::recommendations::signals::artist_credits(
+                                    &track.artist_name,
+                                )
+                                .iter()
+                                .any(|a| credits.contains(a))
+                                {
+                                    continue;
+                                }
+                            }
+                            if let Ok(row) = providers.persist(track).await {
+                                chosen.insert(row.id, (source.clone(), value.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if chosen.len() < 30 && !profile.has_learned_taste {
+            // Public chart provenance is safe to share; private account tastes are not.
+            let songs = self.get_world_trending(40, force).await.unwrap_or_default();
+            for song in songs {
+                chosen
+                    .entry(song.external_track_id)
+                    .or_insert(("popular".into(), String::new()));
+            }
+        }
+        let pool = self.taste_engine.pool();
+        let now = chrono::Utc::now().timestamp();
+        let mut tx = pool.begin().await?;
+        if !chosen.is_empty() {
+            sqlx::query("DELETE FROM recommendation_starter_tracks WHERE user_id=? AND revision=? AND COALESCE((SELECT revision FROM recommendation_setup WHERE user_id=?),0)=?")
+                .bind(user).bind(preferences.revision).bind(user).bind(preferences.revision).execute(&mut *tx).await?;
+        }
+        // Never let a slow request from an older saved choice refill the new pool.
+        let mut chosen: Vec<_> = chosen.into_iter().collect();
+        chosen.sort_by(|a, b| {
+            let priority = |source: &str| match source {
+                "artist" => 0,
+                "genre" => 1,
+                _ => 2,
+            };
+            priority(&a.1 .0)
+                .cmp(&priority(&b.1 .0))
+                .then_with(|| a.0.cmp(&b.0))
+        });
+        for (id, (source, value)) in chosen.into_iter().take(250) {
+            sqlx::query("INSERT INTO recommendation_starter_tracks(user_id,track_id,source,seed_value,revision,created_at) SELECT ?,?,?,?,?,? WHERE COALESCE((SELECT revision FROM recommendation_setup WHERE user_id=?),0)=? ON CONFLICT(user_id,track_id) DO UPDATE SET source=excluded.source,seed_value=excluded.seed_value,revision=excluded.revision,created_at=excluded.created_at")
+                .bind(user).bind(id).bind(source).bind(value).bind(preferences.revision).bind(now).bind(user).bind(preferences.revision).execute(&mut *tx).await?;
+        }
+        tx.commit().await?;
+        let mut attempts = self.starter_attempts.lock().await;
+        if attempts.len() >= 16 && !attempts.contains_key(user) {
+            if let Some(oldest) = attempts
+                .iter()
+                .min_by_key(|(_, (_, time))| *time)
+                .map(|(key, _)| key.clone())
+            {
+                attempts.remove(&oldest);
+            }
+        }
+        attempts.insert(
+            user.into(),
+            (preferences.revision, std::time::Instant::now()),
+        );
+        Ok(())
+    }
+
     /// Ranks catalog candidates by listening affinity, with library signals for cold start.
     pub async fn get_discovery_recommendations(
         &self,
@@ -561,6 +710,8 @@ impl DiscoveryCoordinator {
         if limit == 0 {
             return Ok(Vec::new());
         }
+        self.ensure_starter_candidates(user_id, force_refresh)
+            .await?;
         // 1. Fetch current wishlist to cross-reference
         let wishlist_items = self.wishlist_repo.get_all(None).await?;
         let wishlist_ext_ids: HashSet<String> = wishlist_items
@@ -661,6 +812,9 @@ impl DiscoveryCoordinator {
 
         let signals =
             crate::recommendations::signals::SongSignals::load(self.taste_engine.pool(), user_id)
+                .await?;
+        let starters =
+            crate::recommendations::setup::members(self.taste_engine.pool(), user_id, &profile)
                 .await?;
         // Prefer a single/original album over compilation duplicates before scoring.
         let mut releases: HashMap<String, ExternalTrackRecord> = HashMap::new();
@@ -783,6 +937,7 @@ impl DiscoveryCoordinator {
                 && genre_score <= 0.0
                 && language_affinity <= 0.0
                 && !known
+                && !starters.contains_key(&track.id)
             {
                 continue;
             }
@@ -842,6 +997,14 @@ impl DiscoveryCoordinator {
                 MatchStatus::ExactMatch => "Already in local library".to_string(),
             };
 
+            let (base_score, reason) = if let Some((source, value)) = starters.get(&track.id) {
+                (
+                    base_score.max(10.0),
+                    crate::recommendations::setup::explanation(source, value),
+                )
+            } else {
+                (base_score, reason)
+            };
             scored_list.push(ScoredCandidate {
                 track,
                 score: base_score,

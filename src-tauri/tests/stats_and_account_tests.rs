@@ -514,6 +514,11 @@ fn test_query_serde_deserialization() {
 async fn test_session_management_lifecycle_and_hybrid_expiry() {
     let (mock_url, _server_handle) = spawn_mock_auth_worker().await;
     let pool = create_in_memory_pool().await.expect("create db pool");
+    // This auth-only fixture has no catalog: keep starter preparation local.
+    sqlx::query("INSERT INTO application_settings (key,value,updated_at) VALUES ('enable_jiosaavn','false',0)")
+        .execute(&pool)
+        .await
+        .unwrap();
     let config = AppConfig::default_with_dirs();
     let backend = Box::new(MockAudioBackend::new());
     let processor = CoreProcessor::new_with_backend(pool.clone(), config.clone(), backend);

@@ -14,6 +14,7 @@ async fn setup_processor() -> CoreProcessor {
     let pool = create_in_memory_pool()
         .await
         .expect("create in-memory pool");
+    sqlx::query("INSERT OR REPLACE INTO application_settings(key,value,updated_at) VALUES('enable_jiosaavn','false',0)").execute(&pool).await.unwrap();
     let config = AppConfig::default_with_dirs();
     let backend = Box::new(MockAudioBackend::new());
     CoreProcessor::new_with_backend(pool, config, backend)

@@ -1473,8 +1473,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                     borderStyle: "dashed",
                   }}
                 >
-                  Play or add more music to your library to shape new
-                  recommendations.
+                  Your recommendations are getting ready. Try Refresh, or choose your music taste in Settings.
                 </div>
               )}
             </section>
@@ -1548,7 +1547,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                       borderStyle: "dashed",
                     }}
                   >
-                    Play more of your library to build mixes for your taste.
+                    Your mixes are getting ready. Try Refresh, or choose your music taste in Settings.
                   </div>
                 )}
                 {allMixes.length > 0 && <WindowedStrip items={allMixes} scrollRef={mixesScrollRef} label="Mixes For You" initialScrollLeft={() => viewMemory.shelves.get(2) || 0} renderItem={mix => <DiscoveryPreviewTarget preview={mixPreview(mix)}><MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} onOpen={() => handleOpenMix(mix)} /></DiscoveryPreviewTarget>} />}

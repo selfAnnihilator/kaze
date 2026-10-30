@@ -16,6 +16,9 @@ export function presentFlowExplanation(e?: FlowExplanation | null): ExplanationC
   let body = "A pick from your own music collection.";
   if (e?.from_existing_queue) { title = "Your queue, your choice"; body = "You already had this track in your queue. Flow kept it in place."; }
   else if (e?.primary === "continuing_track") { title = "Your current track continues"; body = "Flow will take over with the next track. This song can finish playing."; }
+  else if (e?.primary === "starter_artist") { title = "From your music taste"; body = "An artist you chose when setting up your music taste."; }
+  else if (e?.primary === "starter_genre") { title = "From your genre choices"; body = "A starter pick from the genres you chose."; }
+  else if (e?.primary === "starter_popular") { title = "A place to start"; body = "A popular song to help you discover what you enjoy. Your recommendations will adapt as you listen."; }
   else if (e?.primary === "liked" && e.is_liked) { title = "One of your favorites"; body = "You liked this track, so it's a familiar choice to return to."; }
   else if (e?.primary === "rediscovery" && age) { title = "Time to rediscover this"; body = rediscovery; }
   else if (e?.primary === "online_discovery" && e.is_unplayed) { title = "An online discovery"; body = "A less-heard online song that matches your listening taste."; }
@@ -27,7 +30,7 @@ export function presentFlowExplanation(e?: FlowExplanation | null): ExplanationC
     if (e?.is_liked && e.primary !== "liked") secondary.push("You liked this track.");
     if (age && days! >= 30 && e?.primary !== "rediscovery") secondary.push(rediscovery);
     if (e?.is_unplayed && e.primary !== "library_exploration" && e.primary !== "online_discovery") secondary.push(unplayed);
-    if (affinity && e?.primary !== "artist_affinity") secondary.push(`Your listening and feedback point toward ${e?.artist_name}.`);
+    if (affinity && e?.primary !== "artist_affinity" && !e?.primary.startsWith("starter_")) secondary.push(`Your listening and feedback point toward ${e?.artist_name}.`);
     if (e?.play_count != null && e.play_count > 0 && secondary.length < 2) secondary.push(`${e.play_count} recorded ${e.play_count === 1 ? "play" : "plays"} in Kaze${snapshot ? " when this was picked" : ""}.`);
     if (e?.familiarity_ratio != null && secondary.length < 2) secondary.push(e.familiarity_ratio >= .75 ? "Picked with Flow leaning toward familiar music." : e.familiarity_ratio <= .25 ? "Picked with Flow leaning toward rediscovery." : "Picked with Flow balancing familiar music and rediscovery.");
   }

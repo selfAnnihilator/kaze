@@ -26,6 +26,7 @@ pub enum RankingEntity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "query", content = "payload")]
 pub enum Query {
+    GetRecommendationSetup,
     GetOnboardingStatus,
     GetLibraryOverview,
     GetTracks {
@@ -154,6 +155,7 @@ pub enum Query {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum QueryResponse {
+    RecommendationSetup(crate::recommendations::setup::RecommendationSetup),
     OnboardingStatus {
         completed: bool,
         default_music_dir: String,

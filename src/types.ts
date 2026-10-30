@@ -157,6 +157,8 @@ export interface TasteProfile {
   }>;
 }
 
+export interface RecommendationSetup { user_id: string; status: "pending" | "completed" | "skipped"; artists: string[]; genres: string[]; revision: number; should_prompt: boolean; }
+
 export interface OnboardingStatus {
   completed: boolean;
   default_music_dir: string;
@@ -266,6 +268,7 @@ export type Command =
   | { command: "SetFlowSteering"; payload: { familiarity_ratio: number } }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean };
     }
+  | { command: "SaveRecommendationSetup"; payload: { expected_user_id?: string; artists: string[]; genres: string[]; skipped: boolean } }
   | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
   | { command: "RemoveLibraryFolder"; payload: { folder_id: string } }
@@ -340,6 +343,7 @@ export type Command =
     };
 
 export type Query =
+  | { query: "GetRecommendationSetup" }
   | { query: "GetRecommendationFeedback" }
   | { query: "RefreshCharts" }
   | { query: "GetOnboardingStatus" }

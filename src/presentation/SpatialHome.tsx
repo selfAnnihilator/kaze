@@ -487,7 +487,7 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
             })
           ) : (
             <p className="interface-empty">
-              Start playing tracks to establish your musical taste profile.
+              Your recommendations are getting ready. Try Refresh, or choose your music taste in Settings.
             </p>
           )}
         </section>

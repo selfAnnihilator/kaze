@@ -547,7 +547,7 @@ try {
       await page.getByText("No trending songs found",{exact:true}).waitFor();
       if (await page.locator(".chapter-nav button").count()) await page.locator(".chapter-nav button").nth(1).click();
       else await page.getByRole("combobox", { name: "Discovery selection" }).selectOption("1");
-      await page.getByText("Play or add more music to your library to shape new recommendations.",{exact:true}).waitFor();
+      await page.getByText("Your recommendations are getting ready. Try Refresh, or choose your music taste in Settings.",{exact:true}).waitFor();
       await page.getByRole("textbox",{name:"Search music online"}).fill("unavailable");
       await page.evaluate(()=>window.__kazeFixture.failSearch=true);
       await page.getByRole("textbox",{name:"Search music online"}).press("Enter");await page.waitForTimeout(200);

@@ -106,6 +106,13 @@ pub enum Command {
     },
 
     // --- Library & Onboarding Management ---
+    SaveRecommendationSetup {
+        #[serde(default)]
+        expected_user_id: Option<String>,
+        artists: Vec<String>,
+        genres: Vec<String>,
+        skipped: bool,
+    },
     CompleteOnboarding {
         music_folders: Vec<String>,
         start_scan: bool,

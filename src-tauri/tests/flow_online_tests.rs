@@ -15,11 +15,10 @@ async fn setup() -> (CoreProcessor, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let mut config = AppConfig::default_with_dirs();
     config.cache_dir = dir.path().join("cache");
-    let processor = CoreProcessor::new_with_backend(
-        create_in_memory_pool().await.unwrap(),
-        config,
-        Box::new(MockAudioBackend::new()),
-    );
+    let pool = create_in_memory_pool().await.unwrap();
+    sqlx::query("INSERT OR REPLACE INTO application_settings(key,value,updated_at) VALUES('enable_jiosaavn','false',0)").execute(&pool).await.unwrap();
+    let processor =
+        CoreProcessor::new_with_backend(pool, config, Box::new(MockAudioBackend::new()));
     (processor, dir)
 }
 

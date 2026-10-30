@@ -46,6 +46,8 @@ export async function subscribeBackendEvents(callback: (event: any) => void): Pr
 
 function mockQueryResponse(query: Query): QueryResponse {
   switch (query.query) {
+    case "GetRecommendationSetup":
+      return { type: "RecommendationSetup", data: {user_id:"default",status:"skipped",artists:[],genres:[],revision:0,should_prompt:false} };
     case "GetOnboardingStatus":
       return {
         type: "OnboardingStatus",

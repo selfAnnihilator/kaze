@@ -326,7 +326,7 @@ export const BrutalistHome = memo(function BrutalistHome(p: {
               <p className="press-next-empty">
                 {p.isLoading
                   ? "Loading your records…"
-                  : "Your listening will bring more records here."}
+                  : title === "For You" ? "Your recommendations are getting ready. Try Refresh, or choose your music taste in Settings." : "Your listening will bring more records here."}
               </p>
             )}
           </div>

@@ -1,3 +1,6 @@
+import { PlaybackNotice, showEmptyPlaybackNotice } from "./components/PlaybackNotice";
+import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
+import { RecommendationSetupGate } from "./components/MusicTaste";
 import { recommendationPreferences } from "./services/recommendationPreferences";
 import "./App.css";
 import { removeRecommendationTracks } from "./recommendationFeedback";
@@ -249,6 +252,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // User Authentication & Profile
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [userHydrated, setUserHydrated] = useState(false);
   const currentUserIdRef = useRef("default");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
@@ -779,6 +783,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     if (userId === currentUserIdRef.current) return;
     currentUserIdRef.current = userId;
     recommendationPreferences.reset();
+    setRecommendationNotice(null);
     void recommendationPreferences.refresh().catch(console.error);
     ++discoveryRequestRef.current;
     ++chartRequestRef.current;
@@ -808,7 +813,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }
     } catch (err) {
       console.error("Failed to fetch current user:", err);
-    }
+    } finally { setUserHydrated(true); }
   }, []);
 
   const handleLogin = async (
@@ -1243,7 +1248,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             setHomeOverview(previous => removeRecommendationTracks(previous, ids));
             setRecommendationNotice({ id: event.payload.track_id, title: event.payload.title });
           } else {
-            setRecommendationNotice(null);
+            setRecommendationNotice(previous => previous && ids.has(previous.id) ? null : previous);
             void fetchDiscovery(false, false);
           }
           setPlaybackState(previous => previous.current_track && ids.has(previous.current_track.id)
@@ -1473,14 +1478,22 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   const handlePlayPause = useCallback(async () => {
-    if (playbackState.is_playing) {
-      await dispatchCommand({ command: "Pause" });
-      setPlaybackState((prev) => ({ ...prev, is_playing: false }));
-    } else {
-      await dispatchCommand({ command: "Resume" });
-      setPlaybackState((prev) => ({ ...prev, is_playing: true }));
+    if (!playbackState.current_track && !playbackState.current_track_id && !playbackState.queue_track_ids?.length) {
+      showEmptyPlaybackNotice(); return;
     }
-  }, [playbackState.is_playing]);
+    try {
+      await dispatchCommand({ command: "TogglePlayPause" });
+      await fetchPlaybackState();
+    } catch (error) {
+      if (String(error).includes("Select a song to play")) showEmptyPlaybackNotice();
+      else addAppNotification("error", "Playback unavailable", String(error));
+    }
+  }, [playbackState.current_track, playbackState.current_track_id, playbackState.queue_track_ids?.length, fetchPlaybackState, addAppNotification]);
+  const dismissRecommendationNotice = useCallback((notice: RecommendationNoticeValue) => {
+    setRecommendationNotice(previous => previous === notice ? null : previous);
+  }, []);
+  const recommendationNoticeError = useCallback((message: string) => addAppNotification("error", "Couldn’t update recommendations", message), [addAppNotification]);
+  const handleTasteSaved = useCallback(() => { void fetchPlaylists(); }, [fetchPlaylists]);
 
   useEffect(() => {
     handlePlayPauseRef.current = handlePlayPause;
@@ -4003,6 +4016,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
                   {currentView === "settings" && (
                     <SettingsView
+                      onRecommendationSetupSaved={handleTasteSaved}
                       settings={settings}
                       currentUser={currentUser}
                       onLogout={handleLogout}
@@ -4183,11 +4197,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
         </Suspense>
 
-        {recommendationNotice && <div className="recommendation-feedback-toast" role="status">
-          <span>Won’t recommend “{recommendationNotice.title}” again.</span>
-          <button onClick={() => { void dispatchCommand({ command: "RemoveTrackFeedback", payload: { track_id: recommendationNotice.id } }).catch(error => addAppNotification("error", "Couldn’t update recommendations", String(error))); }}>Allow again</button>
-          <button aria-label="Dismiss recommendation message" onClick={() => setRecommendationNotice(null)}>×</button>
-        </div>}
+        <PlaybackNotice key={`playback-notice:${currentUser?.id || "default"}`} />
+        {recommendationNotice && <RecommendationNotice key={currentUser?.id || "default"} notice={recommendationNotice} onDismiss={dismissRecommendationNotice} onError={recommendationNoticeError} />}
+        <RecommendationSetupGate userId={currentUser?.id || "default"} key={`taste:${currentUser?.id || "default"}`} ready={userHydrated && !!onboardingStatus?.completed && !showOnboarding} onSaved={handleTasteSaved} />
 
         {/* Onboarding Modal */}
         {showOnboarding && onboardingStatus && (

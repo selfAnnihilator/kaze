@@ -1,6 +1,6 @@
 # Listening scores and For You
 
-Current behavior, 2026-10-28. Playback stays in the shared Rust PlaybackService; recommendation updates use the same account-scoped history writer.
+Current behavior, 2026-10-30. Playback stays in the shared Rust PlaybackService; recommendation updates use the same account-scoped history writer.
 
 ## What counts
 
@@ -58,7 +58,7 @@ The online metadata pool is supplied by ordinary online search, discovery and pr
 
 Moving the dial/bar now replaces generated upcoming slots after the existing 250ms debounce. The current entry, position, active playback session, Flow generation, and its original explanation stay intact. Manual queue entries retain their positions when enough replacements exist. No restart or wait for the old 20-song batch is needed. The UI fetches the confirmed Flow session and playback snapshot after saving steering, so the status reflects the applied choice.
 
-The lower-level `GetFlowQueue`/local generation preview remains read-only and local; runtime start, steering and refill use the online-capable generator. Home's separate For You list remains a local-library shelf.
+The lower-level `GetFlowQueue`/local generation preview remains read-only and local; runtime start, steering and refill use the online-capable generator. Home's For You uses the same eligible local and online candidate pool, including starter selections before listening history exists.
 
 ### Native bar dragging
 
@@ -87,3 +87,19 @@ For runtime Flow and playback continuity, run `cargo test --offline --manifest-p
 - Start the local preview, then run `node scripts/test-active-scoring.mjs` to exercise both presentations, committed-history refresh, debounce, independent charts, account isolation, progress ticks, and stale-response protection.
 
 Historical verification limit (2026-10-18): an older discovery integration test failed without network access, and the then-current shared browser harness stopped at a stale `Library and more` locator. Those observations describe that earlier revision; the current checks above supersede them.
+
+## First-use tastes and starter songs
+
+After folder onboarding, accounts without positive learned taste signals get a skippable artist-and-genre setup. Existing accounts with useful listening or likes do not get prompted. Completion/skip and up to five artist and five genre choices are stored per account on this device in `recommendation_setup`, separate from listening history, computed `user_preferences` and song feedback. Revisit them through Settings → Music taste. These explicit choices are not cloud-synchronized. Setup reads carry their account identity and saves reject a mismatching expected account.
+
+Missing artist/genre affinities receive a 0.35 starter prior; an existing learned entry, including zero, takes precedence. No listens, likes, playtime or aggregate statistics are manufactured. New `has_learned_taste` profile evidence is computed before adding these priors. Starter explanations explicitly identify chosen artists, genre-query provenance or popular songs; they do not claim prior listening.
+
+The catalog coordinator prepares an account- and preference-revision-scoped starter pool before Home, Discovery, playlists/mixes and runtime Flow need it. Up to ten metadata searches run three at a time, alongside the existing public editorial fallback when needed. Artist-query candidates must match normalized artist credits. Genre-query provenance is stored separately instead of inventing verified song genres. Pools are bounded to 250 IDs and in-memory attempt tracking to 16 accounts, coalescing simultaneous reads; normal reads reuse a prepared pool for 15 minutes and empty failures for 30 seconds. Explicit refresh retries immediately. Revision checks prevent a slow response for older choices from repopulating the new pool.
+
+Skipping or insufficient matching candidates uses public cached/live chart songs, not another account's learned preferences. Cached matching metadata and editorial feeds remain usable offline. Without usable local/cached music and without catalog access, the app shows honest retry/connection guidance. Feedback exclusions, source identity, duplicate-release handling and artist diversity still apply. As positive learned taste develops, unchosen generic popular candidates stop bypassing normal taste eligibility.
+
+Daily and Discovery mixes can use starter songs. Recent history, On Repeat and Forgotten Favorites retain their real-history/feedback requirements. Metadata preparation fetches no audio. Start Flow reserves its generation token before preparation and takes its playback-operation lock afterward; only selected songs enter the existing Rust resolver/player.
+
+`GetRecommendationSetup` and `SaveRecommendationSetup` are additive typed IPC interfaces. The SQLite migration adds setup and starter-membership tables without rewriting existing history or affinities. Saving choices invalidates Home picks and generated mixes and emits the existing account-scoped taste-change event.
+
+Verify with `cargo test --offline --locked --test recommendation_setup_tests`, the existing Flow/playback/feedback groups, `node scripts/test-first-use-ui.mjs` and `KAZE_TEST_URL=http://127.0.0.1:5194 python3 scripts/test-first-use-webkit.py` against a local Vite server. Test catalogs use isolated loopback fixtures and synthetic cached WAV audio. Keep local-only Flow tests explicitly offline; enabling automatic starter preparation otherwise makes a new account eligible for online music.

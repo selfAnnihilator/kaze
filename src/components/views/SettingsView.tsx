@@ -1,3 +1,4 @@
+import { MusicTaste } from "../MusicTaste";
 import {
   memo,
   useEffect,
@@ -29,9 +30,10 @@ import { useViewMemory } from "../../presentation/ViewMemory";
 import { MetadataSettings } from "../MetadataSettings";
 import { StartupSettings } from "../StartupSettings";
 
-type Section = "main" | "folders" | "system";
+type Section = "main" | "folders" | "system" | "taste";
 type MusicFolder = { id: string; path: string; track_count?: number };
 interface SettingsViewProps {
+  onRecommendationSetupSaved?: () => void;
   interfaceStyle: InterfaceStyle;
   onSelectInterfaceStyle: (style: InterfaceStyle) => Promise<void>;
   isSavingInterfaceStyle?: boolean;
@@ -67,6 +69,7 @@ const size = (bytes: number) =>
     : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
 export const SettingsView = memo(function SettingsView({
+  onRecommendationSetupSaved,
   interfaceStyle,
   onSelectInterfaceStyle,
   isSavingInterfaceStyle,
@@ -294,7 +297,7 @@ export const SettingsView = memo(function SettingsView({
       ? "Settings"
       : section === "folders"
         ? "Music Folders"
-        : "System & Storage";
+        : section === "taste" ? "Music taste" : "System & Storage";
   return (
     <div className={`settings-view settings-view--${section}`} ref={root}>
       <header className="settings-header">
@@ -389,6 +392,9 @@ export const SettingsView = memo(function SettingsView({
             aria-labelledby="settings-library-heading"
           >
             <h2 id="settings-library-heading">Library &amp; storage</h2>
+            <button type="button" className="settings-section-link" onClick={() => openSection("taste")}>
+              <span><strong>Music taste</strong><span>Choose your favorite artists and genres</span></span><span className="settings-open-label">Manage <ArrowRight size={16} /></span>
+            </button>
             <button
               type="button"
               className="settings-section-link"
@@ -537,7 +543,7 @@ export const SettingsView = memo(function SettingsView({
             )}
           </section>
         </div>
-      ) : section === "folders" ? (
+      ) : section === "taste" ? (<MusicTaste userId={currentUser?.id || "default"} key={currentUser?.id || "default"} onSaved={() => { onRecommendationSetupSaved?.(); openSection("main"); }} />) : section === "folders" ? (
         <section
           className="settings-detail"
           aria-label="Music Folders settings"

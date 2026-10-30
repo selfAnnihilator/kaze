@@ -12,3 +12,5 @@ pub use scoring::*;
 pub use taste::*;
 
 pub mod signals;
+
+pub mod setup;

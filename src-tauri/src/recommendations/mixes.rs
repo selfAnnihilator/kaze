@@ -387,8 +387,26 @@ impl SmartMixGenerator {
         Ok(playlist)
     }
 
+    async fn starter_mix(&self, user: &str) -> AppResult<Option<Vec<String>>> {
+        let profile = self.taste_engine.compute_taste_profile(user).await?;
+        if profile.has_learned_taste
+            || super::setup::members(&self.pool, user, &profile)
+                .await?
+                .is_empty()
+        {
+            return Ok(None);
+        }
+        let tracks = super::FlowEngine::new(self.pool.clone())
+            .generate_playback_tracks_after(user, 0.5, 25, &[], None)
+            .await?;
+        Ok(Some(tracks.into_iter().map(|t| t.track_id).collect()))
+    }
+
     /// Daily mix: 60% high-affinity tracks, 20% forgotten favorites, 20% discovery & online picks.
     async fn generate_daily_mix(&self, user_id: &str) -> AppResult<Vec<String>> {
+        if let Some(ids) = self.starter_mix(user_id).await? {
+            return Ok(ids);
+        }
         let recs = self.recommender.recommend(user_id, 20).await?;
         let mut track_ids = Vec::new();
         let mut seen = HashSet::new();
@@ -707,6 +725,9 @@ impl SmartMixGenerator {
 
     /// Discovery mix: local tracks with 0 plays that align with user taste.
     async fn generate_discovery_mix(&self, user_id: &str) -> AppResult<Vec<String>> {
+        if let Some(ids) = self.starter_mix(user_id).await? {
+            return Ok(ids);
+        }
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
         let recs = self
             .recommender
@@ -818,7 +839,11 @@ impl SmartMixGenerator {
             .await
             .unwrap_or(0);
 
-        if total_tracks == 0 {
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        let has_starters = !super::setup::members(&self.pool, user_id, &profile)
+            .await?
+            .is_empty();
+        if total_tracks == 0 && !has_starters {
             return Ok(existing);
         }
 

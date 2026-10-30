@@ -132,3 +132,19 @@
     min-height: 106px;
   }
 }
+
+/* First-use controls and transient notices share the active theme's vocabulary. */
+.kaze-interface .taste-dialog { width: min(640px, calc(100vw - 32px)); padding: 26px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-light); border-radius: var(--ui-radius); }
+.taste-dialog::backdrop { background: oklch(8% 0.005 55 / .8); }
+.music-taste { min-width: 0; }
+.music-taste > p { line-height: 1.5; color: var(--text-muted); margin-block: 14px; }
+.music-taste fieldset { border: 0; padding: 0; margin-block: 20px; min-width: 0; }
+.music-taste legend { margin-bottom: 12px; font-weight: 600; }
+.music-taste legend span { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.music-taste label { display: block; margin-bottom: 8px; }
+.music-taste input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); }
+.taste-choices, .taste-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.taste-choices button { max-width: 100%; overflow-wrap: anywhere; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--ui-radius); color: var(--text-main); background: var(--bg-main); }
+.taste-choices button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.taste-choices button:disabled { opacity: .5; }
+.playback-notice, .taste-retry { position: fixed; z-index: 2000; bottom: 120px; left: 24px; padding: 14px 18px; max-width: calc(100vw - 48px); background: var(--bg-card); color: var(--text-main); border: 1px solid var(--accent); }

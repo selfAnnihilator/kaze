@@ -210,6 +210,7 @@ impl CoreProcessor {
 
         let flow_engine = Arc::new(crate::recommendations::FlowEngine::new(db_pool.clone()));
         playback_service.set_flow_engine(flow_engine.clone());
+        playback_service.set_starter_preparation(discovery_coordinator.clone());
 
         let user_repo = Arc::new(SqliteUserRepository::new(db_pool.clone()));
         let cloud_client = Arc::new(CloudClient::new());
@@ -744,6 +745,33 @@ impl CoreProcessor {
 
         match cmd {
             // --- Library & Onboarding Management ---
+            Command::SaveRecommendationSetup {
+                expected_user_id,
+                artists,
+                genres,
+                skipped,
+            } => {
+                let user = self.current_user_id().await;
+                if expected_user_id
+                    .as_deref()
+                    .is_some_and(|expected| expected != user)
+                {
+                    return Err(AppError::Validation(
+                        "Account changed. Reopen music taste and try again.".into(),
+                    ));
+                }
+                crate::recommendations::setup::save(&self.db_pool, &user, artists, genres, skipped)
+                    .await?;
+                self.flow_engine.invalidate_home_picks(&user).await;
+                sqlx::query("UPDATE playlists SET expires_at=0 WHERE user_id=? AND is_smart_mix=1")
+                    .bind(&user)
+                    .execute(&self.db_pool)
+                    .await?;
+                let _ = self
+                    .event_bus
+                    .publish(Event::TasteProfileChanged { user_id: user });
+                Ok(CommandResponse::Ok)
+            }
             Command::CompleteOnboarding {
                 music_folders,
                 start_scan,
@@ -856,6 +884,8 @@ impl CoreProcessor {
                 } else if state.queue_length > 0 {
                     let idx = state.current_queue_index.unwrap_or(0);
                     self.playback_service.play_queue_index(idx).await?;
+                } else {
+                    return Err(AppError::Playback("Select a song to play".into()));
                 }
                 Ok(CommandResponse::Ok)
             }
@@ -2273,6 +2303,17 @@ impl CoreProcessor {
                         .unwrap_or_default(),
                 ))
             }
+            Query::GetRecommendationSetup => {
+                let user = self.current_user_id().await;
+                let mut setup = crate::recommendations::setup::load(&self.db_pool, &user).await?;
+                setup.should_prompt = setup.status == "pending"
+                    && !self
+                        .taste_engine
+                        .compute_taste_profile(&user)
+                        .await?
+                        .has_learned_taste;
+                Ok(QueryResponse::RecommendationSetup(setup))
+            }
             Query::GetOnboardingStatus => {
                 let completed = self.library_service.is_onboarding_completed().await?;
                 let default_music_dir = LibraryService::get_default_music_dir()
@@ -2408,13 +2449,22 @@ impl CoreProcessor {
             }
             Query::GetAlbumDetails { album_id } => {
                 let repo = self.library_service.album_repo();
-                let album = repo.find_by_id(&album_id).await?
-                    .ok_or_else(|| AppError::NotFound("Album is no longer in the library".into()))?;
+                let album = repo.find_by_id(&album_id).await?.ok_or_else(|| {
+                    AppError::NotFound("Album is no longer in the library".into())
+                })?;
                 let user_id = self.current_user_id().await;
                 let tracks = repo.tracks_scoped(&album_id, &user_id).await?;
-                let rows: Vec<_> = tracks.into_iter().filter_map(|track| serde_json::to_value(track).ok()).collect();
-                let tracks = self.online_catalog.present(serde_json::Value::Array(rows)).await?;
-                Ok(QueryResponse::AlbumDetails(serde_json::json!({"album":album,"tracks":tracks})))
+                let rows: Vec<_> = tracks
+                    .into_iter()
+                    .filter_map(|track| serde_json::to_value(track).ok())
+                    .collect();
+                let tracks = self
+                    .online_catalog
+                    .present(serde_json::Value::Array(rows))
+                    .await?;
+                Ok(QueryResponse::AlbumDetails(
+                    serde_json::json!({"album":album,"tracks":tracks}),
+                ))
             }
             Query::SearchLibrary { query_text, limit } => {
                 let user_id = self.current_user_id().await;
@@ -2460,6 +2510,9 @@ impl CoreProcessor {
                     .await?;
                 }
                 let user_id = self.current_user_id().await;
+                self.discovery_coordinator
+                    .ensure_starter_candidates(&user_id, false)
+                    .await?;
                 let mixes = self
                     .smart_mix_generator
                     .ensure_default_mixes(&user_id)
@@ -2479,6 +2532,9 @@ impl CoreProcessor {
             Query::GetPlaylists => {
                 let is_logged_in = self.current_user.read().await.is_some();
                 let user_id = self.current_user_id().await;
+                self.discovery_coordinator
+                    .ensure_starter_candidates(&user_id, false)
+                    .await?;
                 let _ = self
                     .smart_mix_generator
                     .ensure_default_mixes(&user_id)
@@ -3117,6 +3173,9 @@ impl CoreProcessor {
             }
             Query::GetHomeOverview => {
                 let user_id = self.current_user_id().await;
+                self.discovery_coordinator
+                    .ensure_starter_candidates(&user_id, false)
+                    .await?;
                 let mut overview = self.flow_engine.get_home_overview(&user_id).await?;
                 overview.flow_session = self
                     .playback_service

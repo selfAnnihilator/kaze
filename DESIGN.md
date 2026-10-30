@@ -39,7 +39,7 @@ Dragging previews locally in the memoized control. Release commits through the e
 
 ## Settings
 
-Settings follows a single top-to-bottom path in both themes. The main page contains Interface Style, Window Close Behavior, Startup, Music Folders, System & Storage and Account. Music Folders and System & Storage open their own focused sections with a Back to Settings action, rather than horizontal tabs or expanded settings on the main page. Preserve the selected section on route return.
+Settings follows a single top-to-bottom path in both themes. The main page contains Interface Style, Window Close Behavior, Startup, Music taste, Music Folders, System & Storage and Account. Music taste, Music Folders and System & Storage open their own focused sections with a Back to Settings action, rather than horizontal tabs or expanded settings on the main page. Preserve the selected section on route return.
 
 Keep style changes immediate with the existing persistence/error contract. Window close behavior stays on the outer page. Startup offers “Start in tray on login”, backed by the operating system login entry. Confirm saves before changing the switch and keep its state isolated in a memoized leaf; see [login startup](docs/login-startup.md) for registration, hidden launch and tray fallback behavior. Folder details retain add/remove/rescan actions, readable paths and track counts; virtualize lists over 50 folders. System & Storage shows actual temporary-audio usage and Clear Cache. Omit internal database/cache locations, provider/engine diagnostics, cloud endpoint/security explanations and onboarding test controls. Remove the old Audio Engine, Metadata Providers, Soulseek and Cloud tabs from the user-facing settings surface.
 
@@ -109,3 +109,13 @@ Both production themes support windows down to 800×600 logical pixels. Keep the
 `src/presentation/responsive.css` is the final production sizing layer; it does not affect either standalone study. Discovery shelves reserve enough height for artwork, metadata and actions, with the chapter stage owning overflow. A wheel over a heading routes to its overflowing shelf. While overflow exists, neither wheel boundaries nor Page Up/Down change chapters. No resize/scroll state belongs in App.
 
 Run `scripts/test-responsive-layout.mjs` for both themes at eight viewport sizes, all chapters and main routes, resize/playback continuity, compact dialogs/collections, and long/empty/error/loading content. Run `scripts/test-spatial-narrow-webkit.py` for the same Discovery matrix in real WebKitGTK, plus the existing reference-layout, search and rendering guardrails. Native offscreen views must be recreated for each requested viewport.
+
+## First-use recommendations and notices
+
+After folder onboarding, offer a native, keyboard-contained taste dialog to accounts without useful listening/feedback signals. Let users search artists with a 250ms debounce and choose up to five artists and five genres. Require a choice to save, allow Skip for now (including Escape), persist the decision per account, and let users revisit choices in Settings → Music taste. Use the active theme's existing surfaces, typography and controls. The dialog must fit 800×600 and scroll internally, with loading, retry and save failure feedback. Do not start playback during setup.
+
+Accounts with no history still get starter Home/Discovery/Flow/Daily/Discovery-mix picks when catalog data is available, including popular choices when setup is skipped. Keep recent-listening and history-dependent shelves honest. Artist/genre choices must not be described as recorded plays or likes.
+
+Transport buttons and Space use the authoritative TogglePlayPause command. If neither a selected track nor queue exists, keep playback stopped and show “Select a song to play” for two seconds. Repeated empty clicks refresh a single ephemeral message, without adding notification history. Preserve queued starts, cold restored playback and normal pause/resume; use confirmed backend state instead of optimistic playing flags.
+
+Dislike confirmations expire after five seconds, pausing for hover, keyboard focus and a pending Allow again request. The timer dismisses only the notice, never the saved dislike. Retain manual dismissal, undo and failure feedback. Replacing a notice or changing accounts cancels prior timers. Keep all notice timers/state in memoized leaves; no root playback-tick or countdown state.

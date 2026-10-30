@@ -22,13 +22,13 @@ try {
   let before=(await commands()).length;
   await page.keyboard.press('Space');
   await page.waitForTimeout(80);
-  assert.deepEqual((await commands()).slice(before),['Pause'],'Space after pointer Next must pause, not select another track');
+  assert.deepEqual((await commands()).slice(before),['TogglePlayPause'],'Space after pointer Next must pause, not select another track');
   before=(await commands()).length;
   await page.keyboard.press('Space');await page.waitForTimeout(80);
-  assert.deepEqual((await commands()).slice(before),['Resume'],'Space resumes after a pointer action');
+  assert.deepEqual((await commands()).slice(before),['TogglePlayPause'],'Space resumes after a pointer action');
   before=(await commands()).length;
   await page.keyboard.down('Space');await page.keyboard.down('Space');await page.keyboard.up('Space');await page.waitForTimeout(80);
-  assert.deepEqual((await commands()).slice(before),['Pause'],'holding Space toggles only once');
+  assert.deepEqual((await commands()).slice(before),['TogglePlayPause'],'holding Space toggles only once');
   await page.keyboard.press('Space');await page.waitForTimeout(80);
   await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
   state=await inspect();assert.ok(state.focused && state.outline>0,'Tab navigation still has a visible focus indicator');

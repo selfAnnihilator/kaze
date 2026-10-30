@@ -175,9 +175,13 @@ async fn test_close_button_behavior_and_lifecycle() {
         .await;
     assert!(invalid_res.is_err());
 
-    // 5. TogglePlayPause command on empty queue
-    let toggle_res = processor.dispatch_command(Command::TogglePlayPause).await;
-    assert!(toggle_res.is_ok());
+    // 5. Empty playback reports the actionable notice and remains stopped.
+    let toggle_error = processor
+        .dispatch_command(Command::TogglePlayPause)
+        .await
+        .unwrap_err();
+    assert!(matches!(toggle_error, AppError::Playback(message) if message == "Select a song to play"));
+    assert!(!processor.playback_service().get_playback_state().await.is_playing);
 
     // 6. Change back to minimize_to_tray
     let back_res = processor

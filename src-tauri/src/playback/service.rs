@@ -83,6 +83,7 @@ pub struct PlaybackService {
     is_resolving: Arc<std::sync::atomic::AtomicBool>,
     recommendation_user:
         std::sync::RwLock<Option<Arc<RwLock<Option<crate::database::repositories::UserProfile>>>>>,
+    starter_preparation: std::sync::RwLock<Option<Arc<crate::discovery::DiscoveryCoordinator>>>,
     flow_operation: Mutex<()>,
     flow_generation: std::sync::atomic::AtomicU64,
     active_flow: RwLock<Option<ActiveFlow>>,
@@ -118,6 +119,7 @@ impl PlaybackService {
             play_generation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             is_resolving: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             recommendation_user: std::sync::RwLock::new(None),
+            starter_preparation: std::sync::RwLock::new(None),
             flow_operation: Mutex::new(()),
             flow_generation: std::sync::atomic::AtomicU64::new(0),
             active_flow: RwLock::new(None),
@@ -327,6 +329,13 @@ impl PlaybackService {
         Ok(())
     }
 
+    pub fn set_starter_preparation(
+        &self,
+        coordinator: Arc<crate::discovery::DiscoveryCoordinator>,
+    ) {
+        *self.starter_preparation.write().unwrap() = Some(coordinator);
+    }
+
     pub fn set_flow_engine(&self, fe: Arc<crate::recommendations::FlowEngine>) {
         let mut w = self.flow_engine.write().unwrap();
         *w = Some(fe);
@@ -351,6 +360,12 @@ impl PlaybackService {
             + 1;
         // Catalog migration runs in the background; the selected recording is
         // bound by play_item. Unrelated legacy songs must not delay Start Flow.
+        let preparation = self.starter_preparation.read().unwrap().clone();
+        if let Some(coordinator) = preparation {
+            coordinator
+                .ensure_starter_candidates(user_id, false)
+                .await?;
+        }
         let operation = self.flow_operation.lock().await;
         if self
             .flow_generation
@@ -406,7 +421,7 @@ impl PlaybackService {
         }
         if tracks.is_empty() && !preserve_current {
             return Err(AppError::Playback(
-                "No eligible songs for Flow. Play or like more music, or add songs to your library.".into(),
+                "No eligible songs for Flow right now. Try refreshing recommendations, check your connection, or select a song.".into(),
             ));
         }
         let state = Self::flow_settings(ratio, false);
@@ -1228,6 +1243,9 @@ impl PlaybackService {
     }
 
     pub async fn resume(&self) -> AppResult<()> {
+        if self.queue.read().await.current().is_none() {
+            return Err(AppError::Playback("Select a song to play".into()));
+        }
         let restored = self.restored_track.read().await.clone();
         if let Some(restored) = restored {
             let item = self
@@ -1249,16 +1267,18 @@ impl PlaybackService {
             return Err(AppError::Playback("Kaze is shutting down".into()));
         }
 
-        backend.resume()?;
-
-        let pos = backend.position().as_secs_f64();
         let track_id = {
             let q_guard = self.queue.read().await;
             q_guard
                 .current()
                 .map(|i| i.track_id.clone())
-                .unwrap_or_default()
+                .ok_or_else(|| AppError::Playback("Select a song to play".into()))?
         };
+        if self.active_session_id.read().await.is_none() {
+            return Err(AppError::Playback("Select a song to play".into()));
+        }
+        backend.resume()?;
+        let pos = backend.position().as_secs_f64();
 
         let session_id = self
             .active_session_id
@@ -1383,7 +1403,9 @@ impl PlaybackService {
             None => true,
         };
         if !can_seek {
-            return Err(AppError::Playback("Seeking is unavailable for this audio stream.".into()));
+            return Err(AppError::Playback(
+                "Seeking is unavailable for this audio stream.".into(),
+            ));
         }
 
         let dur = Duration::try_from_secs_f64(position_secs.max(0.0))

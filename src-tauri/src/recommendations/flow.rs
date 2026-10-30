@@ -228,6 +228,7 @@ impl FlowEngine {
         let ratio = familiarity_ratio.clamp(0.0, 1.0);
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
         let signals = super::signals::SongSignals::load(&self.pool, user_id).await?;
+        let starters = super::setup::members(&self.pool, user_id, &profile).await?;
         let now = Utc::now().timestamp();
 
         let mut candidates = sqlx::query_as::<_, FlowCandidateRow>(
@@ -312,7 +313,11 @@ impl FlowEngine {
                                 name.eq_ignore_ascii_case(genre.trim()) && *affinity > 0.15
                             })
                         });
-                        known || artist_match || genre_match || language_match
+                        known
+                            || artist_match
+                            || genre_match
+                            || language_match
+                            || starters.contains_key(&c.id)
                     }),
             );
         }
@@ -497,7 +502,11 @@ impl FlowEngine {
             if skip_count > 2 && skip_count > completion_count {
                 final_score -= ((skip_count - completion_count) as f64 * 0.05).min(0.35);
             }
-            final_score = final_score.max(0.0);
+            final_score = final_score.max(if starters.contains_key(&c.id) {
+                0.1
+            } else {
+                0.0
+            });
             if c.is_online
                 && !is_liked
                 && (final_score <= 0.0 || (play_count == 0 && skip_count > 0))
@@ -505,9 +514,19 @@ impl FlowEngine {
                 // An online exploration slot must not force repeatedly skipped songs.
                 continue;
             }
-            let (reason, reason_category) = Self::explain(&c, &profile, now);
+            let (reason, reason_category) = if let Some((source, value)) = starters.get(&c.id) {
+                (
+                    super::setup::explanation(source, value),
+                    format!("starter_{source}"),
+                )
+            } else {
+                Self::explain(&c, &profile, now)
+            };
 
             let mut explanation = Self::evidence(&c, &profile, now);
+            if reason_category.starts_with("starter_") {
+                explanation.primary = reason_category.clone();
+            }
             explanation.familiarity_ratio = Some(ratio);
             explanation.selected_at = Some(now);
             scored.push(ScoredCandidate {
@@ -779,11 +798,19 @@ impl FlowEngine {
                    AND t.file_path NOT LIKE 'http://%' AND t.file_path NOT LIKE 'https://%'
                  GROUP BY al.id ORDER BY RANDOM() LIMIT 1"
             ).fetch_optional(&self.pool).await?;
-        let library_moment = library_moment_row.map(|(aid,atitle,aname,art_path,count,year,first)| LibraryMoment {
-            album_id:aid, first_track_id:Some(first), album_title:atitle,
-            artist_name:aname.unwrap_or_else(|| "Various Artists".into()), cover_art_path:art_path,
-            total_tracks:count, release_year:year, subtitle:"Revisit an album from your library".into(),
-        });
+        let library_moment =
+            library_moment_row.map(|(aid, atitle, aname, art_path, count, year, first)| {
+                LibraryMoment {
+                    album_id: aid,
+                    first_track_id: Some(first),
+                    album_title: atitle,
+                    artist_name: aname.unwrap_or_else(|| "Various Artists".into()),
+                    cover_art_path: art_path,
+                    total_tracks: count,
+                    release_year: year,
+                    subtitle: "Revisit an album from your library".into(),
+                }
+            });
 
         // 6. Your Week: Last 7 days summary from playback_history
         let week_cutoff = now - (7 * 86400);
@@ -901,12 +928,23 @@ impl FlowEngine {
             .bind(user_id).bind(track_id).fetch_optional(&self.pool).await?
             .ok_or_else(|| AppError::NotFound(format!("Track not found: {track_id}")))?;
         let profile = self.taste_engine.compute_taste_profile(user_id).await?;
-        Ok(Self::evidence(&candidate, &profile, Utc::now().timestamp()))
+        let mut evidence = Self::evidence(&candidate, &profile, Utc::now().timestamp());
+        if let Some((source, _)) = super::setup::members(&self.pool, user_id, &profile)
+            .await?
+            .get(track_id)
+        {
+            evidence.primary = format!("starter_{source}");
+            evidence.artist_affinity = None;
+        }
+        Ok(evidence)
     }
 
     pub async fn get_why_this_track(&self, user_id: &str, track_id: &str) -> AppResult<String> {
         let e = self.get_track_explanation(user_id, track_id).await?;
         Ok(match e.primary.as_str() {
+            "starter_artist" => "From an artist you chose".into(),
+            "starter_genre" => "From your genre choices".into(),
+            "starter_popular" => "Popular songs to get you started".into(),
             "not_interested" => "You marked this song Not interested".into(),
             "liked" => "One of your liked tracks".into(),
             "rediscovery" => format!(

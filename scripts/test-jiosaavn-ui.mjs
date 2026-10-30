@@ -38,7 +38,7 @@ try {
     assert.equal(await page.getByLabel("Online music source").count(), 0);
     assert.equal(await page.getByRole("combobox", { name: "Online music source" }).count(), 0);
     await page.locator(".play-pause-btn").first().click();
-    await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "Resume"));
+    await page.waitForFunction(() => window.__kazeFixture.commands.some(c => c.command === "TogglePlayPause"));
     assert.equal(await page.evaluate(() => window.__kazeFixture.queries.some(q => q.query === "SearchOnlineMusic")), false, "playing a source-linked saved ID must not redirect to search");
     const search = page.getByRole("textbox", { name: "Search music online" });
     await search.fill("Test Song"); await search.press("Enter");

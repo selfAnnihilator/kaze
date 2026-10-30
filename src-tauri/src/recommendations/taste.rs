@@ -24,6 +24,8 @@ pub struct TasteProfile {
     pub total_sessions_analyzed: usize,
     /// Timestamp when profile was computed
     pub computed_at: i64,
+    #[serde(default)]
+    pub has_learned_taste: bool,
 }
 
 impl TasteProfile {
@@ -381,7 +383,7 @@ impl TasteProfileEngine {
 
         let short_max = language_short.values().copied().fold(1.0, f64::max);
         let long_max = language_long.values().copied().fold(1.0, f64::max);
-        let language_affinities = language_long
+        let language_affinities: HashMap<String, f64> = language_long
             .keys()
             .chain(language_short.keys())
             .map(|language| {
@@ -396,7 +398,11 @@ impl TasteProfileEngine {
                 )
             })
             .collect();
-        Ok(TasteProfile {
+        let has_learned_taste = top_artists.iter().any(|a| a.affinity > 0.0)
+            || top_genres.iter().any(|a| a.affinity > 0.0)
+            || language_affinities.values().any(|a| *a > 0.0);
+        let mut profile = TasteProfile {
+            has_learned_taste,
             language_affinities,
             artist_affinities,
             genre_affinities,
@@ -405,6 +411,8 @@ impl TasteProfileEngine {
             top_genres,
             total_sessions_analyzed: rows.len(),
             computed_at: now,
-        })
+        };
+        super::setup::apply(&self.pool, user_id, &mut profile).await?;
+        Ok(profile)
     }
 }

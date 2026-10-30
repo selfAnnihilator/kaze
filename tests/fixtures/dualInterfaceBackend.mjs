@@ -213,6 +213,8 @@ export function installDualInterfaceFixture() {
       switch (q.query) {
         case "GetSettings":
           return { type: "Settings", data: { ...settings } };
+        case "GetRecommendationSetup":
+          return {type:"RecommendationSetup",data:{user_id:"u1",...(f.musicTaste || {status:"skipped",artists:[],genres:[],revision:1,should_prompt:false})}};
         case "GetOnboardingStatus":
           return {
             type: "OnboardingStatus",

@@ -158,6 +158,7 @@ jobs:
           TAG="${{ inputs.tag || github.ref_name }}"
           VERSION="${TAG#v}"
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/arch/PKGBUILD
+          sed -i 's/^pkgrel=.*/pkgrel=1/' packaging/arch/PKGBUILD
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
