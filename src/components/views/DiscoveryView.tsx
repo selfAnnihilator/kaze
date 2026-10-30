@@ -1383,7 +1383,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                   scrollRef={songsScrollRef}
                   onScroll={handleSongsScroll}
                   label="Trending Songs"
-                  initialScrollLeft={viewMemory.shelves.get(0) || 0}
+                  initialScrollLeft={() => viewMemory.shelves.get(0) || 0}
                   renderItem={renderSongCard}
                 />
               )}
@@ -1461,7 +1461,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                   items={forYou}
                   scrollRef={forYouScrollRef}
                   label="For You"
-                  initialScrollLeft={viewMemory.shelves.get(1) || 0}
+                  initialScrollLeft={() => viewMemory.shelves.get(1) || 0}
                   renderItem={renderSongCard}
                 />
               ) : (
@@ -1551,7 +1551,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
                     Play more of your library to build mixes for your taste.
                   </div>
                 )}
-                {allMixes.length > 0 && <WindowedStrip items={allMixes} scrollRef={mixesScrollRef} label="Mixes For You" initialScrollLeft={viewMemory.shelves.get(2) || 0} renderItem={mix => <DiscoveryPreviewTarget preview={mixPreview(mix)}><MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} onOpen={() => handleOpenMix(mix)} /></DiscoveryPreviewTarget>} />}
+                {allMixes.length > 0 && <WindowedStrip items={allMixes} scrollRef={mixesScrollRef} label="Mixes For You" initialScrollLeft={() => viewMemory.shelves.get(2) || 0} renderItem={mix => <DiscoveryPreviewTarget preview={mixPreview(mix)}><MixCard mix={mix} onPlay={() => handlePlayMixItem(mix)} onOpen={() => handleOpenMix(mix)} /></DiscoveryPreviewTarget>} />}
               </div>
             </div>
 

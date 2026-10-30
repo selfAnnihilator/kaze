@@ -24,6 +24,15 @@ import { useDiscoveryMemory } from "./ViewMemory";
 
 const chapters = ["Trending Songs", "For You", "Mixes For You", "Top Charts"];
 
+/** Overflow keeps ordinary scrolling, even at either end of the scroll range. */
+function overflowingRegion(root: HTMLElement): HTMLElement | undefined {
+  return [root, root.querySelector<HTMLElement>(".chapter-stage")].find(
+    (region): region is HTMLElement =>
+      !!region && region.scrollHeight > region.clientHeight + 1 &&
+      /^(auto|scroll)$/.test(getComputedStyle(region).overflowY),
+  );
+}
+
 /** Real discovery chapters in each theme's independent stage composition. */
 export type DiscoveryPreview = {
   id: string;
@@ -105,7 +114,7 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
     [active],
   );
   useLayoutEffect(() => {
-    if (style === "brutalist" && root.current) {
+    if (root.current) {
       root.current.scrollTop = 0;
       const shelf = root.current.querySelector<HTMLElement>(".chapter-stage");
       if (shelf) shelf.scrollTop = 0;
@@ -125,10 +134,25 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
         (style === "brutalist" && e.shiftKey)
       )
         return;
+      if (e.target instanceof Element &&
+        e.target.closest("input, select, textarea, [contenteditable=true]"))
+        return;
+      const scrollRegion = overflowingRegion(el);
+      if (scrollRegion) {
+        wheelGate.current = { last: 0, total: 0, consumed: false };
+        // A wheel over the heading cannot natively reach a sibling shelf.
+        if (e.target instanceof Node && !scrollRegion.contains(e.target)) {
+          e.preventDefault();
+          scrollRegion.scrollBy({
+            top: e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? scrollRegion.clientHeight : 1),
+            behavior: "instant",
+          });
+        }
+        return;
+      }
       if (
         e.target instanceof Element &&
-        (e.target.closest("input, select, textarea, [contenteditable=true]") ||
-          (style === "spatial" && e.target.closest(".horizontal-scroll-row")))
+        style === "spatial" && e.target.closest(".horizontal-scroll-row")
       )
         return;
       e.preventDefault();
@@ -212,6 +236,15 @@ export const DiscoveryChapters = memo(function DiscoveryChapters({
           )
             return;
           if (event.key !== "PageDown" && event.key !== "PageUp") return;
+          const scrollRegion = root.current && overflowingRegion(root.current);
+          if (scrollRegion) {
+            event.preventDefault();
+            scrollRegion.scrollBy({
+              top: scrollRegion.clientHeight * (event.key === "PageDown" ? 0.9 : -0.9),
+              behavior: "instant",
+            });
+            return;
+          }
           event.preventDefault();
           select(
             Math.max(

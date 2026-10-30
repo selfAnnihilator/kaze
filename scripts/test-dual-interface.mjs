@@ -175,7 +175,7 @@ try {
           const placeholder = page.locator(".press-home-moment .music-artwork--placeholder");
           assert.equal(await placeholder.locator("svg").count(), 1);
           assert.equal(await placeholder.evaluate(element => getComputedStyle(element).backgroundColor !== getComputedStyle(element.parentElement).backgroundColor), true);
-          assert.equal(await page.locator(".press-home-moment-art").getAttribute("aria-label"), "Open album Migration");
+          assert.equal(await page.locator(".press-home-moment-art").getAttribute("aria-label"), "Play Migration");
         }
       },
     );
@@ -467,8 +467,16 @@ try {
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),true);
             if (destination === "Discover Music" && name === "Spatial" && height <= 700) {
               const bottom = (await page.locator(":is(.kaze-interface > .player-bar, .press-deck-controls)").boundingBox()).y;
-              const overlaps = await page.locator('.discovery-chapter:not([hidden]) .discovery-track-card button').evaluateAll((buttons,bottom)=>buttons.filter(button=>{const r=button.getBoundingClientRect();return r.width>0&&r.left>=0&&r.left<innerWidth&&r.bottom>bottom+1;}).length,bottom);
-              assert.equal(overlaps,0,"Discovery actions must remain above the persistent player");
+              const actionBottom = await page.locator('.discovery-chapter:not([hidden])').evaluate(chapter => {
+                const strip = chapter.querySelector('.horizontal-scroll-row').getBoundingClientRect();
+                const button = [...chapter.querySelectorAll('.discovery-preview-target button')].find(el => {
+                  const r = el.getBoundingClientRect();
+                  return r.width > 0 && r.x >= strip.x && r.right <= strip.right;
+                });
+                button.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+                return button.getBoundingClientRect().bottom;
+              });
+              assert.ok(actionBottom<=bottom+1,"Discovery actions must be reachable above the persistent player");
             }
             if (destination === "Now Playing") {
               const caption = await page.locator(".stage-caption, .press-poster-annotation").boundingBox();

@@ -17,6 +17,7 @@ try {
         [1888, 1004],
         [1440, 900],
         [1024, 600],
+        [800, 600],
       ].map(([width, height]) => [style, width, height]),
   )) {
     const context = await browser.newContext({
@@ -64,11 +65,8 @@ try {
     const shelf = () =>
       page.locator(".discovery-chapter .horizontal-scroll-row");
     const select = async (index) => {
-      await page.locator(".discovery-chapters").focus();
-      const current = Number(await chapter());
-      for (let i = current; i < index; i++)
-        await page.keyboard.press("PageDown");
-      for (let i = current; i > index; i--) await page.keyboard.press("PageUp");
+      if (style === 'spatial') await page.locator('.chapter-nav button').nth(index).click();
+      else await page.getByRole('combobox', {name:'Discovery selection'}).selectOption(String(index));
       assert.equal(await chapter(), String(index));
     };
     const back = (keyboard) =>
@@ -85,13 +83,20 @@ try {
       style === "brutalist" ? ".press-bin-heading" : ".spatial-discovery-copy",
     );
     await wheelTarget.hover();
+    const scrolls = await page.locator('.discovery-chapters').evaluate(root =>
+      [root,root.querySelector('.chapter-stage')].some(el => el.scrollHeight>el.clientHeight+1 && /^(auto|scroll)$/.test(getComputedStyle(el).overflowY)));
     await page.mouse.wheel(0, 120);
+    if(scrolls) {
+      await page.waitForTimeout(220);
+      assert.equal(await chapter(),'0','overflow scrolling preserves chapter');
+      await select(1);
+    }
     await page.locator('[data-chapter-index="1"]').waitFor();
     await nav("Home");
     await back(false);
     await page.locator('[data-chapter-index="1"]').waitFor();
     console.log(
-      `PASS ${style} ${width}×${height}: wheel-selected For You restored`,
+      `PASS ${style} ${width}×${height}: selected For You restored with viewport-aware wheel behavior`,
     );
     const commands = await page.evaluate(
       () => window.__kazeFixture.commands.length,

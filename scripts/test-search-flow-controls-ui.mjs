@@ -67,6 +67,11 @@ try {
     size=await measure();assert.ok(size.height>300 && size.gap<35,JSON.stringify(size));
     await list.evaluate(el=>{el.scrollTop=el.scrollHeight;});
     await list.locator('.online-search-song[data-track-id="jiosaavn:match124"]').waitFor();
+    await page.setViewportSize({width:800,height:600});
+    await page.waitForTimeout(120);
+    size=await measure();assert.ok(size.height>100 && size.gap<35,JSON.stringify(size));
+    await list.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+    await list.locator('.online-search-song[data-track-id="jiosaavn:match124"]').waitFor();
     assert.deepEqual(errors,[]);
     console.log(`PASS ${style}: Start/Pause only, full default search, final result reachable, bounded rows, viewport resize and outside-song Flow exit`);
     await context.close();

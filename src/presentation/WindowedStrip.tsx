@@ -22,7 +22,9 @@ export function WindowedStrip<T>({
   scrollRef?: RefObject<HTMLDivElement | null>;
   onScroll?: () => void;
   label: string;
-  initialScrollLeft?: number;
+  // A getter reads live presentation memory when a chapter remounts even if
+  // its parent has not rendered since the last native scroll event.
+  initialScrollLeft?: number | (() => number);
   initialScrollTop?: number;
 }) {
   const local = useRef<HTMLDivElement>(null);
@@ -35,7 +37,7 @@ export function WindowedStrip<T>({
     measured: false,
   });
   const initialPosition = useRef({
-    left: initialScrollLeft,
+    left: typeof initialScrollLeft === "function" ? initialScrollLeft() : initialScrollLeft,
     top: initialScrollTop,
   });
   const restored = useRef(false);

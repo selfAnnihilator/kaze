@@ -156,6 +156,7 @@ try {
     [1440, 900],
     [1024, 600],
     [800, 700],
+    [800, 600],
     [940, 1000],
     [800, 1000],
   ]) {
@@ -195,6 +196,10 @@ try {
           copy: rect(document.querySelector(".spatial-discovery-copy")),
           detail: rect(document.querySelector(".spatial-discovery-detail")),
           strip: strip ? rect(strip) : null,
+          shelfScrolls: (() => {
+            const shelf = document.querySelector(".chapter-stage");
+            return getComputedStyle(shelf).overflowY === "auto" && shelf.scrollHeight > shelf.clientHeight + 1;
+          })(),
           buttons: [...active.querySelectorAll("button")]
             .filter((el) => el.getBoundingClientRect().width > 0)
             .map(rect),
@@ -227,9 +232,16 @@ try {
         )) {
           assert.ok(
             button.bottom <=
-              Math.min(geometry.strip.bottom, geometry.stage.bottom, geometry.footer.y) + 1,
+              (geometry.shelfScrolls ? geometry.strip.bottom : Math.min(geometry.strip.bottom, geometry.stage.bottom, geometry.footer.y)) + 1,
             `${width} chapter ${i} action clipped: ${JSON.stringify(geometry)}`,
           );
+        }
+        if (geometry.shelfScrolls) {
+          const action = page.locator('.discovery-chapter button').last();
+          await action.scrollIntoViewIfNeeded();
+          const box = await action.boundingBox();
+          assert.ok(box.y + box.height <= geometry.footer.y + 1,
+            "Overflowed shelf actions must be reachable above the player");
         }
       }
       assert.equal(await page.locator(".discovery-hero").isVisible(), false);

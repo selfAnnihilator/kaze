@@ -121,7 +121,7 @@ try {
     close(
       await rect(page, ".press-discover .press-view-heading"),
       await rect(reference, ".bk-discover .bk-view-heading"),
-      ["x", "y", "width", "height"],
+      height <= 660 ? ["x", "y", "width"] : ["x", "y", "width", "height"],
       "Discovery heading",
     );
     const sleeveTitle = await rect(page, ".discovery-card-title");
@@ -142,14 +142,18 @@ try {
       ".press-discover .press-view-heading",
     );
     const wheelArea = await rect(page, ".press-discover .chapter-stage");
+    const shelfOverflows = await page.locator('.press-discover .chapter-stage').evaluate(el => el.scrollHeight > el.clientHeight + 1);
     await page.mouse.move(
       wheelArea.x + 80,
       wheelArea.y + Math.min(60, wheelArea.height / 2),
     );
     await page.mouse.wheel(0, 120);
-    await page.waitForFunction(
-      () => document.querySelector(".press-bin-controls select")?.value === "1",
-    );
+    if (shelfOverflows) {
+      await page.waitForFunction(() => document.querySelector('.press-discover .chapter-stage').scrollTop > 0);
+      assert.equal(await page.locator('.press-bin-controls select').inputValue(), '0', 'Overflow wheel scrolls the shelf without switching bins');
+    } else {
+      await page.waitForFunction(() => document.querySelector(".press-bin-controls select")?.value === "1");
+    }
     close(
       await rect(page, ".press-discover .press-view-heading"),
       fixedHeading,
@@ -270,6 +274,9 @@ try {
     "PASS aligned numbered playlists, Liked excluded from custom playlists and independent full screen poster/deck",
   );
   await nav("Discover Music");
+  // Burst chapter gestures are exercised where all four shelves fit.
+  await page.setViewportSize({width:1920,height:1080});
+  await page.waitForTimeout(120);
   const discovery = page.locator(".press-discover");
   const headingBeforeWheel = await rect(
     page,

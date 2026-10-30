@@ -68,10 +68,12 @@ const snap = async (name) => {
 };
 const reset = () => page.evaluate(() => window.__kazePerf.reset());
 const nav = async (name) => {
-  await page
-    .locator(".sidebar")
-    .getByRole("button", { name, exact: true })
-    .click();
+  const direct = page.locator(".sidebar,.press-header,.press-account-navigation").getByRole("button", { name, exact: true });
+  if (await direct.count()) await direct.click();
+  else {
+    await page.getByRole('button', {name:'Library and more',exact:true}).click();
+    await page.getByRole('menuitem', {name,exact:true}).click();
+  }
   await wait(100);
 };
 const tick = async (event, payload, count = 100) => {
@@ -123,7 +125,7 @@ try {
   await wait(1500);
   await snap("scroll_80_steps");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.locator(".interface-options").waitFor();
+  await page.locator(".settings-style-options").waitFor();
   await wait(300);
   await snap("before_cycles");
   for (let i = 0; i < 20; i++) {
@@ -141,6 +143,7 @@ try {
   const box = await page
     .locator(".discovery-chapter:not([hidden]) .horizontal-scroll-row")
     .boundingBox();
+  const dragStart = await strip.evaluate(el => el.scrollLeft);
   await page.mouse.move(box.x + box.width / 2, box.y + 40);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 - 100, box.y + 40);
@@ -154,7 +157,10 @@ try {
       ),
     ).scrollBehavior,
   }));
+  report.drag.start = dragStart;
   await page.mouse.up();
+  await wait(250);
+  report.releasedShelf = await strip.evaluate(el => el.scrollLeft);
   await page.locator(".chapter-nav button").nth(1).click();
   await page.locator(".chapter-nav button").nth(0).click();
   await wait(250);
@@ -172,9 +178,11 @@ try {
   await reset();
   await tick("PlaybackPositionChanged", { duration_secs: 240 });
   await snap("brutalist_playback_100_ticks");
+  await nav("Settings");
+  await page.getByRole("button", { name: /^Spatial/ }).click();
   await nav("Downloads");
   await page
-    .getByText("Direct Downloads Active (1)", { exact: true })
+    .getByRole("heading", {name:"Saved downloads",exact:true})
     .waitFor();
   await reset();
   await tick("DownloadProgress", { task_id: "d1" });
@@ -261,11 +269,11 @@ try {
       "drag must bypass CSS smoothing",
     );
     assert.ok(
-      Math.abs(report.drag.left - 100) < 2,
+      Math.abs(report.drag.left - report.drag.start - 100) < 2,
       "drag must follow pointer immediately",
     );
     assert.ok(
-      Math.abs(report.restoredShelf - report.drag.left) < 2,
+      Math.abs(report.restoredShelf - report.releasedShelf) < 2,
       "unmounted chapter restores shelf position",
     );
   }

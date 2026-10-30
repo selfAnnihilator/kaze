@@ -175,6 +175,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
   return (
     <div
+      className="stats-view"
       style={{
         padding: "32px 40px 100px",
         maxWidth: "1200px",
@@ -638,7 +639,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
               gap: "20px",
               marginBottom: "20px",
             }}
@@ -1126,7 +1127,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
               gap: "28px",
               marginBottom: "36px",
             }}
@@ -1467,7 +1468,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                   gap: "14px",
                 }}
               >
@@ -1651,7 +1652,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
               gap: "28px",
             }}
           >

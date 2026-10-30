@@ -1,0 +1,134 @@
+/* Available-space rules shared by the production themes. The studies stay intact. */
+.kaze-interface .app-body,
+.kaze-interface .main-content,
+.kaze-interface .interface-toolbar,
+.kaze-interface .main-content > * {
+  min-width: 0;
+}
+.kaze-interface .main-content {
+  container-type: inline-size;
+}
+.kaze-interface .modal-content,
+.kaze-interface dialog:not(.fullscreen-player) {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.kaze-interface .settings-metadata-actions,
+.kaze-interface .discovery-refresh-control {
+  flex-wrap: wrap;
+}
+.kaze-interface .settings-view input,
+.kaze-interface .settings-view select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Headers remain fixed; only the active music shelf scrolls if it cannot fit. */
+:root[data-interface="spatial"] .spatial-discovery-fixed {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+:root[data-interface="spatial"] .spatial-discovery-panel .chapter-stage {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+:root[data-interface="spatial"] .spatial-chapter-content > :is(div, section) {
+  min-height: 240px;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .horizontal-scroll-row {
+  min-height: 200px;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .discovery-preview-target > div > div:not(:first-child) {
+  flex-shrink: 0;
+}
+:root[data-interface="spatial"] .spatial-chapter-content .discovery-preview-target > div > div:first-child {
+  min-height: 96px;
+}
+.kaze-interface[data-interface="brutalist"] .press-discover {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.kaze-interface[data-interface="brutalist"] .press-discover .windowed-strip-inner {
+  min-height: 0;
+}
+.kaze-interface[data-interface="brutalist"] .press-bin-heading > div {
+  min-width: 0;
+}
+.kaze-interface[data-interface="brutalist"] .press-bin-controls {
+  flex-shrink: 0;
+}
+
+/* Respond to the pane, including space taken by the rail or right-hand deck. */
+@container (max-width: 620px) {
+  .kaze-interface .interface-toolbar {
+    gap: 8px;
+  }
+  .kaze-interface .interface-route {
+    width: auto;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .kaze-interface .press-bin-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .kaze-interface .press-bin-controls {
+    margin-left: auto;
+  }
+  .kaze-interface .content-card {
+    padding: 16px;
+  }
+  .kaze-interface .stats-view {
+    padding: 20px !important;
+  }
+}
+
+@media (max-height: 660px) {
+  :root[data-interface="spatial"] .spatial-discovery-fixed {
+    padding-block: 16px;
+  }
+  :root[data-interface="spatial"] .spatial-discovery-panel {
+    grid-template-rows: auto auto auto minmax(80px, 1fr);
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover {
+    grid-template-rows: auto auto minmax(80px, 1fr) auto;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover .press-view-heading {
+    padding-block: 12px;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover .press-view-heading h1 {
+    font-size: 36px;
+    margin-top: 8px;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover .press-big-index {
+    font-size: 64px;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-bin-heading {
+    padding-block: 10px;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover .windowed-strip {
+    --strip-item-width: 160px;
+    --strip-item-gap: 20px;
+    height: clamp(300px, 55dvh, 390px);
+    min-height: 300px;
+  }
+  .kaze-interface[data-interface="brutalist"] .press-discover .discovery-preview-target > div {
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 660px) {
+  :root[data-interface="spatial"] .kaze-interface > .player-bar {
+    margin-block: 6px 10px;
+    padding-block: 8px;
+    height: 106px;
+    min-height: 106px;
+  }
+}
