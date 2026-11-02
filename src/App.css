@@ -78,3 +78,20 @@
 /* A clicked control stays focused without gaining a ring on the next keypress.
    Tab removes this marker and retains the normal accessible focus styles. */
 .kaze-interface [data-pointer-focus]:focus-visible { outline: none !important; }
+
+.connection-error {
+  position: fixed;
+  z-index: 10000;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 12px 16px;
+  background: var(--bg-main, #181512);
+  color: var(--text-primary, #f1e8db);
+  border: 1px solid currentColor;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.connection-error button { color: inherit; cursor: pointer; }

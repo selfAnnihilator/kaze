@@ -6,13 +6,14 @@ Reference: cyberboysumanjay/GaanaAPI, revision
 The legacy JSON-block pattern and required field contract are adapted under MIT;
 see docs/third-party/GaanaAPI-LICENSE. No proxy fallback or account access is used.
 """
+from qa_support import open_gaana_url, validate_gaana_url
+
 import argparse
 import json
 import re
 import sys
 import unittest
 import urllib.error
-import urllib.parse
 import urllib.request
 
 REFERENCE = "0488e812a9ac7d740d785c6e09f1e83e527eebcc"
@@ -49,13 +50,11 @@ def inspect_page(page):
 
 
 def probe(url, timeout):
-    parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname not in {"gaana.com", "www.gaana.com"} or parsed.username or parsed.password or not parsed.path.startswith("/song/"):
-        raise ValueError("Use an HTTPS gaana.com/song/... URL")
+    validate_gaana_url(url)
     result = {"url": url, "reference_revision": REFERENCE, "full_playback_verified": False}
     try:
         request = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with open_gaana_url(request, timeout=timeout) as response:
             body = response.read(MAX_PAGE_BYTES + 1)
             result["http_status"] = response.status
             if len(body) > MAX_PAGE_BYTES:

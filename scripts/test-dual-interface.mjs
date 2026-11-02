@@ -531,7 +531,7 @@ try {
   await check("Both presentations retain empty library/discovery/queue and failed search recovery", async () => {
     for (const name of ["Spatial","Brutalist"]) {
       await nav("Settings"); await select(name);
-      await page.evaluate(() => {window.__kazeFixture.empty=true;window.__kazeFixture.playback.queue_track_ids=[];});
+      await page.evaluate(() => {window.__kazeFixture.empty=true;window.__kazeFixture.playback.queue_track_ids=[];window.__kazeFixture.emit({event:"LibraryMetadataUpdated",payload:{}});});
       await nav("Downloaded Tracks");await page.getByText("No tracks found in library",{exact:true}).waitFor();
       await nav("Queue");
       const clear=page.getByRole("button",{name:"Clear queue",exact:true});

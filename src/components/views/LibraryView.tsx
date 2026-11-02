@@ -1,3 +1,4 @@
+import { PagingFeedback } from "../../presentation/PagingFeedback";
 import React, { useState, useRef, useEffect } from "react";
 import { List, RowComponentProps } from "react-window";
 import { Pause, Play, Search, RotateCw, Heart, Check, Bookmark, BookmarkCheck, ListPlus,
@@ -6,6 +7,11 @@ import { Track } from "../../types";
 
 interface LibraryViewProps {
   tracks: Track[];
+  total?: number;
+  onEndReached?: () => void;
+  loading?: boolean;
+  pagingError?: string | null;
+  onRetry?: () => void;
   currentTrackId?: string;
   isPlaying?: boolean;
   queuedTrackIds?: Set<string>;
@@ -240,7 +246,7 @@ function useContainerDimensions(ref: React.RefObject<HTMLDivElement | null>) {
 
 export const LibraryView: React.FC<LibraryViewProps> = React.memo(
   ({
-    tracks,
+    tracks, total = tracks.length, onEndReached, loading, pagingError, onRetry,
     currentTrackId,
     isPlaying,
     queuedTrackIds,
@@ -286,7 +292,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
 
     return (
       <div
-        className="library-view"
+        className="library-view" aria-busy={loading}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -304,7 +310,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                 marginTop: "4px",
               }}
             >
-              {tracks.length} local audio track{tracks.length === 1 ? "" : "s"}{" "}
+              {total} local audio track{total === 1 ? "" : "s"}{" "}
               indexed
             </p>
           </div>
@@ -349,7 +355,9 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
           </div>
         </div>
 
-        {tracks.length === 0 ? (
+        <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
+        {total > tracks.length && <p>{tracks.length} loaded of {total}</p>}
+        {tracks.length === 0 && !loading && !pagingError ? (
           <div
             style={{
               textAlign: "center",
@@ -409,6 +417,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
             <div style={{ flex: 1, minHeight: 0 }}>
               <List<LibraryRowProps>
                 rowCount={tracks.length}
+                onRowsRendered={({ stopIndex }) => { if (stopIndex >= tracks.length - 20) onEndReached?.(); }}
                 rowHeight={ROW_HEIGHT}
                 rowComponent={LibraryRow}
                 rowProps={{

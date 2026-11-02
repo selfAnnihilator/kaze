@@ -1074,10 +1074,11 @@ impl CoreProcessor {
                     .unwrap_or_else(|| "default".to_string());
                 drop(current_user_guard);
 
-                if let Some(_) = self
+                if self
                     .playlist_repo
                     .find_by_name_and_user(&trimmed_name, &user_id)
                     .await?
+                    .is_some()
                 {
                     return Err(AppError::Validation(format!(
                         "A playlist named '{}' already exists",
@@ -2146,7 +2147,7 @@ impl CoreProcessor {
         let track = self
             .library_service
             .track_repo()
-            .find_by_id(&track_id)
+            .find_by_id(track_id)
             .await?;
         if let Some(t) = track {
             let path = std::path::Path::new(&t.file_path);
@@ -2215,7 +2216,7 @@ impl CoreProcessor {
         }
         if cover_result.is_none() {
             let path: Option<String> = sqlx::query_scalar("SELECT cover_art_path FROM track_enrichment WHERE track_id = ? AND state = 'matched'")
-                .bind(&track_id).fetch_optional(&self.db_pool).await?.flatten();
+                .bind(track_id).fetch_optional(&self.db_pool).await?.flatten();
             if let Some(path) = path {
                 if let Ok(bytes) = tokio::fs::read(path).await {
                     let mime = image::guess_format(&bytes)
@@ -2371,6 +2372,15 @@ impl CoreProcessor {
                         .cloned()
                         .unwrap_or_default(),
                 ))
+            }
+            Query::GetLibraryTracksPage { offset, limit } => {
+                let user = self.current_user_id().await;
+                let (items, total) = self.library_service.track_repo().library_page(&user, offset, limit.clamp(1, 200)).await?;
+                Ok(QueryResponse::LibraryTracksPage(serde_json::json!({"items":items,"total":total})))
+            }
+            Query::GetLibraryAlbumsPage { offset, limit } => {
+                let (items, total) = self.library_service.album_repo().library_page(offset, limit.clamp(1, 100)).await?;
+                Ok(QueryResponse::LibraryAlbumsPage(serde_json::json!({"items":items,"total":total})))
             }
             Query::GetTracks {
                 offset,

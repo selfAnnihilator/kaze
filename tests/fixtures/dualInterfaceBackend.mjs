@@ -191,6 +191,7 @@ export function installDualInterfaceFixture() {
     });
   const f = (window.__kazeFixture = {
     tracks,
+    albumCount: 130,
     recs,
     playlists,
     settings,
@@ -226,8 +227,16 @@ export function installDualInterfaceFixture() {
           };
         case "GetPlaybackState":
           return { type: "PlaybackState", data: { ...playback } };
+        case "GetLibraryTracksPage": {
+          const rows = f.empty ? [] : tracks;
+          return {type:"LibraryTracksPage",data:{items:structuredClone(rows.slice(p.offset, p.offset+p.limit)),total:rows.length}};
+        }
+        case "GetLibraryAlbumsPage": {
+          const result = await f.query({query:"GetAlbums",payload:{offset:0,limit:100000}});
+          return {type:"LibraryAlbumsPage",data:{items:result.data.slice(p.offset,p.offset+p.limit),total:result.data.length}};
+        }
         case "GetTracks":
-          return { type: "Tracks", data: f.empty ? [] : tracks };
+          return { type: "Tracks", data: f.empty ? [] : tracks.slice(p.offset||0,(p.offset||0)+(p.limit||1000)) };
         case "SearchLibrary":
           return {
             type: "Tracks",
@@ -247,14 +256,14 @@ export function installDualInterfaceFixture() {
             type: "Albums",
             data: f.empty
               ? []
-              : Array.from({ length: 130 }, (_, i) => ({
+              : Array.from({ length: f.albumCount }, (_, i) => ({
                   id: `a${i}`,
                   title: covers[i % 10],
                   artist_name: artists[i % 10],
                   first_track_id: `t${i % 10}`,
                   track_count: 10,
                   cover_art_path: tracks[i % 10].cover_art_url,
-                })),
+                })).slice(p.offset || 0, (p.offset || 0) + (p.limit || 200)),
           };
         case "GetAlbumDetails": {
           const i = Number(p.album_id.replace("a", "")) || 0;

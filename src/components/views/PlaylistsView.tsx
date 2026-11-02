@@ -33,7 +33,8 @@ interface PlaylistsViewProps {
   activePlaylistId?: string | null;
   onSelectPlaylist: (playlistId: string) => void;
   onPlayPlaylist: (playlistId: string) => void;
-  onCreatePlaylist: (name: string, description?: string) => void;
+  onCreatePlaylist: (name: string, description?: string) => Promise<string | null>;
+  onRefreshPlaylists?: () => Promise<void>;
   onInspectJioSaavnPlaylist: (urlOrId: string,
   ) => Promise<JioSaavnPlaylistImport | null>;
   onSaveImportedPlaylist: (
@@ -69,6 +70,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   activePlaylistId: _activePlaylistId,
   onPlayPlaylist,
   onCreatePlaylist,
+  onRefreshPlaylists,
   onInspectJioSaavnPlaylist,
   onSaveImportedPlaylist,
   onAddMissingToWishlist: _onAddMissingToWishlist,
@@ -88,6 +90,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
+  const [refreshingPlaylists, setRefreshingPlaylists] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const creatingRef = React.useRef(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Detail Modal states
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null,
@@ -162,17 +169,22 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
     }
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (creatingRef.current) return;
     const trimmed = playlistName.trim();
     if (!trimmed) return;
     if (customPlaylists.some((p) => p.name === trimmed)) {
       alert(`A playlist named "${trimmed}" already exists.`);
       return;
     }
-    onCreatePlaylist(trimmed);
-    setPlaylistName("");
-    setShowCreateModal(false);
+    creatingRef.current = true; setCreating(true); setCreateError(null);
+    try {
+      const id = await onCreatePlaylist(trimmed);
+      if (id) { setPlaylistName(""); setShowCreateModal(false); }
+    } catch (failure) {
+      setCreateError(failure instanceof Error ? failure.message : String(failure));
+    } finally { creatingRef.current = false; setCreating(false); }
   };
 
   const handleOpenPlaylistDetails = async (pl: Playlist) => {
@@ -388,7 +400,13 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         )}
 
         {viewMode !== "smart_mixes" && (
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+            {onRefreshPlaylists && <button className="btn btn-secondary" disabled={refreshingPlaylists} onClick={async () => {
+              setRefreshingPlaylists(true); setRefreshError(null);
+              try { await onRefreshPlaylists(); }
+              catch (failure) { setRefreshError(failure instanceof Error ? failure.message : String(failure)); }
+              finally { setRefreshingPlaylists(false); }
+            }}>{refreshingPlaylists ? "Refreshing playlists…" : "Refresh playlists"}</button>}
             <button
               className="btn btn-secondary"
               onClick={() => setShowJioSaavnModal(true)}
@@ -409,6 +427,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         )}
       </div>
 
+      {refreshError && <p role="alert">{refreshError}</p>}
       {/* SMART MIXES VIEW */}
       {(viewMode === "smart_mixes" || viewMode === "all") && (
         <div style={{ marginBottom: viewMode === "all" ? "40px" : "0" }}>
@@ -1042,6 +1061,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 Create New Playlist
               </h3>
               <button
+                disabled={creating}
                 onClick={() => setShowCreateModal(false)}
                 style={{
                   background: "none",
@@ -1054,9 +1074,11 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleCreate} aria-busy={creating}>
+              {createError && <p role="alert">Couldn’t create playlist. {createError}</p>}
               <input
                 type="text"
+                disabled={creating}
                 placeholder="Playlist name"
                 value={playlistName}
                 onChange={(e) => setPlaylistName(e.target.value)}
@@ -1074,14 +1096,15 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowCreateModal(false)}
+                  disabled={creating}
+                onClick={() => setShowCreateModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={!playlistName.trim()}
+                  disabled={creating || !playlistName.trim()}
                 >
                   Create Playlist
                 </button>

@@ -1,0 +1,12 @@
+# Only B101 is skipped, and only in deliberate regression/measurement harnesses.
+# All other Bandit checks remain active in these files and in product code.
+assert_used:
+  skips:
+    - "scripts/test-*.py"
+    - "*/scripts/test-*.py"
+    - "scripts/profile-frontend-native.py"
+    - "*/scripts/profile-frontend-native.py"
+    - "docs/audits/2026-10-31-evidence/native-pagination.py"
+    - "*/docs/audits/2026-10-31-evidence/native-pagination.py"
+    - "docs/audits/2026-10-31-evidence/restore-corrected.py"
+    - "*/docs/audits/2026-10-31-evidence/restore-corrected.py"

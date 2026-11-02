@@ -213,7 +213,7 @@ impl TasteProfileEngine {
         feedback_rows.sort_by_key(|row| row.manual_like);
         for fb in feedback_rows {
             let key = super::signals::song_key(
-                &signals
+                signals
                     .identities
                     .get(&fb.track_id)
                     .map(|song| song.title.as_str())

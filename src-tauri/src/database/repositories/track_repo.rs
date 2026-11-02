@@ -65,6 +65,7 @@ pub trait TrackRepository: Send + Sync {
     async fn save_scanned_track(&self, meta: ScannedMetadata) -> AppResult<String>;
     async fn delete_by_path(&self, file_path: &str) -> AppResult<()>;
     async fn list_tracks(&self, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
+    async fn library_page(&self, user_id: &str, offset: u32, limit: u32) -> AppResult<(Vec<TrackDetail>, i64)>;
     async fn list_tracks_scoped(&self, user_id: Option<&str>, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
     async fn search_tracks(&self, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
     async fn search_tracks_scoped(&self, user_id: Option<&str>, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
@@ -445,6 +446,37 @@ impl TrackRepository for SqliteTrackRepository {
         self.list_tracks_scoped(None, offset, limit, sort_by, ascending).await
     }
 
+    async fn library_page(&self, user_id: &str, offset: u32, limit: u32) -> AppResult<(Vec<TrackDetail>, i64)> {
+        let mut tx = self.pool.begin().await?;
+        let sql =
+            "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
+                    a.name as artist_name, al.title as album_title, g.name as genre_name,
+                    t.track_number, t.disc_number, t.year, t.duration_secs, t.bitrate,
+                    t.sample_rate, t.format, t.has_cover_art, t.musicbrainz_track_id, t.spotify_id,
+                    COALESCE(ts.manual_like, 0) as manual_like, t.created_at,
+                    ext.cover_art_url, ext.preview_url
+             FROM tracks t
+             LEFT JOIN artists a ON t.artist_id = a.id
+             LEFT JOIN albums al ON t.album_id = al.id
+             LEFT JOIN genres g ON t.genre_id = g.id
+             LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
+             LEFT JOIN external_tracks ext ON t.id = ext.id
+             WHERE t.file_path NOT LIKE 'online://%'
+             ORDER BY t.title ASC, t.id ASC LIMIT ? OFFSET ?";
+
+        let records = sqlx::query_as::<_, TrackDetail>(sql)
+            .bind(user_id)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM tracks WHERE file_path NOT LIKE 'online://%'").fetch_one(&mut *tx).await?;
+        tx.commit().await?;
+        Ok((records, total))
+    }
+
     async fn list_tracks_scoped(&self, user_id: Option<&str>, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>> {
         let user_id = user_id.unwrap_or("default");
         let order = if ascending { "ASC" } else { "DESC" };
@@ -469,8 +501,8 @@ impl TrackRepository for SqliteTrackRepository {
              LEFT JOIN genres g ON t.genre_id = g.id
              LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
              LEFT JOIN external_tracks ext ON t.id = ext.id
-             ORDER BY {} {} LIMIT ? OFFSET ?",
-            col, order
+             ORDER BY {} {}, t.id {} LIMIT ? OFFSET ?",
+            col, order, order
         );
 
         let records = sqlx::query_as::<_, TrackDetail>(&sql)

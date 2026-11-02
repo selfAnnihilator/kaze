@@ -21,8 +21,8 @@ try {
   assert.equal(await home.count(),1,'cover plays directly without opening another view');
   assert.equal(await page.evaluate(()=>window.__kazeFixture.queries.filter(q=>q.query==='GetAlbumDetails').length),0);
   await page.waitForFunction(()=>document.querySelector('[aria-label^="Pause No Lie"]'));
-  await cover.click();await page.waitForFunction(()=>window.__kazeFixture.commands.at(-1)?.command==='Pause');
-  await cover.click();await page.waitForFunction(()=>window.__kazeFixture.commands.at(-1)?.command==='Resume');
+  await cover.click();await page.waitForFunction(()=>window.__kazeFixture.commands.at(-1)?.command==='TogglePlayPause');
+  await cover.click();await page.waitForFunction(()=>window.__kazeFixture.commands.at(-1)?.command==='TogglePlayPause');
   const commandCount=await page.evaluate(()=>window.__kazeFixture.commands.length);
   await moment.getByRole('button',{name:'Open record',exact:true}).click();
   await page.locator('.library-view .track-row').first().waitFor();

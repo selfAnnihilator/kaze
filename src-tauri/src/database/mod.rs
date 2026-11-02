@@ -63,6 +63,9 @@ pub async fn create_in_memory_pool() -> AppResult<SqlitePool> {
 
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
+        // A cancelled health check must not drop the only connection and erase
+        // this ephemeral database (SQLx Pool::acquire cancellation contract).
+        .test_before_acquire(false)
         .connect_with(options)
         .await
         .map_err(|e| AppError::Database(format!("Failed to create in-memory database: {}", e)))?;
@@ -101,4 +104,25 @@ mod tests {
             .expect("query execution");
         assert_eq!(row.0, 0);
     }
+    #[tokio::test]
+    async fn cancelled_acquisition_preserves_ephemeral_schema() {
+        use std::future::Future;
+        use std::task::{Context, Waker};
+
+        let pool = create_in_memory_pool().await.unwrap();
+        for _ in 0..32 {
+            // Cancellation may land during SQLx's idle-connection health check.
+            // Losing this pool's sole connection must not erase its schema.
+            tokio::task::yield_now().await;
+            let mut acquisition = Box::pin(pool.acquire());
+            let _ = acquisition.as_mut().poll(&mut Context::from_waker(Waker::noop()));
+            drop(acquisition);
+            let tables: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM sqlite_master WHERE name='tracks_fts'",
+            ).fetch_one(&pool).await.unwrap();
+            assert_eq!(tables, 1, "cancelled acquisition discarded the in-memory schema");
+        }
+        pool.close().await;
+    }
+
 }

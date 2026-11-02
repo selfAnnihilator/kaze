@@ -21,7 +21,7 @@ try {
     await home.getByRole('button',{name:'Pause Flow',exact:true}).waitFor();
     assert.equal(await page.getByRole('button',{name:'Stop Flow',exact:true}).count(),0);
     const flowCommands=await page.evaluate(()=>window.__kazeFixture.commands.map(c=>c.command));
-    assert.ok(flowCommands.includes('Pause') && flowCommands.includes('ContinueFlow'),'Start resumes paused Flow');
+    assert.ok(flowCommands.includes('TogglePlayPause') && flowCommands.includes('ContinueFlow'),'Start resumes paused Flow');
     assert.ok(!flowCommands.includes('StopFlow'),'pausing does not disable Flow');
     if(style==='brutalist'){
       const deck=page.locator('.press-deck-controls');

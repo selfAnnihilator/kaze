@@ -404,3 +404,43 @@ async fn direct_download_uses_saved_recording_without_search_and_reuses_transfer
     service.cancel_download(&other.id).await?;
     Ok(())
 }
+
+fn recovery_service(pool: sqlx::SqlitePool, directory: std::path::PathBuf) -> DownloadService {
+    let bus = Arc::new(music_player_backend::core::EventBus::default());
+    DownloadService::new(
+        Arc::new(SqliteDownloadRepository::new(pool.clone())),
+        Arc::new(MockDownloadProvider::new()), bus.clone(),
+        Arc::new(LibraryService::new(pool.clone(), bus)),
+        Arc::new(WishlistManager::new(Arc::new(SqliteWishlistRepository::new(pool)))), directory, false,
+    )
+}
+
+#[tokio::test]
+async fn interrupted_transfer_becomes_retryable_after_provider_restart() {
+    let pool = setup_test_db().await;
+    let directory = tempdir().unwrap();
+    let first = recovery_service(pool.clone(), directory.path().into());
+    let results = first.search("Audit restart").await.unwrap();
+    let task = first.start_download(&results[0].id, None).await.unwrap();
+    let restarted = recovery_service(pool, directory.path().into());
+    let rows = restarted.list_downloads(None, 100).await.unwrap();
+    let restored = rows.iter().find(|row| row.id == task.id).unwrap();
+    assert_eq!(restored.status, "FAILED", "a vanished in-memory transfer must not remain in progress");
+    assert!(restored.error_message.as_deref().unwrap().contains("interrupted"));
+    let results = restarted.search("Audit restart").await.unwrap();
+    let retried = restarted.start_download(&results[0].id, None).await.unwrap();
+    assert_ne!(retried.id, task.id);
+    restarted.cancel_download(&retried.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn download_directory_write_failure_creates_no_phantom_transfer() {
+    let pool = setup_test_db().await;
+    let directory = tempdir().unwrap();
+    let blocker = directory.path().join("file");
+    std::fs::write(&blocker, b"not a directory").unwrap();
+    let service = recovery_service(pool, blocker.join("downloads"));
+    let results = service.search("Audit unwritable").await.unwrap();
+    assert!(service.start_download(&results[0].id, None).await.is_err());
+    assert!(service.list_downloads(None, 100).await.unwrap().is_empty());
+}

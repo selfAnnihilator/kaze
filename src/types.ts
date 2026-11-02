@@ -352,6 +352,7 @@ export type Query =
       };
     }
   | { query: "GetArtists"; payload: { offset: number; limit: number } }
+  | { query: "GetLibraryTracksPage" | "GetLibraryAlbumsPage"; payload: { offset: number; limit: number } }
   | { query: "GetAlbums"; payload: { offset: number; limit: number } }
   | { query: "GetAlbumDetails"; payload: { album_id: string } }
   | { query: "GetPlaylists" }

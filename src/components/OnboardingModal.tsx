@@ -3,22 +3,29 @@ import { Folder, Check } from "lucide-react";
 
 interface OnboardingModalProps {
   defaultMusicDir: string;
-  onComplete: (folders: string[], startScan: boolean) => void;
+  onComplete: (folders: string[], startScan: boolean) => Promise<void>;
 }
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   defaultMusicDir,
   onComplete,
 }) => {
+  const [pending, setPending] = useState(false);
+  const busy = React.useRef(false);
+  const [error, setError] = useState<string | null>(null);
   const [useDefault, setUseDefault] = useState(true);
   const [customPath, setCustomPath] = useState("");
   const [startScan, setStartScan] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy.current) return;
     const folder = useDefault ? defaultMusicDir : customPath.trim();
     if (folder) {
-      onComplete([folder], startScan);
+      busy.current = true; setPending(true); setError(null);
+      try { await onComplete([folder], startScan); }
+      catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+      finally { busy.current = false; setPending(false); }
     }
   };
 
@@ -36,7 +43,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           approved roots.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        {error && <p role="alert">Couldn’t save your music folder. {error}</p>}
+        <form aria-busy={pending} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Default Folder Option */}
           <div
             onClick={() => {
@@ -120,7 +128,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             type="submit"
             className="btn btn-primary"
             style={{ padding: "12px", justifyContent: "center", marginTop: "8px" }}
-            disabled={!useDefault && !customPath.trim()}
+            disabled={pending || (!useDefault && !customPath.trim())}
           >
             Confirm & Start Kaze
           </button>

@@ -35,6 +35,8 @@ pub enum Query {
         sort_by: Option<String>,
         ascending: bool,
     },
+    GetLibraryTracksPage { offset: u32, limit: u32 },
+    GetLibraryAlbumsPage { offset: u32, limit: u32 },
     GetTrackById {
         track_id: String,
     },
@@ -162,6 +164,8 @@ pub enum QueryResponse {
         configured_folders: Vec<serde_json::Value>,
     },
     Tracks(Vec<serde_json::Value>),
+    LibraryTracksPage(serde_json::Value),
+    LibraryAlbumsPage(serde_json::Value),
     Charts(Vec<serde_json::Value>),
     Track(Option<serde_json::Value>),
     Artists(Vec<serde_json::Value>),

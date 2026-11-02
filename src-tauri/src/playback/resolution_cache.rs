@@ -30,9 +30,9 @@ impl ResolvedEntry {
     /// * `url`              – Direct streamable URL.
     /// * `duration`         – Provider-reported duration in seconds.
     /// * `provider_expiry`  – Optional UNIX timestamp (seconds) supplied by the
-    ///                         provider.  When `Some`, the entry TTL is clamped
-    ///                         to `min(provider_expiry, now + FALLBACK_TTL_SECS)`
-    ///                         to avoid trusting arbitrarily long windows.
+    ///   provider. When `Some`, the entry TTL is clamped
+    ///   to `min(provider_expiry, now + FALLBACK_TTL_SECS)`
+    ///   to avoid trusting arbitrarily long windows.
     pub fn new(url: String, duration: f64, provider_expiry: Option<u64>) -> Self {
         let now = Instant::now();
         let fallback_expiry = now + Duration::from_secs(FALLBACK_TTL_SECS);
@@ -143,6 +143,11 @@ impl ResolutionCache {
     #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.inner.lock().unwrap().len()
+    }
+
+    /// Whether the cache holds no entries, including uncollected expired ones.
+    pub fn is_empty(&self) -> bool {
+        self.inner.lock().unwrap().is_empty()
     }
 
     /// Number of currently valid (non-expired) entries.

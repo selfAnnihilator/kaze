@@ -206,7 +206,7 @@ impl FuzzyTrackMatcher {
         let title_matches = Self::titles_match(ext_title, local_title);
         let artist_matches = Self::artists_match(ext_artist, local_artist);
 
-        let is_preview_duration = ext_duration.map_or(true, |ed| ed <= 35.0);
+        let is_preview_duration = ext_duration.is_none_or(|ed| ed <= 35.0);
         let duration_diff = if is_preview_duration {
             None
         } else {
@@ -321,14 +321,14 @@ impl FuzzyTrackMatcher {
 
             if artist_ok {
                 // Both title and artist match!
-                let is_preview = ext_duration.map_or(true, |d| d <= 35.0);
+                let is_preview = ext_duration.is_none_or(|d| d <= 35.0);
                 let dur_diff = if is_preview {
                     None
                 } else {
                     ext_duration.map(|d| (d - cand.duration_secs).abs())
                 };
 
-                let dur_close = dur_diff.map_or(true, |d| d <= 12.0);
+                let dur_close = dur_diff.is_none_or(|d| d <= 12.0);
                 if dur_close {
                     return MatchResult {
                         status: MatchStatus::ExactMatch,

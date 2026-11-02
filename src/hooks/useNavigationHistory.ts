@@ -11,6 +11,7 @@ export function useNavigationHistory() {
     setHistory(next);
     return true;
   }, []);
+  const reset = useCallback(() => commit({ entries: [viewDestination("home")], index: 0 }), [commit]);
   const navigate = useCallback((destination: NavigationDestination) => commit(visitDestination(historyRef.current, destination)), [commit]);
   const updateDestination = useCallback((update: (current: NavigationDestination) => NavigationDestination) => {
     const h = historyRef.current;
@@ -31,5 +32,5 @@ export function useNavigationHistory() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [back, forward]);
-  return { destination: history.entries[history.index], navigate, updateDestination, back, forward, canGoBack: history.index > 0, canGoForward: history.index < history.entries.length - 1 };
+  return { destination: history.entries[history.index], reset, navigate, updateDestination, back, forward, canGoBack: history.index > 0, canGoForward: history.index < history.entries.length - 1 };
 }

@@ -286,7 +286,7 @@ impl PlaybackService {
             // Missing media remains visible and can be retried or skipped.
             *self.restored_track.write().await = Some(RestoredTrack {
                 queue_id: saved.queue.current().unwrap().queue_id.clone(),
-                position_secs: saved.position_secs.min(saved.duration_secs),
+                position_secs: if saved.duration_secs > 0.0 { saved.position_secs.min(saved.duration_secs) } else { saved.position_secs },
                 duration_secs: saved.duration_secs,
             });
         }
@@ -729,7 +729,6 @@ impl PlaybackService {
     /// Background task monitoring playback position and track completion.
     async fn run_playback_monitor_loop(&self) {
         let mut interval = tokio::time::interval(Duration::from_millis(250));
-        let mut was_playing = false;
         let mut last_checkpoint = tokio::time::Instant::now();
 
         loop {
@@ -771,8 +770,7 @@ impl PlaybackService {
 
             let duration = *self.current_duration_secs.read().await;
 
-            if !is_paused && !is_finished && duration > 0.0 {
-                was_playing = true;
+            if !is_paused && !is_finished && session_queue_id.is_some() {
 
                 // Always read from authoritative source — no stale local cache.
                 let session_id = self
@@ -788,9 +786,8 @@ impl PlaybackService {
                     position_secs: pos_secs,
                     duration_secs: duration,
                 });
-            } else if was_playing && is_finished && duration > 0.0 {
+            } else if is_finished && session_queue_id.is_some() {
                 // Track finished!
-                was_playing = false;
 
                 // Read track_id and session_id from authoritative sources.
                 let track_id_opt = {
@@ -1154,7 +1151,7 @@ impl PlaybackService {
                 backend.load_and_play(&path)?;
                 if let Some(position) = start_position {
                     if let Err(error) =
-                        backend.seek(Duration::from_secs_f64(position.min(duration).max(0.0)))
+                        backend.seek(Duration::from_secs_f64(if duration > 0.0 { position.min(duration).max(0.0) } else { position.max(0.0) }))
                     {
                         let _ = backend.stop();
                         return Err(error);
@@ -1391,7 +1388,7 @@ impl PlaybackService {
         {
             let mut restored = self.restored_track.write().await;
             if let Some(restored) = restored.as_mut() {
-                restored.position_secs = position_secs.clamp(0.0, restored.duration_secs);
+                restored.position_secs = if restored.duration_secs > 0.0 { position_secs.clamp(0.0, restored.duration_secs) } else { position_secs.max(0.0) };
                 let _ = self.event_bus.publish(Event::PlaybackSeeked {
                     position_secs: restored.position_secs,
                 });
@@ -1808,19 +1805,22 @@ impl PlaybackService {
 
         let mut duration = *self.current_duration_secs.read().await;
         let vol = *self.volume.read().await;
+        let active_session = self.active_session_id.read().await.clone();
         let q_guard = self.queue.read().await;
-        if let Some(restored) = restored.filter(|saved| {
+        let restored = restored.filter(|saved| {
             q_guard
                 .current()
                 .is_some_and(|item| item.queue_id == saved.queue_id)
-        }) {
+        });
+        let has_loaded_track = restored.is_some() || active_session.as_ref().is_some_and(|(_, id)| q_guard.current().is_some_and(|item| &item.queue_id == id));
+        if let Some(restored) = restored {
             is_paused = true;
             is_finished = false;
             pos = restored.position_secs;
             duration = restored.duration_secs;
         }
-        let is_playing = !is_paused && !is_finished && duration > 0.0;
-        let has_active_track = duration > 0.0 && (!is_finished || is_paused);
+        let is_playing = !is_paused && !is_finished && has_loaded_track;
+        let has_active_track = has_loaded_track && (!is_finished || is_paused);
 
         let queue_track_ids: Vec<String> = if has_active_track {
             if let Some(curr) = q_guard.current_index() {
@@ -1846,7 +1846,7 @@ impl PlaybackService {
                 Some(state) => !is_paused && !is_finished && state.is_buffering(),
                 None => false,
             };
-        let has_active_track = (duration > 0.0 && (!is_finished || is_paused)) || is_buffering;
+        let has_active_track = (has_loaded_track && (!is_finished || is_paused)) || is_buffering;
 
         PlaybackStateDto {
             current_track_id: if has_active_track {

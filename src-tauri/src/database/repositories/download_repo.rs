@@ -21,6 +21,7 @@ pub trait DownloadRepository: Send + Sync {
         error_message: Option<&str>,
         completed_at: Option<i64>,
     ) -> AppResult<()>;
+    async fn fail_interrupted_task(&self, id: &str, message: &str) -> AppResult<bool>;
     async fn delete_task(&self, id: &str) -> AppResult<()>;
 }
 
@@ -159,6 +160,12 @@ impl DownloadRepository for SqliteDownloadRepository {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn fail_interrupted_task(&self, id: &str, message: &str) -> AppResult<bool> {
+        let result = sqlx::query("UPDATE download_tasks SET status='FAILED',error_message=? WHERE id=? AND status IN ('DOWNLOADING','QUEUED')")
+            .bind(message).bind(id).execute(&self.pool).await?;
+        Ok(result.rows_affected() > 0)
     }
 
     async fn delete_task(&self, id: &str) -> AppResult<()> {

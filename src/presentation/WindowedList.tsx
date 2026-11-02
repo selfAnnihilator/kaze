@@ -21,12 +21,14 @@ export function WindowedList<T>({
   rowHeight = 72,
   label = "Tracks",
   fill = false,
-}: Rows<T> & { rowHeight?: number; label?: string; fill?: boolean }) {
+  onEndReached,
+}: Rows<T> & { rowHeight?: number; label?: string; fill?: boolean; onEndReached?: () => void }) {
   return (
     <List
       aria-label={label}
       rowComponent={Row<T>}
       rowCount={items.length}
+      onRowsRendered={({ stopIndex }) => { if (stopIndex >= items.length - 3) onEndReached?.(); }}
       rowHeight={rowHeight}
       rowProps={{ items, renderItem }}
       overscanCount={3}

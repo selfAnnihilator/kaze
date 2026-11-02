@@ -1,0 +1,1241 @@
+{
+  "scope": "Original 50 dependency + 20 workflow SARIF results; duplicates preserved in input order",
+  "policy": "No applicable root SECURITY.md; docs/SECURITY.md describes cloud-authoritative authentication but is scoped to docs. Assessment uses current manifests, workflow triggers/permissions and source.",
+  "results": [
+    {
+      "item": 1,
+      "input_id": "zizmor:zizmor/artipacked",
+      "component": "zizmor/artipacked",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 29,
+          "startColumn": 9,
+          "endLine": 32,
+          "endColumn": 181
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "All checkout steps explicitly set persist-credentials:false. Artifacts remain limited to build output paths."
+    },
+    {
+      "item": 2,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 34,
+          "startColumn": 9,
+          "endLine": 34,
+          "endColumn": 44
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 3,
+      "input_id": "zizmor:zizmor/cache-poisoning",
+      "component": "zizmor/cache-poisoning",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 39,
+          "startColumn": 9,
+          "endLine": 39,
+          "endColumn": 37
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release Linux/Windows signing builds no longer invoke Rust cache restoration or setup-node npm caching. Cache readers were removed rather than assuming every default-branch/manual-dispatch writer is trusted. This resolves the four configured cache findings; runner/dependency trust remains a separate boundary.",
+      "previous_assessment": {
+        "status": "trusted-release cache exception",
+        "reason": "Workflow triggers only version tags and manual dispatch, no pull_request or pull_request_target. Build jobs have contents:read; write permission limited to dependent publish job. No untrusted PR cache writer established; artifact/runner compromise remains outside demonstrated path."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md"
+    },
+    {
+      "item": 4,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 39,
+          "startColumn": 9,
+          "endLine": 39,
+          "endColumn": 37
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 5,
+      "input_id": "zizmor:zizmor/cache-poisoning",
+      "component": "zizmor/cache-poisoning",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 46,
+          "startColumn": 9,
+          "endLine": 48,
+          "endColumn": 23
+        }
+      },
+      "status": "not actionable after cache disabled",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor",
+        "https://raw.githubusercontent.com/actions/setup-node/49933ea5288caeca8642d1e84afbd3f7d6820020/src/main.ts",
+        "https://raw.githubusercontent.com/actions/setup-node/49933ea5288caeca8642d1e84afbd3f7d6820020/src/cache-save.ts"
+      ],
+      "reason": "Pinned setup-node commit 49933ea5288caeca8642d1e84afbd3f7d6820020 is v4: cache is explicitly empty. Its runtime restores only when the cache input is truthy and saves only when the matching action state was set. No package-manager-cache input exists in this pinned version. Two Zizmor locations remain, but these bundled control-flow guards establish that the configured action does not read or save the Actions dependency cache. The scanner result alone does not establish a cache reader. The exception depends on the exact action SHA and empty input and must be reevaluated on upgrade.",
+      "previous_assessment": {
+        "status": "trusted-release cache exception",
+        "reason": "Workflow triggers only version tags and manual dispatch, no pull_request or pull_request_target. Build jobs have contents:read; write permission limited to dependent publish job. No untrusted PR cache writer established; artifact/runner compromise remains outside demonstrated path."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md"
+    },
+    {
+      "item": 6,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 69,
+          "startColumn": 9,
+          "endLine": 69,
+          "endColumn": 41
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 7,
+      "input_id": "zizmor:zizmor/artipacked",
+      "component": "zizmor/artipacked",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 96,
+          "startColumn": 9,
+          "endLine": 99,
+          "endColumn": 181
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "All checkout steps explicitly set persist-credentials:false. Artifacts remain limited to build output paths."
+    },
+    {
+      "item": 8,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 101,
+          "startColumn": 9,
+          "endLine": 101,
+          "endColumn": 44
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 9,
+      "input_id": "zizmor:zizmor/cache-poisoning",
+      "component": "zizmor/cache-poisoning",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 106,
+          "startColumn": 9,
+          "endLine": 106,
+          "endColumn": 37
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release Linux/Windows signing builds no longer invoke Rust cache restoration or setup-node npm caching. Cache readers were removed rather than assuming every default-branch/manual-dispatch writer is trusted. This resolves the four configured cache findings; runner/dependency trust remains a separate boundary.",
+      "previous_assessment": {
+        "status": "trusted-release cache exception",
+        "reason": "Workflow triggers only version tags and manual dispatch, no pull_request or pull_request_target. Build jobs have contents:read; write permission limited to dependent publish job. No untrusted PR cache writer established; artifact/runner compromise remains outside demonstrated path."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md"
+    },
+    {
+      "item": 10,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 106,
+          "startColumn": 9,
+          "endLine": 106,
+          "endColumn": 37
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 11,
+      "input_id": "zizmor:zizmor/cache-poisoning",
+      "component": "zizmor/cache-poisoning",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 113,
+          "startColumn": 9,
+          "endLine": 115,
+          "endColumn": 23
+        }
+      },
+      "status": "not actionable after cache disabled",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor",
+        "https://raw.githubusercontent.com/actions/setup-node/49933ea5288caeca8642d1e84afbd3f7d6820020/src/main.ts",
+        "https://raw.githubusercontent.com/actions/setup-node/49933ea5288caeca8642d1e84afbd3f7d6820020/src/cache-save.ts"
+      ],
+      "reason": "Pinned setup-node commit 49933ea5288caeca8642d1e84afbd3f7d6820020 is v4: cache is explicitly empty. Its runtime restores only when the cache input is truthy and saves only when the matching action state was set. No package-manager-cache input exists in this pinned version. Two Zizmor locations remain, but these bundled control-flow guards establish that the configured action does not read or save the Actions dependency cache. The scanner result alone does not establish a cache reader. The exception depends on the exact action SHA and empty input and must be reevaluated on upgrade.",
+      "previous_assessment": {
+        "status": "trusted-release cache exception",
+        "reason": "Workflow triggers only version tags and manual dispatch, no pull_request or pull_request_target. Build jobs have contents:read; write permission limited to dependent publish job. No untrusted PR cache writer established; artifact/runner compromise remains outside demonstrated path."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md"
+    },
+    {
+      "item": 12,
+      "input_id": "zizmor:zizmor/unpinned-uses",
+      "component": "zizmor/unpinned-uses",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 122,
+          "startColumn": 9,
+          "endLine": 122,
+          "endColumn": 41
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Actions pinned to verified upstream commit SHAs; action-pins.json records resolved provenance."
+    },
+    {
+      "item": 13,
+      "input_id": "zizmor:zizmor/artipacked",
+      "component": "zizmor/artipacked",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 149,
+          "startColumn": 9,
+          "endLine": 150,
+          "endColumn": 34
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "All checkout steps explicitly set persist-credentials:false. Artifacts remain limited to build output paths."
+    },
+    {
+      "item": 14,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 158,
+          "startColumn": 20,
+          "endLine": 158,
+          "endColumn": 30
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 15,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 158,
+          "startColumn": 34,
+          "endLine": 158,
+          "endColumn": 49
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 16,
+      "input_id": "zizmor:zizmor/artipacked",
+      "component": "zizmor/artipacked",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 185,
+          "startColumn": 9,
+          "endLine": 186,
+          "endColumn": 34
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "All checkout steps explicitly set persist-credentials:false. Artifacts remain limited to build output paths."
+    },
+    {
+      "item": 17,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 191,
+          "startColumn": 20,
+          "endLine": 191,
+          "endColumn": 30
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 18,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 191,
+          "startColumn": 34,
+          "endLine": 191,
+          "endColumn": 49
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 19,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 364,
+          "startColumn": 20,
+          "endLine": 364,
+          "endColumn": 35
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 20,
+      "input_id": "zizmor:zizmor/template-injection",
+      "component": "zizmor/template-injection",
+      "location": {
+        "artifactLocation": {
+          "uri": ".github/workflows/release.yml"
+        },
+        "region": {
+          "startLine": 380,
+          "startColumn": 20,
+          "endLine": 380,
+          "endColumn": 35
+        }
+      },
+      "status": "fixed",
+      "evidence": [
+        "https://github.com/woodruffw/zizmor"
+      ],
+      "reason": "Release input moves through environment variables and an anchored version-tag allowlist before shell use."
+    },
+    {
+      "item": 21,
+      "input_id": "osv-scanner:RUSTSEC-2024-0429",
+      "component": "glib@0.18.5",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "needs review",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2024-0429"
+      ],
+      "reason": "GTK/WebKit 0.18 stack retains glib 0.18.5; patch is 0.20. No direct VariantStrIter call found in application. Transitive reachability is unresolved; do not force an incompatible GTK ABI upgrade. Upstream-scoped repair/backport remains open."
+    },
+    {
+      "item": 22,
+      "input_id": "osv-scanner:RUSTSEC-2024-0429",
+      "component": "glib@0.18.5",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "needs review",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2024-0429"
+      ],
+      "reason": "GTK/WebKit 0.18 stack retains glib 0.18.5; patch is 0.20. No direct VariantStrIter call found in application. Transitive reachability is unresolved; do not force an incompatible GTK ABI upgrade. Upstream-scoped repair/backport remains open."
+    },
+    {
+      "item": 23,
+      "input_id": "osv-scanner:RUSTSEC-2024-0436",
+      "component": "paste@1.0.15",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "maintenance exception",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2024-0436"
+      ],
+      "reason": "Authoritative advisory is an unmaintained notice with no patched release. Current dependency path is lofty 0.22.4 -> paste 1.0.15 (audio metadata build-time macro), not the GTK path assumed in the earlier generic note. A maintained compatible upstream replacement remains follow-up; no exploit is established and no major metadata API rewrite was made.",
+      "previous_assessment": {
+        "status": "maintenance exception",
+        "reason": "Authoritative advisory is unmaintained rather than a demonstrated exploit. Transitive GTK/macros/zbus dependency; replacement requires upstream compatibility work. Track individually and reassess upstream support."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md"
+    },
+    {
+      "item": 24,
+      "input_id": "osv-scanner:RUSTSEC-2024-0370",
+      "component": "proc-macro-error@1.0.4",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "maintenance exception",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2024-0370"
+      ],
+      "reason": "Authoritative advisory is unmaintained rather than a demonstrated exploit. Transitive GTK/macros/zbus dependency; replacement requires upstream compatibility work. Track individually and reassess upstream support."
+    },
+    {
+      "item": 25,
+      "input_id": "osv-scanner:RUSTSEC-2026-0338",
+      "component": "quinn-proto@0.11.17",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0338"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 26,
+      "input_id": "osv-scanner:RUSTSEC-2026-0340",
+      "component": "quinn-proto@0.11.17",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0340"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 27,
+      "input_id": "osv-scanner:RUSTSEC-2026-0343",
+      "component": "quinn-proto@0.11.17",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0343"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 28,
+      "input_id": "osv-scanner:CVE-2023-49092",
+      "component": "rsa@0.9.10",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "not applicable to current shipped feature graph",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2023-49092"
+      ],
+      "reason": "Present only through optional sqlx-mysql in lockfile; current cargo tree -i rsa has no nodes. SQLite-only config; no RSA key decryption/signing surface. Reassess if MySQL feature is enabled."
+    },
+    {
+      "item": 29,
+      "input_id": "osv-scanner:CVE-2026-111943",
+      "component": "rustls-webpki@0.103.15",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-111943"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 30,
+      "input_id": "osv-scanner:RUSTSEC-2026-0285",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0285"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 31,
+      "input_id": "osv-scanner:RUSTSEC-2026-0285",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0285"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 32,
+      "input_id": "osv-scanner:RUSTSEC-2026-0346",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0346"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 33,
+      "input_id": "osv-scanner:RUSTSEC-2026-0346",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0346"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 34,
+      "input_id": "osv-scanner:RUSTSEC-2026-0347",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0347"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 35,
+      "input_id": "osv-scanner:RUSTSEC-2026-0347",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0347"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 36,
+      "input_id": "osv-scanner:RUSTSEC-2026-0348",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0348"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 37,
+      "input_id": "osv-scanner:RUSTSEC-2026-0348",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0348"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 38,
+      "input_id": "osv-scanner:RUSTSEC-2026-0349",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0349"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 39,
+      "input_id": "osv-scanner:RUSTSEC-2026-0349",
+      "component": "rustls@0.23.44",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0349"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 40,
+      "input_id": "osv-scanner:RUSTSEC-2026-0386",
+      "component": "tokio@1.53.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0386"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 41,
+      "input_id": "osv-scanner:CVE-2026-111943",
+      "component": "webpki-root-certs@1.0.9",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-111943"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 42,
+      "input_id": "osv-scanner:CVE-2026-111943",
+      "component": "webpki-roots@1.0.9",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-111943"
+      ],
+      "reason": "Compatible patch versions are locked; see current Cargo.lock and integration results. Runtime exploitation was not asserted."
+    },
+    {
+      "item": 43,
+      "input_id": "osv-scanner:RUSTSEC-2026-0371",
+      "component": "zbus_names@4.3.4",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "maintenance exception",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0371"
+      ],
+      "reason": "Authoritative advisory is unmaintained rather than a demonstrated exploit. Transitive GTK/macros/zbus dependency; replacement requires upstream compatibility work. Track individually and reassess upstream support."
+    },
+    {
+      "item": 44,
+      "input_id": "osv-scanner:CVE-2026-115905",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-115905"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 45,
+      "input_id": "osv-scanner:CVE-2026-115906",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-115906"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 46,
+      "input_id": "osv-scanner:CVE-2026-115909",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-115909"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 47,
+      "input_id": "osv-scanner:RUSTSEC-2026-0367",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0367"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 48,
+      "input_id": "osv-scanner:RUSTSEC-2026-0368",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0368"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 49,
+      "input_id": "osv-scanner:RUSTSEC-2026-0369",
+      "component": "zip@4.6.1",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "fixed dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0369"
+      ],
+      "reason": "Updater raised to compatible 2.14.1; locked Windows graph now resolves zip 9.2.0, beyond the 9.0.5 fix for CVE-2026-115905 and 9.0.0 fixes for the other five ZIP matches. Current OSV records were refreshed. Linux graph still excludes ZIP. Windows runtime was not executed; this is removal of affected-version exposure, not a demonstrated exploit fix.",
+      "previous_assessment": {
+        "status": "conditional exception; Windows signed updater review",
+        "reason": "No Linux feature-graph node; Windows updater uses ZIP only after minisign verification (tauri-plugin-updater updater.rs:740 before install/extract). No user ZIP import. Fixed ZIP 9 requires an upstream-compatible updater change, not a blind major override; archive handling in a compromised trusted release remains a risk."
+      },
+      "followup_evidence": "2026-10-31-quality-followup.md",
+      "resolved_component": "zip@9.2.0 via tauri-plugin-updater@2.14.1"
+    },
+    {
+      "item": 50,
+      "input_id": "osv-scanner:RUSTSEC-2026-0370",
+      "component": "zvariant@5.15.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "maintenance exception",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0370"
+      ],
+      "reason": "Authoritative advisory is unmaintained rather than a demonstrated exploit. Transitive GTK/macros/zbus dependency; replacement requires upstream compatibility work. Track individually and reassess upstream support."
+    },
+    {
+      "item": 51,
+      "input_id": "osv-scanner:RUSTSEC-2026-0372",
+      "component": "zvariant_derive@5.15.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "Cargo.lock"
+        }
+      },
+      "status": "maintenance exception",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/RUSTSEC-2026-0372"
+      ],
+      "reason": "Authoritative advisory is unmaintained rather than a demonstrated exploit. Transitive GTK/macros/zbus dependency; replacement requires upstream compatibility work. Track individually and reassess upstream support."
+    },
+    {
+      "item": 52,
+      "input_id": "osv-scanner:CVE-2026-114111",
+      "component": "sharp@0.35.4",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-114111"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 53,
+      "input_id": "osv-scanner:CVE-2026-109383",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109383"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 54,
+      "input_id": "osv-scanner:CVE-2026-109829",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109829"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 55,
+      "input_id": "osv-scanner:CVE-2026-109841",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109841"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 56,
+      "input_id": "osv-scanner:CVE-2026-109869",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109869"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 57,
+      "input_id": "osv-scanner:CVE-2026-109924",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109924"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 58,
+      "input_id": "osv-scanner:CVE-2026-109932",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-109932"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 59,
+      "input_id": "osv-scanner:CVE-2026-18149",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-18149"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 60,
+      "input_id": "osv-scanner:CVE-2026-18540",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-18540"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 61,
+      "input_id": "osv-scanner:CVE-2026-19534",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-19534"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 62,
+      "input_id": "osv-scanner:CVE-2026-84890",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-84890"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 63,
+      "input_id": "osv-scanner:CVE-2026-84933",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-84933"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 64,
+      "input_id": "osv-scanner:CVE-2026-84947",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-84947"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 65,
+      "input_id": "osv-scanner:CVE-2026-84961",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-84961"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 66,
+      "input_id": "osv-scanner:CVE-2026-85008",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-85008"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 67,
+      "input_id": "osv-scanner:CVE-2026-85014",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-85014"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 68,
+      "input_id": "osv-scanner:CVE-2026-85024",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-85024"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 69,
+      "input_id": "osv-scanner:CVE-2026-87018",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-87018"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    },
+    {
+      "item": 70,
+      "input_id": "osv-scanner:CVE-2026-87029",
+      "component": "undici@7.29.0",
+      "location": {
+        "artifactLocation": {
+          "uri": "worker/package-lock.json"
+        }
+      },
+      "status": "fixed development dependency exposure",
+      "evidence": [
+        "https://api.osv.dev/v1/vulns/CVE-2026-87029"
+      ],
+      "reason": "Worker-only Wrangler/Miniflare dependency patched with exact compatible overrides; npm audit reports zero. These packages are not worker runtime imports."
+    }
+  ]
+}

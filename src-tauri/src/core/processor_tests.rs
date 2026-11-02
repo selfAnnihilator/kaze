@@ -22,8 +22,15 @@ async fn playlist_fixture() -> (
     let requests = count.clone();
     let task = tokio::spawn(async move {
         while let Ok((mut socket, _)) = listener.accept().await {
-            let mut buffer = [0; 8192];
-            socket.read(&mut buffer).await.unwrap();
+            let mut request = Vec::new();
+            tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                while !request.ends_with(b"\r\n\r\n") {
+                    assert!(request.len() < 16 * 1024, "header too large");
+                    let mut byte = [0];
+                    assert_eq!(socket.read(&mut byte).await.unwrap(), 1, "EOF before headers");
+                    request.push(byte[0]);
+                }
+            }).await.expect("request header timeout");
             requests.fetch_add(1, Ordering::SeqCst);
             let body = serde_json::json!({"id":"123","listname":"Fixture playlist","list":[{
                 "id":"selected", "song":"Song", "primary_artists":"Artist", "album":"Selected release",

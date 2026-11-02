@@ -30,6 +30,12 @@ export function peekCoverArt(id: string): string | null | undefined {
 
 export function clearCoverArtCache() {
   generation++;
+  for (const request of requests.values()) {
+    for (const reader of request.readers) { reader.detach(); reader.done(null); }
+    request.readers.clear();
+  }
+  requests.clear();
+  queue.length = 0;
   cache.clear();
   bytes = 0;
   for (const listener of listeners) listener();
@@ -73,8 +79,9 @@ function drain() {
       .then((url) => {
         for (const reader of request.readers) {
           reader.detach();
-          reader.done(url);
+          reader.done(request.generation === generation ? url : null);
         }
+        request.readers.clear();
       })
       .finally(() => {
         if (requests.get(request.id) === request) requests.delete(request.id);
@@ -91,7 +98,10 @@ export function loadCoverArt(
 ): Promise<string | null> {
   if (signal?.aborted) return Promise.resolve(null);
   const cached = peekCoverArt(id);
-  if (cached !== undefined) return Promise.resolve(cached);
+  if (cached !== undefined) {
+    const version = generation;
+    return Promise.resolve().then(() => version === generation && !signal?.aborted ? cached : null);
+  }
   let request = requests.get(id);
   if (!request || request.generation !== generation) {
     request = { id, generation, readers: new Set(), started: false };

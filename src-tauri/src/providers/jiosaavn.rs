@@ -394,7 +394,7 @@ impl JioSaavnProvider {
             }
             let token = url
                 .path_segments()
-                .and_then(|segments| segments.filter(|s| !s.is_empty()).last())
+                .and_then(|mut segments| segments.rfind(|s| !s.is_empty()))
                 .unwrap_or("");
             if token.is_empty()
                 || !token

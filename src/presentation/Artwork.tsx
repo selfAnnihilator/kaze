@@ -14,7 +14,7 @@ export const Artwork = memo(function Artwork({
   className?: string;
 }) {
   const artGeneration = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
-  const [resolved, setResolved] = useState<{ id: string; src: string } | null>(
+  const [resolved, setResolved] = useState<{ id: string; src: string; generation: number } | null>(
     null,
   );
   const [failed, setFailed] = useState<string | null>(null);
@@ -27,14 +27,14 @@ export const Artwork = memo(function Artwork({
     const controller = new AbortController();
     loadCoverArt(trackId, controller.signal).then((url) => {
       if (!controller.signal.aborted)
-        setResolved(url ? { id: trackId, src: url } : null);
+        setResolved(url ? { id: trackId, src: url, generation: artGeneration } : null);
     });
     return () => {
       controller.abort();
     };
   }, [src, trackId, artGeneration]);
   const url =
-    src || (resolved && resolved.id === trackId ? resolved.src : undefined);
+    src || (resolved && resolved.id === trackId && resolved.generation === artGeneration ? resolved.src : undefined);
   const hasImage = !!url && failed !== url;
   return (
     <div

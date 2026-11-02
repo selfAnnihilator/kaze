@@ -78,7 +78,7 @@ def main():
                     audio.writeframes(b'\0\0' * 8000 * 120)
                 with sqlite3.connect(database) as db:
                     db.execute("INSERT OR REPLACE INTO application_settings (key,value,updated_at) VALUES ('onboarding_completed','true',1)")
-                    for identity, title in [('one', 'Saved Track'), ('two', 'Next Saved Track')]:
+                    for identity, title in [('one', 'one'), ('two', 'two')]:
                         path = root/f'{identity}.wav'
                         os.link(root/'silent.wav', path)
                         db.execute("INSERT INTO tracks (id,file_path,file_size,modified_timestamp,title,normalized_title,duration_secs,format,created_at,updated_at) VALUES (?,?,?,1,?,?,120,'wav',1,1)",
@@ -105,16 +105,16 @@ def main():
                     time.sleep(.5)
                     assert browser.evaluate('window.__restoreFrames') > 2, 'restored native frame is stalled'
                     browser.evaluate('cancelAnimationFrame(window.__restoreRaf);true')
-                    assert saved['current_track']['title'] == 'Saved Track', saved
+                    assert saved['current_track']['title'] == 'one', saved
                     assert saved['is_paused'] and not saved['is_playing'], saved
                     assert 36.9 <= saved['position_secs'] < 40, saved
                     assert saved['queue_track_ids'] == ['two'], saved
                     assert abs(saved['volume']-.43) < .001
                     tray.wait_for(lambda: prop('PlaybackStatus') == 'Paused', 'status bar paused')
                     metadata = prop('Metadata')
-                    assert metadata['xesam:title'] == 'Saved Track', metadata
+                    assert metadata['xesam:title'] == 'one', metadata
                     assert 36_900_000 <= prop('Position') < 40_000_000
-                    tray.wait_for(lambda: browser.evaluate("document.querySelector('.player-bar,.press-deck').textContent.includes('Saved Track')"), f'{style} player title')
+                    tray.wait_for(lambda: browser.evaluate("document.querySelector('.player-bar,.press-deck').textContent.includes('one')"), f'{style} player title')
                     time.sleep(.5)
                     still = browser.query('GetPlaybackState')
                     assert still['position_secs'] == saved['position_secs'], 'paused position drifted'
@@ -126,10 +126,11 @@ def main():
                 # Reuse actual complete cached audio for the online restore path.
                 cache = root/'cache/music-player/remote-audio'
                 cache.mkdir(parents=True, exist_ok=True)
-                key = hashlib.sha256(b'full:v2:one:unknown artist:saved track').hexdigest()
+                key = hashlib.sha256(b'full:v3:jiosaavn:audit-one').hexdigest()
                 shutil.copyfile(root/'silent.wav', cache/f'{key}.audio')
                 with sqlite3.connect(database) as db:
                     db.execute("UPDATE tracks SET format='online',file_path='online://one' WHERE id='one'")
+                    db.execute("INSERT OR REPLACE INTO external_tracks(id,provider,provider_id,title,artist,duration_secs,created_at) VALUES('one','jiosaavn','audit-one','one','Unknown Artist',120,1)")
                 launch()
                 saved = browser.query('GetPlaybackState')
                 assert saved['current_track']['format'] == 'online' and saved['is_paused']

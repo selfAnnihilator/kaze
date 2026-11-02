@@ -1,3 +1,6 @@
+import { useScopedTracks } from "./hooks/useScopedTracks";
+import { ownBackendSubscription } from "./services/backendSubscription";
+import { useLibraryPage } from "./hooks/useLibraryPage";
 import { PlaybackNotice, showEmptyPlaybackNotice } from "./components/PlaybackNotice";
 import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
 import { RecommendationSetupGate } from "./components/MusicTaste";
@@ -9,7 +12,7 @@ import { ViewMemoryProvider } from "./presentation/ViewMemory";
 import { useVisualActivity } from "./presentation/useVisualActivity";
 import { usePointerFocus } from "./presentation/usePointerFocus";
 import { useHorizontalDrag } from "./presentation/useHorizontalDrag";
-import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy,
+import React, { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore, Suspense, lazy,
 } from "react";
 import {
   Track,
@@ -30,7 +33,7 @@ import { dispatchCommand, executeQuery, subscribeBackendEvents,
 } from "./services/api";
 import { playbackProgress } from "./services/playbackProgress";
 import { downloadProgress } from "./services/downloadProgress";
-import { loadCoverArt, clearCoverArtCache } from "./services/coverArt";
+import { subscribeCoverArt, coverArtGeneration, loadCoverArt, clearCoverArtCache } from "./services/coverArt";
 import { viewDestination } from "./navigationHistory";
 import { useNavigationHistory } from "./hooks/useNavigationHistory";
 import { Sidebar } from "./components/Sidebar";
@@ -198,7 +201,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   initialSettings,
 }) => {
   // Navigation
-  const { destination, navigate, updateDestination, back: navigateBack,
+  const { destination, navigate, reset: resetNavigation, updateDestination, back: navigateBack,
     forward: navigateForward,
     canGoBack,
     canGoForward,
@@ -283,11 +286,21 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   // Library & Content Data
-  const [tracks, setTracks] = useState<Track[]>([]);
+  const trackPage = useLibraryPage<Track>("GetLibraryTracksPage", 200, currentUser?.id || "default", `${destination.view}:${destination.libraryAlbumId || ""}:${destination.libraryQuery || ""}`);
+  const albumPage = useLibraryPage<Album>("GetLibraryAlbumsPage", 100, currentUser?.id || "default", destination.view);
+  const scoped = useScopedTracks(currentUser?.id || "default", destination.libraryAlbumId, destination.libraryQuery, destination.view === "library" && !destination.collection && !destination.lyrics);
+  const scopedRefreshRef = useRef(scoped.refresh);
+  scopedRefreshRef.current = scoped.refresh;
+  const libraryScoped = Boolean(destination.libraryAlbumId || destination.libraryQuery);
+  const tracks = libraryScoped ? scoped.rows : trackPage.items;
+  const setTracks = useCallback((update: React.SetStateAction<Track[]>) => {
+    trackPage.setItems(update);
+    scoped.setItems(update);
+  }, [trackPage.setItems]);
   const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
   const tracksRef = useRef<Track[]>([]);
   tracksRef.current = tracks;
-  const [albums, setAlbums] = useState<Album[]>([]);
+  const albums = albumPage.items;
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null,
   );
@@ -304,7 +317,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const previousTrackRef = useRef<Track | undefined>(undefined);
   const observedTrackRef = useRef<Track | undefined>(undefined);
-  if (!playbackState.is_buffering && (playbackState.current_track?.duration_secs || 0) > 0 && playbackState.current_track?.id !== observedTrackRef.current?.id) {
+  if (!playbackState.is_buffering && playbackState.current_track && playbackState.current_track?.id !== observedTrackRef.current?.id) {
     previousTrackRef.current = observedTrackRef.current;
     observedTrackRef.current = playbackState.current_track;
   }
@@ -325,6 +338,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }));
   }, [updateDestination],
   );
+  const libraryAccountRef = useRef(currentUser?.id || "default");
+  libraryAccountRef.current = currentUser?.id || "default";
   const destinationRef = useRef(destination);
   destinationRef.current = destination;
   useEffect(() => { setGlobalSearchQuery(destination.searchQuery); }, [destination.searchQuery]);
@@ -385,18 +400,19 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   // Resolve once per track and share cached artwork with the mounted views.
-  const [resolvedTrackCover, setResolvedTrackCover] = useState<{ id: string; url: string | null } | null>(null);
+  const artworkGeneration = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
+  const [resolvedTrackCover, setResolvedTrackCover] = useState<{ id: string; generation: number; url: string | null } | null>(null);
   const coverTrack = playbackState.current_track;
-  const currentTrackCoverUrl = coverTrack?.cover_art_url || (resolvedTrackCover?.id === coverTrack?.id ? resolvedTrackCover?.url : null);
+  const currentTrackCoverUrl = coverTrack?.cover_art_url || (resolvedTrackCover?.generation === artworkGeneration && resolvedTrackCover?.id === coverTrack?.id ? resolvedTrackCover?.url : null);
   useEffect(() => {
     const track = playbackState.current_track;
     if (!track || track.cover_art_url || track.id.startsWith("online:") || track.id.startsWith("itunes:")) return;
     const controller = new AbortController();
     loadCoverArt(track.id, controller.signal).then(url => {
-      if (!controller.signal.aborted) setResolvedTrackCover({ id: track.id, url });
+      if (!controller.signal.aborted) setResolvedTrackCover({ id: track.id, generation: artworkGeneration, url });
     });
     return () => controller.abort();
-  }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url, playbackState.current_track?.has_cover_art]);
+  }, [playbackState.current_track?.id, playbackState.current_track?.cover_art_url, playbackState.current_track?.has_cover_art, artworkGeneration]);
 
   const handleToggleFullscreen = useCallback(
     async (override?: boolean) => {
@@ -570,20 +586,21 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   const fetchPlaybackState = useCallback(async () => {
+    const account = libraryAccountRef.current;
     const revision = playbackStateRevision.current;
     const queryId = ++playbackStateQueryId.current;
     try {
       const res = await executeQuery({ query: "GetPlaybackState" });
       // Source/catalog work can delay this response beyond a newer transport
       // event. Never reinstate the old song or its buffering/paused state.
-      if (revision !== playbackStateRevision.current || queryId !== playbackStateQueryId.current) return;
+      if (account !== libraryAccountRef.current || revision !== playbackStateRevision.current || queryId !== playbackStateQueryId.current) return;
       if (res.data) {
         playbackProgress.update(
           res.data.position_secs ?? 0,
           res.data.duration_secs ?? 0,
         );
         setPlaybackState((prev) => {
-          const updated = { ...prev, ...res.data,
+          const updated = { ...prev, ...res.data, duration_secs: res.data.duration_secs ?? 0, current_track: undefined,
             is_shuffled:
               res.data.is_shuffle ?? res.data.is_shuffled ?? prev.is_shuffled,
           };
@@ -607,54 +624,38 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   const fetchTracks = useCallback(async () => {
-    const browsing = destinationRef.current;
-    const inLibrary = browsing.view === "library" && !browsing.collection && !browsing.lyrics;
-    const albumId = inLibrary ? browsing.libraryAlbumId : undefined;
-    try {
-      const res = await executeQuery(albumId
-        ? { query: "GetAlbumDetails", payload: { album_id: albumId } }
-        : inLibrary && browsing.libraryQuery
-          ? { query: "SearchLibrary", payload: { query_text: browsing.libraryQuery, limit: 100 } }
-          : { query: "GetTracks", payload: { offset: 0, limit: 1000, ascending: true } });
-      const rows = albumId ? res.data?.tracks : res.data;
-      // Metadata/download refresh must not replace an open album with all tracks,
-      // or let an older route's response overwrite the current destination.
-      if (browsing === destinationRef.current && Array.isArray(rows)) setTracks(rows);
-    } catch (err) {
-      console.error("Failed to fetch tracks:", err);
-    }
+    void trackPage.refresh();
+    await scopedRefreshRef.current();
   }, []);
 
-  const fetchAlbums = useCallback(async () => {
-    try {
-      const res = await executeQuery({
-        query: "GetAlbums",
-        payload: { offset: 0, limit: 200 },
-      });
-      if (Array.isArray(res.data)) {
-        setAlbums(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch albums:", err);
-    }
-  }, []);
+  const fetchAlbums = albumPage.refresh;
 
+  const playlistRequest = useRef(0);
+  const membershipRequest = useRef(0);
   const fetchPlaylists = useCallback(async () => {
+    const account = libraryAccountRef.current, request = ++playlistRequest.current;
     void recommendationPreferences.refresh().catch(console.error);
     try {
       const res = await executeQuery({ query: "GetPlaylists" });
-      if (Array.isArray(res.data)) {
+      if (account === libraryAccountRef.current && request === playlistRequest.current && Array.isArray(res.data)) {
         setPlaylists(res.data);
+        return true;
       }
     } catch (err) {
       console.error("Failed to fetch playlists:", err);
     }
+    return false;
   }, []);
 
+  const handleRefreshPlaylists = useCallback(async () => {
+    if (!(await fetchPlaylists())) throw Error("Couldn’t refresh playlists. Please try again.");
+  }, [fetchPlaylists]);
+
   const fetchTrackPlaylistMemberships = useCallback(async () => {
+    const account = libraryAccountRef.current, request = ++membershipRequest.current;
     try {
       const res = await executeQuery({ query: "GetTrackPlaylistMemberships" });
-      if (res.data && typeof res.data === "object") {
+      if (account === libraryAccountRef.current && request === membershipRequest.current && res.data && typeof res.data === "object") {
         setTrackPlaylistMap(res.data);
       }
     } catch (err) {
@@ -662,10 +663,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
+  const wishlistRequest = useRef(0);
   const fetchWishlist = useCallback(async () => {
+    const account = libraryAccountRef.current, request = ++wishlistRequest.current;
     try {
       const res = await executeQuery({ query: "GetWishlist" });
-      if (Array.isArray(res.data)) {
+      if (account === libraryAccountRef.current && request === wishlistRequest.current && Array.isArray(res.data)) {
         setWishlist(res.data);
       }
     } catch (err) {
@@ -673,13 +676,15 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
+  const downloadsRequest = useRef(0);
   const fetchDownloads = useCallback(async () => {
+    const account = libraryAccountRef.current, request = ++downloadsRequest.current;
     try {
       const res = await executeQuery({
         query: "GetDownloads",
         payload: { limit: 10000 },
       });
-      if (Array.isArray(res.data)) {
+      if (account === libraryAccountRef.current && request === downloadsRequest.current && Array.isArray(res.data)) {
         downloadProgress.replace(res.data);
         setDownloads(res.data);
       }
@@ -693,13 +698,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const steeringPendingRef = useRef(false);
   const flowSessionRequestRef = useRef(0);
   const fetchHomeOverview = useCallback(async () => {
+    const account = libraryAccountRef.current;
     const request = ++homeRequestRef.current;
     const steeringRevision = steeringRevisionRef.current;
     const flowRevision = flowSessionRequestRef.current;
     try {
       setIsHomeLoading(true);
       const res = await executeQuery({ query: "GetHomeOverview" });
-      if (res.type === "HomeOverview" && res.data && request === homeRequestRef.current) {
+      if (res.type === "HomeOverview" && res.data && account === libraryAccountRef.current && request === homeRequestRef.current) {
         setHomeOverview(
           (prev) => ({ ...res.data, flow_session: flowRevision === flowSessionRequestRef.current ? res.data.flow_session : prev?.flow_session,
             }) as HomeOverview,
@@ -783,6 +789,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     if (userId === currentUserIdRef.current) return;
     currentUserIdRef.current = userId;
     recommendationPreferences.reset();
+    setPlaylists([]); setTrackPlaylistMap({});
+    setWishlist([]); setDownloads([]); setHomeOverview(null);
+    void fetchWishlist(); void fetchDownloads(); void fetchHomeOverview();
+    void fetchPlaylists(); void fetchTrackPlaylistMemberships();
     setRecommendationNotice(null);
     void recommendationPreferences.refresh().catch(console.error);
     ++discoveryRequestRef.current;
@@ -803,9 +813,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
+  const userQueryRevision = useRef(0);
   const fetchCurrentUser = useCallback(async () => {
+    const revision = ++userQueryRevision.current;
     try {
       const res = await executeQuery({ query: "GetCurrentUser" });
+      if (revision !== userQueryRevision.current) return;
+      const nextAccount = res.data?.id || "default";
+      if (nextAccount !== libraryAccountRef.current) resetNavigation();
       if (res && res.data) {
         setCurrentUser(res.data);
       } else {
@@ -825,6 +840,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       payload: { username, password },
     });
     if (res && res.status === "UserProfile" && res.data) {
+      ++userQueryRevision.current;
+      libraryAccountRef.current = res.data.id;
       setCurrentUser(res.data);
       addAppNotification(
         "success",
@@ -848,6 +865,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       payload: { username, password },
     });
     if (res && res.status === "UserProfile" && res.data) {
+      ++userQueryRevision.current;
+      libraryAccountRef.current = res.data.id;
       setCurrentUser(res.data);
       addAppNotification(
         "success",
@@ -915,14 +934,16 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchCurrentUser,
   ]);
 
+  const [connectionError, setConnectionError] = useState(false);
+  const retryConnection = useRef<() => void>(() => {});
+
   // Backend Event Subscriptions
   useEffect(() => {
-    let unlistenFn: (() => void) | null = null;
     let subscriptionDisposed = false;
     let tasteRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
-    subscribeBackendEvents((event: any) => {
-      if (!event || !event.event) return;
+    const owner = ownBackendSubscription(() => subscribeBackendEvents((event: any) => {
+      if (subscriptionDisposed || !event || !event.event) return;
 
       switch (event.event) {
         case "PlaybackStarted": {
@@ -965,8 +986,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             position_secs: 0,
             duration_secs:
               event.payload?.duration_secs ||
-              track.duration_secs ||
-              prev.duration_secs,
+              0,
           }));
           break;
         }
@@ -976,6 +996,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           // Only PlaybackService emits this initial-resolution event. Reader
           // stalls use the session-scoped event below and cannot select a song.
           playbackSessionId.current = null;
+          playbackProgress.update(0, 0);
           const trackId = event.payload?.track_id;
           const found = tracksRef.current.find((t) => t.id === trackId);
           setPlaybackState((prev) => ({
@@ -1003,6 +1024,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   }
                 : prev.current_track),
             is_buffering: true,
+            duration_secs: 0,
             position_secs: 0,
           }));
           break;
@@ -1077,6 +1099,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         }
 
         case "PlaybackPositionChanged": {
+          if (!playbackSessionId.current && event.payload?.session_id) playbackSessionId.current = event.payload.session_id;
+          if (event.payload?.session_id && playbackSessionId.current && event.payload.session_id !== playbackSessionId.current) break;
           const pos = event.payload?.position_secs ?? 0;
           const dur = event.payload?.duration_secs ?? 0;
           playbackProgress.update(pos, dur);
@@ -1271,6 +1295,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         }
 
         case "SessionChanged": {
+          const nextAccount = event.payload?.user?.id || "default";
+          if (nextAccount !== libraryAccountRef.current) {
+            resetNavigation();
+            setHomeOverview(null);
+            setIsPlaylistModalOpen(false); setPlaylistModalTrack(null);
+            setPlayingPlaylistId(null);
+            setPlayingOrigin(origin => origin?.type === "playlist" ? null : origin);
+          }
+          ++userQueryRevision.current;
+          libraryAccountRef.current = nextAccount;
+          ++playlistRequest.current; ++membershipRequest.current;
+          setPlaylists([]); setTrackPlaylistMap({});
+          setWishlist([]); setDownloads([]);
+          void fetchWishlist(); void fetchDownloads();
           recommendationPreferences.reset();
           void recommendationPreferences.refresh().catch(console.error);
           currentUserIdRef.current = event.payload?.user?.id || "default";
@@ -1319,16 +1357,23 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         default:
           break;
       }
-    }).then((fn) => {
-      if (subscriptionDisposed) fn();
-      else unlistenFn = fn;
-    });
+    }), () => {
+      // Reconcile events missed while disconnected through guarded query owners.
+      playbackSessionId.current = null;
+      void fetchPlaybackState();
+      void fetchCurrentUser();
+      void fetchTracks(); void fetchAlbums();
+      void fetchPlaylists(); void fetchTrackPlaylistMemberships();
+      void fetchWishlist(); void fetchDownloads();
+      void fetchDiscovery(); void fetchHomeOverview();
+    }, setConnectionError);
+    retryConnection.current = owner.retry;
 
     return () => {
       subscriptionDisposed = true;
       clearTimeout(tasteRefreshTimer);
       ++discoveryRequestRef.current;
-      if (unlistenFn) unlistenFn();
+      owner.dispose();
     };
   }, [
     fetchPersonalRecommendations,
@@ -1340,6 +1385,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchWishlist,
     addAppNotification,
     fetchPlaylists,
+    resetNavigation,
     fetchTrackPlaylistMemberships,
     fetchFlowSession,
     fetchHomeOverview,
@@ -1375,7 +1421,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             current_track: found,
             is_playing: true,
             position_secs: 0,
-            duration_secs: found.duration_secs || prev.duration_secs,
+            duration_secs: found.duration_secs ?? 0,
           }));
         }
         await dispatchCommand({
@@ -1597,7 +1643,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               title: t.title,
               artist: t.artist_name || "Unknown Artist",
               album: t.album_title,
-              duration_secs: t.duration_secs || 210,
+              duration_secs: t.duration_secs ?? 0,
               cover_art_url: t.cover_art_url,
               preview_url: t.preview_url,
               is_downloaded: !isOnline,
@@ -1796,52 +1842,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     [updateDestination],
   );
 
-  useEffect(() => {
-    if (
-      destination.view !== "library" ||
-      destination.collection ||
-      destination.lyrics
-    )
-      return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await executeQuery(
-          destination.libraryAlbumId
-            ? { query: "GetAlbumDetails", payload: { album_id: destination.libraryAlbumId } }
-            : destination.libraryQuery
-            ? {
-                query: "SearchLibrary",
-                payload: { query_text: destination.libraryQuery, limit: 100 },
-              }
-            : {
-                query: "GetTracks",
-                payload: { limit: 1000, offset: 0, ascending: true },
-              },
-        );
-        const rows = destination.libraryAlbumId ? res.data?.tracks : res.data;
-        if (!cancelled && Array.isArray(rows)) setTracks(rows);
-      } catch (err) {
-        console.error("Library navigation failed:", err);
-        if (!cancelled && destination.libraryAlbumId) {
-          setTracks([]);
-          addAppNotification("error", "Couldn’t open album", "Refresh your library and try again.");
-        }
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    destination.view,
-    destination.collection,
-    destination.lyrics,
-    destination.libraryQuery,
-    destination.libraryAlbumId,
-    addAppNotification,
-  ]);
-
   const handleSelectAlbum = useCallback(
     (albumId: string) => {
       const album = albums.find((al) => al.id === albumId);
@@ -1967,11 +1967,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     folders: string[],
     startScan: boolean,
   ) => {
-    setShowOnboarding(false);
     await dispatchCommand({
       command: "CompleteOnboarding",
       payload: { music_folders: folders, start_scan: startScan },
     });
+    setShowOnboarding(false);
     fetchOnboardingStatus();
     if (startScan) {
       setIsScanning(true);
@@ -2211,11 +2211,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       targetName = trimmed;
     }
 
+    const account = libraryAccountRef.current;
     const res = await dispatchCommand({
       command: "CreatePlaylist",
       payload: { name: targetName, description },
     });
-    await fetchPlaylists();
+    if (!res.data || typeof res.data !== "string") return null;
+    try {
+      const refreshed = await executeQuery({query:"GetPlaylists"});
+      if (!Array.isArray(refreshed.data)) throw Error("Invalid playlist response");
+      if (account === libraryAccountRef.current) setPlaylists(refreshed.data);
+    } catch {
+      if (account === libraryAccountRef.current) setPlaylists(previous => previous.some(playlist => playlist.id === res.data) ? previous : [...previous, {id:res.data,name:targetName,description,is_smart_mix:0,track_count:0}]);
+      addAppNotification("error", "Playlist created; list refresh failed", "Your playlist was saved. Use Refresh playlists to update the list.");
+    }
     if (res.data && typeof res.data === "string") {
       return res.data;
     }
@@ -2262,6 +2271,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       await fetchTrackPlaylistMemberships();
     } catch (err) {
       console.error("Failed to toggle track in playlist:", err);
+      throw err;
     }
   };
 
@@ -2319,7 +2329,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             title: first.title,
             artist: first.artist_name || "Unknown Artist",
             album: first.album_title,
-            duration_secs: first.duration_secs || 210,
+            duration_secs: first.duration_secs ?? 0,
             cover_art_url: first.cover_art_url,
             preview_url: first.preview_url,
             match_status: "NOT_FOUND",
@@ -2465,7 +2475,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               title: t.title,
               artist: t.artist_name || "Unknown Artist",
               album: t.album_title,
-              duration_secs: t.duration_secs || 210,
+              duration_secs: t.duration_secs ?? 0,
               cover_art_url: t.cover_art_url,
               preview_url: t.preview_url,
               is_downloaded: !isOnline,
@@ -2480,7 +2490,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                     title: t.title,
                     artist: t.artist_name || "Unknown Artist",
                     album: t.album_title,
-                    duration_secs: t.duration_secs || 210,
+                    duration_secs: t.duration_secs ?? 0,
                     cover_art_url: t.cover_art_url,
                     preview_url: t.preview_url,
                     match_status: "NOT_FOUND",
@@ -2520,7 +2530,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               title: r.title,
               artist: r.artist,
               album: r.album,
-              duration_secs: r.duration_secs || 210,
+              duration_secs: r.duration_secs ?? 0,
               cover_art_url: r.cover_art_url,
               preview_url: r.preview_url,
               is_downloaded: !!validLocalId,
@@ -2618,7 +2628,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               title: track.title,
               artist: track.artist,
               album: track.album,
-              duration_secs: track.duration_secs || 210,
+              duration_secs: track.duration_secs ?? 0,
               cover_art_url: track.cover_art_url,
               preview_url: track.preview_url,
               is_downloaded: isLocal(track),
@@ -3366,9 +3376,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const activePlayingArtist = playbackState.current_track?.artist_name || "";
   const activePlayingTrackId = playbackState.current_track?.id;
   const activePlayingDuration =
-    playbackState.duration_secs ||
-    playbackState.current_track?.duration_secs ||
-    0;
+    playbackState.duration_secs ?? 0;
   const activePlayingArtwork = useMemo(() => {
     // 1. Direct local cover extracted from audio file or cache
     if (currentTrackCoverUrl) {
@@ -3604,10 +3612,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const archiveCount = isArchiveLiked
     ? activeCollection?.tracks?.length ?? likedSongs?.track_count ?? 0
     : currentView === "albums"
-      ? albums.length
+      ? albumPage.total
       : currentView === "playlists"
         ? regularPlaylistIds.size
-        : tracks.length;
+        : libraryScoped ? tracks.length : trackPage.total;
 
   const handleDeckFlow = useCallback(() => {
     if (homeOverview?.flow_session?.is_active) void handleToggleFlowPlayback();
@@ -3621,6 +3629,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         data-interface={interfacePreference.style}
       >
         {interfacePreference.style === "brutalist" && <BrutalistNavigation view={currentView} onNavigate={handleSelectView} />}
+        {connectionError && <div className="connection-error" role="alert">Player connection lost. <button onClick={() => retryConnection.current()}>Retry connection</button></div>}
         <div className="app-body">
           {/* Left Sidebar Navigation */}
           {interfacePreference.style === "spatial" && <Sidebar
@@ -3686,7 +3695,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             )}
               {interfacePreference.style === "spatial" && <SpatialUtilities onNavigate={handleSelectView} unread={unreadNotificationsCount} />}
             </div>
-            {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albums.length} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
+            {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albumPage.total} tracks={libraryScoped ? tracks.length : trackPage.total} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
             {interfacePreference.style === "brutalist" && isArchiveSurface && <BrutalistLibraryHeader view={currentView} count={archiveCount} likedSelected={isArchiveLiked} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
@@ -3811,6 +3820,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   {currentView === "library" && (
                     <LibraryView
                       tracks={tracks}
+                      total={libraryScoped ? tracks.length : trackPage.total}
+                      onEndReached={libraryScoped ? undefined : trackPage.next}
+                      loading={libraryScoped ? scoped.loading : trackPage.loading}
+                      pagingError={libraryScoped ? scoped.error : trackPage.error}
+                      onRetry={libraryScoped ? scoped.refresh : trackPage.retry}
                       currentTrackId={playbackState.current_track?.id}
                       isPlaying={playbackState.is_playing}
                       queuedTrackIds={queuedTrackIds}
@@ -3838,6 +3852,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   {currentView === "albums" && (
                     <AlbumsView
                       albums={albums}
+                      total={albumPage.total}
+                      onEndReached={albumPage.next}
+                      loading={albumPage.loading}
+                      pagingError={albumPage.error}
+                      onRetry={albumPage.retry}
                       onSelectAlbum={handleSelectAlbum}
                     />
                   )}
@@ -3852,6 +3871,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
+                      onRefreshPlaylists={handleRefreshPlaylists}
                       onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
                       onSaveImportedPlaylist={handleSaveImportedPlaylist}
                       onAddMissingToWishlist={handleAddMissingToWishlist}
@@ -3877,6 +3897,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
+                      onRefreshPlaylists={handleRefreshPlaylists}
                       onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
                       onSaveImportedPlaylist={handleSaveImportedPlaylist}
                       onAddMissingToWishlist={handleAddMissingToWishlist}

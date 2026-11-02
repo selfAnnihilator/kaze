@@ -1,5 +1,6 @@
 import {
   useLayoutEffect,
+  useEffect,
   memo,
   useRef,
   useState,
@@ -10,6 +11,7 @@ import {
 /** Native horizontal scrolling with a bounded number of mounted sleeves. */
 export function WindowedStrip<T>({
   items,
+  onEndReached,
   renderItem,
   scrollRef,
   onScroll,
@@ -18,6 +20,7 @@ export function WindowedStrip<T>({
   initialScrollTop = 0,
 }: {
   items: readonly T[];
+  onEndReached?: () => void;
   renderItem: (item: T, index: number) => ReactNode;
   scrollRef?: RefObject<HTMLDivElement | null>;
   onScroll?: () => void;
@@ -95,6 +98,9 @@ export function WindowedStrip<T>({
     items.length,
     viewport.bucket + Math.ceil(viewport.width / pitch) + 3,
   );
+  useEffect(() => {
+    if (end >= items.length - 3 && items.length) onEndReached?.();
+  }, [end, items.length, onEndReached]);
   return (
     <div
       className="horizontal-scroll-row windowed-strip"

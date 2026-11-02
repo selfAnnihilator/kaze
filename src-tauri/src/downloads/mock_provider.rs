@@ -21,6 +21,12 @@ pub struct MockDownloadProvider {
     jobs: Arc<RwLock<HashMap<String, MockJob>>>,
 }
 
+impl Default for MockDownloadProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockDownloadProvider {
     pub fn new() -> Self {
         Self {

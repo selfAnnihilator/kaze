@@ -20,6 +20,7 @@ concurrency:
 permissions:
   contents: read
 
+
 jobs:
   # ── Linux Build Job ─────────────────────────────────────────────────────────
   build-linux:
@@ -27,25 +28,24 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # ── Rust toolchain ──────────────────────────────────────────────────
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@18f0487477426dce244608110aa2660c2893deb7 # 1.98.1
         with:
+          components: clippy
           targets: x86_64-unknown-linux-gnu
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
 
       # ── Node.js / npm ───────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # Pinned setup-node v4 uses an empty cache input to disable caching.
+          cache: ''
 
       - name: Install Node.js dependencies
         run: npm ci
@@ -64,9 +64,14 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
+      - name: Verify all-target Rust lint
+        env:
+          CARGO_BUILD_JOBS: '1'
+        run: cargo +1.98.1 clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets
+
       # ── Build and sign (build-only, no release publish) ─────────────────
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -76,7 +81,7 @@ jobs:
 
       # ── Upload build outputs as workflow artifact ───────────────────────
       - name: Upload Linux build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifacts-linux
           path: |
@@ -94,32 +99,36 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # ── Rust toolchain ──────────────────────────────────────────────────
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@18f0487477426dce244608110aa2660c2893deb7 # 1.98.1
         with:
+          components: clippy
           targets: x86_64-pc-windows-msvc
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
 
       # ── Node.js / npm ───────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # Pinned setup-node v4 uses an empty cache input to disable caching.
+          cache: ''
 
       - name: Install Node.js dependencies
         run: npm ci
 
+      - name: Verify all-target Rust lint
+        env:
+          CARGO_BUILD_JOBS: '1'
+        run: cargo +1.98.1 clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets
+
       # ── Build and sign (build-only, no release publish) ─────────────────
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -129,7 +138,7 @@ jobs:
 
       # ── Upload build outputs as workflow artifact ───────────────────────
       - name: Upload Windows build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifacts-windows
           path: |
@@ -147,25 +156,31 @@ jobs:
       image: archlinux:base-devel
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Arch build dependencies
         run: |
-          pacman -Syu --noconfirm --needed git rust nodejs npm webkit2gtk-4.1 gtk3 alsa-lib libsoup3 openssl sqlite sudo pacman-contrib
+          pacman -Syu --noconfirm --needed git rustup nodejs npm webkit2gtk-4.1 gtk3 alsa-lib libsoup3 openssl sqlite sudo pacman-contrib
 
       - name: Build Arch package
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
+          TAG="$REQUESTED_TAG"
+          [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]] || { echo 'Invalid release tag'; exit 1; }
           VERSION="${TAG#v}"
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/arch/PKGBUILD
           sed -i 's/^pkgrel=.*/pkgrel=1/' packaging/arch/PKGBUILD
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           chown -R builder:builder .
+          su builder -c "rustup toolchain install 1.98.1 --profile minimal --component clippy && CARGO_BUILD_JOBS=1 cargo +1.98.1 clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets"
           su builder -c "cd packaging/arch && (updpkgsums || (tar -czf kaze-\${VERSION}.tar.gz --transform \"s,^,kaze-\${VERSION}/,\" --exclude=./packaging --exclude=./target --exclude=./src-tauri/target --exclude=./node_modules --exclude=./.git ../.. && updpkgsums)) && makepkg -s --noconfirm"
 
       - name: Upload Arch build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifacts-arch
           path: packaging/arch/*.pkg.tar.zst*
@@ -183,18 +198,23 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Determine release tag
         id: tag_info
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
+          TAG="$REQUESTED_TAG"
+          [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]] || { echo 'Invalid release tag'; exit 1; }
           [[ "$TAG" =~ ^v ]] || TAG="v$TAG"
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: release-artifacts
           pattern: artifacts-*
@@ -361,7 +381,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ env.RELEASE_TAG }}"
+          TAG="$RELEASE_TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, updating title and notes..."
             gh release edit "$TAG" --title "Kaze $TAG" --notes-file release_notes.md
@@ -377,7 +397,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ env.RELEASE_TAG }}"
+          TAG="$RELEASE_TAG"
           cd release-upload
 
           # Collect list of files to upload

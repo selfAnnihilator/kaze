@@ -58,6 +58,13 @@ button, input, select, textarea { font-family: inherit; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* Startup can receive theme CSS while mounted; constrain that late cascade too. */
+.app-startup,
+.app-startup *,
+.app-startup *::before,
+.app-startup *::after {
+  transition-property: transform, opacity !important;
+}
 .app-startup-brand {
   display: flex;
   flex-direction: column;
@@ -179,9 +186,10 @@ button, input, select, textarea { font-family: inherit; }
   to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-startup[data-startup-style] .app-startup-brand *,
-  .app-startup[data-startup-style] .app-startup-brand *::before,
-  .app-startup[data-startup-style] .app-startup-brand *::after {
+  .app-startup[data-startup-style],
+  .app-startup[data-startup-style] *,
+  .app-startup[data-startup-style] *::before,
+  .app-startup[data-startup-style] *::after {
     animation: none !important;
     transition: none !important;
   }

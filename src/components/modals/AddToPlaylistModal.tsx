@@ -35,6 +35,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+  const pending = React.useRef(new Set<string>());
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   // Strictly show user-created / user-saved playlists, never automatic smart mixes
@@ -58,10 +60,10 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
     setCreateError(null);
     try {
       const createdId = await onCreatePlaylist(trimmed);
-      if (createdId) {
-        // Automatically add current track to the newly created playlist
-        await onTogglePlaylist(createdId, false);
-      }
+      if (!createdId) return;
+      // Creation succeeded. A membership failure must not retry creation.
+      try { await onTogglePlaylist(createdId, false); }
+      catch (failure) { setMembershipError(`Playlist created. Couldn’t add song: ${failure instanceof Error ? failure.message : String(failure)}. Select the playlist to retry.`); }
       setNewPlaylistName("");
       setShowCreateForm(false);
     } catch (err: any) {
@@ -72,13 +74,18 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   };
 
   const handleToggle = async (playlistId: string) => {
-    if (togglingIds.has(playlistId)) return;
+    if (pending.current.has(playlistId)) return;
+    pending.current.add(playlistId);
+    setMembershipError(null);
     const isMember = trackPlaylistIds.includes(playlistId);
 
     setTogglingIds((prev) => new Set(prev).add(playlistId));
     try {
       await onTogglePlaylist(playlistId, isMember);
+    } catch (failure) {
+      setMembershipError(`Couldn’t update playlist. ${failure instanceof Error ? failure.message : String(failure)}. Select it to retry.`);
     } finally {
+      pending.current.delete(playlistId);
       setTogglingIds((prev) => {
         const next = new Set(prev);
         next.delete(playlistId);
@@ -101,7 +108,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         zIndex: 9999,
         padding: "20px",
       }}
-      onClick={onClose}
+      onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
     >
       <div
         className="modal-content"
@@ -177,7 +184,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
               style={{
                 background: "none",
                 border: "none",
@@ -208,6 +215,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
               <input
                 type="text"
                 autoFocus
+                disabled={isSubmitting}
                 placeholder="Enter playlist name..."
                 value={newPlaylistName}
                 onChange={(e) => {
@@ -243,6 +251,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
               <button
                 type="button"
                 className="btn btn-secondary"
+                disabled={isSubmitting}
                 onClick={() => {
                   setShowCreateForm(false);
                   setCreateError(null);
@@ -266,12 +275,13 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 }}
               >
                 <AlertCircle size={14} />
-                <span>{createError}</span>
+                <span role="alert">{createError}</span>
               </div>
             )}
           </form>
         )}
 
+        {membershipError && <p role="alert">{membershipError}</p>}
         {/* Playlists List */}
         <div
           style={{
@@ -440,7 +450,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           </span>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
             className="btn btn-secondary"
             style={{
               padding: "5px 14px",

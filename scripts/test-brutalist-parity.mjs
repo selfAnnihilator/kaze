@@ -217,9 +217,11 @@ try {
     await page.getByRole("button", { name: "Later records", exact: true }).click();
     await page.waitForFunction((before) => document.querySelector(".press-albums .windowed-strip").scrollLeft > before, leftBefore);
     await shelf.evaluate((el) => { el.scrollTop = 0; });
-    await page
-      .locator(".press-albums .windowed-strip")
-      .evaluate((el) => (el.scrollLeft = el.scrollWidth));
+    // Paging can extend the strip while scrolling; reach the final loaded page.
+    for (let pageIndex = 0; pageIndex < 3; pageIndex++) {
+      await shelf.evaluate(el => el.scrollTo({left:el.scrollWidth,behavior:"instant"}));
+      await page.waitForTimeout(120);
+    }
     await page.waitForFunction(
       () =>
         [...document.querySelectorAll(".press-record-spine > span")].at(-1)

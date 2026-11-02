@@ -6,10 +6,12 @@ export function WindowedGallery<T>({
   renderItem,
   label,
   layout,
+  onEndReached,
 }: {
   items: readonly T[];
   renderItem: (item: T, index: number) => ReactNode;
   label: string;
+  onEndReached?: () => void;
   layout?: "shelf" | "rows" | "index";
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -56,6 +58,7 @@ export function WindowedGallery<T>({
     <div className="windowed-gallery" ref={ref}>
       <WindowedList
         items={rows}
+        onEndReached={onEndReached}
         rowHeight={rowHeight}
         label={label}
         renderItem={(row, rowIndex) => (

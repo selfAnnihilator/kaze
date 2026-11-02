@@ -1,3 +1,4 @@
+import { PagingFeedback } from "./PagingFeedback";
 import { memo } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRef } from "react";
@@ -8,18 +9,28 @@ import { useViewMemory } from "./ViewMemory";
 
 export const BrutalistAlbums = memo(function BrutalistAlbums({
   albums,
+  total = albums.length,
+  onEndReached,
+  loading, pagingError,
+  onRetry,
   onSelectAlbum,
 }: {
   albums: Album[];
+  total?: number;
+  onEndReached?: () => void;
+  loading?: boolean; pagingError?: string | null;
+  onRetry?: () => void;
   onSelectAlbum: (id: string) => void;
 }) {
   const wall = useRef<HTMLDivElement>(null);
   const position = useViewMemory("album-spines", () => ({ left: 0, top: 0 }));
   return (
     <section className="press-albums albums-view">
+      <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
       {albums.length ? (
         <WindowedStrip
           items={albums}
+          onEndReached={onEndReached}
           scrollRef={wall}
           label="Album spines"
           initialScrollLeft={position.left}
@@ -48,14 +59,14 @@ export const BrutalistAlbums = memo(function BrutalistAlbums({
             </button>
           )}
         />
-      ) : (
+      ) : !loading && !pagingError ? (
         <p className="interface-empty">
           Your record shelf is waiting. Add a music folder in Settings and
           rescan your library.
         </p>
-      )}
+      ) : null}
       <div className="press-archive-footer">
-        <span>{albums.length} RECORDS / SELECT A SPINE TO OPEN</span>
+        <span>{total} RECORDS{albums.length < total ? ` / ${albums.length} LOADED` : ""} / SELECT A SPINE TO OPEN</span>
         <div>
           <button
             className="press-icon"

@@ -293,8 +293,14 @@ async fn cold_online_fixture(quit_while_loading: bool) {
     let (sent, received) = tokio::sync::oneshot::channel();
     let server = std::thread::spawn(move || {
         let (mut socket, _) = listener.accept().unwrap();
-        let mut request = [0; 4096];
-        socket.read(&mut request).unwrap();
+        socket.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+        let mut request = Vec::new();
+        while !request.ends_with(b"\r\n\r\n") {
+            assert!(request.len() < 16 * 1024, "request header too large");
+            let mut byte = [0];
+            assert_eq!(socket.read(&mut byte).unwrap(), 1, "EOF before request headers");
+            request.push(byte[0]);
+        }
         let data_size = 8000u32 * 2 * 180;
         let mut audio = Vec::new();
         audio.extend_from_slice(b"RIFF");
@@ -380,4 +386,62 @@ async fn cold_online_resume_waits_for_seekable_cache_then_starts_at_saved_offset
 #[tokio::test]
 async fn quit_cancels_a_cold_online_resume_before_draining_commands() {
     cold_online_fixture(true).await;
+}
+
+#[tokio::test]
+async fn unknown_duration_preserves_identity_pause_and_restoration_position() {
+    let dir = tempfile::tempdir().unwrap();
+    let (first, backend) = open(&dir).await;
+    seed(&first).await;
+    sqlx::query("UPDATE tracks SET duration_secs=0 WHERE id='two'").execute(first.db_pool()).await.unwrap();
+    first.dispatch_command(Command::NextTrack).await.unwrap();
+    let active = state(&first).await;
+    assert_eq!(active["current_track_id"], "two");
+    assert_eq!(active["is_playing"], true);
+    assert_eq!(active["duration_secs"], 0.0);
+    backend.advance_position(std::time::Duration::from_secs(2));
+    first.dispatch_command(Command::Pause).await.unwrap();
+    assert_eq!(state(&first).await["current_track_id"], "two");
+    first.shutdown().await.unwrap();
+    let (second, backend) = open(&dir).await;
+    let restored = state(&second).await;
+    assert_eq!(restored["current_track_id"], "two");
+    assert_eq!(restored["position_secs"], 2.0);
+    second.dispatch_command(Command::Resume).await.unwrap();
+    assert_eq!(backend.position_millis.load(std::sync::atomic::Ordering::SeqCst), 2000);
+    second.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn unknown_duration_eof_before_first_tick_advances_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let (processor, backend) = open(&dir).await;
+    seed(&processor).await;
+    sqlx::query("UPDATE tracks SET duration_secs=0 WHERE id='two'").execute(processor.db_pool()).await.unwrap();
+    processor.dispatch_command(Command::NextTrack).await.unwrap();
+    backend.set_finished(true);
+    tokio::time::sleep(std::time::Duration::from_millis(650)).await;
+    assert_eq!(state(&processor).await["current_track_id"], "three");
+    processor.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn unknown_duration_repeat_one_creates_one_completion_per_session() {
+    let dir = tempfile::tempdir().unwrap();
+    let (processor, backend) = open(&dir).await;
+    seed(&processor).await;
+    sqlx::query("UPDATE tracks SET duration_secs=0 WHERE id='two'").execute(processor.db_pool()).await.unwrap();
+    processor.dispatch_command(Command::NextTrack).await.unwrap();
+    processor.dispatch_command(Command::SetRepeatMode { mode: RepeatMode::One }).await.unwrap();
+    let mut events = processor.event_bus().subscribe();
+    for _ in 0..2 {
+        backend.set_finished(true);
+        tokio::time::sleep(std::time::Duration::from_millis(550)).await;
+        assert_eq!(state(&processor).await["current_track_id"], "two");
+        assert_eq!(state(&processor).await["is_playing"], true);
+    }
+    let completions: Vec<_> = std::iter::from_fn(|| events.try_recv().ok()).filter_map(|e| match e { Event::TrackFinished {session_id, ..} => Some(session_id), _ => None }).collect();
+    assert_eq!(completions.len(), 2);
+    assert_ne!(completions[0], completions[1]);
+    processor.shutdown().await.unwrap();
 }

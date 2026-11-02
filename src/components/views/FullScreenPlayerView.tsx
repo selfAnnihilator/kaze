@@ -62,7 +62,7 @@ export const FullScreenPlayerView: React.FC<FullScreenPlayerViewProps> =
               artist={currentTrack?.artist_name || ""}
               title={currentTrack?.title || ""}
               durationSecs={
-                playbackState.duration_secs || currentTrack?.duration_secs || 0
+                playbackState.duration_secs ?? 0
               }
               onSeek={onSeek}
               isFullScreen

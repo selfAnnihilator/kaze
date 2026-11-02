@@ -344,9 +344,7 @@ impl OnlineCatalog {
 
 fn identity(value: &Value) -> Option<&str> {
     // A source pointer also has track_id. It is a reference, not another track.
-    if value.get("title").is_none() {
-        return None;
-    }
+    value.get("title")?;
     value
         .get("external_track_id")
         .or_else(|| value.get("track_id"))

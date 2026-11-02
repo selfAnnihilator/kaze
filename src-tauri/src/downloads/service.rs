@@ -25,6 +25,7 @@ pub struct DownloadService {
     auto_import: bool,
     search_cache: Arc<RwLock<HashMap<String, DownloadSearchResult>>>,
     direct_gate: tokio::sync::Mutex<()>,
+    recovery: tokio::sync::OnceCell<()>,
 }
 
 impl DownloadService {
@@ -47,6 +48,7 @@ impl DownloadService {
             auto_import,
             search_cache: Arc::new(RwLock::new(HashMap::new())),
             direct_gate: tokio::sync::Mutex::new(()),
+            recovery: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -427,6 +429,23 @@ impl DownloadService {
         status_filter: Option<&str>,
         limit: u32,
     ) -> AppResult<Vec<DownloadTaskRecord>> {
+        self.recovery.get_or_try_init(|| async {
+            // Provider jobs live in this process. Unknown persisted jobs cannot resume.
+            for task in self.repo.list_tasks(None, 10000).await? {
+                if !matches!(task.status.as_str(), "DOWNLOADING" | "QUEUED") { continue; }
+                let missing = match task.provider_task_id.as_deref() {
+                    Some(id) => self.provider.get_progress(id).await?.is_none(),
+                    None => true,
+                };
+                if missing {
+                    let message = "Download interrupted by an app restart. Retry this song.";
+                    if self.repo.fail_interrupted_task(&task.id, message).await? {
+                        let _ = self.event_bus.publish(Event::DownloadFailed { task_id: task.id, error: message.into() });
+                    }
+                }
+            }
+            Ok::<(), AppError>(())
+        }).await?;
         self.repo.list_tasks(status_filter, limit).await
     }
 

@@ -119,11 +119,13 @@ export const SpatialUtilities = memo(function SpatialUtilities({
 export const SpatialLibraryHeader = memo(function SpatialLibraryHeader({
   view,
   albums,
+  tracks,
   onNavigate,
   onLiked,
 }: {
   view: ViewType;
   albums: number;
+  tracks?: number;
   onNavigate: (view: ViewType) => void;
   onLiked?: () => void;
 }) {
@@ -133,7 +135,7 @@ export const SpatialLibraryHeader = memo(function SpatialLibraryHeader({
       <h1>
         Your library<span>.</span>
       </h1>
-      <p>{albums} albums. A thousand places to go.</p>
+      <p>{view === "library" && tracks !== undefined ? `${tracks} tracks. ` : `${albums} albums. `}A thousand places to go.</p>
       <div
         className="spatial-library-tabs"
         role="tablist"

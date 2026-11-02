@@ -19,6 +19,7 @@ pub struct AlbumSummary {
 #[async_trait]
 pub trait AlbumRepository: Send + Sync {
     async fn list_albums(&self, offset: u32, limit: u32) -> AppResult<Vec<AlbumSummary>>;
+    async fn library_page(&self, offset: u32, limit: u32) -> AppResult<(Vec<AlbumSummary>, i64)>;
     async fn find_by_id(&self, album_id: &str) -> AppResult<Option<AlbumRecord>>;
     async fn tracks_scoped(&self, album_id: &str, user_id: &str) -> AppResult<Vec<TrackDetail>>;
 }
@@ -53,7 +54,7 @@ impl AlbumRepository for SqliteAlbumRepository {
             LEFT JOIN artists a ON al.artist_id = a.id
             LEFT JOIN tracks t ON t.album_id = al.id
             GROUP BY al.id
-            ORDER BY al.title ASC
+            ORDER BY al.title ASC, al.id ASC
             LIMIT ? OFFSET ?
         ";
 
@@ -65,6 +66,40 @@ impl AlbumRepository for SqliteAlbumRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(records)
+    }
+
+    async fn library_page(&self, offset: u32, limit: u32) -> AppResult<(Vec<AlbumSummary>, i64)> {
+        let mut tx = self.pool.begin().await?;
+        let sql = "
+            SELECT al.id, al.title, a.name as artist_name, al.release_year,
+                   al.cover_art_path, COUNT(t.id) as track_count,
+                   (
+                       SELECT t2.id FROM tracks t2
+                       WHERE t2.album_id = al.id AND t2.file_path NOT LIKE 'online://%' AND t2.has_cover_art = 1
+                       AND (NOT EXISTS (SELECT 1 FROM track_enrichment e WHERE e.track_id=t2.id AND e.state='matched' AND e.cover_art_path IS NOT NULL)
+                            OR EXISTS (SELECT 1 FROM track_source_metadata s WHERE s.track_id=t2.id AND json_extract(s.metadata_json,'$.has_cover_art')=1)
+                            OR EXISTS (SELECT 1 FROM track_enrichment e WHERE e.track_id=t2.id AND e.state='matched' AND json_extract(e.metadata_json,'$.album_id') IS NOT NULL AND lower(trim(json_extract(e.metadata_json,'$.album_title')))=al.normalized_title))
+                       ORDER BY t2.track_number ASC, t2.title ASC
+                       LIMIT 1
+                   ) as first_track_id
+            FROM albums al
+            LEFT JOIN artists a ON al.artist_id = a.id
+            JOIN tracks t ON t.album_id = al.id AND t.file_path NOT LIKE 'online://%'
+            GROUP BY al.id
+            ORDER BY al.title ASC, al.id ASC
+            LIMIT ? OFFSET ?
+        ";
+
+        let records = sqlx::query_as::<_, AlbumSummary>(sql)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM albums al WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.album_id=al.id AND t.file_path NOT LIKE 'online://%')").fetch_one(&mut *tx).await?;
+        tx.commit().await?;
+        Ok((records, total))
     }
 
     async fn tracks_scoped(&self, album_id: &str, user_id: &str) -> AppResult<Vec<TrackDetail>> {

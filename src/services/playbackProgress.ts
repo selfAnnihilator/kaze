@@ -18,9 +18,7 @@ class PlaybackProgressEmitter {
 
   public update(position: number, duration: number): void {
     this.currentPosition = position;
-    if (duration > 0) {
-      this.currentDuration = duration;
-    }
+    this.currentDuration = duration;
     for (const listener of this.listeners) {
       listener(this.currentPosition, this.currentDuration);
     }
@@ -37,16 +35,16 @@ class PlaybackProgressEmitter {
 
 export const playbackProgress = new PlaybackProgressEmitter();
 
-export function usePlaybackProgress(fallbackDuration = 0) {
+export function usePlaybackProgress(_fallbackDuration = 0) {
   const [progress, setProgress] = useState(() => ({
     position: playbackProgress.getPosition(),
-    duration: playbackProgress.getDuration() || fallbackDuration,
+    duration: playbackProgress.getDuration(),
   }));
 
   useEffect(() => {
     const update = (position: number, duration: number) => {
       if (document.hidden) return;
-      const nextDuration = duration || fallbackDuration;
+      const nextDuration = duration;
       setProgress((current) =>
         current.position === position && current.duration === nextDuration
           ? current
@@ -61,7 +59,7 @@ export function usePlaybackProgress(fallbackDuration = 0) {
       unsubscribe();
       document.removeEventListener("visibilitychange", restore);
     };
-  }, [fallbackDuration]);
+  }, []);
 
   return progress;
 }

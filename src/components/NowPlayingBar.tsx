@@ -79,7 +79,8 @@ export const NowPlayingProgressBar: React.FC<{
     usePlaybackProgress(propDuration);
   const [seekingValue, setSeekingValue] = useState<number | null>(null);
 
-  const duration = propDuration > 0 ? propDuration : progressDuration;
+  const duration = progressDuration;
+  canSeek = canSeek && duration > 0;
   const displayPos = seekingValue !== null ? seekingValue : position;
   const seekProgress =
     duration > 0
@@ -88,7 +89,7 @@ export const NowPlayingProgressBar: React.FC<{
 
   return (
     <div className={layout === "deck" ? "press-position" : "progress-container"}>
-      {layout === "deck" ? <label>POSITION <output>{formatTime(displayPos)} / {formatTime(duration)}</output></label> : <span className="time-label">{formatTime(displayPos)}</span>}
+      {layout === "deck" ? <label>POSITION <output>{formatTime(displayPos)}{duration > 0 ? ` / ${formatTime(duration)}` : ""}</output></label> : <span className="time-label">{formatTime(displayPos)}</span>}
       <input
         type="range"
         className={layout === "deck" ? undefined : `scrubber ${!canSeek ? "disabled" : ""}`}
@@ -128,7 +129,7 @@ export const NowPlayingProgressBar: React.FC<{
           setSeekingValue(null);
         }}
       />
-      {layout !== "deck" && <span className="time-label">{formatTime(duration)}</span>}
+      {layout !== "deck" && <span className="time-label">{duration > 0 ? formatTime(duration) : "—"}</span>}
     </div>
   );
 });

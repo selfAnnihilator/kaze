@@ -1,5 +1,6 @@
 """Exercise the real PKGBUILD with isolated Rust command doubles; no downloads."""
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -9,12 +10,14 @@ RECIPE = Path(__file__).resolve().parents[2] / 'packaging/arch/PKGBUILD'
 
 
 class ArchToolchainTests(unittest.TestCase):
-    def run_recipe(self, *, healthy=False, manager=True, download_ok=True, installed=False, broken=False, phase='prepare'):
+    def run_recipe(self, *, healthy=False, manager=True, download_ok=True, installed=False, broken=False, phase='prepare', source_exists=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bindir = root / 'bin'
             bindir.mkdir()
-            (root / 'kaze-2.0.2').mkdir()
+            if source_exists:
+                version = re.search(r'^pkgver=(.+)$', RECIPE.read_text(), re.MULTILINE).group(1)
+                (root / f'kaze-{version}').mkdir()
             if installed:
                 (root / 'installed').touch()
             tool = '''#!/bin/bash
@@ -65,6 +68,11 @@ printf 'rustup %s\\n' "$*" >> "$TEST_ROOT/calls"
         result, calls = self.run_recipe(installed=True, phase='both')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn('rustup ', calls)
+
+    def test_missing_source_directory_stops_build(self):
+        result, calls = self.run_recipe(healthy=True, phase='build', source_exists=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('cargo build', calls)
 
     def test_missing_provider_has_actionable_error(self):
         result, _ = self.run_recipe(manager=False)

@@ -36,7 +36,7 @@ export async function subscribeBackendEvents(callback: (event: any) => void): Pr
       return unlisten;
     } catch (err) {
       console.error("[Tauri API] Failed to subscribe to backend-event:", err);
-      return () => {};
+      throw err;
     }
   } else {
     // In browser, emit periodic mock ticker event for testing if needed
@@ -46,6 +46,12 @@ export async function subscribeBackendEvents(callback: (event: any) => void): Pr
 
 function mockQueryResponse(query: Query): QueryResponse {
   switch (query.query) {
+    case "GetLibraryTracksPage":
+    case "GetLibraryAlbumsPage": {
+      const response = mockQueryResponse(query.query === "GetLibraryTracksPage" ? {query:"GetTracks",payload:{offset:0,limit:200,ascending:true}} : {query:"GetAlbums",payload:{offset:0,limit:100}});
+      const rows = response.data || [];
+      return { type: query.query === "GetLibraryTracksPage" ? "LibraryTracksPage" : "LibraryAlbumsPage", data:{items:rows.slice(query.payload.offset,query.payload.offset+query.payload.limit),total:rows.length}};
+    }
     case "GetRecommendationSetup":
       return { type: "RecommendationSetup", data: {user_id:"default",status:"skipped",artists:[],genres:[],revision:0,should_prompt:false} };
     case "GetOnboardingStatus":

@@ -1,3 +1,4 @@
+import { PagingFeedback } from "../../presentation/PagingFeedback";
 import { useInterfaceStyle } from "../../presentation/InterfaceContext";
 import { BrutalistAlbums } from "../../presentation/BrutalistAlbums";
 import { WindowedGallery } from "../../presentation/WindowedGallery";
@@ -42,11 +43,9 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
   ({ album, onSelectAlbum }) => {
     const cacheKey = album.first_track_id || album.id;
     const generation = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
-    const [coverUrl, setCoverUrl] = useState<string | null>(() => {
-      if (album.cover_art_path) return album.cover_art_path;
-      if (cacheKey) return peekCoverArt(cacheKey) || null;
-      return null;
-    });
+    const [resolvedCover, setResolvedCover] = useState<{key: string; generation: number; url: string | null} | null>(null);
+    const coverUrl = album.cover_art_path || (resolvedCover?.key === cacheKey && resolvedCover.generation === generation ? resolvedCover.url : null);
+    const setCoverUrl = useCallback((url: string | null) => setResolvedCover({key: cacheKey, generation, url}), [cacheKey, generation]);
     const [isVisible, setIsVisible] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
 
@@ -75,9 +74,8 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
         observerCallbacks.delete(el);
         observer.unobserve(el);
       };
-    }, [cacheKey, coverUrl, isVisible]);
+    }, [cacheKey, coverUrl, isVisible, setCoverUrl]);
 
-    useEffect(() => { setCoverUrl(null); }, [generation]);
 
     // Request cover art only when card enters viewport and has a track ID with artwork
     useEffect(() => {
@@ -96,7 +94,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
         if (!controller.signal.aborted && url) setCoverUrl(url);
       });
       return () => controller.abort();
-    }, [isVisible, coverUrl, album.first_track_id, cacheKey]);
+    }, [isVisible, coverUrl, album.first_track_id, cacheKey, generation, setCoverUrl]);
 
     const handleClick = useCallback(() => {
       onSelectAlbum(album.id);
@@ -222,24 +220,31 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
 
 interface AlbumsViewProps {
   albums: Album[];
+  total?: number;
+  onEndReached?: () => void;
+  loading?: boolean;
+  pagingError?: string | null;
+  onRetry?: () => void;
   onSelectAlbum: (albumId: string) => void;
 }
 
 export const AlbumsView: React.FC<AlbumsViewProps> = React.memo(
-  ({ albums, onSelectAlbum }) => {
+  ({ albums, onSelectAlbum, total = albums.length, onEndReached, loading, pagingError, onRetry }) => {
     const style = useInterfaceStyle();
-    if (style === "brutalist") return <BrutalistAlbums albums={albums} onSelectAlbum={onSelectAlbum} />;
+    if (style === "brutalist") return <BrutalistAlbums albums={albums} total={total} onEndReached={onEndReached} loading={loading} pagingError={pagingError} onRetry={onRetry} onSelectAlbum={onSelectAlbum} />;
     return (
       <div className="albums-view">
         <div className="view-header">
           <div>
             <h1 className="view-title">Albums</h1>
             <p style={{ color: "var(--text-muted)", marginTop: 8 }}>
-              {albums.length} albums in your library
+              {total} albums in your library
             </p>
           </div>
         </div>
-        {!albums.length ? (
+        <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
+        {total > albums.length && <p>{albums.length} loaded of {total}</p>}
+        {!albums.length && !loading && !pagingError ? (
           <p className="interface-empty">
             Your record shelf is waiting. Add a music folder in Settings and
             rescan your library.
@@ -247,6 +252,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = React.memo(
         ) : (
           <WindowedGallery
             items={albums}
+            onEndReached={onEndReached}
             label="Album shelves"
             layout={style === "spatial" ? "shelf" : undefined}
             renderItem={(album) => (
