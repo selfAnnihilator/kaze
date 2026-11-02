@@ -2,7 +2,7 @@
 # makepkg reads the annotated metadata variables after sourcing this recipe.
 # Maintainer: Music Player Contributors <https://github.com/selfAnnihilator/kaze>
 pkgname=kaze
-pkgver=2.0.3
+pkgver=2.0.4
 # shellcheck disable=SC2034
 pkgrel=1
 # shellcheck disable=SC2034
@@ -39,7 +39,7 @@ source=(
 )
 # shellcheck disable=SC2034
 sha256sums=(
-    '72750173ecdac2cf0d7f0dc72622862b1b3b612a19bcd20fb80593f1e9bd86d0'
+    'a35c0c8681ec937128ca5e4ec948822e176f6dfb2093f3311d2bd65f32bc9ca1'
     'eaf39dc7d4a05cefeb1543018e5a2ae84148343e3b5a8de50ba365087d43dd0c'
 )
 
