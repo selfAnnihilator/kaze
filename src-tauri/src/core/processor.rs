@@ -601,7 +601,9 @@ impl CoreProcessor {
             return Ok(());
         }
         self.begin_quit();
+        info!("Shutdown: waiting for commands after playback cancellation");
         let _commands = self.command_gate.write().await;
+        info!("Shutdown: commands drained; persisting playback/history");
         let tasks = std::mem::take(
             &mut *self
                 .background_tasks
@@ -618,6 +620,7 @@ impl CoreProcessor {
         let stopped = self.playback_service.shutdown().await;
         self.history_service.shutdown().await;
         self.db_pool.close().await;
+        info!("Shutdown: history and database closed");
         *done = true;
         stopped
     }

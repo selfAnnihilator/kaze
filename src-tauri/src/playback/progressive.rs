@@ -88,13 +88,14 @@ impl ProgressiveStreamState {
     pub fn set_completed(&self) {
         {
             let mut s = self.status.lock().unwrap();
+            if !matches!(*s, StreamStatus::Downloading) { return; }
             *s = StreamStatus::Completed;
             self.set_buffering(false);
         }
         self.condvar.notify_all();
         // A paused player has no position ticks. Tell controllers that seeking
         // became available without pretending playback resumed.
-        if let Some(ref bus) = self.event_bus {
+        if let (Some(bus), Some(_session)) = (&self.event_bus, self.playback_session.lock().unwrap().as_ref()) {
             let _ = bus.publish(Event::PlaybackCapabilitiesChanged {
                 track_id: self.track_id.clone(),
             });
@@ -106,6 +107,7 @@ impl ProgressiveStreamState {
     pub fn set_failed(&self, err: String) {
         {
             let mut s = self.status.lock().unwrap();
+            if !matches!(*s, StreamStatus::Downloading) { return; }
             *s = StreamStatus::Failed(err);
             self.set_buffering(false);
         }
@@ -126,8 +128,8 @@ impl ProgressiveStreamState {
         matches!(*self.status.lock().unwrap(), StreamStatus::Completed)
     }
 
-    /// Probing runs before the background producer starts: keep it forward-only
-    /// so format probes cannot wait for bytes that nobody can download yet.
+    /// Keep initial format probing forward-only to avoid speculative seeks.
+    /// The producer already runs independently while probing reads wait.
     /// Once playback is attached, reads after a seek can buffer normally.
     pub fn can_seek(&self) -> bool {
         let status = self.status.lock().unwrap();
@@ -179,6 +181,11 @@ impl Read for ProgressiveStreamReader {
 
         loop {
             let status_guard = self.state.status.lock().unwrap();
+            // Interrupted may be retried indefinitely by Read::read_exact.
+            // Cancellation is terminal, including when bytes remain buffered.
+            if matches!(*status_guard, StreamStatus::Cancelled) {
+                return Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "Playback preparation cancelled"));
+            }
             let downloaded = self.state.downloaded_bytes.load(Ordering::Acquire);
             if self.read_pos < downloaded {
                 self.state.set_buffering(false);
@@ -204,7 +211,7 @@ impl Read for ProgressiveStreamReader {
                 }
                 StreamStatus::Cancelled => {
                     return Err(std::io::Error::new(
-                        std::io::ErrorKind::Interrupted,
+                        std::io::ErrorKind::BrokenPipe,
                         "Progressive stream playback cancelled",
                     ));
                 }

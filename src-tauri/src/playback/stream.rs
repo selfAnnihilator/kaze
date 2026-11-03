@@ -4,7 +4,7 @@ use crate::playback::resolution_cache::{parse_url_expiry, ResolutionCache, Resol
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -133,6 +133,40 @@ pub enum ResolvedAudioSource {
     },
 }
 
+/// Owns every worker and cancellation signal from resolution through playback.
+struct Preparation {
+    cancelled: tokio::sync::watch::Sender<bool>,
+    state: std::sync::Mutex<Option<Arc<ProgressiveStreamState>>>,
+    paths: std::sync::Mutex<HashSet<PathBuf>>,
+    producer: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    probe: tokio::sync::Mutex<Option<tokio::task::JoinHandle<AppResult<SymphoniaSource>>>>,
+}
+
+impl Preparation {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            cancelled: tokio::sync::watch::channel(false).0,
+            state: std::sync::Mutex::new(None),
+            paths: std::sync::Mutex::new(HashSet::new()),
+            producer: tokio::sync::Mutex::new(None),
+            probe: tokio::sync::Mutex::new(None),
+        })
+    }
+
+    fn cancel(&self) {
+        self.cancelled.send_replace(true);
+        if let Some(state) = self.state.lock().unwrap().as_ref() {
+            state.deactivate_playback();
+            state.set_cancelled();
+        }
+    }
+
+    async fn drain(&self) {
+        if let Some(task) = self.producer.lock().await.take() { let _ = task.await; }
+        if let Some(task) = self.probe.lock().await.take() { let _ = task.await; }
+    }
+}
+
 /// Manages streaming audio resolution, bounded disk caching, LRU eviction, and cancellation safety.
 pub struct StreamPlaybackManager {
     jiosaavn: Arc<crate::providers::jiosaavn::JioSaavnProvider>,
@@ -143,10 +177,9 @@ pub struct StreamPlaybackManager {
     config: Arc<RwLock<RemoteAudioCacheConfig>>,
     active_playing_path: Arc<RwLock<Option<PathBuf>>>,
     active_downloads: Arc<tokio::sync::Mutex<HashSet<PathBuf>>>,
-    download_waiters: Arc<tokio::sync::Mutex<HashMap<PathBuf, Arc<tokio::sync::Notify>>>>,
     eviction_lock: Arc<tokio::sync::Mutex<()>>,
     event_bus: Arc<std::sync::RwLock<Option<Arc<crate::core::event_bus::EventBus>>>>,
-    active_stream_handle: Arc<tokio::sync::Mutex<Option<(tokio::task::JoinHandle<()>, Arc<crate::playback::progressive::ProgressiveStreamState>, PathBuf)>>>,
+    preparation: Arc<std::sync::Mutex<Option<Arc<Preparation>>>>,
     /// In-memory TTL-aware resolution cache for pre-resolved audio URLs.
     resolution_cache: Arc<ResolutionCache>,
 }
@@ -184,10 +217,9 @@ impl StreamPlaybackManager {
             config: Arc::new(RwLock::new(config)),
             active_playing_path: Arc::new(RwLock::new(None)),
             active_downloads: Arc::new(tokio::sync::Mutex::new(HashSet::new())),
-            download_waiters: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             eviction_lock: Arc::new(tokio::sync::Mutex::new(())),
             event_bus: Arc::new(std::sync::RwLock::new(None)),
-            active_stream_handle: Arc::new(tokio::sync::Mutex::new(None)),
+            preparation: Arc::new(std::sync::Mutex::new(None)),
             resolution_cache: Arc::new(ResolutionCache::new()),
         }
     }
@@ -252,6 +284,9 @@ impl StreamPlaybackManager {
             protected.insert(path.clone());
             protected.insert(Self::get_part_path(path));
         }
+        if let Some(preparation) = self.preparation.lock().unwrap().as_ref() {
+            protected.extend(preparation.paths.lock().unwrap().iter().cloned());
+        }
         protected
     }
 
@@ -294,26 +329,51 @@ impl StreamPlaybackManager {
         *self.event_bus.write().unwrap() = Some(bus);
     }
 
+    /// Synchronous signal: callers must invoke this before operation locks/draining.
+    pub fn request_cancel(&self) {
+        if let Some(preparation) = self.preparation.lock().unwrap().as_ref() {
+            preparation.cancel();
+        }
+    }
+
+    fn begin_preparation(&self) -> Arc<Preparation> {
+        let preparation = Preparation::new();
+        if let Some(old) = self.preparation.lock().unwrap().replace(preparation.clone()) {
+            old.cancel();
+        }
+        preparation
+    }
+
     pub async fn cancel_active_stream(&self) {
-        let mut handle_guard = self.active_stream_handle.lock().await;
-        if let Some((handle, state, part_path)) = handle_guard.take() {
-            handle.abort();
-            state.set_cancelled();
-            let _ = handle.await;
-            if part_path.exists() {
-                let _ = tokio::fs::remove_file(&part_path).await;
-            }
-            debug!(path = %part_path.display(), "Cancelled active progressive download and removed partial file");
+        let preparation = self.preparation.lock().unwrap().take();
+        if let Some(preparation) = preparation {
+            preparation.cancel();
+            preparation.drain().await;
         }
     }
 
     pub async fn can_seek_current(&self) -> bool {
-        let handle_guard = self.active_stream_handle.lock().await;
-        if let Some((_, ref state, _)) = *handle_guard {
-            state.can_seek()
-        } else {
-            true
+        self.preparation.lock().unwrap().as_ref()
+            .and_then(|p| p.state.lock().unwrap().clone())
+            .is_none_or(|state| state.can_seek())
+    }
+
+    async fn finish_preparation<F>(&self, preparation: &Arc<Preparation>, work: F) -> AppResult<PreparedPlayback>
+    where F: std::future::Future<Output = AppResult<PreparedPlayback>> {
+        let mut cancelled = preparation.cancelled.subscribe();
+        let result = tokio::select! {
+            biased;
+            _ = async { cancelled.wait_for(|value| *value).await.ok(); } =>
+                Err(AppError::Playback("Playback preparation cancelled".into())),
+            result = tokio::time::timeout(std::time::Duration::from_secs(30), work) =>
+                result.unwrap_or_else(|_| Err(AppError::Playback("Playback preparation timed out after 30 seconds. Retry or choose Next.".into()))),
+        };
+        if result.is_err() {
+            preparation.cancel();
+            preparation.drain().await;
+            warn!("Playback preparation ended without a source; workers drained");
         }
+        result
     }
 
     async fn jiosaavn_identity(&self, track_id: &str, _title: &str, _artist: &str) -> AppResult<String> {
@@ -347,6 +407,11 @@ impl StreamPlaybackManager {
         title: &str,
         artist: &str,
     ) -> AppResult<PreparedPlayback> {
+        let preparation = self.begin_preparation();
+        self.finish_preparation(&preparation, self.resolve_preparation(track_id, title, artist, &preparation)).await
+    }
+
+    async fn resolve_preparation(&self, track_id: &str, title: &str, artist: &str, preparation: &Arc<Preparation>) -> AppResult<PreparedPlayback> {
         info!(track_id, title, artist, "Resolving audio for playback");
         let jio_id = self.jiosaavn_identity(track_id, title, artist).await?;
 
@@ -354,7 +419,7 @@ impl StreamPlaybackManager {
         let cache_key = format!("full:v3:jiosaavn:{jio_id}");
         let cache_path = self.get_cache_path(&cache_key);
 
-        if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
+        if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path).await {
             info!(provider = "jiosaavn", song_id = %jio_id, path = %cache_path.display(), "JioSaavn audio cache hit");
             Self::touch_cache_entry(&cache_path);
             let dur = self.full_cache_duration(&cache_path, track_id).await;
@@ -365,56 +430,10 @@ impl StreamPlaybackManager {
             return Err(AppError::Playback("JioSaavn is disabled in Settings; this song is not cached".into()));
         }
 
-        // 4. Cache Miss: Progressive stream resolution & playback
-        let waiter_notify = {
-            let mut active = self.active_downloads.lock().await;
-            let mut waiters = self.download_waiters.lock().await;
-            if active.contains(&cache_path) {
-                debug!(path = %cache_path.display(), "Download already active for this cache key, subscribing to completion");
-                Some(waiters.entry(cache_path.clone()).or_insert_with(|| Arc::new(tokio::sync::Notify::new())).clone())
-            } else {
-                active.insert(cache_path.clone());
-                None
-            }
-        };
-
-        if let Some(notify) = waiter_notify {
-            notify.notified().await;
-            if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
-                Self::touch_cache_entry(&cache_path);
-                let dur = self.full_cache_duration(&cache_path, track_id).await;
-                return Ok(PreparedPlayback::LocalFile { path: cache_path, duration: dur });
-            }
-            let mut active = self.active_downloads.lock().await;
-            active.insert(cache_path.clone());
-        }
-
-        struct DownloadSlotGuard {
-            target_path: PathBuf,
-            active_downloads: Arc<tokio::sync::Mutex<HashSet<PathBuf>>>,
-            download_waiters: Arc<tokio::sync::Mutex<HashMap<PathBuf, Arc<tokio::sync::Notify>>>>,
-        }
-
-        impl Drop for DownloadSlotGuard {
-            fn drop(&mut self) {
-                let target = self.target_path.clone();
-                let active_clone = self.active_downloads.clone();
-                let waiters_clone = self.download_waiters.clone();
-                tokio::spawn(async move {
-                    active_clone.lock().await.remove(&target);
-                    if let Some(notify) = waiters_clone.lock().await.remove(&target) {
-                        notify.notify_waiters();
-                    }
-                });
-            }
-        }
-
-        let _slot_guard = DownloadSlotGuard {
-            target_path: cache_path.clone(),
-            active_downloads: self.active_downloads.clone(),
-            download_waiters: self.download_waiters.clone(),
-        };
-
+        // One preparation owns resolution and download, including retries.
+        // Replacements cancel the old owner; no detached slot cleanup or
+        // completion waiter may mutate a newer request's bookkeeping.
+        preparation.paths.lock().unwrap().insert(cache_path.clone());
 
         // 4a. Check in-memory resolution cache before calling provider.
         let candidates = if let Some(resolved) = self.resolution_cache.get(&cache_key) {
@@ -448,7 +467,7 @@ impl StreamPlaybackManager {
 
         for (index, (stream_url, dur, _)) in candidates.into_iter().take(3).enumerate() {
             info!(candidate = index + 1, dur, "Trying full-song progressive source");
-            match self.try_start_progressive(&stream_url, &part_path, &cache_path, track_id, dur).await {
+            match self.try_start_progressive(&stream_url, &part_path, &cache_path, track_id, dur, preparation).await {
                 Ok(prepared) => return Ok(prepared),
                 Err(e) => {
                     warn!(candidate = index + 1, error = %e, "Progressive stream candidate failed");
@@ -473,7 +492,7 @@ impl StreamPlaybackManager {
             }
             for (index, (stream_url, dur, _)) in fresh.into_iter().take(3).enumerate() {
                 info!(candidate = index + 1, dur, "Trying fresh progressive source");
-                match self.try_start_progressive(&stream_url, &part_path, &cache_path, track_id, dur).await {
+                match self.try_start_progressive(&stream_url, &part_path, &cache_path, track_id, dur, preparation).await {
                     Ok(prepared) => return Ok(prepared),
                     Err(e) => {
                         warn!(candidate = index + 1, error = %e, "Fresh progressive stream candidate failed");
@@ -510,7 +529,7 @@ impl StreamPlaybackManager {
         let cache_key = format!("full:v3:jiosaavn:{jio_id}");
         let cache_path = self.get_cache_path(&cache_key);
 
-        if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path) {
+        if Self::is_valid_cache_entry(&cache_path) && Self::is_decodable_audio(&cache_path).await {
             debug!(path = %cache_path.display(), "Disk cache hit during source pre-resolution");
             Self::touch_cache_entry(&cache_path);
             let dur = self.full_cache_duration(&cache_path, track_id).await;
@@ -566,241 +585,135 @@ impl StreamPlaybackManager {
     }
 
     async fn try_start_progressive(
-        &self,
-        stream_url: &str,
-        part_path: &Path,
-        target_path: &Path,
-        track_id: &str,
-        candidate_dur: f64,
+        &self, stream_url: &str, part_path: &Path, target_path: &Path,
+        track_id: &str, candidate_dur: f64, preparation: &Arc<Preparation>,
     ) -> AppResult<PreparedPlayback> {
-        self.cancel_active_stream().await;
-
-        let mut guard = PartFileCleanupGuard::new(part_path.to_path_buf());
-        let request = self.http_client.get(stream_url).header(
-            reqwest::header::USER_AGENT,
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        );
-
-        let response = tokio::time::timeout(std::time::Duration::from_secs(12), request.send())
-            .await
+        // Each attempt owns a unique path. An obsolete attempt cannot unlink a
+        // newer request's file, even when both resolve to the same cache key.
+        let part_path = part_path.with_extension(format!("{}.part", uuid::Uuid::new_v4()));
+        preparation.paths.lock().unwrap().insert(part_path.clone());
+        let response = tokio::time::timeout(std::time::Duration::from_secs(12),
+            self.http_client.get(stream_url).header(reqwest::header::USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36").send()).await
             .map_err(|_| AppError::Playback("Audio stream connection timed out (12s)".into()))?
-            .map_err(|e| AppError::Playback(format!("Failed to connect to audio stream: {}", e)))?;
-
-        let status = response.status();
-        if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
-            return Err(AppError::Playback(format!("Audio stream returned HTTP {}", status)));
+            .map_err(|_| AppError::Playback("Could not connect to audio source".into()))?;
+        if !response.status().is_success() {
+            return Err(AppError::Playback(format!("Audio stream returned HTTP {}", response.status())));
         }
-
-        let content_type = response
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("")
-            .to_string();
-
+        let content_type = response.headers().get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()).unwrap_or("").to_owned();
         if content_type.starts_with("text/") || content_type.contains("json") {
-            return Err(AppError::Playback("Audio source returned page instead of audio".to_string()));
+            return Err(AppError::Playback("Audio source returned a page instead of audio".into()));
         }
-
-        let config = self.config.read().await.clone();
-        let content_length = response.content_length().unwrap_or(0);
-        if content_length > config.max_single_file_bytes {
-            return Err(AppError::Playback(format!(
-                "Remote audio source ({} bytes) exceeds maximum single cache file size ({} bytes)",
-                content_length, config.max_single_file_bytes
-            )));
-        }
-
-        let mut file = tokio::fs::File::create(part_path)
-            .await
-            .map_err(|e| AppError::Io(format!("Failed to create partial cache file: {}", e)))?;
-
-        let event_bus = self.event_bus.read().unwrap().clone();
-        let state = Arc::new(ProgressiveStreamState::new(track_id.to_string(), event_bus));
-        if content_length > 0 {
-            state.content_length.store(content_length, std::sync::atomic::Ordering::Release);
-        }
-
-        let mut downloaded_bytes: u64 = 0;
-        let mut mut_resp = response;
-
-        let mut hint = symphonia::core::probe::Hint::new();
-        if content_type.contains("webm") || stream_url.contains(".webm") {
-            hint.with_extension("webm");
-        } else if content_type.contains("ogg") || content_type.contains("opus") {
-            hint.with_extension("ogg");
-        } else {
-            hint.with_extension("m4a");
-        }
-
-        // Initial conservative buffer threshold (~128 KB, or full song if smaller)
-        let target_startup_bytes = if content_length > 0 && content_length < 128 * 1024 {
-            content_length
-        } else {
-            128 * 1024
-        };
-
-        let mut initial_source = None;
-
-        while downloaded_bytes < target_startup_bytes {
-            let chunk_opt = tokio::time::timeout(std::time::Duration::from_secs(12), mut_resp.chunk())
-                .await
-                .map_err(|_| AppError::Playback("Initial stream chunk download timed out (12s)".into()))?
-                .map_err(|e| AppError::Playback(format!("Stream read error: {}", e)))?;
-
-            let chunk = match chunk_opt {
-                Some(c) => c,
-                None => break,
-            };
-
-            downloaded_bytes += chunk.len() as u64;
-            file.write_all(&chunk).await.map_err(|e| AppError::Io(e.to_string()))?;
-            file.flush().await.map_err(|e| AppError::Io(e.to_string()))?;
-            state.update_downloaded(downloaded_bytes);
-
-            // Attempt probing as soon as 64 KB or EOF is available
-            if downloaded_bytes >= 64 * 1024 || (content_length > 0 && downloaded_bytes >= content_length) {
-                if let Ok(reader) = ProgressiveStreamReader::new(part_path, state.clone()) {
-                    let desc = format!("progressive:{}", track_id);
-                    if let Ok(sym_src) = SymphoniaSource::from_media_source(Box::new(reader), hint.clone(), &desc) {
-                        initial_source = Some(sym_src);
-                        break;
-                    }
-                }
-            }
-        }
-
-        if initial_source.is_none() {
-            let reader = ProgressiveStreamReader::new(part_path, state.clone())
-                .map_err(|e| AppError::Io(format!("Failed to open progressive reader: {}", e)))?;
-            let desc = format!("progressive:{}", track_id);
-            let sym_src = SymphoniaSource::from_media_source(Box::new(reader), hint, &desc)?;
-            initial_source = Some(sym_src);
-        }
-
-        let sym_src = initial_source.unwrap();
-        let player_source = PlayerSource::Symphonia(sym_src);
-
-        let is_already_done = content_length > 0 && downloaded_bytes >= content_length;
-        if is_already_done {
-            drop(file);
-            tokio::fs::rename(part_path, target_path)
-                .await
-                .map_err(|e| AppError::Io(format!("Failed to finalize cache file: {}", e)))?;
-            guard.disarm();
-            state.set_completed();
-            Self::touch_cache_entry(target_path);
-            self.spawn_cache_eviction();
-            return Ok(PreparedPlayback::ProgressiveStream {
-                source: player_source,
-                part_path: target_path.to_path_buf(),
-                target_path: target_path.to_path_buf(),
-                duration: candidate_dur,
-                state,
-            });
-        }
-
-        let state_bg = state.clone();
-        let part_path_bg = part_path.to_path_buf();
-        let target_path_bg = target_path.to_path_buf();
-        let max_single_file_bytes = config.max_single_file_bytes;
-        let sm_bg = self.clone_for_bg();
-
-        // Disarm cleanup guard; background task will own cleanup via its own guard
-        guard.disarm();
-
-        let bg_handle = tokio::spawn(async move {
-            let mut bg_guard = PartFileCleanupGuard::new(part_path_bg.clone());
-            let mut mut_file = file;
-            let mut total_bytes = downloaded_bytes;
-            let mut stream_err = None;
-
-            loop {
-                let chunk_opt = match tokio::time::timeout(std::time::Duration::from_secs(25), mut_resp.chunk()).await {
-                    Ok(Ok(Some(c))) => Some(c),
-                    Ok(Ok(None)) => None,
-                    Ok(Err(e)) => {
-                        stream_err = Some(format!("Chunk download error: {}", e));
-                        break;
-                    }
-                    Err(_) => {
-                        stream_err = Some("Download timed out (no data received for 25s)".to_string());
-                        break;
-                    }
-                };
-
-                let chunk = match chunk_opt {
-                    Some(c) => c,
-                    None => break,
-                };
-
-                total_bytes += chunk.len() as u64;
-                if total_bytes > max_single_file_bytes {
-                    stream_err = Some("Track exceeded maximum single cache file size".to_string());
-                    break;
-                }
-
-                if let Err(e) = mut_file.write_all(&chunk).await {
-                    stream_err = Some(format!("Failed writing to part file: {}", e));
-                    break;
-                }
-                if let Err(e) = mut_file.flush().await {
-                    stream_err = Some(format!("Failed flushing part file: {}", e));
-                    break;
-                }
-
-                state_bg.update_downloaded(total_bytes);
-            }
-
-            if let Some(err) = stream_err {
-                warn!(error = %err, path = %part_path_bg.display(), "Progressive download encountered error");
-                state_bg.set_failed(err);
-                // bg_guard drops and removes incomplete .part file
-            } else if total_bytes == 0 {
-                state_bg.set_failed("Audio stream was empty".to_string());
-            } else {
-                drop(mut_file);
-                match tokio::fs::rename(&part_path_bg, &target_path_bg).await {
-                    Ok(_) => {
-                        bg_guard.disarm();
-                        state_bg.set_completed();
-                        StreamPlaybackManager::touch_cache_entry(&target_path_bg);
-                        info!(bytes = total_bytes, path = %target_path_bg.display(), "Progressive stream completed and finalized to cache");
-                        sm_bg.spawn_cache_eviction();
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "Failed to rename progressive .part to final cache file");
-                        state_bg.set_failed(e.to_string());
-                    }
-                }
-            }
-        });
-
+        let max_size = self.config.read().await.max_single_file_bytes;
+        let length = response.content_length().unwrap_or(0);
+        if length > max_size { return Err(AppError::Playback("Audio source exceeds cache file limit".into())); }
+        let cleanup = PartFileCleanupGuard::new(part_path.clone());
+        // Keep creation and cleanup ownership in one synchronous step: dropping
+        // a Tokio file-create future can otherwise create a file after cleanup.
+        let file = tokio::fs::File::from_std(std::fs::File::create(&part_path)
+            .map_err(|e| AppError::Io(e.to_string()))?);
+        let state = Arc::new(ProgressiveStreamState::new(track_id.into(), self.event_bus.read().unwrap().clone()));
+        state.content_length.store(length, std::sync::atomic::Ordering::Release);
+        // Serialize registration with cancellation, including cancellation that
+        // arrived while the HTTP headers were being fetched.
         {
-            let mut handle_guard = self.active_stream_handle.lock().await;
-            *handle_guard = Some((bg_handle, state.clone(), part_path.to_path_buf()));
+            let mut slot = preparation.state.lock().unwrap();
+            *slot = Some(state.clone());
+            if *preparation.cancelled.borrow() { state.set_cancelled(); }
         }
-
+        let mut cancelled = preparation.cancelled.subscribe();
+        let producer_state = state.clone();
+        let target = target_path.to_path_buf();
+        let producer_path = part_path.clone();
+        let manager = self.clone_for_bg();
+        // Install the producer before any synchronous decoder can request bytes.
+        *preparation.producer.lock().await = Some(tokio::spawn(async move {
+            let mut cleanup = cleanup;
+            let mut file = file;
+            let mut response = response;
+            let mut total = 0u64;
+            let download: AppResult<()> = async {
+                loop {
+                    let chunk = tokio::select! {
+                        biased;
+                        _ = async { cancelled.wait_for(|value| *value).await.ok(); } =>
+                            return Err(AppError::Playback("Stream cancelled".into())),
+                        chunk = tokio::time::timeout(std::time::Duration::from_secs(25), response.chunk()) =>
+                            chunk.map_err(|_| AppError::Playback("Audio download inactive for 25 seconds".into()))?
+                                .map_err(|_| AppError::Playback("Audio download interrupted or truncated".into()))?,
+                    };
+                    let Some(chunk) = chunk else { break };
+                    total += chunk.len() as u64;
+                    if total > max_size { return Err(AppError::Playback("Audio exceeds cache file limit".into())); }
+                    file.write_all(&chunk).await.map_err(|e| AppError::Io(e.to_string()))?;
+                    file.flush().await.map_err(|e| AppError::Io(e.to_string()))?;
+                    producer_state.update_downloaded(total);
+                }
+                if total == 0 || (length > 0 && total != length) {
+                    return Err(AppError::Playback("Audio download empty or truncated".into()));
+                }
+                if producer_state.is_cancelled() { return Err(AppError::Playback("Stream cancelled".into())); }
+                Ok(())
+            }.await;
+            drop(file); // Stop writing before either finalizing or removing the partial file.
+            match download {
+                Ok(()) => match tokio::fs::rename(&producer_path, &target).await {
+                    Ok(()) => {
+                        cleanup.disarm();
+                        producer_state.set_completed(); // Real EOF wakes probing readers, too.
+                        Self::touch_cache_entry(&target);
+                        manager.spawn_cache_eviction();
+                    }
+                    Err(_) => producer_state.set_failed("Could not finalize audio cache".into()),
+                },
+                Err(error) => producer_state.set_failed(error.to_string()),
+            }
+        }));
+        let reader = ProgressiveStreamReader::new(&part_path, state.clone())
+            .or_else(|_| ProgressiveStreamReader::new(target_path, state.clone()))
+            .map_err(|e| AppError::Io(e.to_string()))?;
+        let mut hint = symphonia::core::probe::Hint::new();
+        if content_type.contains("webm") { hint.with_extension("webm"); }
+        else if content_type.contains("ogg") || content_type.contains("opus") { hint.with_extension("ogg"); }
+        let desc = format!("progressive:{track_id}");
+        let mut probe = preparation.probe.lock().await;
+        *probe = Some(tokio::task::spawn_blocking(move || SymphoniaSource::from_media_source(Box::new(reader), hint, &desc)));
+        let decoded = probe.as_mut().unwrap().await
+            .map_err(|_| AppError::Playback("Audio decoder worker failed".into()))?;
+        probe.take();
+        let source = match decoded {
+            Ok(source) => source,
+            Err(error) => {
+                state.set_cancelled();
+                // End this candidate's producer before a retry owns a new file.
+                if let Some(task) = preparation.producer.lock().await.take() {
+                    task.abort(); // Async HTTP producer only; never abort the blocking probe.
+                    let _ = task.await;
+                }
+                return Err(error);
+            }
+        };
+        if state.is_cancelled() { return Err(AppError::Playback("Playback preparation cancelled".into())); }
+        info!(track_id, "Playback preparation decoded initial audio");
         Ok(PreparedPlayback::ProgressiveStream {
-            source: player_source,
-            part_path: part_path.to_path_buf(),
-            target_path: target_path.to_path_buf(),
-            duration: candidate_dur,
-            state,
+            source: PlayerSource::Symphonia(source), part_path,
+            target_path: target_path.into(), duration: candidate_dur, state,
         })
     }
 
-    fn is_decodable_audio(path: &Path) -> bool {
-        crate::playback::decoder::SymphoniaSource::new(path).is_ok()
+    async fn is_decodable_audio(path: &Path) -> bool {
+        let path = path.to_path_buf();
+        tokio::task::spawn_blocking(move || SymphoniaSource::new(&path).is_ok()).await.unwrap_or(false)
     }
 
     async fn full_cache_duration(&self, path: &Path, track_id: &str) -> f64 {
         use rodio::Source;
-        let decoded = crate::playback::decoder::SymphoniaSource::new(path)
+        let path = path.to_path_buf();
+        let decoded = tokio::task::spawn_blocking(move || SymphoniaSource::new(&path)
             .ok()
             .and_then(|source| source.total_duration())
             .map(|duration| duration.as_secs_f64())
-            .filter(|duration| *duration > 30.0);
+            .filter(|duration| *duration > 30.0)).await.ok().flatten();
         if let Some(duration) = decoded { return duration; }
         self.get_known_duration(track_id).await.filter(|duration| *duration > 30.0).unwrap_or(210.0)
     }
@@ -831,7 +744,10 @@ impl StreamPlaybackManager {
         let response = request
             .send()
             .await
-            .map_err(|e| AppError::Playback(format!("Failed to connect to audio stream: {}", e)))?;
+            .map_err(|e| {
+                #[cfg(test)] eprintln!("fixture connection diagnostic: {e:?}");
+                AppError::Playback(format!("Failed to connect to audio stream: {}", e))
+            })?;
 
         let status = response.status();
         if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
@@ -1164,11 +1080,14 @@ impl StreamPlaybackManager {
             config: self.config.clone(),
             active_playing_path: self.active_playing_path.clone(),
             active_downloads: self.active_downloads.clone(),
-            download_waiters: self.download_waiters.clone(),
             eviction_lock: self.eviction_lock.clone(),
             event_bus: self.event_bus.clone(),
-            active_stream_handle: self.active_stream_handle.clone(),
+            preparation: self.preparation.clone(),
             resolution_cache: self.resolution_cache.clone(),
         })
     }
 }
+
+#[cfg(test)]
+#[path = "stream_preparation_tests.rs"]
+mod preparation_tests;

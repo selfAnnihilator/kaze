@@ -71,7 +71,7 @@ fn test_progressive_reader_cancellation_terminates_promptly() {
     let start = std::time::Instant::now();
     let res = reader.read(&mut next_buf);
     assert!(res.is_err(), "Reader must return error on cancellation");
-    assert_eq!(res.unwrap_err().kind(), std::io::ErrorKind::Interrupted);
+    assert_eq!(res.unwrap_err().kind(), std::io::ErrorKind::BrokenPipe);
     assert!(start.elapsed() < Duration::from_secs(2), "Reader wait loop must wake promptly on cancel");
 }
 
@@ -177,6 +177,8 @@ fn completed_stream_announces_seekability_without_resuming_playback() {
     let bus = Arc::new(EventBus::new(8));
     let mut events = bus.subscribe();
     let state = ProgressiveStreamState::new("paused-track".into(), Some(bus));
+    state.activate_playback("paused-session".into());
+    events.try_recv().unwrap();
     // This can happen while paused: there are no position ticks to rely on.
     assert!(!state.is_completed());
     state.set_completed();
@@ -342,7 +344,7 @@ fn seeking_into_missing_data_wakes_on_cancel_or_failure() {
         });
         let started = std::time::Instant::now();
         let error = reader.read(&mut [0; 1]).unwrap_err();
-        assert_eq!(error.kind(), if failure { std::io::ErrorKind::BrokenPipe } else { std::io::ErrorKind::Interrupted });
+        assert_eq!(error.kind(), if failure { std::io::ErrorKind::BrokenPipe } else { std::io::ErrorKind::BrokenPipe });
         handle.join().unwrap();
         assert!(started.elapsed() < Duration::from_secs(2));
         assert!(!state.can_seek());
@@ -446,4 +448,22 @@ fn native_paused_stream_seeks_before_completion() {
     std::thread::sleep(Duration::from_millis(100));
     assert!(!backend.is_finished());
     backend.stop().unwrap();
+}
+
+#[test]
+fn cancelled_reader_rejects_even_buffered_bytes_and_late_eof_is_silent() {
+    use music_player_backend::core::event_bus::EventBus;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("cancelled.part");
+    std::fs::write(&path, b"buffered").unwrap();
+    let bus = Arc::new(EventBus::new(8));
+    let mut events = bus.subscribe();
+    let state = Arc::new(ProgressiveStreamState::new("old".into(), Some(bus)));
+    state.update_downloaded(8);
+    let mut reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
+    state.set_cancelled();
+    state.set_completed();
+    assert!(state.is_cancelled());
+    assert!(reader.read(&mut [0; 1]).is_err());
+    assert!(events.try_recv().is_err());
 }

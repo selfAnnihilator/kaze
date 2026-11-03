@@ -715,6 +715,17 @@ impl PlaybackService {
         Ok(())
     }
 
+    fn interrupt_preparation(&self) {
+        self.play_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if let Some(manager) = self.stream_manager.read().unwrap().as_ref() {
+            manager.request_cancel();
+        }
+        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+            state.deactivate_playback();
+            state.set_cancelled();
+        }
+    }
+
     pub async fn cancel_active_stream(&self) {
         if let Some(state) = self.active_stream_state.write().unwrap().take() {
             state.deactivate_playback();
@@ -826,6 +837,7 @@ impl PlaybackService {
 
     /// Plays a track directly, clearing existing queue or adding to top.
     pub async fn play_track(&self, track_id: &str, source: Option<String>) -> AppResult<()> {
+        self.interrupt_preparation();
         self.prepare_track_source(track_id).await?;
         let track = match self.track_repo.find_by_id(track_id).await? {
             Some(t) => t,
@@ -959,6 +971,7 @@ impl PlaybackService {
 
     /// Plays an item from the current queue by index.
     pub async fn play_queue_index(&self, index: usize) -> AppResult<()> {
+        self.interrupt_preparation();
         let operation = self.flow_operation.lock().await;
         let item = {
             let mut q_guard = self.queue.write().await;
@@ -977,6 +990,7 @@ impl PlaybackService {
     }
 
     async fn play_item_at(&self, item: &QueueItem, start_position: Option<f64>) -> AppResult<()> {
+        self.interrupt_preparation();
         self.prepare_track_source(&item.track_id).await?;
         let operation = self.flow_operation.lock().await;
         if self
@@ -1302,6 +1316,7 @@ impl PlaybackService {
 
     /// Cancel pending media preparation before the core waits for commands to drain.
     pub fn request_shutdown(&self) {
+        self.interrupt_preparation();
         // Command draining may be waiting for a seek on the audio thread.
         // Wake that reader before shutdown waits for in-flight commands.
         if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
@@ -1343,6 +1358,7 @@ impl PlaybackService {
     }
 
     pub async fn stop(&self) -> AppResult<()> {
+        self.interrupt_preparation();
         let _operation = self.flow_operation.lock().await;
         self.stop_inner().await
     }
@@ -1431,6 +1447,7 @@ impl PlaybackService {
     }
 
     pub async fn next(&self) -> AppResult<()> {
+        self.interrupt_preparation();
         let operation = self.flow_operation.lock().await;
         let mut next_item = {
             let mut q_guard = self.queue.write().await;
@@ -1645,6 +1662,7 @@ impl PlaybackService {
     }
 
     pub async fn previous(&self) -> AppResult<()> {
+        self.interrupt_preparation();
         let operation = self.flow_operation.lock().await;
         let prev_item = {
             let mut q_guard = self.queue.write().await;

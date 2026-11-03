@@ -126,7 +126,21 @@ pub fn run() {
                         )
                         .await;
                 });
+                #[cfg(feature = "acceptance-fixtures")]
+                let fixture_cache = config.cache_dir.clone();
                 let processor = Arc::new(CoreProcessor::new(pool, config));
+                // Only the explicitly instrumented acceptance build can preload
+                // a loopback source; shipping builds have no fixture entrypoint.
+                #[cfg(feature = "acceptance-fixtures")]
+                if let Ok(url) = std::env::var("KAZE_PREPARATION_FIXTURE_URL") {
+                    let parsed = reqwest::Url::parse(&url).expect("fixture URL");
+                    assert_eq!(parsed.scheme(), "http");
+                    assert_eq!(parsed.host_str(), Some("127.0.0.1"));
+                    let manager = Arc::new(music_player_backend::playback::stream::StreamPlaybackManager::new(fixture_cache, None, None));
+                    manager.resolution_cache().insert("full:v3:jiosaavn:preparation-fixture".into(),
+                        music_player_backend::playback::resolution_cache::ResolvedEntry::new(url, 2.0, None));
+                    processor.playback_service().set_stream_manager(manager);
+                }
                 processor.initialize_close_behavior().await.expect("Failed to load window close setting");
                 processor.playback_service().initialize_saved_playback().await;
 

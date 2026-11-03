@@ -1,6 +1,6 @@
 [package]
 name = "music-player-backend"
-version = "2.0.4"
+version = "2.0.5"
 edition = "2021"
 authors = ["Music Player Contributors"]
 description = "Backend-First Intelligent Local Music Player"
@@ -18,6 +18,9 @@ path = "src/main.rs"
 [[bin]]
 name = "kaze"
 path = "src/app.rs"
+
+[features]
+acceptance-fixtures = []
 
 [dependencies]
 # Async Runtime

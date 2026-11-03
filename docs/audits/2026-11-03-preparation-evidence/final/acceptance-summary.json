@@ -1,0 +1,186 @@
+{
+  "source_fingerprint": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "revision": "b2433b4213823ff51391cb1e16a98bd7b2d4fc77",
+  "functional_gates_passed": 38,
+  "functional_failures": [],
+  "rust_suite": {
+    "passed": 265,
+    "failed": 0,
+    "ignored": 13,
+    "additional_child_cases_passed": 9
+  },
+  "separately_guarded_passes": [
+    "authentication recovery",
+    "native paused progressive seek",
+    "reported song live preparation"
+  ],
+  "node_passed": 58,
+  "browser_suites_passed": 15,
+  "native_harnesses_passed": 8,
+  "stalled_tray": [
+    {
+      "case": "warmup",
+      "quit_seconds": 0.016525146999811113,
+      "exit_code": 0,
+      "repeated_preparations": 0
+    },
+    {
+      "case": "spatial",
+      "quit_seconds": 0.01679317300022376,
+      "exit_code": 0,
+      "repeated_preparations": 10
+    },
+    {
+      "case": "brutalist",
+      "quit_seconds": 0.017824868999923638,
+      "exit_code": 0,
+      "repeated_preparations": 10
+    }
+  ],
+  "production_live": {
+    "song": {
+      "id": "1tsVjhU6",
+      "title": "House Of Balloons / Glass Table Girls",
+      "artist": "The Weeknd",
+      "duration": "405"
+    },
+    "preparation": {
+      "ok": true
+    },
+    "states": [
+      {
+        "can_seek": true,
+        "current_queue_index": 0,
+        "current_track": {
+          "album": null,
+          "album_title": null,
+          "artist": "The Weeknd",
+          "artist_name": "The Weeknd",
+          "bitrate": null,
+          "cover_art_url": null,
+          "created_at": 1793695043,
+          "disc_number": 1,
+          "duration_secs": 405,
+          "file_path": "online://jiosaavn:1tsVjhU6",
+          "file_size": 0,
+          "format": "online",
+          "genre_name": null,
+          "has_cover_art": 0,
+          "id": "jiosaavn:1tsVjhU6",
+          "manual_like": 0,
+          "matched_local_track_id": null,
+          "modified_timestamp": 1793695043,
+          "musicbrainz_track_id": null,
+          "playback_source": {
+            "provider": "jiosaavn",
+            "track_id": "1tsVjhU6"
+          },
+          "preview_url": null,
+          "provider": "jiosaavn",
+          "provider_id": "1tsVjhU6",
+          "sample_rate": null,
+          "spotify_id": null,
+          "title": "House Of Balloons / Glass Table Girls",
+          "track_number": null,
+          "year": null
+        },
+        "current_track_id": "jiosaavn:1tsVjhU6",
+        "duration_secs": 405,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": false,
+        "is_playing": true,
+        "is_shuffle": false,
+        "position_secs": 1.651247166,
+        "queue_length": 1,
+        "queue_track_ids": [],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      },
+      {
+        "can_seek": true,
+        "current_queue_index": 0,
+        "current_track": {
+          "album": null,
+          "album_title": null,
+          "artist": "The Weeknd",
+          "artist_name": "The Weeknd",
+          "bitrate": null,
+          "cover_art_url": null,
+          "created_at": 1793695043,
+          "disc_number": 1,
+          "duration_secs": 405,
+          "file_path": "online://jiosaavn:1tsVjhU6",
+          "file_size": 0,
+          "format": "online",
+          "genre_name": null,
+          "has_cover_art": 0,
+          "id": "jiosaavn:1tsVjhU6",
+          "manual_like": 0,
+          "matched_local_track_id": null,
+          "modified_timestamp": 1793695043,
+          "musicbrainz_track_id": null,
+          "playback_source": {
+            "provider": "jiosaavn",
+            "track_id": "1tsVjhU6"
+          },
+          "preview_url": null,
+          "provider": "jiosaavn",
+          "provider_id": "1tsVjhU6",
+          "sample_rate": null,
+          "spotify_id": null,
+          "title": "House Of Balloons / Glass Table Girls",
+          "track_number": null,
+          "year": null
+        },
+        "current_track_id": "jiosaavn:1tsVjhU6",
+        "duration_secs": 405,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": true,
+        "is_playing": false,
+        "is_shuffle": false,
+        "position_secs": 5,
+        "queue_length": 1,
+        "queue_track_ids": [],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      }
+    ],
+    "stopped": {
+      "can_seek": true,
+      "current_queue_index": 0,
+      "current_track_id": null,
+      "duration_secs": 0,
+      "is_buffering": false,
+      "is_muted": false,
+      "is_paused": false,
+      "is_playing": false,
+      "is_shuffle": false,
+      "position_secs": 0,
+      "queue_length": 1,
+      "queue_track_ids": [
+        "jiosaavn:1tsVjhU6"
+      ],
+      "repeat_mode": "off",
+      "volume": 0.800000011920929
+    },
+    "quit_seconds": 0.0703456470000674,
+    "exit_code": 0
+  },
+  "quality": {
+    "baseline": 174,
+    "current": 344,
+    "new": 171,
+    "removed": 1,
+    "unexplained": 0,
+    "raw_exit": 1
+  },
+  "installed_binary_unchanged": true,
+  "limitations": [
+    "Earlier suspend-related hang remains unproven.",
+    "Stripped captured binary addresses were not independently symbolicated.",
+    "Short native live playback check, not full-song listening.",
+    "Other ignored live/personal-data/platform/long-soak checks were not run."
+  ]
+}
