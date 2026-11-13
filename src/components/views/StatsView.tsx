@@ -1247,7 +1247,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             </div>
           </div>
 
-          {/* Grid Layout: Top 10 Songs & Top 10 Artists */}
+          {/* Grid Layout: Top 10 Songs & Top 5 Artists */}
           <div
             style={{
               display: "grid",
@@ -1677,7 +1677,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             </div>
           </div>
 
-          {/* Archived Top 10 Songs & Top 10 Artists */}
+          {/* Archived Top 10 Songs & Top 5 Artists */}
           <div
             style={{
               display: "grid",

@@ -1145,8 +1145,8 @@ async fn test_legacy_user_stats_migration_and_stats_overview() {
     println!("Top tracks count: {}", overview.top_songs.len());
     println!("Top artists count: {}", overview.top_artists.len());
 
-    assert!(overview.top_songs.len() > 0, "Top songs must not be empty");
-    assert!(overview.top_artists.len() > 0, "Top artists must not be empty");
+    assert!(!overview.top_songs.is_empty(), "Top songs must not be empty");
+    assert!(!overview.top_artists.is_empty(), "Top artists must not be empty");
     assert!((overview.lifetime_seconds - 85087.68).abs() < 0.1, "Lifetime seconds must match track_statistics total ~85087.68");
     assert!((overview.total_year_seconds - 230.60).abs() < 0.1, "Yearly seconds must strictly match 2026 playback_history total (230.6s)");
     assert_eq!(overview.history_started_at, Some(local_midnight("2026-09-16")), "History started at must match earliest day (Sep 16, 2026 midnight)");
@@ -1297,8 +1297,8 @@ async fn run_migration_on_live_database() {
     assert_eq!(overview.history_started_at, Some(local_midnight("2026-09-16")));
     assert_eq!(overview.top_songs[0].title, "PHONKY TOWN");
     assert_eq!(overview.top_artists[0].name, "Playaphonk");
-    assert!(overview.top_songs.len() > 0);
-    assert!(overview.top_artists.len() > 0);
+    assert!(!overview.top_songs.is_empty());
+    assert!(!overview.top_artists.is_empty());
 }
 
 #[tokio::test]

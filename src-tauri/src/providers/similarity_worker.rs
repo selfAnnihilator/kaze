@@ -111,7 +111,7 @@ impl SimilarityService {
             && self
                 .last_cooc
                 .lock()
-                .map(|l| l.map_or(true, |t| now - t >= COOC_MIN_INTERVAL_SECS))
+                .map(|l| l.is_none_or(|t| now - t >= COOC_MIN_INTERVAL_SECS))
                 .unwrap_or(true);
         if cooc_due {
             self.rebuild_cooccurrence().await?;

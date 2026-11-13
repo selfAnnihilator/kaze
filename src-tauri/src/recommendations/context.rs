@@ -163,10 +163,10 @@ impl ContextAccumulator {
 
 /// The context bucket that applies at `ts` and its affinity, preferring the
 /// specific weekday/weekend bucket over the day-part fallback.
-pub fn current<'a>(
-    map: &'a HashMap<String, ContextAffinity>,
+pub fn current(
+    map: &HashMap<String, ContextAffinity>,
     ts: i64,
-) -> Option<(DayPart, &'a ContextAffinity)> {
+) -> Option<(DayPart, &ContextAffinity)> {
     let (specific, part) = bucket_keys(ts)?;
     let affinity = map.get(&specific).or_else(|| map.get(&part))?;
     let day_part = match part.as_str() {

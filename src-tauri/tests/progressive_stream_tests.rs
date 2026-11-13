@@ -344,7 +344,7 @@ fn seeking_into_missing_data_wakes_on_cancel_or_failure() {
         });
         let started = std::time::Instant::now();
         let error = reader.read(&mut [0; 1]).unwrap_err();
-        assert_eq!(error.kind(), if failure { std::io::ErrorKind::BrokenPipe } else { std::io::ErrorKind::BrokenPipe });
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe);
         handle.join().unwrap();
         assert!(started.elapsed() < Duration::from_secs(2));
         assert!(!state.can_seek());

@@ -92,7 +92,7 @@ async fn completed_explore_listens_raise_bias_and_skips_lower_it() {
     listens(&pool, &id, EXPLORE, 30, 3, 24).await;
     listens(&pool, &id, FAMILIAR, 30, 15, 8).await;
     let down = compute_bias(&pool, "default", NOW).await.unwrap();
-    assert!(down < 0.0 && down >= -MAX_BIAS, "bias {down}");
+    assert!((-MAX_BIAS..0.0).contains(&down), "bias {down}");
 
     // Older than the window: ignored, so no evidence.
     let later = NOW + 31 * 86_400;

@@ -819,12 +819,11 @@ impl StreamPlaybackManager {
                         if let Ok(meta) = entry.metadata().await {
                             let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
                             if let Ok(age) = now.duration_since(mtime) {
-                                if age >= max_age {
-                                    if tokio::fs::remove_file(&path).await.is_ok() {
+                                if age >= max_age
+                                    && tokio::fs::remove_file(&path).await.is_ok() {
                                         removed_count += 1;
                                         info!(path = %path.display(), age_secs = age.as_secs(), "Removed stale partial audio cache file");
                                     }
-                                }
                             }
                         }
                     }

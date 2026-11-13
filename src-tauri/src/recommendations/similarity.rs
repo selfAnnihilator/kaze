@@ -86,7 +86,7 @@ impl SimilarityIndex {
             let Some((aff, seed_display)) = seed_aff.get(&source) else { continue };
             let weight = if kind == "cooc" { COOC_WEIGHT } else { LASTFM_WEIGHT };
             let boost = (score * weight * aff).clamp(0.0, 1.0);
-            let better = hits.get(&target).map_or(true, |h| {
+            let better = hits.get(&target).is_none_or(|h| {
                 boost > h.boost || (boost == h.boost && seed_display < &h.because_of)
             });
             if better && boost > 0.0 {

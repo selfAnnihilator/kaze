@@ -26,11 +26,10 @@ async fn execute_command(
 ) -> Result<CommandResponse, String> {
     let mut val = command;
     if let Some(obj) = val.as_object_mut() {
-        if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null) {
-            if serde_json::from_value::<Command>(serde_json::Value::Object(obj.clone())).is_err() {
+        if (!obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null))
+            && serde_json::from_value::<Command>(serde_json::Value::Object(obj.clone())).is_err() {
                 obj.insert("payload".to_string(), serde_json::json!({}));
             }
-        }
     }
     let parsed_command: Command =
         serde_json::from_value(val).map_err(|e| format!("Command parse error: {}", e))?;
@@ -47,12 +46,11 @@ async fn execute_query(
 ) -> Result<QueryResponse, String> {
     let mut val = query;
     if let Some(obj) = val.as_object_mut() {
-        if obj.get("query").and_then(|q| q.as_str()) == Some("GetStatsOverview") {
-            if !obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null)
+        if obj.get("query").and_then(|q| q.as_str()) == Some("GetStatsOverview")
+            && (!obj.contains_key("payload") || obj.get("payload") == Some(&serde_json::Value::Null))
             {
                 obj.insert("payload".to_string(), serde_json::json!({}));
             }
-        }
     }
     let parsed_query: Query =
         serde_json::from_value(val).map_err(|e| format!("Query parse error: {}", e))?;

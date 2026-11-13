@@ -114,14 +114,14 @@ pub struct SongSignals {
 }
 impl SongSignals {
     pub async fn load(pool: &SqlitePool, user: &str) -> AppResult<Self> {
-        let mut index = Self::default();
-        index.artist_releases = sqlx::query_scalar::<_, String>(
+        let artist_releases = sqlx::query_scalar::<_, String>(
             "SELECT DISTINCT preferred_source_id FROM catalog_artist_editions",
         )
         .fetch_all(pool)
         .await?
         .into_iter()
         .collect();
+        let mut index = Self { artist_releases, ..Self::default() };
         index.preferences=sqlx::query_as::<_,FeedbackPreference>("SELECT song_key,track_id,source_id,title,artist,manual_like,updated_at FROM recommendation_feedback WHERE user_id=?").bind(user).fetch_all(pool).await?;
         for (position, preference) in index.preferences.iter().enumerate() {
             let mut keys = vec![format!("id:{}", preference.track_id)];

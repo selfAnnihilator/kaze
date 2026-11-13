@@ -73,6 +73,8 @@ pub fn cluster_nodes(
         sim.max(genre)
     };
     let mut links = vec![vec![0.0; n]; n];
+    // Symmetric fill writes both links[i][j] and links[j][i]; indices are clearer than iterators.
+    #[allow(clippy::needless_range_loop)]
     for i in 0..n {
         for j in (i + 1)..n {
             let value = link(i, j);
@@ -93,7 +95,7 @@ pub fn cluster_nodes(
                     .map(|(i, j)| links[i][j])
                     .sum();
                 let average = total / (groups[a].len() * groups[b].len()) as f64;
-                if average >= MERGE_THRESHOLD && best.map_or(true, |(score, _, _)| average > score)
+                if average >= MERGE_THRESHOLD && best.is_none_or(|(score, _, _)| average > score)
                 {
                     best = Some((average, a, b));
                 }

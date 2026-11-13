@@ -620,7 +620,7 @@ fn decode_media_url(encrypted: &str, high_quality: bool) -> Result<String> {
         ));
     }
     let cipher = Des::new_from_slice(b"38346591").expect("DES key length");
-    for chunk in bytes.chunks_exact_mut(8) {
+    for chunk in bytes.as_chunks_mut::<8>().0 {
         cipher.decrypt_block(chunk.into());
     }
     let padding = *bytes.last().unwrap() as usize;

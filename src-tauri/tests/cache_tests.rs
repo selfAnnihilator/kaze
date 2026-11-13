@@ -447,7 +447,7 @@ async fn full_song_cache_ignores_a_cached_preview() {
     let manager = create_test_manager(dir.path().to_path_buf(), RemoteAudioCacheConfig::default());
     tokio::fs::create_dir_all(manager.cache_dir()).await.unwrap();
     let identity = StreamPlaybackManager::compute_cache_key("jiosaavn:2", "Artist", "Song");
-    let full_path = manager.get_cache_path(&"full:v3:jiosaavn:2");
+    let full_path = manager.get_cache_path("full:v3:jiosaavn:2");
     let preview_path = manager.get_cache_path(&format!("preview:v1:{identity}"));
     tokio::fs::write(&full_path, wav_test_audio()).await.unwrap();
     tokio::fs::write(&preview_path, vec![2u8; 10_000]).await.unwrap();

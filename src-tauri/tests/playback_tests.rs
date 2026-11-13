@@ -348,13 +348,13 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
 
     let mut saw_started = false;
     for _ in 0..10 {
-        if let Ok(Ok(event)) = tokio::time::timeout(std::time::Duration::from_millis(100), events.recv()).await {
-            if let Event::PlaybackStarted { track_id, title, .. } = event {
-                if track_id == "jiosaavn:test-song" {
-                    assert_eq!(title, "Queued Stream");
-                    saw_started = true;
-                    break;
-                }
+        if let Ok(Ok(Event::PlaybackStarted { track_id, title, .. })) =
+            tokio::time::timeout(std::time::Duration::from_millis(100), events.recv()).await
+        {
+            if track_id == "jiosaavn:test-song" {
+                assert_eq!(title, "Queued Stream");
+                saw_started = true;
+                break;
             }
         }
     }

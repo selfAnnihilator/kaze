@@ -518,7 +518,7 @@ impl SmartMixGenerator {
         let own_take = own.len().min(SIZE - neighbour_take);
         let mut picked: Vec<String> = own.into_iter().take(own_take).collect();
         // Interleave neighbours evenly so they are not all bunched at the end.
-        let step = if neighbour_take == 0 { 0 } else { (picked.len() / neighbour_take).max(1) + 1 };
+        let step = picked.len().checked_div(neighbour_take).map_or(0, |q| q.max(1) + 1);
         for (i, id) in neighbours.into_iter().take(neighbour_take).enumerate() {
             let at = ((i + 1) * step).min(picked.len());
             picked.insert(at, id);
