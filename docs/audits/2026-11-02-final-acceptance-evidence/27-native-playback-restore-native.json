@@ -1,0 +1,10 @@
+{
+  "gate": "27-native-playback-restore-native",
+  "command": "dbus-run-session -- python3 scripts/test-playback-restore-native.py /tmp/kaze-acceptance-native-padpdibz/kaze-candidate",
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "started_utc": "2026-11-02T05:52:07Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 15.1,
+  "candidate_after": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab"
+}

@@ -1,0 +1,3013 @@
+{
+  "target": "native WebKitGTK",
+  "catalogue": "controlled 1036 tracks / 130 albums; actual Rust audio",
+  "measurements": {
+    "warm_heap": {
+      "commits": 11,
+      "renders": {
+        "anonymous": 73,
+        "ad": 6,
+        "$o": 6,
+        "Pt": 8,
+        "Ve": 14,
+        "Xo": 16,
+        "zc": 4,
+        "Ac": 4,
+        "H": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 2,
+      "mutations": {
+        ".interface-toolbar": 6,
+        ".progress-container": 6,
+        "other": 6
+      },
+      "ipc": {
+        "GetSettings": 1,
+        "GetOnboardingStatus": 1,
+        "GetPlaybackState": 1,
+        "GetRecommendationFeedback": 3,
+        "GetPlaylists": 2,
+        "GetTrackPlaylistMemberships": 2,
+        "GetWishlist": 1,
+        "GetDownloads": 1,
+        "GetDiscoveryRecommendations": 2,
+        "GetCachedWorldTrending": 2,
+        "GetHomeOverview": 2,
+        "GetCurrentUser": 1,
+        "GetLibraryTracksPage": 2,
+        "GetLibraryAlbumsPage": 2,
+        "GetWorldTrending": 2,
+        "plugin:event|listen": 2,
+        "GetRecommendationSetup": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 591,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "609116": {
+          "name": "kaze-embedded-c",
+          "cpu": 0.98,
+          "private_kib": 171040,
+          "swap_kib": 0,
+          "rss_kib": 265092
+        },
+        "609143": {
+          "name": "WebKitWebProces",
+          "cpu": 1.35,
+          "private_kib": 143848,
+          "swap_kib": 0,
+          "rss_kib": 215196
+        },
+        "609141": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 13368,
+          "swap_kib": 0,
+          "rss_kib": 54388
+        }
+      }
+    },
+    "profiled_5000_ticks": {
+      "commits": 5011,
+      "renders": {
+        "anonymous": 5073,
+        "ad": 6,
+        "$o": 6,
+        "Pt": 8,
+        "Ve": 14,
+        "Xo": 16,
+        "zc": 4,
+        "Ac": 4,
+        "H": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 5002,
+      "mutations": {
+        ".interface-toolbar": 6,
+        ".progress-container": 26258,
+        "other": 6
+      },
+      "ipc": {
+        "GetSettings": 1,
+        "GetOnboardingStatus": 1,
+        "GetPlaybackState": 1,
+        "GetRecommendationFeedback": 3,
+        "GetPlaylists": 2,
+        "GetTrackPlaylistMemberships": 2,
+        "GetWishlist": 1,
+        "GetDownloads": 1,
+        "GetDiscoveryRecommendations": 2,
+        "GetCachedWorldTrending": 2,
+        "GetHomeOverview": 2,
+        "GetCurrentUser": 1,
+        "GetLibraryTracksPage": 2,
+        "GetLibraryAlbumsPage": 2,
+        "GetWorldTrending": 2,
+        "plugin:event|listen": 2,
+        "GetRecommendationSetup": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 591,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "609116": {
+          "name": "kaze-embedded-c",
+          "cpu": 3.99,
+          "private_kib": 177132,
+          "swap_kib": 0,
+          "rss_kib": 267768
+        },
+        "609143": {
+          "name": "WebKitWebProces",
+          "cpu": 8.21,
+          "private_kib": 207252,
+          "swap_kib": 0,
+          "rss_kib": 278860
+        },
+        "609141": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 13368,
+          "swap_kib": 0,
+          "rss_kib": 54452
+        }
+      }
+    },
+    "unprofiled_5000_ticks": {
+      "commits": 5011,
+      "renders": {
+        "anonymous": 5073,
+        "ad": 6,
+        "$o": 6,
+        "Pt": 8,
+        "Ve": 14,
+        "Xo": 16,
+        "zc": 4,
+        "Ac": 4,
+        "H": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 10002,
+      "mutations": {
+        ".interface-toolbar": 6,
+        ".progress-container": 26258,
+        "other": 6
+      },
+      "ipc": {
+        "GetSettings": 1,
+        "GetOnboardingStatus": 1,
+        "GetPlaybackState": 1,
+        "GetRecommendationFeedback": 3,
+        "GetPlaylists": 2,
+        "GetTrackPlaylistMemberships": 2,
+        "GetWishlist": 1,
+        "GetDownloads": 1,
+        "GetDiscoveryRecommendations": 2,
+        "GetCachedWorldTrending": 2,
+        "GetHomeOverview": 2,
+        "GetCurrentUser": 1,
+        "GetLibraryTracksPage": 2,
+        "GetLibraryAlbumsPage": 2,
+        "GetWorldTrending": 2,
+        "plugin:event|listen": 2,
+        "GetRecommendationSetup": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 591,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "609116": {
+          "name": "kaze-embedded-c",
+          "cpu": 6.65,
+          "private_kib": 177512,
+          "swap_kib": 24520,
+          "rss_kib": 268148
+        },
+        "609143": {
+          "name": "WebKitWebProces",
+          "cpu": 14.12,
+          "private_kib": 242340,
+          "swap_kib": 0,
+          "rss_kib": 313948
+        },
+        "609141": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 13368,
+          "swap_kib": 0,
+          "rss_kib": 54452
+        }
+      }
+    },
+    "static_track_5000_ticks": {
+      "commits": 5011,
+      "renders": {
+        "anonymous": 5073,
+        "ad": 6,
+        "$o": 6,
+        "Pt": 8,
+        "Ve": 14,
+        "Xo": 16,
+        "zc": 4,
+        "Ac": 4,
+        "H": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 15002,
+      "mutations": {
+        ".interface-toolbar": 6,
+        ".progress-container": 26258,
+        "other": 6
+      },
+      "ipc": {
+        "GetSettings": 1,
+        "GetOnboardingStatus": 1,
+        "GetPlaybackState": 1,
+        "GetRecommendationFeedback": 3,
+        "GetPlaylists": 2,
+        "GetTrackPlaylistMemberships": 2,
+        "GetWishlist": 1,
+        "GetDownloads": 1,
+        "GetDiscoveryRecommendations": 2,
+        "GetCachedWorldTrending": 2,
+        "GetHomeOverview": 2,
+        "GetCurrentUser": 1,
+        "GetLibraryTracksPage": 2,
+        "GetLibraryAlbumsPage": 2,
+        "GetWorldTrending": 2,
+        "plugin:event|listen": 2,
+        "GetRecommendationSetup": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 592,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "609116": {
+          "name": "kaze-embedded-c",
+          "cpu": 9.34,
+          "private_kib": 177712,
+          "swap_kib": 24520,
+          "rss_kib": 268348
+        },
+        "609143": {
+          "name": "WebKitWebProces",
+          "cpu": 19.5,
+          "private_kib": 275108,
+          "swap_kib": 0,
+          "rss_kib": 346716
+        },
+        "609141": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 13368,
+          "swap_kib": 0,
+          "rss_kib": 54452
+        }
+      }
+    }
+  },
+  "heap": {
+    "warm_heap": {
+      "nodes": 37160,
+      "live_bytes": 5597526,
+      "classes": {
+        "<root>": [
+          1,
+          0
+        ],
+        "Structure": [
+          2343,
+          262416
+        ],
+        "symbol": [
+          36,
+          1152
+        ],
+        "JSWindowProxy": [
+          1,
+          32
+        ],
+        "CSSStyleProperties": [
+          26,
+          2369
+        ],
+        "JSPropertyNameEnumerator": [
+          97,
+          4656
+        ],
+        "WeakMap": [
+          5,
+          4504
+        ],
+        "HTMLButtonElement": [
+          85,
+          4239
+        ],
+        "SVGPathElement": [
+          155,
+          7740
+        ],
+        "SVGSVGElement": [
+          77,
+          3855
+        ],
+        "ScopedArgumentsTable": [
+          2,
+          96
+        ],
+        "HTMLImageElement": [
+          11,
+          555
+        ],
+        "NativeExecutable": [
+          715,
+          57200
+        ],
+        "FunctionExecutable": [
+          1963,
+          251264
+        ],
+        "ModuleRecord": [
+          8,
+          4096
+        ],
+        "UnlinkedProgramCodeBlock": [
+          17,
+          9961
+        ],
+        "UnlinkedFunctionCodeBlock": [
+          693,
+          533533
+        ],
+        "UnlinkedModuleProgramCodeBlock": [
+          8,
+          16728
+        ],
+        "SymbolTable": [
+          649,
+          41536
+        ],
+        "RegExp": [
+          14,
+          3664
+        ],
+        "ModuleNamespaceObject": [
+          4,
+          260
+        ],
+        "UnlinkedFunctionExecutable": [
+          1884,
+          180864
+        ],
+        "StructureRareData": [
+          321,
+          30816
+        ],
+        "Function": [
+          3097,
+          123467
+        ],
+        "HTMLCollection": [
+          4,
+          502
+        ],
+        "Crypto": [
+          2,
+          53
+        ],
+        "String": [
+          1,
+          74
+        ],
+        "Boolean": [
+          1,
+          33
+        ],
+        "Number": [
+          1,
+          34
+        ],
+        "WindowProperties": [
+          1,
+          33
+        ],
+        "Storage": [
+          2,
+          56
+        ],
+        "ModuleLoader": [
+          1,
+          32
+        ],
+        "JSSourceCode": [
+          8,
+          256
+        ],
+        "Performance": [
+          2,
+          67
+        ],
+        "MessagePort": [
+          3,
+          87
+        ],
+        "Location": [
+          2,
+          52
+        ],
+        "AbortController": [
+          3,
+          103
+        ],
+        "DOMStringMap": [
+          2,
+          50
+        ],
+        "Event": [
+          2,
+          71
+        ],
+        "InjectedScriptHost": [
+          2,
+          68
+        ],
+        "CommandLineAPIHost": [
+          2,
+          54
+        ],
+        "JSGlobalLexicalEnvironment": [
+          1,
+          64
+        ],
+        "ModuleRegistryEntry": [
+          8,
+          640
+        ],
+        "Error": [
+          5,
+          325
+        ],
+        "HTMLDocument": [
+          2,
+          67
+        ],
+        "HTMLDivElement": [
+          89,
+          4417
+        ],
+        "HTMLHeadElement": [
+          2,
+          66
+        ],
+        "HTMLBodyElement": [
+          2,
+          104
+        ],
+        "HTMLHtmlElement": [
+          2,
+          67
+        ],
+        "SVGCircleElement": [
+          23,
+          1121
+        ],
+        "HTMLElement": [
+          42,
+          2217
+        ],
+        "HTMLInputElement": [
+          5,
+          296
+        ],
+        "HTMLFormElement": [
+          2,
+          87
+        ],
+        "SVGLineElement": [
+          14,
+          672
+        ],
+        "HTMLHeadingElement": [
+          9,
+          419
+        ],
+        "HTMLParagraphElement": [
+          11,
+          519
+        ],
+        "HTMLBRElement": [
+          4,
+          169
+        ],
+        "ModuleProgramExecutable": [
+          6,
+          672
+        ],
+        "Navigator": [
+          2,
+          91
+        ],
+        "Text": [
+          18,
+          578
+        ],
+        "IntersectionObserver": [
+          3,
+          109
+        ],
+        "MutationObserver": [
+          4,
+          136
+        ],
+        "SparseArrayValueMap": [
+          2,
+          64
+        ],
+        "SVGPolygonElement": [
+          19,
+          920
+        ],
+        "HTMLDListElement": [
+          2,
+          69
+        ],
+        "SVGPolylineElement": [
+          3,
+          120
+        ],
+        "WeakSet": [
+          2,
+          125
+        ],
+        "HTMLDetailsElement": [
+          3,
+          122
+        ],
+        "CustomGetterSetter": [
+          274,
+          8768
+        ],
+        "DOMAttributeGetterSetter": [
+          2340,
+          112320
+        ],
+        "PropertyTable": [
+          164,
+          7872
+        ],
+        "string": [
+          11180,
+          325251
+        ],
+        "Object": [
+          5882,
+          377437
+        ],
+        "JSLexicalEnvironment": [
+          582,
+          44224
+        ],
+        "JSModuleEnvironment": [
+          8,
+          3104
+        ],
+        "FunctionCodeBlock": [
+          775,
+          2669363
+        ],
+        "ProgramCodeBlock": [
+          7,
+          4768
+        ],
+        "ModuleProgramCodeBlock": [
+          6,
+          45840
+        ],
+        "HTMLLinkElement": [
+          12,
+          566
+        ],
+        "Cell Butterfly": [
+          237,
+          71120
+        ],
+        "AsyncFunction": [
+          127,
+          4075
+        ],
+        "InjectedScript": [
+          1,
+          67
+        ],
+        "Bo": [
+          1,
+          64
+        ],
+        "HTMLSpanElement": [
+          40,
+          1968
+        ],
+        "zd": [
+          1444,
+          323456
+        ],
+        "Module": [
+          1,
+          32
+        ],
+        "Array": [
+          1134,
+          18194
+        ],
+        "Sentinel": [
+          10,
+          160
+        ],
+        "BigInt": [
+          3,
+          66
+        ],
+        "To": [
+          1,
+          32
+        ],
+        "GetterSetter": [
+          42,
+          1344
+        ],
+        "SVGElement": [
+          1,
+          136
+        ],
+        "SVGGraphicsElement": [
+          1,
+          24
+        ],
+        "SVGGeometryElement": [
+          1,
+          23
+        ],
+        "CharacterData": [
+          1,
+          32
+        ],
+        "NodeList": [
+          1,
+          25
+        ],
+        "MutationRecord": [
+          1,
+          27
+        ],
+        "Prototype": [
+          1,
+          54
+        ],
+        "Uint32ArrayPrototype": [
+          1,
+          18
+        ],
+        "Uint8ArrayPrototype": [
+          1,
+          22
+        ],
+        "Headers": [
+          2,
+          80
+        ],
+        "Headers Iterator": [
+          1,
+          18
+        ],
+        "IntersectionObserverEntry": [
+          1,
+          25
+        ],
+        "Response": [
+          1,
+          34
+        ],
+        "TransitionEvent": [
+          1,
+          22
+        ],
+        "Window": [
+          2,
+          4223
+        ],
+        "ShadowRealm": [
+          1,
+          18
+        ],
+        "TrustedScript": [
+          1,
+          20
+        ],
+        "Iterator": [
+          2,
+          49
+        ],
+        "Iterator Helper": [
+          1,
+          17
+        ],
+        "AsyncIterator": [
+          1,
+          17
+        ],
+        "Generator": [
+          1,
+          18
+        ],
+        "AsyncGenerator": [
+          1,
+          19
+        ],
+        "Array Iterator": [
+          1,
+          18
+        ],
+        "Map Iterator": [
+          1,
+          18
+        ],
+        "Set Iterator": [
+          1,
+          18
+        ],
+        "AsyncFromSyncIterator": [
+          1,
+          19
+        ],
+        "RegExp String Iterator": [
+          1,
+          18
+        ],
+        "Promise": [
+          33,
+          1045
+        ],
+        "Symbol": [
+          1,
+          19
+        ],
+        "WeakRef": [
+          1,
+          19
+        ],
+        "FinalizationRegistry": [
+          1,
+          20
+        ],
+        "String Iterator": [
+          1,
+          18
+        ],
+        "GeneratorFunction": [
+          2,
+          70
+        ],
+        "AsyncGeneratorFunction": [
+          2,
+          70
+        ],
+        "Intl": [
+          1,
+          17
+        ],
+        "Temporal": [
+          1,
+          17
+        ],
+        "WebAssembly": [
+          1,
+          23
+        ],
+        "WebAssembly.Suspending": [
+          1,
+          17
+        ],
+        "WebAssembly.SuspendError": [
+          1,
+          19
+        ],
+        "Set": [
+          66,
+          2124
+        ],
+        "ArrayBuffer": [
+          1,
+          26
+        ],
+        "EventTarget": [
+          2,
+          72
+        ],
+        "Node": [
+          2,
+          134
+        ],
+        "Document": [
+          1,
+          258
+        ],
+        "Map": [
+          28,
+          905
+        ],
+        "ResizeObserver": [
+          2,
+          72
+        ],
+        "Element": [
+          2,
+          217
+        ],
+        "JSON": [
+          1,
+          21
+        ],
+        "DOMTokenList": [
+          1,
+          33
+        ],
+        "console": [
+          1,
+          43
+        ],
+        "Math": [
+          1,
+          62
+        ],
+        "MessageChannel": [
+          2,
+          71
+        ],
+        "CSSStyleDeclaration": [
+          1,
+          29
+        ],
+        "URL": [
+          2,
+          87
+        ],
+        "URLSearchParams": [
+          2,
+          83
+        ],
+        "MessageEvent": [
+          1,
+          24
+        ],
+        "HTMLIFrameElement": [
+          2,
+          88
+        ],
+        "AnimationEvent": [
+          1,
+          22
+        ],
+        "MediaQueryList": [
+          1,
+          23
+        ],
+        "UIEvent": [
+          1,
+          26
+        ],
+        "KeyboardEvent": [
+          1,
+          36
+        ],
+        "Arguments": [
+          2,
+          81
+        ],
+        "ProgramExecutable": [
+          7,
+          784
+        ],
+        "u1": [
+          1,
+          320
+        ],
+        "StructureChain": [
+          108,
+          1728
+        ],
+        "FunctionRareData": [
+          34,
+          2720
+        ],
+        "Callee": [
+          3,
+          96
+        ]
+      },
+      "snapshot_bytes": 2748362
+    },
+    "profiled_5000_ticks": {
+      "nodes": 36245,
+      "live_bytes": 4798309,
+      "classes": {
+        "<root>": [
+          1,
+          0
+        ],
+        "Structure": [
+          2182,
+          244384
+        ],
+        "Object": [
+          5860,
+          376189
+        ],
+        "Function": [
+          3099,
+          123532
+        ],
+        "FunctionCodeBlock": [
+          391,
+          1967837
+        ],
+        "string": [
+          11216,
+          326697
+        ],
+        "StructureRareData": [
+          331,
+          31776
+        ],
+        "DOMStringMap": [
+          3,
+          82
+        ],
+        "HTMLCollection": [
+          5,
+          662
+        ],
+        "FunctionExecutable": [
+          1612,
+          206336
+        ],
+        "Array": [
+          1129,
+          18114
+        ],
+        "UnlinkedFunctionExecutable": [
+          1919,
+          184224
+        ],
+        "JSLexicalEnvironment": [
+          584,
+          44320
+        ],
+        "UnlinkedFunctionCodeBlock": [
+          709,
+          548092
+        ],
+        "SymbolTable": [
+          566,
+          36224
+        ],
+        "Cell Butterfly": [
+          239,
+          71376
+        ],
+        "UnlinkedProgramCodeBlock": [
+          20,
+          11687
+        ],
+        "Text": [
+          20,
+          642
+        ],
+        "symbol": [
+          36,
+          1152
+        ],
+        "JSWindowProxy": [
+          1,
+          32
+        ],
+        "CSSStyleProperties": [
+          26,
+          2369
+        ],
+        "JSPropertyNameEnumerator": [
+          95,
+          4560
+        ],
+        "WeakMap": [
+          5,
+          4504
+        ],
+        "HTMLButtonElement": [
+          85,
+          4239
+        ],
+        "SVGPathElement": [
+          155,
+          7740
+        ],
+        "SVGSVGElement": [
+          77,
+          3855
+        ],
+        "ScopedArgumentsTable": [
+          1,
+          48
+        ],
+        "HTMLImageElement": [
+          11,
+          555
+        ],
+        "NativeExecutable": [
+          715,
+          57200
+        ],
+        "ModuleRecord": [
+          8,
+          4096
+        ],
+        "UnlinkedModuleProgramCodeBlock": [
+          8,
+          16728
+        ],
+        "RegExp": [
+          14,
+          3664
+        ],
+        "ModuleNamespaceObject": [
+          4,
+          260
+        ],
+        "Crypto": [
+          2,
+          53
+        ],
+        "String": [
+          1,
+          74
+        ],
+        "Boolean": [
+          1,
+          33
+        ],
+        "Number": [
+          1,
+          34
+        ],
+        "WindowProperties": [
+          1,
+          33
+        ],
+        "Storage": [
+          2,
+          56
+        ],
+        "ModuleLoader": [
+          1,
+          32
+        ],
+        "JSSourceCode": [
+          8,
+          256
+        ],
+        "Performance": [
+          2,
+          67
+        ],
+        "MessagePort": [
+          3,
+          87
+        ],
+        "Location": [
+          2,
+          52
+        ],
+        "AbortController": [
+          3,
+          103
+        ],
+        "Event": [
+          2,
+          71
+        ],
+        "InjectedScriptHost": [
+          2,
+          68
+        ],
+        "CommandLineAPIHost": [
+          2,
+          54
+        ],
+        "JSGlobalLexicalEnvironment": [
+          1,
+          64
+        ],
+        "ModuleRegistryEntry": [
+          8,
+          640
+        ],
+        "Error": [
+          5,
+          325
+        ],
+        "HTMLDocument": [
+          2,
+          67
+        ],
+        "HTMLDivElement": [
+          89,
+          4417
+        ],
+        "HTMLHeadElement": [
+          2,
+          66
+        ],
+        "HTMLBodyElement": [
+          2,
+          104
+        ],
+        "HTMLHtmlElement": [
+          2,
+          67
+        ],
+        "SVGCircleElement": [
+          23,
+          1121
+        ],
+        "HTMLElement": [
+          42,
+          2217
+        ],
+        "HTMLInputElement": [
+          5,
+          296
+        ],
+        "HTMLFormElement": [
+          2,
+          87
+        ],
+        "SVGLineElement": [
+          14,
+          672
+        ],
+        "HTMLHeadingElement": [
+          9,
+          419
+        ],
+        "HTMLParagraphElement": [
+          11,
+          519
+        ],
+        "HTMLBRElement": [
+          4,
+          169
+        ],
+        "ModuleProgramExecutable": [
+          6,
+          672
+        ],
+        "Navigator": [
+          2,
+          91
+        ],
+        "IntersectionObserver": [
+          3,
+          109
+        ],
+        "MutationObserver": [
+          4,
+          136
+        ],
+        "SparseArrayValueMap": [
+          2,
+          64
+        ],
+        "SVGPolygonElement": [
+          19,
+          920
+        ],
+        "HTMLDListElement": [
+          2,
+          69
+        ],
+        "SVGPolylineElement": [
+          3,
+          120
+        ],
+        "WeakSet": [
+          2,
+          125
+        ],
+        "HTMLDetailsElement": [
+          3,
+          122
+        ],
+        "CustomGetterSetter": [
+          274,
+          8768
+        ],
+        "DOMAttributeGetterSetter": [
+          2340,
+          112320
+        ],
+        "PropertyTable": [
+          164,
+          7872
+        ],
+        "JSModuleEnvironment": [
+          8,
+          3104
+        ],
+        "HTMLLinkElement": [
+          12,
+          566
+        ],
+        "AsyncFunction": [
+          126,
+          4043
+        ],
+        "InjectedScript": [
+          1,
+          67
+        ],
+        "Bo": [
+          1,
+          64
+        ],
+        "HTMLSpanElement": [
+          40,
+          1968
+        ],
+        "zd": [
+          1444,
+          323456
+        ],
+        "Module": [
+          1,
+          32
+        ],
+        "Sentinel": [
+          10,
+          160
+        ],
+        "BigInt": [
+          3,
+          66
+        ],
+        "To": [
+          1,
+          32
+        ],
+        "GetterSetter": [
+          42,
+          1344
+        ],
+        "SVGElement": [
+          1,
+          136
+        ],
+        "SVGGraphicsElement": [
+          1,
+          24
+        ],
+        "SVGGeometryElement": [
+          1,
+          23
+        ],
+        "CharacterData": [
+          1,
+          32
+        ],
+        "NodeList": [
+          1,
+          25
+        ],
+        "MutationRecord": [
+          1,
+          27
+        ],
+        "Prototype": [
+          1,
+          54
+        ],
+        "Uint32ArrayPrototype": [
+          1,
+          18
+        ],
+        "Uint8ArrayPrototype": [
+          1,
+          22
+        ],
+        "Headers": [
+          2,
+          80
+        ],
+        "Headers Iterator": [
+          1,
+          18
+        ],
+        "IntersectionObserverEntry": [
+          1,
+          25
+        ],
+        "Response": [
+          1,
+          34
+        ],
+        "TransitionEvent": [
+          1,
+          22
+        ],
+        "Window": [
+          2,
+          4224
+        ],
+        "ShadowRealm": [
+          1,
+          18
+        ],
+        "TrustedScript": [
+          1,
+          20
+        ],
+        "Iterator": [
+          2,
+          49
+        ],
+        "Iterator Helper": [
+          1,
+          17
+        ],
+        "AsyncIterator": [
+          1,
+          17
+        ],
+        "Generator": [
+          1,
+          18
+        ],
+        "AsyncGenerator": [
+          1,
+          19
+        ],
+        "Array Iterator": [
+          1,
+          18
+        ],
+        "Map Iterator": [
+          1,
+          18
+        ],
+        "Set Iterator": [
+          1,
+          18
+        ],
+        "AsyncFromSyncIterator": [
+          1,
+          19
+        ],
+        "RegExp String Iterator": [
+          1,
+          18
+        ],
+        "Promise": [
+          33,
+          1045
+        ],
+        "Symbol": [
+          1,
+          19
+        ],
+        "WeakRef": [
+          1,
+          19
+        ],
+        "FinalizationRegistry": [
+          1,
+          20
+        ],
+        "String Iterator": [
+          1,
+          18
+        ],
+        "GeneratorFunction": [
+          2,
+          70
+        ],
+        "AsyncGeneratorFunction": [
+          2,
+          70
+        ],
+        "Intl": [
+          1,
+          17
+        ],
+        "Temporal": [
+          1,
+          17
+        ],
+        "WebAssembly": [
+          1,
+          23
+        ],
+        "WebAssembly.Suspending": [
+          1,
+          17
+        ],
+        "WebAssembly.SuspendError": [
+          1,
+          19
+        ],
+        "Set": [
+          66,
+          2124
+        ],
+        "ArrayBuffer": [
+          1,
+          26
+        ],
+        "EventTarget": [
+          2,
+          72
+        ],
+        "Node": [
+          2,
+          134
+        ],
+        "Document": [
+          1,
+          258
+        ],
+        "Map": [
+          28,
+          905
+        ],
+        "ResizeObserver": [
+          2,
+          72
+        ],
+        "Element": [
+          2,
+          217
+        ],
+        "JSON": [
+          1,
+          21
+        ],
+        "DOMTokenList": [
+          1,
+          33
+        ],
+        "console": [
+          1,
+          43
+        ],
+        "Math": [
+          1,
+          62
+        ],
+        "MessageChannel": [
+          2,
+          71
+        ],
+        "CSSStyleDeclaration": [
+          1,
+          29
+        ],
+        "URL": [
+          2,
+          87
+        ],
+        "URLSearchParams": [
+          2,
+          83
+        ],
+        "MessageEvent": [
+          1,
+          24
+        ],
+        "HTMLIFrameElement": [
+          2,
+          88
+        ],
+        "AnimationEvent": [
+          1,
+          22
+        ],
+        "MediaQueryList": [
+          1,
+          23
+        ],
+        "UIEvent": [
+          1,
+          26
+        ],
+        "KeyboardEvent": [
+          1,
+          36
+        ],
+        "Arguments": [
+          2,
+          81
+        ],
+        "ProgramExecutable": [
+          7,
+          784
+        ],
+        "u1": [
+          1,
+          320
+        ],
+        "StructureChain": [
+          106,
+          1696
+        ],
+        "FunctionRareData": [
+          34,
+          2720
+        ],
+        "Callee": [
+          3,
+          96
+        ]
+      },
+      "snapshot_bytes": 2610146
+    },
+    "unprofiled_5000_ticks": {
+      "nodes": 36236,
+      "live_bytes": 4920485,
+      "classes": {
+        "<root>": [
+          1,
+          0
+        ],
+        "string": [
+          11215,
+          326678
+        ],
+        "JSLexicalEnvironment": [
+          589,
+          44544
+        ],
+        "FunctionCodeBlock": [
+          384,
+          2090589
+        ],
+        "Object": [
+          5866,
+          376557
+        ],
+        "FunctionExecutable": [
+          1611,
+          206208
+        ],
+        "UnlinkedFunctionExecutable": [
+          1920,
+          184320
+        ],
+        "UnlinkedFunctionCodeBlock": [
+          711,
+          548690
+        ],
+        "Function": [
+          3101,
+          123596
+        ],
+        "ProgramExecutable": [
+          8,
+          896
+        ],
+        "UnlinkedProgramCodeBlock": [
+          20,
+          11652
+        ],
+        "Array": [
+          1130,
+          18130
+        ],
+        "Structure": [
+          2171,
+          243152
+        ],
+        "StructureRareData": [
+          325,
+          31200
+        ],
+        "DOMStringMap": [
+          3,
+          82
+        ],
+        "HTMLCollection": [
+          5,
+          662
+        ],
+        "SymbolTable": [
+          565,
+          36160
+        ],
+        "Cell Butterfly": [
+          239,
+          71376
+        ],
+        "Text": [
+          20,
+          642
+        ],
+        "symbol": [
+          36,
+          1152
+        ],
+        "JSWindowProxy": [
+          1,
+          32
+        ],
+        "CSSStyleProperties": [
+          26,
+          2369
+        ],
+        "JSPropertyNameEnumerator": [
+          95,
+          4560
+        ],
+        "WeakMap": [
+          5,
+          4504
+        ],
+        "HTMLButtonElement": [
+          85,
+          4239
+        ],
+        "SVGPathElement": [
+          155,
+          7740
+        ],
+        "SVGSVGElement": [
+          77,
+          3855
+        ],
+        "ScopedArgumentsTable": [
+          1,
+          48
+        ],
+        "HTMLImageElement": [
+          11,
+          555
+        ],
+        "NativeExecutable": [
+          715,
+          57200
+        ],
+        "ModuleRecord": [
+          8,
+          4096
+        ],
+        "UnlinkedModuleProgramCodeBlock": [
+          8,
+          16728
+        ],
+        "RegExp": [
+          14,
+          3664
+        ],
+        "ModuleNamespaceObject": [
+          4,
+          260
+        ],
+        "Crypto": [
+          2,
+          53
+        ],
+        "String": [
+          1,
+          74
+        ],
+        "Boolean": [
+          1,
+          33
+        ],
+        "Number": [
+          1,
+          34
+        ],
+        "WindowProperties": [
+          1,
+          33
+        ],
+        "Storage": [
+          2,
+          56
+        ],
+        "ModuleLoader": [
+          1,
+          32
+        ],
+        "JSSourceCode": [
+          8,
+          256
+        ],
+        "Performance": [
+          2,
+          67
+        ],
+        "MessagePort": [
+          3,
+          87
+        ],
+        "Location": [
+          2,
+          52
+        ],
+        "AbortController": [
+          3,
+          103
+        ],
+        "Event": [
+          2,
+          71
+        ],
+        "InjectedScriptHost": [
+          2,
+          68
+        ],
+        "CommandLineAPIHost": [
+          2,
+          54
+        ],
+        "JSGlobalLexicalEnvironment": [
+          1,
+          64
+        ],
+        "ModuleRegistryEntry": [
+          8,
+          640
+        ],
+        "Error": [
+          5,
+          325
+        ],
+        "HTMLDocument": [
+          2,
+          67
+        ],
+        "HTMLDivElement": [
+          89,
+          4417
+        ],
+        "HTMLHeadElement": [
+          2,
+          66
+        ],
+        "HTMLBodyElement": [
+          2,
+          104
+        ],
+        "HTMLHtmlElement": [
+          2,
+          67
+        ],
+        "SVGCircleElement": [
+          23,
+          1121
+        ],
+        "HTMLElement": [
+          42,
+          2217
+        ],
+        "HTMLInputElement": [
+          5,
+          296
+        ],
+        "HTMLFormElement": [
+          2,
+          87
+        ],
+        "SVGLineElement": [
+          14,
+          672
+        ],
+        "HTMLHeadingElement": [
+          9,
+          419
+        ],
+        "HTMLParagraphElement": [
+          11,
+          519
+        ],
+        "HTMLBRElement": [
+          4,
+          169
+        ],
+        "ModuleProgramExecutable": [
+          6,
+          672
+        ],
+        "Navigator": [
+          2,
+          91
+        ],
+        "IntersectionObserver": [
+          3,
+          109
+        ],
+        "MutationObserver": [
+          4,
+          136
+        ],
+        "SparseArrayValueMap": [
+          2,
+          64
+        ],
+        "SVGPolygonElement": [
+          19,
+          920
+        ],
+        "HTMLDListElement": [
+          2,
+          69
+        ],
+        "SVGPolylineElement": [
+          3,
+          120
+        ],
+        "WeakSet": [
+          2,
+          125
+        ],
+        "HTMLDetailsElement": [
+          3,
+          122
+        ],
+        "CustomGetterSetter": [
+          274,
+          8768
+        ],
+        "DOMAttributeGetterSetter": [
+          2340,
+          112320
+        ],
+        "PropertyTable": [
+          164,
+          7872
+        ],
+        "JSModuleEnvironment": [
+          8,
+          3104
+        ],
+        "HTMLLinkElement": [
+          12,
+          566
+        ],
+        "AsyncFunction": [
+          126,
+          4043
+        ],
+        "InjectedScript": [
+          1,
+          67
+        ],
+        "Bo": [
+          1,
+          64
+        ],
+        "HTMLSpanElement": [
+          40,
+          1968
+        ],
+        "zd": [
+          1444,
+          323456
+        ],
+        "Module": [
+          1,
+          32
+        ],
+        "Sentinel": [
+          10,
+          160
+        ],
+        "BigInt": [
+          3,
+          66
+        ],
+        "To": [
+          1,
+          32
+        ],
+        "GetterSetter": [
+          42,
+          1344
+        ],
+        "SVGElement": [
+          1,
+          136
+        ],
+        "SVGGraphicsElement": [
+          1,
+          24
+        ],
+        "SVGGeometryElement": [
+          1,
+          23
+        ],
+        "CharacterData": [
+          1,
+          32
+        ],
+        "NodeList": [
+          1,
+          25
+        ],
+        "MutationRecord": [
+          1,
+          27
+        ],
+        "Prototype": [
+          1,
+          54
+        ],
+        "Uint32ArrayPrototype": [
+          1,
+          18
+        ],
+        "Uint8ArrayPrototype": [
+          1,
+          22
+        ],
+        "Headers": [
+          2,
+          80
+        ],
+        "Headers Iterator": [
+          1,
+          18
+        ],
+        "IntersectionObserverEntry": [
+          1,
+          25
+        ],
+        "Response": [
+          1,
+          34
+        ],
+        "TransitionEvent": [
+          1,
+          22
+        ],
+        "Window": [
+          2,
+          4224
+        ],
+        "ShadowRealm": [
+          1,
+          18
+        ],
+        "TrustedScript": [
+          1,
+          20
+        ],
+        "Iterator": [
+          2,
+          49
+        ],
+        "Iterator Helper": [
+          1,
+          17
+        ],
+        "AsyncIterator": [
+          1,
+          17
+        ],
+        "Generator": [
+          1,
+          18
+        ],
+        "AsyncGenerator": [
+          1,
+          19
+        ],
+        "Array Iterator": [
+          1,
+          18
+        ],
+        "Map Iterator": [
+          1,
+          18
+        ],
+        "Set Iterator": [
+          1,
+          18
+        ],
+        "AsyncFromSyncIterator": [
+          1,
+          19
+        ],
+        "RegExp String Iterator": [
+          1,
+          18
+        ],
+        "Promise": [
+          33,
+          1045
+        ],
+        "Symbol": [
+          1,
+          19
+        ],
+        "WeakRef": [
+          1,
+          19
+        ],
+        "FinalizationRegistry": [
+          1,
+          20
+        ],
+        "String Iterator": [
+          1,
+          18
+        ],
+        "GeneratorFunction": [
+          2,
+          70
+        ],
+        "AsyncGeneratorFunction": [
+          2,
+          70
+        ],
+        "Intl": [
+          1,
+          17
+        ],
+        "Temporal": [
+          1,
+          17
+        ],
+        "WebAssembly": [
+          1,
+          23
+        ],
+        "WebAssembly.Suspending": [
+          1,
+          17
+        ],
+        "WebAssembly.SuspendError": [
+          1,
+          19
+        ],
+        "Set": [
+          66,
+          2124
+        ],
+        "ArrayBuffer": [
+          1,
+          26
+        ],
+        "EventTarget": [
+          2,
+          72
+        ],
+        "Node": [
+          2,
+          134
+        ],
+        "Document": [
+          1,
+          258
+        ],
+        "Map": [
+          28,
+          905
+        ],
+        "ResizeObserver": [
+          2,
+          72
+        ],
+        "Element": [
+          2,
+          217
+        ],
+        "JSON": [
+          1,
+          21
+        ],
+        "DOMTokenList": [
+          1,
+          33
+        ],
+        "console": [
+          1,
+          43
+        ],
+        "Math": [
+          1,
+          62
+        ],
+        "MessageChannel": [
+          2,
+          71
+        ],
+        "CSSStyleDeclaration": [
+          1,
+          29
+        ],
+        "URL": [
+          2,
+          87
+        ],
+        "URLSearchParams": [
+          2,
+          83
+        ],
+        "MessageEvent": [
+          1,
+          24
+        ],
+        "HTMLIFrameElement": [
+          2,
+          88
+        ],
+        "AnimationEvent": [
+          1,
+          22
+        ],
+        "MediaQueryList": [
+          1,
+          23
+        ],
+        "UIEvent": [
+          1,
+          26
+        ],
+        "KeyboardEvent": [
+          1,
+          36
+        ],
+        "Arguments": [
+          2,
+          81
+        ],
+        "u1": [
+          1,
+          320
+        ],
+        "StructureChain": [
+          106,
+          1696
+        ],
+        "FunctionRareData": [
+          34,
+          2720
+        ],
+        "Callee": [
+          3,
+          96
+        ]
+      },
+      "snapshot_bytes": 2649536
+    },
+    "static_track_5000_ticks": {
+      "nodes": 36256,
+      "live_bytes": 5001170,
+      "classes": {
+        "<root>": [
+          1,
+          0
+        ],
+        "Structure": [
+          2173,
+          243376
+        ],
+        "Object": [
+          5866,
+          376557
+        ],
+        "string": [
+          11213,
+          326677
+        ],
+        "JSLexicalEnvironment": [
+          589,
+          44544
+        ],
+        "HTMLStyleElement": [
+          2,
+          71
+        ],
+        "DOMAttributeGetterSetter": [
+          2345,
+          112560
+        ],
+        "Function": [
+          3101,
+          123596
+        ],
+        "FunctionCodeBlock": [
+          400,
+          2172774
+        ],
+        "FunctionExecutable": [
+          1612,
+          206336
+        ],
+        "PropertyTable": [
+          165,
+          7920
+        ],
+        "CustomGetterSetter": [
+          275,
+          8800
+        ],
+        "UnlinkedProgramCodeBlock": [
+          19,
+          11224
+        ],
+        "Array": [
+          1130,
+          18130
+        ],
+        "UnlinkedFunctionExecutable": [
+          1918,
+          184128
+        ],
+        "UnlinkedFunctionCodeBlock": [
+          709,
+          547528
+        ],
+        "ProgramExecutable": [
+          8,
+          896
+        ],
+        "StructureRareData": [
+          325,
+          31200
+        ],
+        "DOMStringMap": [
+          3,
+          82
+        ],
+        "HTMLCollection": [
+          5,
+          662
+        ],
+        "SymbolTable": [
+          565,
+          36160
+        ],
+        "Cell Butterfly": [
+          239,
+          71376
+        ],
+        "Text": [
+          20,
+          642
+        ],
+        "symbol": [
+          36,
+          1152
+        ],
+        "JSWindowProxy": [
+          1,
+          32
+        ],
+        "CSSStyleProperties": [
+          26,
+          2369
+        ],
+        "JSPropertyNameEnumerator": [
+          95,
+          4560
+        ],
+        "WeakMap": [
+          5,
+          4504
+        ],
+        "HTMLButtonElement": [
+          85,
+          4239
+        ],
+        "SVGPathElement": [
+          155,
+          7740
+        ],
+        "SVGSVGElement": [
+          77,
+          3855
+        ],
+        "ScopedArgumentsTable": [
+          1,
+          48
+        ],
+        "HTMLImageElement": [
+          11,
+          555
+        ],
+        "NativeExecutable": [
+          715,
+          57200
+        ],
+        "ModuleRecord": [
+          8,
+          4096
+        ],
+        "UnlinkedModuleProgramCodeBlock": [
+          7,
+          16268
+        ],
+        "RegExp": [
+          14,
+          3664
+        ],
+        "ModuleNamespaceObject": [
+          4,
+          260
+        ],
+        "Crypto": [
+          2,
+          53
+        ],
+        "String": [
+          1,
+          74
+        ],
+        "Boolean": [
+          1,
+          33
+        ],
+        "Number": [
+          1,
+          34
+        ],
+        "WindowProperties": [
+          1,
+          33
+        ],
+        "Storage": [
+          2,
+          56
+        ],
+        "ModuleLoader": [
+          1,
+          32
+        ],
+        "JSSourceCode": [
+          8,
+          256
+        ],
+        "Performance": [
+          2,
+          67
+        ],
+        "MessagePort": [
+          3,
+          87
+        ],
+        "Location": [
+          2,
+          52
+        ],
+        "AbortController": [
+          3,
+          103
+        ],
+        "Event": [
+          2,
+          71
+        ],
+        "InjectedScriptHost": [
+          2,
+          68
+        ],
+        "CommandLineAPIHost": [
+          2,
+          54
+        ],
+        "JSGlobalLexicalEnvironment": [
+          1,
+          64
+        ],
+        "ModuleRegistryEntry": [
+          8,
+          640
+        ],
+        "Error": [
+          5,
+          325
+        ],
+        "HTMLDocument": [
+          2,
+          67
+        ],
+        "HTMLDivElement": [
+          89,
+          4417
+        ],
+        "HTMLHeadElement": [
+          2,
+          66
+        ],
+        "HTMLBodyElement": [
+          2,
+          104
+        ],
+        "HTMLHtmlElement": [
+          2,
+          67
+        ],
+        "SVGCircleElement": [
+          23,
+          1121
+        ],
+        "HTMLElement": [
+          42,
+          2217
+        ],
+        "HTMLInputElement": [
+          5,
+          296
+        ],
+        "HTMLFormElement": [
+          2,
+          87
+        ],
+        "SVGLineElement": [
+          14,
+          672
+        ],
+        "HTMLHeadingElement": [
+          9,
+          419
+        ],
+        "HTMLParagraphElement": [
+          11,
+          519
+        ],
+        "HTMLBRElement": [
+          4,
+          169
+        ],
+        "ModuleProgramExecutable": [
+          6,
+          672
+        ],
+        "Navigator": [
+          2,
+          91
+        ],
+        "IntersectionObserver": [
+          3,
+          109
+        ],
+        "MutationObserver": [
+          4,
+          136
+        ],
+        "SparseArrayValueMap": [
+          2,
+          64
+        ],
+        "SVGPolygonElement": [
+          19,
+          920
+        ],
+        "HTMLDListElement": [
+          2,
+          69
+        ],
+        "SVGPolylineElement": [
+          3,
+          120
+        ],
+        "WeakSet": [
+          2,
+          125
+        ],
+        "HTMLDetailsElement": [
+          3,
+          122
+        ],
+        "JSModuleEnvironment": [
+          8,
+          3104
+        ],
+        "HTMLLinkElement": [
+          12,
+          566
+        ],
+        "AsyncFunction": [
+          126,
+          4043
+        ],
+        "InjectedScript": [
+          1,
+          67
+        ],
+        "Bo": [
+          1,
+          64
+        ],
+        "HTMLSpanElement": [
+          40,
+          1968
+        ],
+        "zd": [
+          1444,
+          323456
+        ],
+        "Module": [
+          1,
+          32
+        ],
+        "Sentinel": [
+          10,
+          160
+        ],
+        "BigInt": [
+          3,
+          66
+        ],
+        "To": [
+          1,
+          32
+        ],
+        "GetterSetter": [
+          42,
+          1344
+        ],
+        "SVGElement": [
+          1,
+          136
+        ],
+        "SVGGraphicsElement": [
+          1,
+          24
+        ],
+        "SVGGeometryElement": [
+          1,
+          23
+        ],
+        "CharacterData": [
+          1,
+          32
+        ],
+        "NodeList": [
+          1,
+          25
+        ],
+        "MutationRecord": [
+          1,
+          27
+        ],
+        "Prototype": [
+          1,
+          54
+        ],
+        "Uint32ArrayPrototype": [
+          1,
+          18
+        ],
+        "Uint8ArrayPrototype": [
+          1,
+          22
+        ],
+        "Headers": [
+          2,
+          80
+        ],
+        "Headers Iterator": [
+          1,
+          18
+        ],
+        "IntersectionObserverEntry": [
+          1,
+          25
+        ],
+        "Response": [
+          1,
+          34
+        ],
+        "TransitionEvent": [
+          1,
+          22
+        ],
+        "Window": [
+          2,
+          4224
+        ],
+        "ShadowRealm": [
+          1,
+          18
+        ],
+        "TrustedScript": [
+          1,
+          20
+        ],
+        "Iterator": [
+          2,
+          49
+        ],
+        "Iterator Helper": [
+          1,
+          17
+        ],
+        "AsyncIterator": [
+          1,
+          17
+        ],
+        "Generator": [
+          1,
+          18
+        ],
+        "AsyncGenerator": [
+          1,
+          19
+        ],
+        "Array Iterator": [
+          1,
+          18
+        ],
+        "Map Iterator": [
+          1,
+          18
+        ],
+        "Set Iterator": [
+          1,
+          18
+        ],
+        "AsyncFromSyncIterator": [
+          1,
+          19
+        ],
+        "RegExp String Iterator": [
+          1,
+          18
+        ],
+        "Promise": [
+          33,
+          1045
+        ],
+        "Symbol": [
+          1,
+          19
+        ],
+        "WeakRef": [
+          1,
+          19
+        ],
+        "FinalizationRegistry": [
+          1,
+          20
+        ],
+        "String Iterator": [
+          1,
+          18
+        ],
+        "GeneratorFunction": [
+          2,
+          70
+        ],
+        "AsyncGeneratorFunction": [
+          2,
+          70
+        ],
+        "Intl": [
+          1,
+          17
+        ],
+        "Temporal": [
+          1,
+          17
+        ],
+        "WebAssembly": [
+          1,
+          23
+        ],
+        "WebAssembly.Suspending": [
+          1,
+          17
+        ],
+        "WebAssembly.SuspendError": [
+          1,
+          19
+        ],
+        "Set": [
+          66,
+          2124
+        ],
+        "ArrayBuffer": [
+          1,
+          26
+        ],
+        "EventTarget": [
+          2,
+          72
+        ],
+        "Node": [
+          2,
+          134
+        ],
+        "Document": [
+          1,
+          258
+        ],
+        "Map": [
+          28,
+          905
+        ],
+        "ResizeObserver": [
+          2,
+          72
+        ],
+        "Element": [
+          2,
+          217
+        ],
+        "JSON": [
+          1,
+          21
+        ],
+        "DOMTokenList": [
+          1,
+          33
+        ],
+        "console": [
+          1,
+          43
+        ],
+        "Math": [
+          1,
+          62
+        ],
+        "MessageChannel": [
+          2,
+          71
+        ],
+        "CSSStyleDeclaration": [
+          1,
+          29
+        ],
+        "URL": [
+          2,
+          87
+        ],
+        "URLSearchParams": [
+          2,
+          83
+        ],
+        "MessageEvent": [
+          1,
+          24
+        ],
+        "HTMLIFrameElement": [
+          2,
+          88
+        ],
+        "AnimationEvent": [
+          1,
+          22
+        ],
+        "MediaQueryList": [
+          1,
+          23
+        ],
+        "UIEvent": [
+          1,
+          26
+        ],
+        "KeyboardEvent": [
+          1,
+          36
+        ],
+        "Arguments": [
+          2,
+          81
+        ],
+        "u1": [
+          1,
+          320
+        ],
+        "StructureChain": [
+          106,
+          1696
+        ],
+        "FunctionRareData": [
+          34,
+          2720
+        ],
+        "Callee": [
+          3,
+          96
+        ]
+      },
+      "snapshot_bytes": 2670206
+    }
+  },
+  "passed": true
+}

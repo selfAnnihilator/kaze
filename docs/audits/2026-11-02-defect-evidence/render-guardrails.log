@@ -1,0 +1,10 @@
+MEASURE initial {"commits":13,"dom":580,"images":14}
+MEASURE playback_100_ticks {"commits":100,"dom":580,"images":14}
+MEASURE download_100_ticks {"commits":0,"dom":580,"images":14}
+MEASURE discovery_mounted {"commits":6,"dom":509,"images":10}
+MEASURE scroll_80_steps {"commits":1,"dom":545,"images":11}
+MEASURE before_cycles {"commits":5,"dom":265,"images":2}
+MEASURE after_20_cycles {"commits":64,"dom":265,"images":2}
+MEASURE brutalist_download_100_ticks {"commits":0,"dom":653,"images":18}
+MEASURE brutalist_playback_100_ticks {"commits":100,"dom":653,"images":18}
+MEASURE visible_download_100_ticks {"commits":100,"dom":203,"images":2}

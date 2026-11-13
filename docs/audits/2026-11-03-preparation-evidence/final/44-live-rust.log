@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.97s
+     Running unittests src/lib.rs (target/debug/deps/music_player_backend-21f3db328d7f134d)
+
+running 1 test
+Reported song preparation: decoded initial provider audio
+Control and graceful shutdown remain available
+test playback::stream::preparation_tests::reported_house_of_balloons_live ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.55s
+

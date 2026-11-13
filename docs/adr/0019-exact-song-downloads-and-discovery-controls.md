@@ -14,7 +14,7 @@ Every Discovery chapter exposes refresh. Personal suggestions re-query taste-bas
 
 Chart sleeves now display their supplied artwork. Online aliases can request the artwork saved with their exact recording, before unrelated enrichment fallback. Recommendation selection prefers original singles/albums over recognizable compilation duplicates, while keeping artwork, album and audio attached to the chosen ID. Existing displayed recordings are never silently retargeted. Source brands are removed from normal UI labels; internal source identities and technical documentation remain.
 
-Validation is recorded in the dated implementation checkpoint in `docs/jiosaavn-experiment.md`. Fixtures and live downloads use disposable storage. Original audio tags/files and the user's live profile are not changed by these tests.
+Validation is recorded in the dated implementation checkpoint in `docs/archive/jiosaavn-experiment.md`. Fixtures and live downloads use disposable storage. Original audio tags/files and the user's live profile are not changed by these tests.
 
 ## Player identity regression follow-up
 

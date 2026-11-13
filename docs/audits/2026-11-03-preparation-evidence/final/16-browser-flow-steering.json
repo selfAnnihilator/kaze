@@ -1,0 +1,10 @@
+{
+  "gate": "16-browser-flow-steering",
+  "command": "node scripts/test-flow-steering.mjs",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T07:57:10Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 10.09,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

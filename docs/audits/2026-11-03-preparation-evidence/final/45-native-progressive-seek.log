@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.60s
+     Running tests/progressive_stream_tests.rs (target/debug/deps/progressive_stream_tests-0ea51bba8d3bd3ae)
+
+running 1 test
+test native_paused_stream_seeks_before_completion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.12s
+

@@ -1,0 +1,38 @@
+{
+  "started_utc": "2026-10-31T10:25:28.226706+00:00",
+  "state": "complete",
+  "steps": [
+    {
+      "name": "rust-integration-complete",
+      "result": 0
+    },
+    {
+      "name": "native-embedded-complete",
+      "result": 0
+    },
+    {
+      "name": "tray-lifecycle-embedded-complete",
+      "result": 0
+    },
+    {
+      "name": "playback-restore-native-embedded-complete",
+      "result": 0
+    },
+    {
+      "name": "dual-interface-native-embedded-complete",
+      "result": 0
+    },
+    {
+      "name": "interface-startup-native-embedded-complete",
+      "result": 0
+    },
+    {
+      "name": "memory-ownership-diagnostic",
+      "result": 0
+    }
+  ],
+  "binary_sha256": "3cdc530bf489ab751b99a7553f0cf965a758ae589030533f7ecaac3b378f18e2",
+  "completed": true,
+  "passed": true,
+  "finished_utc": "2026-10-31T10:33:56.192941+00:00"
+}

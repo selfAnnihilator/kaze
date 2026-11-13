@@ -1,0 +1,5138 @@
+{
+  "baseline": 174,
+  "current": 344,
+  "new": 171,
+  "removed": 1,
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "raw_exit": 1,
+  "unexplained": 0,
+  "reviews": [
+    {
+      "finding": {
+        "ruleId": "bandit:B404",
+        "level": "error",
+        "message": {
+          "text": "Consider possible security implications associated with the subprocess module."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "endLine": 1,
+                "endColumn": 73
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E401",
+        "level": "warning",
+        "message": {
+          "text": "Multiple imports on one line"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F401",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` imported but unused"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 69,
+                "endLine": 1,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 4,
+                "startColumn": 23,
+                "endLine": 4,
+                "endColumn": 70
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 4,
+                "startColumn": 23,
+                "endLine": 4,
+                "endColumn": 70
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E731",
+        "level": "warning",
+        "message": {
+          "text": "Do not assign a `lambda` expression, use a `def`"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 2,
+                "endLine": 8,
+                "endColumn": 174
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 14,
+                "startColumn": 14,
+                "endLine": 14,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 14,
+                "startColumn": 77,
+                "endLine": 14,
+                "endColumn": 78
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 16,
+                "startColumn": 19,
+                "endLine": 16,
+                "endColumn": 20
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 24,
+                "startColumn": 11,
+                "endLine": 24,
+                "endColumn": 137
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 25,
+                "startColumn": 41,
+                "endLine": 25,
+                "endColumn": 42
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 49,
+                "endLine": 29,
+                "endColumn": 50
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 40,
+                "startColumn": 34,
+                "endLine": 40,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 12,
+                "endLine": 42,
+                "endColumn": 79
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 45,
+                "startColumn": 5,
+                "endLine": 45,
+                "endColumn": 72
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 45,
+                "startColumn": 73,
+                "endLine": 45,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/driver.py"
+              },
+              "region": {
+                "startLine": 50,
+                "startColumn": 24,
+                "endLine": 50,
+                "endColumn": 25
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B404",
+        "level": "error",
+        "message": {
+          "text": "Consider possible security implications associated with the subprocess module."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "endLine": 1,
+                "endColumn": 73
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E401",
+        "level": "warning",
+        "message": {
+          "text": "Multiple imports on one line"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F401",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` imported but unused"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 69,
+                "endLine": 1,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 4,
+                "startColumn": 23,
+                "endLine": 4,
+                "endColumn": 70
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 4,
+                "startColumn": 23,
+                "endLine": 4,
+                "endColumn": 70
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E731",
+        "level": "warning",
+        "message": {
+          "text": "Do not assign a `lambda` expression, use a `def`"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 2,
+                "endLine": 8,
+                "endColumn": 174
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 14,
+                "startColumn": 14,
+                "endLine": 14,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 14,
+                "startColumn": 77,
+                "endLine": 14,
+                "endColumn": 78
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 16,
+                "startColumn": 19,
+                "endLine": 16,
+                "endColumn": 20
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 24,
+                "startColumn": 11,
+                "endLine": 24,
+                "endColumn": 137
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 25,
+                "startColumn": 41,
+                "endLine": 25,
+                "endColumn": 42
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 49,
+                "endLine": 29,
+                "endColumn": 50
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 40,
+                "startColumn": 34,
+                "endLine": 40,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 12,
+                "endLine": 42,
+                "endColumn": 79
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B602",
+        "level": "error",
+        "message": {
+          "text": "subprocess call with shell=True identified, security issue."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 45,
+                "startColumn": 5,
+                "endLine": 45,
+                "endColumn": 72
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 45,
+                "startColumn": 73,
+                "endLine": 45,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/driver.py"
+              },
+              "region": {
+                "startLine": 50,
+                "startColumn": 24,
+                "endLine": 50,
+                "endColumn": 25
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S2208",
+        "level": "error",
+        "message": {
+          "text": "Import only needed names or import the module and then use its members."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F403",
+        "level": "warning",
+        "message": {
+          "text": "`from driver import *` used; unable to detect undefined names"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E401",
+        "level": "warning",
+        "message": {
+          "text": "Multiple imports on one line"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 2,
+                "startColumn": 1,
+                "endLine": 2,
+                "endColumn": 36
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 5,
+                "startColumn": 2,
+                "endLine": 5,
+                "endColumn": 5
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`tempfile` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 7,
+                "startColumn": 7,
+                "endLine": 7,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 31,
+                "endLine": 8,
+                "endColumn": 32
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 58,
+                "endLine": 8,
+                "endColumn": 59
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 10,
+                "startColumn": 15,
+                "endLine": 10,
+                "endColumn": 19
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 11,
+                "startColumn": 19,
+                "endLine": 11,
+                "endColumn": 23
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 9,
+                "endLine": 12,
+                "endColumn": 105
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 35,
+                "endLine": 12,
+                "endColumn": 39
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 10,
+                "endLine": 12,
+                "endColumn": 20
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 65,
+                "endLine": 12,
+                "endColumn": 75
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 4,
+                "endLine": 13,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 33,
+                "endLine": 13,
+                "endColumn": 37
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B310",
+        "level": "error",
+        "message": {
+          "text": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 17,
+                "startColumn": 10,
+                "endLine": 17,
+                "endColumn": 47
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 18,
+                "startColumn": 30,
+                "endLine": 18,
+                "endColumn": 31
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 19,
+                "startColumn": 21,
+                "endLine": 19,
+                "endColumn": 22
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`time` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 19,
+                "startColumn": 22,
+                "endLine": 19,
+                "endColumn": 26
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 20,
+                "startColumn": 8,
+                "endLine": 20,
+                "endColumn": 9
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 23,
+                "startColumn": 34,
+                "endLine": 23,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 23,
+                "startColumn": 9,
+                "endLine": 23,
+                "endColumn": 13
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 25,
+                "startColumn": 5,
+                "endLine": 25,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 26,
+                "startColumn": 4,
+                "endLine": 26,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 45,
+                "endLine": 27,
+                "endColumn": 46
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 59,
+                "endLine": 27,
+                "endColumn": 63
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`pathlib` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 11,
+                "endLine": 27,
+                "endColumn": 18
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`hashlib` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 8,
+                "endLine": 28,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 5,
+                "endLine": 29,
+                "endColumn": 9
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 43,
+                "endLine": 29,
+                "endColumn": 47
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`manifest` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 67,
+                "endLine": 29,
+                "endColumn": 75
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 32,
+                "startColumn": 34,
+                "endLine": 32,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 32,
+                "startColumn": 9,
+                "endLine": 32,
+                "endColumn": 13
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 34,
+                "startColumn": 32,
+                "endLine": 34,
+                "endColumn": 33
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 5,
+                "endLine": 35,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 90,
+                "endLine": 35,
+                "endColumn": 95
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 36,
+                "startColumn": 39,
+                "endLine": 36,
+                "endColumn": 40
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 36,
+                "startColumn": 8,
+                "endLine": 36,
+                "endColumn": 12
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 37,
+                "startColumn": 4,
+                "endLine": 37,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 84,
+                "endLine": 38,
+                "endColumn": 88
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 4,
+                "endLine": 38,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 68,
+                "endLine": 38,
+                "endColumn": 73
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 41,
+                "startColumn": 7,
+                "endLine": 41,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 36,
+                "endLine": 42,
+                "endColumn": 37
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 50,
+                "endLine": 42,
+                "endColumn": 51
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 11,
+                "endLine": 42,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 22,
+                "endLine": 43,
+                "endColumn": 23
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 24,
+                "endLine": 43,
+                "endColumn": 28
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 62,
+                "endLine": 43,
+                "endColumn": 66
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`freeze` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 44,
+                "startColumn": 4,
+                "endLine": 44,
+                "endColumn": 10
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 46,
+                "startColumn": 24,
+                "endLine": 46,
+                "endColumn": 25
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`sys` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 46,
+                "startColumn": 5,
+                "endLine": 46,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/final/integrated.py"
+              },
+              "region": {
+                "startLine": 47,
+                "startColumn": 6,
+                "endLine": 47,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S2208",
+        "level": "error",
+        "message": {
+          "text": "Import only needed names or import the module and then use its members."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F403",
+        "level": "warning",
+        "message": {
+          "text": "`from driver import *` used; unable to detect undefined names"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E401",
+        "level": "warning",
+        "message": {
+          "text": "Multiple imports on one line"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 2,
+                "startColumn": 1,
+                "endLine": 2,
+                "endColumn": 36
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 5,
+                "startColumn": 2,
+                "endLine": 5,
+                "endColumn": 5
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`tempfile` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 7,
+                "startColumn": 7,
+                "endLine": 7,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 31,
+                "endLine": 8,
+                "endColumn": 32
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 58,
+                "endLine": 8,
+                "endColumn": 59
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 10,
+                "startColumn": 15,
+                "endLine": 10,
+                "endColumn": 19
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 11,
+                "startColumn": 19,
+                "endLine": 11,
+                "endColumn": 23
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 9,
+                "endLine": 12,
+                "endColumn": 105
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 35,
+                "endLine": 12,
+                "endColumn": 39
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 10,
+                "endLine": 12,
+                "endColumn": 20
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 12,
+                "startColumn": 65,
+                "endLine": 12,
+                "endColumn": 75
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 4,
+                "endLine": 13,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 33,
+                "endLine": 13,
+                "endColumn": 37
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B310",
+        "level": "error",
+        "message": {
+          "text": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 17,
+                "startColumn": 10,
+                "endLine": 17,
+                "endColumn": 47
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 18,
+                "startColumn": 30,
+                "endLine": 18,
+                "endColumn": 31
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 19,
+                "startColumn": 21,
+                "endLine": 19,
+                "endColumn": 22
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`time` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 19,
+                "startColumn": 22,
+                "endLine": 19,
+                "endColumn": 26
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 20,
+                "startColumn": 8,
+                "endLine": 20,
+                "endColumn": 9
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 23,
+                "startColumn": 34,
+                "endLine": 23,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 23,
+                "startColumn": 9,
+                "endLine": 23,
+                "endColumn": 13
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 25,
+                "startColumn": 5,
+                "endLine": 25,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 26,
+                "startColumn": 4,
+                "endLine": 26,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 45,
+                "endLine": 27,
+                "endColumn": 46
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`REPO` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 59,
+                "endLine": 27,
+                "endColumn": 63
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`pathlib` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 11,
+                "endLine": 27,
+                "endColumn": 18
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`hashlib` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 8,
+                "endLine": 28,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 5,
+                "endLine": 29,
+                "endColumn": 9
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 43,
+                "endLine": 29,
+                "endColumn": 47
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`manifest` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 29,
+                "startColumn": 67,
+                "endLine": 29,
+                "endColumn": 75
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 32,
+                "startColumn": 34,
+                "endLine": 32,
+                "endColumn": 35
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 32,
+                "startColumn": 9,
+                "endLine": 32,
+                "endColumn": 13
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 34,
+                "startColumn": 32,
+                "endLine": 34,
+                "endColumn": 33
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 5,
+                "endLine": 35,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 90,
+                "endLine": 35,
+                "endColumn": 95
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 36,
+                "startColumn": 39,
+                "endLine": 36,
+                "endColumn": 40
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 36,
+                "startColumn": 8,
+                "endLine": 36,
+                "endColumn": 12
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 37,
+                "startColumn": 4,
+                "endLine": 37,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 84,
+                "endLine": 38,
+                "endColumn": 88
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`run` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 4,
+                "endLine": 38,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`shlex` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 38,
+                "startColumn": 68,
+                "endLine": 38,
+                "endColumn": 73
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 41,
+                "startColumn": 7,
+                "endLine": 41,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 36,
+                "endLine": 42,
+                "endColumn": 37
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 50,
+                "endLine": 42,
+                "endColumn": 51
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`subprocess` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 42,
+                "startColumn": 11,
+                "endLine": 42,
+                "endColumn": 21
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 22,
+                "endLine": 43,
+                "endColumn": 23
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`ROOT` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 24,
+                "endLine": 43,
+                "endColumn": 28
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`json` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 43,
+                "startColumn": 62,
+                "endLine": 43,
+                "endColumn": 66
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`freeze` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 44,
+                "startColumn": 4,
+                "endLine": 44,
+                "endColumn": 10
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 46,
+                "startColumn": 24,
+                "endLine": 46,
+                "endColumn": 25
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:F405",
+        "level": "warning",
+        "message": {
+          "text": "`sys` may be undefined, or defined from star imports"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 46,
+                "startColumn": 5,
+                "endLine": 46,
+                "endColumn": 8
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/integrated.py"
+              },
+              "region": {
+                "startLine": 47,
+                "startColumn": 6,
+                "endLine": 47,
+                "endColumn": 7
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B404",
+        "level": "error",
+        "message": {
+          "text": "Consider possible security implications associated with the subprocess module."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 1,
+                "endLine": 1,
+                "endColumn": 83
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E401",
+        "level": "warning",
+        "message": {
+          "text": "Multiple imports on one line"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 84
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 2,
+                "startColumn": 54,
+                "endLine": 2,
+                "endColumn": 55
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 3,
+                "startColumn": 90,
+                "endLine": 3,
+                "endColumn": 91
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 3,
+                "startColumn": 133,
+                "endLine": 3,
+                "endColumn": 134
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 6,
+                "startColumn": 23,
+                "endLine": 6,
+                "endColumn": 24
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 6,
+                "startColumn": 49,
+                "endLine": 6,
+                "endColumn": 50
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 27,
+                "endLine": 8,
+                "endColumn": 28
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 8,
+                "startColumn": 53,
+                "endLine": 8,
+                "endColumn": 54
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 9,
+                "startColumn": 30,
+                "endLine": 9,
+                "endColumn": 31
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 9,
+                "startColumn": 57,
+                "endLine": 9,
+                "endColumn": 58
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 6,
+                "endLine": 13,
+                "endColumn": 67
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 13,
+                "startColumn": 68,
+                "endLine": 13,
+                "endColumn": 69
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S5685",
+        "level": "note",
+        "message": {
+          "text": "Move this assignment out of the argument list; \":=\" operator is confusing in this context."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 23,
+                "startColumn": 39,
+                "endLine": 23,
+                "endColumn": 75
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 25,
+                "startColumn": 39,
+                "endLine": 25,
+                "endColumn": 40
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B101",
+        "level": "error",
+        "message": {
+          "text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 69,
+                "endLine": 27,
+                "endColumn": 103
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 27,
+                "endLine": 27,
+                "endColumn": 28
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 27,
+                "startColumn": 69,
+                "endLine": 27,
+                "endColumn": 70
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B101",
+        "level": "error",
+        "message": {
+          "text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 80,
+                "endLine": 28,
+                "endColumn": 104
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 26,
+                "endLine": 28,
+                "endColumn": 27
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 60,
+                "endLine": 28,
+                "endColumn": 61
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 28,
+                "startColumn": 80,
+                "endLine": 28,
+                "endColumn": 81
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 30,
+                "startColumn": 76,
+                "endLine": 30,
+                "endColumn": 77
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 32,
+                "startColumn": 14,
+                "endLine": 32,
+                "endColumn": 15
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E701",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (colon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 33,
+                "startColumn": 25,
+                "endLine": 33,
+                "endColumn": 26
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "ruff:E702",
+        "level": "warning",
+        "message": {
+          "text": "Multiple statements on one line (semicolon)"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "docs/audits/2026-11-03-preparation-evidence/native-live.py"
+              },
+              "region": {
+                "startLine": 33,
+                "startColumn": 41,
+                "endLine": 33,
+                "endColumn": 42
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Retained local acceptance/evidence orchestration copied from the prior runner. Shell commands are fixed repository/operator commands; HTTP polling is loopback-only; profiles and binaries are disposable. Style/import diagnostics are evidence-script maintainability findings, outside product execution."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B404",
+        "level": "error",
+        "message": {
+          "text": "Consider possible security implications associated with the subprocess module."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-preparation-tray.py"
+              },
+              "region": {
+                "startLine": 12,
+                "endLine": 12,
+                "endColumn": 17
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Subprocess import supports the opted-in private native test harness."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S3776",
+        "level": "error",
+        "message": {
+          "text": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-preparation-tray.py"
+              },
+              "region": {
+                "startLine": 24,
+                "startColumn": 5,
+                "endLine": 24,
+                "endColumn": 9
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "Reviewed test orchestration complexity; assertions cover warmup, both interfaces, repeated cancellation, tray Quit, database integrity, and cleanup."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S1186",
+        "level": "error",
+        "message": {
+          "text": "Add a nested comment explaining why this method is empty, or complete the implementation."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-preparation-tray.py"
+              },
+              "region": {
+                "startLine": 45,
+                "startColumn": 13,
+                "endLine": 45,
+                "endColumn": 24
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "The HTTP fixture intentionally suppresses access logging to keep media request details out of retained logs."
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-preparation-tray.py"
+              },
+              "region": {
+                "startLine": 64,
+                "startColumn": 26,
+                "endLine": 64,
+                "endColumn": 85
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "reason": "Shell-free argv executes the explicit copied test binary with disposable XDG directories."
+    },
+    {
+      "finding": {
+        "ruleId": "radarlint-python:python:S1515",
+        "level": "warning",
+        "message": {
+          "text": "Add a parameter to the parent lambda function and use variable \"app\" as its default value; The value of \"app\" might change at the next loop iteration."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-preparation-tray.py"
+              },
+              "region": {
+                "startLine": 67,
+                "startColumn": 60,
+                "endLine": 67,
+                "endColumn": 63
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "lint"
+          }
+        ]
+      },
+      "reason": "wait_for evaluates this lambda synchronously and completes before the loop advances or app is reassigned."
+    }
+  ],
+  "comparison": "Rule/path/message multiset with numeric complexity normalized; raw SARIF retained. No scanner configuration or suppression changed."
+}

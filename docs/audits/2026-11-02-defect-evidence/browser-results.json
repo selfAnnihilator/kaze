@@ -1,0 +1,243 @@
+[
+  {
+    "style": "spatial",
+    "name": "paging-head-of-line",
+    "passed": true,
+    "evidence": {
+      "before": 7,
+      "blocked": {
+        "requests": 8,
+        "rows": 16,
+        "text": "200 loaded of 1036\n\n#\nTITLE\nARTIST\nFORMAT\nDURATION\nACTIONS\n1\nKerala\nBonobo\nFLAC\n4:00\n2\nFeather\nNujabes\nFLAC\n4:00\n3\nFriday Morning\nKhruangbin\nFLAC\n4:00\n4\nWeird Fishes\nRadiohead\nFLAC\n4:00\n5\nAll I Need\nAir\nFLAC\n4:00\n6\nTeardrop\nMassive Attack\nFLAC\n4:00\n7\nGlory Box\nPortishead\nFLAC\n4:00\n8\nLet It Happen\nTame Impala\nFLAC\n4:00\n9\nMyth\nBeach House\nFLAC\n4:00\n10\nPaprika\nJapanese Breakfast\nFLAC\n4:00\n11\nLibrary track 10\nBonobo\nFLAC\n4:00\n12\nLibrary track 11\nNujabes\nFLAC\n4:00\n13\nLibrary track 12\nKhruangbin\nFLAC\n4:00\n14\nLibrary track 13\nRadiohead\nFLAC\n4:00\n15\nLibrary track 14\nAir\nFLAC\n4:00\n16\nLibrary track 15\nMassive Attack\nFLAC\n4:00"
+      },
+      "recovered_rows": 16
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "stale-scoped-results",
+    "passed": true,
+    "evidence": {
+      "pending": {
+        "query": "modal-soul",
+        "busy": "true"
+      },
+      "command": null,
+      "failed": {
+        "query": "NO_MATCH_REVIEW",
+        "alerts": 1
+      }
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "zero-duration",
+    "passed": true,
+    "evidence": {
+      "before": "240",
+      "after": {
+        "max": "100",
+        "value": "2",
+        "disabled": true
+      }
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "artwork-invalidation",
+    "passed": true,
+    "evidence": {
+      "images": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "migration",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "modal-soul",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "con-todo",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "Kerala",
+          "parent": "player-artwork"
+        }
+      ]
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "subscription-recovery",
+    "passed": true,
+    "evidence": {
+      "before": {
+        "attempts": 2,
+        "listeners": 0
+      },
+      "after": {
+        "attempts": 3,
+        "listeners": 1,
+        "backend": "Feather",
+        "player": "FeatherNujabes0:474:00",
+        "alerts": 0
+      }
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "scoped-out-of-order-and-account",
+    "passed": true,
+    "evidence": {
+      "out_of_order_rejected": true,
+      "old_account_refresh_rejected": true
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "registration-exhaustion-and-explicit-retry",
+    "passed": true,
+    "evidence": {
+      "attempts_before_retry": 5,
+      "listeners_after_retry": 1
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "paging-head-of-line",
+    "passed": true,
+    "evidence": {
+      "before": 7,
+      "blocked": {
+        "requests": 8,
+        "rows": 16,
+        "text": "1036 local audio tracks indexed\n\n200 loaded of 1036\n\n#\nTITLE\nARTIST\nFORMAT\nDURATION\nACTIONS\n1\nKerala\nBonobo\nFLAC\n4:00\n2\nFeather\nNujabes\nFLAC\n4:00\n3\nFriday Morning\nKhruangbin\nFLAC\n4:00\n4\nWeird Fishes\nRadiohead\nFLAC\n4:00\n5\nAll I Need\nAir\nFLAC\n4:00\n6\nTeardrop\nMassive Attack\nFLAC\n4:00\n7\nGlory Box\nPortishead\nFLAC\n4:00\n8\nLet It Happen\nTame Impala\nFLAC\n4:00\n9\nMyth\nBeach House\nFLAC\n4:00\n10\nPaprika\nJapanese Breakfast\nFLAC\n4:00\n11\nLibrary track 10\nBonobo\nFLAC\n4:00\n12\nLibrary track 11\nNujabes\nFLAC\n4:00\n13\nLibrary track 12\nKhruangbin\nFLAC\n4:00\n14\nLibrary track 13\nRadiohead\nFLAC\n4:00\n15\nLibrary track 14\nAir\nFLAC\n4:00\n16\nLibrary track 15\nMassive Attack\nFLAC\n4:00"
+      },
+      "recovered_rows": 16
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "stale-scoped-results",
+    "passed": true,
+    "evidence": {
+      "pending": {
+        "query": "modal-soul",
+        "busy": "true"
+      },
+      "command": null,
+      "failed": {
+        "query": "NO_MATCH_REVIEW",
+        "alerts": 1
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "zero-duration",
+    "passed": true,
+    "evidence": {
+      "before": "240",
+      "after": {
+        "max": "100",
+        "value": "2",
+        "disabled": true
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "artwork-invalidation",
+    "passed": true,
+    "evidence": {
+      "images": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "migration",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "modal-soul",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "con-todo",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "in-rainbows",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "moon-safari",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "mezzanine",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "dummy",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "Kerala",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "",
+          "parent": "music-artwork "
+        }
+      ]
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "subscription-recovery",
+    "passed": true,
+    "evidence": {
+      "before": {
+        "attempts": 2,
+        "listeners": 0
+      },
+      "after": {
+        "attempts": 3,
+        "listeners": 1,
+        "backend": "Feather",
+        "player": "THE DECK01 / 04NOW PLAYINGFeatherFeatherNujabesPAUSEPREVNEXTPOSITION 0:47 / 4:00UP NEXT01FeatherNujabes02Friday MorningKhruangbin03Weird FishesRadioheadFLOWON80SettingsMProfileFeatherNujabesTHE DECK ",
+        "alerts": 0
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "scoped-out-of-order-and-account",
+    "passed": true,
+    "evidence": {
+      "out_of_order_rejected": true,
+      "old_account_refresh_rejected": true
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "registration-exhaustion-and-explicit-retry",
+    "passed": true,
+    "evidence": {
+      "attempts_before_retry": 5,
+      "listeners_after_retry": 1
+    }
+  }
+]

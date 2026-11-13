@@ -1,0 +1,23 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.63s
+     Running tests/download_tests.rs (target/debug/deps/download_tests-a298bf5ababe0ec1)
+
+running 9 tests
+test test_download_provider_search_and_availability ... ok
+test interrupted_transfer_becomes_retryable_after_provider_restart ... ok
+test test_download_service_wishlist_integration_and_auto_import ... ok
+test download_directory_write_failure_creates_no_phantom_transfer ... ok
+test direct_download_uses_saved_recording_without_search_and_reuses_transfer ... ok
+test test_download_service_start_download_and_progress_flow ... ok
+test test_download_service_cancel_flow ... ok
+test test_core_processor_search_soulseek ... ok
+test test_core_processor_download_commands_and_queries ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+
+     Running tests/library_paging_tests.rs (target/debug/deps/library_paging_tests-61d7bdf6ff77f2da)
+
+running 1 test
+test pages_are_complete_stable_local_and_account_scoped ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+

@@ -1,0 +1,367 @@
+spatial library Library
+Your space
+
+THE MUSIC YOU MAKE YOURS
+
+Your library.
+
+200 albums. A thousand places to go.
+
+Albums
+Tracks
+Playlists
+Liked
+#
+TITLE
+ARTIST
+ALBUM
+FORMAT
+DURATION
+ACTIONS
+1
+Kerala
+Bonobo
+migration
+FLAC
+4:00
+2
+Feather
+Nujabes
+modal-soul
+FLAC
+4:00
+3
+Friday Morning
+Khruangbin
+con-todo
+FLAC
+4:00
+4
+Weird Fishes
+Radiohead
+in-rainbows
+FLAC
+4:00
+5
+All I Need
+Air
+moon-safari
+FLAC
+4:00
+6
+Teardrop
+Massive Attack
+mezzanine
+FLAC
+4:00
+7
+Glory Box
+Portishead
+dummy
+FLAC
+4:00
+8
+Let It Happen
+Tame Impala
+currents
+FLAC
+4:00
+9
+Myth
+Beach House
+bloom
+FLAC
+4:00
+10
+Paprika
+Japanese Breakfast
+jubilee
+FLAC
+4:00
+11
+Library track 10
+Bonobo
+migration
+FLAC
+4:00
+12
+Library track 11
+Nujabes
+modal-soul
+FLAC
+4:00
+13
+Library track 12
+Khruangbin
+con-todo
+FLAC
+4:00
+14
+Library track 13
+Radiohead
+in-rainbows
+FLAC
+4:00
+15
+Library track 14
+Air
+moon-safari
+FLAC
+4:00
+16
+Library track 15
+Massive Attack
+mezzanine
+FLAC
+4:00
+17
+Library track 16
+Portishead
+dummy
+FLAC
+4:00
+18
+Library track 17
+Tame Impala
+currents
+FLAC
+4:00
+19
+Library track 18
+Beach House
+bloom
+FLAC
+4:00
+20
+Library track 19
+Japanese Breakfast
+jubilee
+FLAC
+4:00
+21
+Library track 20
+Bonobo
+migration
+FLAC
+4:00
+22
+Library track 21
+Nujabes
+modal-soul
+FLAC
+4:00 [
+  {
+    query: 'GetTracks',
+    payload: { offset: 0, limit: 1000, ascending: true }
+  },
+  {
+    query: 'GetTracks',
+    payload: { offset: 0, limit: 1000, ascending: true }
+  },
+  {
+    query: 'GetTracks',
+    payload: { limit: 1000, offset: 0, ascending: true }
+  }
+]
+spatial albums Library
+Your space
+
+THE MUSIC YOU MAKE YOURS
+
+Your library.
+
+200 albums. A thousand places to go.
+
+Albums
+Tracks
+Playlists
+Liked
+Audit album 0
+Bonobo
+10 tracks
+Audit album 1
+Bonobo
+10 tracks
+Audit album 2
+Bonobo
+10 tracks
+Audit album 3
+Bonobo
+10 tracks
+Audit album 4
+Bonobo
+10 tracks
+Audit album 5
+Bo
+spatial create failure { modal: 0, errors: [ 'AUDIT storage failure' ], visibleError: false }
+spatial stale search { newVisible: true, oldVisible: 0 }
+spatial search error notice true
+spatial recovery 5
+brutalist library LIBRARY
+YOUR MUSIC / ALL IN ONE PLACE
+THE
+ARCHIVE.
+1000
+ALBUMS
+TRACKS
+PLAYLISTS
+LIKED
+
+1000 local audio tracks indexed
+
+#
+TITLE
+ARTIST
+ALBUM
+FORMAT
+DURATION
+ACTIONS
+1
+Kerala
+Bonobo
+migration
+FLAC
+4:00
+2
+Feather
+Nujabes
+modal-soul
+FLAC
+4:00
+3
+Friday Morning
+Khruangbin
+con-todo
+FLAC
+4:00
+4
+Weird Fishes
+Radiohead
+in-rainbows
+FLAC
+4:00
+5
+All I Need
+Air
+moon-safari
+FLAC
+4:00
+6
+Teardrop
+Massive Attack
+mezzanine
+FLAC
+4:00
+7
+Glory Box
+Portishead
+dummy
+FLAC
+4:00
+8
+Let It Happen
+Tame Impala
+currents
+FLAC
+4:00
+9
+Myth
+Beach House
+bloom
+FLAC
+4:00
+10
+Paprika
+Japanese Breakfast
+jubilee
+FLAC
+4:00
+11
+Library track 10
+Bonobo
+migration
+FLAC
+4:00
+12
+Library track 11
+Nujabes
+modal-soul
+FLAC
+4:00
+13
+Library track 12
+Khruangbin
+con-todo
+FLAC
+4:00
+14
+Library track 13
+Radiohead
+in-rainbows
+FLAC
+4:00
+15
+Library track 14
+Air
+moon-safari
+FLAC
+4:00
+16
+Library track 15
+Massive Attack
+mezzanine
+FLAC
+4:00 [
+  {
+    query: 'GetTracks',
+    payload: { offset: 0, limit: 1000, ascending: true }
+  },
+  {
+    query: 'GetTracks',
+    payload: { offset: 0, limit: 1000, ascending: true }
+  },
+  {
+    query: 'GetTracks',
+    payload: { limit: 1000, offset: 0, ascending: true }
+  }
+]
+brutalist albums LIBRARY
+YOUR MUSIC / ALL IN ONE PLACE
+THE
+ARCHIVE.
+200
+ALBUMS
+TRACKS
+PLAYLISTS
+LIKED
+01
+Audit album 0
+Bonobo
+02
+Audit album 1
+Bonobo
+03
+Audit album 2
+Bonobo
+04
+Audit album 3
+Bonobo
+05
+Audit album 4
+Bonobo
+06
+Audit album 5
+Bonobo
+07
+Audit album 6
+Bonobo
+08
+Audit album 7
+Bonobo
+09
+Audit album 8
+Bonobo
+brutalist create failure { modal: 0, errors: [ 'AUDIT storage failure' ], visibleError: false }
+brutalist stale search { newVisible: true, oldVisible: 0 }
+brutalist search error notice true
+brutalist recovery 5

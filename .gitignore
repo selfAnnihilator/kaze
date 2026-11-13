@@ -74,3 +74,7 @@ packaging/arch/pkg/
 packaging/arch/*.pkg.tar*
 packaging/arch/*.tar.gz
 kaze/
+
+# Audit evidence: only files linked from docs/audits/*.md are tracked (git add -f)
+docs/audits/*-evidence/
+__pycache__/

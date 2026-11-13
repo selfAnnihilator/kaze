@@ -1,0 +1,131 @@
+{
+  "song": {
+    "id": "1tsVjhU6",
+    "title": "House Of Balloons / Glass Table Girls",
+    "artist": "The Weeknd",
+    "duration": "405"
+  },
+  "preparation": {
+    "ok": true
+  },
+  "states": [
+    {
+      "can_seek": true,
+      "current_queue_index": 0,
+      "current_track": {
+        "album": null,
+        "album_title": null,
+        "artist": "The Weeknd",
+        "artist_name": "The Weeknd",
+        "bitrate": null,
+        "cover_art_url": null,
+        "created_at": 1793695043,
+        "disc_number": 1,
+        "duration_secs": 405,
+        "file_path": "online://jiosaavn:1tsVjhU6",
+        "file_size": 0,
+        "format": "online",
+        "genre_name": null,
+        "has_cover_art": 0,
+        "id": "jiosaavn:1tsVjhU6",
+        "manual_like": 0,
+        "matched_local_track_id": null,
+        "modified_timestamp": 1793695043,
+        "musicbrainz_track_id": null,
+        "playback_source": {
+          "provider": "jiosaavn",
+          "track_id": "1tsVjhU6"
+        },
+        "preview_url": null,
+        "provider": "jiosaavn",
+        "provider_id": "1tsVjhU6",
+        "sample_rate": null,
+        "spotify_id": null,
+        "title": "House Of Balloons / Glass Table Girls",
+        "track_number": null,
+        "year": null
+      },
+      "current_track_id": "jiosaavn:1tsVjhU6",
+      "duration_secs": 405,
+      "is_buffering": false,
+      "is_muted": false,
+      "is_paused": false,
+      "is_playing": true,
+      "is_shuffle": false,
+      "position_secs": 1.651247166,
+      "queue_length": 1,
+      "queue_track_ids": [],
+      "repeat_mode": "off",
+      "volume": 0.800000011920929
+    },
+    {
+      "can_seek": true,
+      "current_queue_index": 0,
+      "current_track": {
+        "album": null,
+        "album_title": null,
+        "artist": "The Weeknd",
+        "artist_name": "The Weeknd",
+        "bitrate": null,
+        "cover_art_url": null,
+        "created_at": 1793695043,
+        "disc_number": 1,
+        "duration_secs": 405,
+        "file_path": "online://jiosaavn:1tsVjhU6",
+        "file_size": 0,
+        "format": "online",
+        "genre_name": null,
+        "has_cover_art": 0,
+        "id": "jiosaavn:1tsVjhU6",
+        "manual_like": 0,
+        "matched_local_track_id": null,
+        "modified_timestamp": 1793695043,
+        "musicbrainz_track_id": null,
+        "playback_source": {
+          "provider": "jiosaavn",
+          "track_id": "1tsVjhU6"
+        },
+        "preview_url": null,
+        "provider": "jiosaavn",
+        "provider_id": "1tsVjhU6",
+        "sample_rate": null,
+        "spotify_id": null,
+        "title": "House Of Balloons / Glass Table Girls",
+        "track_number": null,
+        "year": null
+      },
+      "current_track_id": "jiosaavn:1tsVjhU6",
+      "duration_secs": 405,
+      "is_buffering": false,
+      "is_muted": false,
+      "is_paused": true,
+      "is_playing": false,
+      "is_shuffle": false,
+      "position_secs": 5,
+      "queue_length": 1,
+      "queue_track_ids": [],
+      "repeat_mode": "off",
+      "volume": 0.800000011920929
+    }
+  ],
+  "stopped": {
+    "can_seek": true,
+    "current_queue_index": 0,
+    "current_track_id": null,
+    "duration_secs": 0,
+    "is_buffering": false,
+    "is_muted": false,
+    "is_paused": false,
+    "is_playing": false,
+    "is_shuffle": false,
+    "position_secs": 0,
+    "queue_length": 1,
+    "queue_track_ids": [
+      "jiosaavn:1tsVjhU6"
+    ],
+    "repeat_mode": "off",
+    "volume": 0.800000011920929
+  },
+  "quit_seconds": 0.0703456470000674,
+  "exit_code": 0
+}

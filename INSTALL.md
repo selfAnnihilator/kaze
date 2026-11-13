@@ -8,7 +8,7 @@ Kaze is a free, open-source desktop music player. Choose the installer for your 
 
 ### Option 1: AppImage (works on any Linux distro — recommended if unsure)
 
-1. Download the `.AppImage` file from the [latest release](../../releases/latest).
+1. Download the `.AppImage` file from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Make it executable:
    ```bash
    chmod +x Kaze_*.AppImage
@@ -26,7 +26,7 @@ Kaze is a free, open-source desktop music player. Choose the installer for your 
 
 Native Arch package built specifically for Arch Linux, CachyOS, and Manjaro using system WebKitGTK and GTK3 libraries for optimal performance.
 
-1. Download `kaze-*.pkg.tar.zst` from the [latest release](../../releases/latest).
+1. Download `kaze-*.pkg.tar.zst` from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Install it with pacman:
    ```bash
    sudo pacman -U ./kaze-*.pkg.tar.zst
@@ -94,7 +94,7 @@ References: [Arch Rust packages](https://archlinux.org/packages/extra/x86_64/rus
 
 ### Option 3: Debian/Ubuntu (`.deb` — for Ubuntu, Mint, Pop!_OS, Debian)
 
-1. Download the `.deb` file from the [latest release](../../releases/latest).
+1. Download the `.deb` file from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Install it:
    ```bash
    sudo dpkg -i kaze_*.deb
@@ -106,7 +106,7 @@ References: [Arch Rust packages](https://archlinux.org/packages/extra/x86_64/rus
 
 ### Option 4: Fedora / openSUSE / RHEL (`.rpm`)
 
-1. Download the `.rpm` file from the [latest release](../../releases/latest).
+1. Download the `.rpm` file from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Install it:
    ```bash
    sudo rpm -i kaze_*.rpm
@@ -120,7 +120,7 @@ References: [Arch Rust packages](https://archlinux.org/packages/extra/x86_64/rus
 
 ### Option 1: NSIS Installer (`.exe` — recommended)
 
-1. Download `Kaze_*_x64-setup.exe` from the [latest release](../../releases/latest).
+1. Download `Kaze_*_x64-setup.exe` from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Double-click the file.
 3. Follow the installation wizard.
 4. Launch Kaze from the Start Menu.
@@ -129,7 +129,7 @@ References: [Arch Rust packages](https://archlinux.org/packages/extra/x86_64/rus
 
 ### Option 2: MSI Installer (`.msi`)
 
-1. Download `Kaze_*_x64_en-US.msi` from the [latest release](../../releases/latest).
+1. Download `Kaze_*_x64_en-US.msi` from the [latest release](https://github.com/selfAnnihilator/kaze/releases/latest).
 2. Double-click to install.
 
 ---
@@ -164,4 +164,4 @@ The installer includes a WebView2 bootstrapper that downloads it automatically. 
 
 ---
 
-*Need help? Open an issue on [GitHub](../../issues).*
+*Need help? Open an issue on [GitHub](https://github.com/selfAnnihilator/kaze/issues).*

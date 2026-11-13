@@ -1,0 +1,31 @@
+PASS Real entry uses one backend subscription and preserves all Home sections
+PASS Spatial: simplified Settings and style persistence
+PASS Spatial: playback switching keeps route, track, queue, position and Flow
+PASS Spatial: Flow, steering, explanation and complete Home
+PASS Spatial: library bounded rows, likes, enqueue and playlist actions
+PASS Spatial: album shelves and full collection actions
+PASS Spatial: playlists, Liked Songs and smart mixes
+PASS Spatial: discovery chapters and search
+PASS Spatial: queue real index / remove / clear controls
+PASS Spatial: now playing, transport, keyboard and progress isolation
+PASS Spatial: fullscreen, lyrics, buffering and seek availability
+PASS Spatial: Downloads, Wishlist, Notifications, Profile and history
+PASS Spatial: maximized, normal and narrow desktop layouts
+PASS Brutalist: simplified Settings and style persistence
+PASS Brutalist: playback switching keeps route, track, queue, position and Flow
+PASS Brutalist: Flow, steering, explanation and complete Home
+PASS Brutalist: library bounded rows, likes, enqueue and playlist actions
+PASS Brutalist: album shelves and full collection actions
+PASS Brutalist: playlists, Liked Songs and smart mixes
+PASS Brutalist: discovery chapters and search
+PASS Brutalist: queue real index / remove / clear controls
+PASS Brutalist: now playing, transport, keyboard and progress isolation
+PASS Brutalist: fullscreen, lyrics, buffering and seek availability
+PASS Brutalist: Profile and history
+PASS Brutalist: maximized, normal and narrow desktop layouts
+PASS Failed preference save restores selection and presents retryable error
+PASS Saved style loads after reload without legacy routing
+PASS Spatial: search rows download directly without a source dialog
+PASS Brutalist: search rows download directly without a source dialog
+PASS Both presentations retain empty library/discovery/queue and failed search recovery
+PASS no page errors

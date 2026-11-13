@@ -1,0 +1,61 @@
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=720713 comm="/tmp/kaze-acceptance-native-padpdibz/kaze-candidat")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=720724 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=720724 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=720724 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:720747): WARNING **: 11:22:42.405: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=720747 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=720724 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=720724 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=720713 comm="/tmp/kaze-acceptance-native-padpdibz/kaze-candidat")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS A/B/I: ten hide/show cycles, same webview/Settings route/scroll, one window and tray
+PASS C/E: native hidden media controls, Paused retention, position and seeking
+PASS D: Flow active and advances while hidden without restarting its session
+PASS F/J: tray Quit exits cleanly and next launch reacquires MPRIS
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS G/H: X quits with saved quit_app; switching back hides immediately
+PASS K: second launch restores hidden primary window; second process exits immediately
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: absent tray host falls back to a clean quit rather than an inaccessible hidden app
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=720829 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[720707]: [session uid=1000 pid=720707 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: SIGKILL releases D-Bus ownership; immediate relaunch recovers the real journal
+PASS: shutdown drains SQLite journal without inventing completed tracks
+
+(/usr/lib/xdg-desktop-portal:720724): xdg-desktop-portal-WARNING **: 11:22:48.019: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

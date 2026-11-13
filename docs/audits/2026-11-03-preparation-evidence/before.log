@@ -1,0 +1,21 @@
+   Compiling music-player-backend v2.0.4 (/home/abhi/Projects/music_player/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.31s
+     Running unittests src/lib.rs (target/debug/deps/music_player_backend-21f3db328d7f134d)
+
+running 1 test
+
+running 1 test
+
+thread 'playback::stream::preparation_tests::preparation_subprocess' (848779) panicked at src-tauri/src/playback/stream.rs:1195:21:
+fixture delayed: preparation exceeded external 8s deadline
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test playback::stream::preparation_tests::preparation_subprocess ... FAILED
+
+failures:
+
+failures:
+    playback::stream::preparation_tests::preparation_subprocess
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 43 filtered out; finished in 8.01s
+
+error: test failed, to rerun pass `--lib`

@@ -1,0 +1,3 @@
+{"style":"brutalist","counts":[1,1,1,1,1,1,1,1,1,1,1,1],"duplicateKeyWarnings":0}
+{"style":"spatial","counts":[1,1,1,1,1,1,1,1,1,1,1,1],"duplicateKeyWarnings":0}
+PASS both players: repeated online/local changes keep one dislike, correct download count, real artist or Unknown Artist, one subscription and no duplicate keys

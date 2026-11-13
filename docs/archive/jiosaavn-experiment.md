@@ -18,7 +18,7 @@ The native real-App regression failed before repair and passes afterward across 
 
 ## 2026-10-28 — For You manual refresh selects fresh relevant songs
 
-Refresh previously forced a source fetch and recomputed deterministic ranking, so the same strongest songs could return indefinitely. It now prefers least recently shown song families within each artist's relevant scoring band, preserving taste-ranked artist slots, score values, source/version identity, dislikes and the two-per-artist cap. Automatic reads preserve that batch until underlying listening/feedback/catalog ranking changes. Selection memory is process-local, account-scoped and bounded; small eligible pools may repeat. Existing cards stay visible with the refresh icon busy while the request runs. Automatic personal refresh no longer inadvertently requests a manual batch. The For You filter also accepts current genre/language explanation strings that it previously discarded. See [recommendation scoring](recommendation-scoring.md).
+Refresh previously forced a source fetch and recomputed deterministic ranking, so the same strongest songs could return indefinitely. It now prefers least recently shown song families within each artist's relevant scoring band, preserving taste-ranked artist slots, score values, source/version identity, dislikes and the two-per-artist cap. Automatic reads preserve that batch until underlying listening/feedback/catalog ranking changes. Selection memory is process-local, account-scoped and bounded; small eligible pools may repeat. Existing cards stay visible with the refresh icon busy while the request runs. Automatic personal refresh no longer inadvertently requests a manual batch. The For You filter also accepts current genre/language explanation strings that it previously discarded. See [recommendation scoring](../recommendation-scoring.md).
 
 Verification: the unchanged-list Rust regression and missing-genre/language frontend regression failed before repair and pass afterward. All 226 Rust tests passed (nine optional/manual checks ignored), plus all 56 frontend tests, both layouts' manual/busy/background/stale-scoring/Flow-startup browser checks, frontend and embedded native builds, and thirteen private native continuity groups. Tests verify multiple distinct batches, account isolation, no unrelated/disliked picks, stable automatic reads, unchanged taste/history, retained cards while pending and independent playback/charts. The test executable was rebuilt without changing or restarting the live app/profile, music or queue.
 
@@ -34,7 +34,7 @@ Verification: all fifteen Node test files, both layouts' pointer-Space/held-key/
 
 Preference now uses tiered actual listening: quick intentional skips are negative, brief previews are neutral, ordinary songs qualify at 30 seconds, and short songs can qualify at 25% with a ten-second floor. At least 75% heard is stronger; near-complete listening, qualified repeats and explicit likes strengthen preference further. End/seek position alone cannot manufacture a completed listen. Pauses/buffering do not accumulate heard time, and source failures/buffering exits do not imply disliking a song.
 
-Qualified evidence feeds taste, source-linked song performance, Flow/familiarity, discovery and automatic repeat/favorite eligibility. Score-based rankings also exclude unqualified preview seconds while retaining real usage time and original stored counters. Old permissive play counts cannot override available session evidence. A one-time migration expires only automatic mix caches; original history, media, manual collections and cumulative/device totals remain intact. See [ADR 0022](adr/0022-listening-time-preference.md).
+Qualified evidence feeds taste, source-linked song performance, Flow/familiarity, discovery and automatic repeat/favorite eligibility. Score-based rankings also exclude unqualified preview seconds while retaining real usage time and original stored counters. Old permissive play counts cannot override available session evidence. A one-time migration expires only automatic mix caches; original history, media, manual collections and cumulative/device totals remain intact. See [ADR 0022](../adr/0022-listening-time-preference.md).
 
 Verification: 225 Rust tests across 27 groups passed (nine optional/manual checks ignored), including eleven new listening-policy regressions. All fifteen Node test files, both interfaces' scoring-refresh, buffering and pointer/keyboard focus checks, frontend and embedded native builds, and all twelve private native desktop groups passed. The testing executable was rebuilt without restarting the user's running app or changing its live profile, media or queue.
 
@@ -51,7 +51,7 @@ Verification: all fifteen Node test files and the four focused Home render check
 
 Start Flow now resumes a paused current session after Stop Flow without a second Play/Resume click or a new history session. Whole-catalog legacy preparation was removed from the interactive start path; selected online recordings retain exact source binding. Home immediately shows the pending action and no longer waits for its artwork/recommendation refresh to enable playback controls.
 
-Trending loads independent chart playlists together and restores its saved public feed before checking the network. Cold requests show loading, refreshes retain existing cards, and personal recommendation refresh runs separately. Initial account discovery now reissues Trending after discarding a default-account result. Saved responses still filter the current user's dislikes. The duplicate Trending refresh icon was removed. See [ADR 0021](adr/0021-flow-startup-and-trending-latency.md).
+Trending loads independent chart playlists together and restores its saved public feed before checking the network. Cold requests show loading, refreshes retain existing cards, and personal recommendation refresh runs separately. Initial account discovery now reissues Trending after discarding a default-account result. Saved responses still filter the current user's dislikes. The duplicate Trending refresh icon was removed. See [ADR 0021](../adr/0021-flow-startup-and-trending-latency.md).
 
 Verification: 214 Rust tests across 26 groups passed (nine optional checks ignored), plus the focused single-song resume case and 55 Node tests. Both layouts passed delayed Start/Home/network, cold/warm Trending, independent refresh and retained-card checks. Existing direct-download/dislike, buffering, delayed-scoring, player-identity and recommendation-feedback interface gates passed. Frontend and embedded native builds passed; all twelve private native groups passed, including the actual Home Start button resuming paused/stopped Flow with unchanged audio/history session identity. The rebuilt testing executable is `target/debug/kaze`; the user's running app/profile was not replaced or restarted.
 
@@ -63,11 +63,11 @@ Search and online playback use JioSaavn exclusively during this trial. Alternati
 
 ## Source-aware scores and Not interested — 2026-10-27
 
-Recommendation scores now combine the account’s shared song history with JioSaavn artist credits, language and release year. Not interested is a durable exclusion across saved aliases and matching releases, with an Allow again action; generated queues/mixes honor it and manual playlists/direct playback remain available. Explicit preferences survive stale neutral sync counters. See [ADR 0018](adr/0018-source-aware-recommendations-and-feedback.md) for persistence, scope and verification.
+Recommendation scores now combine the account’s shared song history with JioSaavn artist credits, language and release year. Not interested is a durable exclusion across saved aliases and matching releases, with an Allow again action; generated queues/mixes honor it and manual playlists/direct playback remain available. Explicit preferences survive stale neutral sync counters. See [ADR 0018](../adr/0018-source-aware-recommendations-and-feedback.md) for persistence, scope and verification.
 
 ## Source consolidation — 2026-10-27
 
-JioSaavn supplies the catalog, charts, playlist imports, downloads and metadata enrichment as well as playback. Retired provider implementations and their launch/settings controls are removed. Saved aliases and original tag columns remain compatible. See [ADR 0017](adr/0017-jiosaavn-catalog-consolidation.md). Earlier feed/fallback descriptions below are dated history.
+JioSaavn supplies the catalog, charts, playlist imports, downloads and metadata enrichment as well as playback. Retired provider implementations and their launch/settings controls are removed. Saved aliases and original tag columns remain compatible. See [ADR 0017](../adr/0017-jiosaavn-catalog-consolidation.md). Earlier feed/fallback descriptions below are dated history.
 
 ## Current contract: every displayed online song has a saved source
 
@@ -83,7 +83,7 @@ Verification includes 157 affected Rust regressions, the focused final source/re
 
 Real-profile verification exposed a legacy unique constraint on `(provider, provider_id)`: several saved IDs can point to a JioSaavn song that is already registered. The dedicated link table now supports that many-to-one relation without rewriting the original provider pair, and search reuses existing non-prefixed JioSaavn identities. Regression coverage includes an already-present canonical row. The original queue bookmark was restored after the probe; 70 source-ready entries remain playable from its 99 entries, while unlinked records remain saved. The actual saved Babydoll entry (`itunes:6794168373`) played JioSaavn `efAHHwFG`, a 7,437,911-byte complete audio file. Queue selection and Resume preserved the 70-entry queue; volume was restored and the app left paused near the beginning. Provider duration is 178 seconds; the decoder reports approximately 178.85 seconds, an expected subsecond container difference.
 
-See [ADR 0016](adr/0016-source-linked-online-catalog.md) for the current contract. Older dated sections retain the history of the experiment and the superseded workaround.
+See [ADR 0016](../adr/0016-source-linked-online-catalog.md) for the current contract. Older dated sections retain the history of the experiment and the superseded workaround.
 
 ## JioSaavn-only listening trial — 2026-10-27
 
@@ -184,7 +184,7 @@ Its eleven groups verify actual playback, queue/position/Flow preservation, MPRI
 - Enrichment correctness and cached artwork across restart are covered by controlled provider fixtures. Automatic match coverage against a real personal library has not been measured.
 - The broader pre-existing `test-dual-interface.mjs` browser script passed eighteen groups, then stopped at a missing Brutalist “Smart Mixes” navigation target. The new JioSaavn checks, Settings checks and native eleven-group suite pass separately. This experiment does not claim a complete browser-suite or release sign-off.
 
-Architecture and source attribution: [ADR 0015](adr/0015-jiosaavn-and-reversible-enrichment.md).
+Architecture and source attribution: [ADR 0015](../adr/0015-jiosaavn-and-reversible-enrichment.md).
 
 
 ## 2026-10-27 — Catalog cleanup, taste feedback and direct song controls

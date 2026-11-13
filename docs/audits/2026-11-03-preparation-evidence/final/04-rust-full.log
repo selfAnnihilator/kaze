@@ -1,0 +1,527 @@
+    Blocking waiting for file lock on build directory
+   Compiling music-player-backend v2.0.4 (/home/abhi/Projects/music_player/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6m 00s
+     Running unittests src/lib.rs (target/debug/deps/music_player_backend-21f3db328d7f134d)
+
+running 45 tests
+test cloud::credentials::tests::test_credentials_round_trip ... ok
+test core::event_bus::tests::test_event_bus_publish_and_subscribe ... ok
+test core::processor::tests::disabled_playlist_import_makes_no_requests_or_writes_and_can_be_reenabled ... ok
+test core::processor::tests::playlist_import_remains_enabled_when_setting_is_absent ... ok
+test database::repositories::track_repo::enrichment_concurrency_tests::stale_background_merge_cannot_replace_a_new_scan_snapshot ... ok
+test database::tests::cancelled_acquisition_preserves_ephemeral_schema ... ok
+test database::tests::test_in_memory_db_and_migrations ... ok
+test downloads::jiosaavn::filename_tests::multilingual_names_stay_within_filesystem_byte_limit ... ok
+test history::service::buffering_tests::buffer_recovery_does_not_restart_listening_while_paused_or_for_an_old_session ... ok
+test mpris::service::tests::mpris_metadata_and_capabilities_follow_real_selection ... ok
+test mpris::service::tests::mpris_private_bus_lifecycle_and_signals ... ignored, requires a private dbus-run-session; run scripts/test-mpris-session.sh
+test mpris::service::tests::mpris_seeking_and_navigation_use_backend_identity ... ok
+test mpris::tests::test_build_mpris_metadata_none ... ok
+test mpris::tests::test_build_mpris_metadata_with_track ... ok
+test mpris::tests::test_playback_status_from_state ... ok
+test mpris::tests::test_repeat_mode_loop_status_roundtrip ... ok
+test mpris::tests::test_seconds_and_microseconds_conversion ... ok
+test mpris::tests::test_track_id_to_object_path_sanitization ... ok
+test playback::queue::tests::independent_selection_keeps_history_and_upcoming_queue ... ok
+test playback::queue::tests::peek_next_at_end_with_no_repeat_returns_none ... ok
+test playback::queue::tests::peek_next_at_end_with_repeat_all_wraps ... ok
+test playback::queue::tests::peek_next_empty_queue_returns_none ... ok
+test playback::queue::tests::peek_next_no_current_returns_first ... ok
+test playback::queue::tests::peek_next_sequential_does_not_mutate ... ok
+test playback::queue::tests::peek_next_with_repeat_one_returns_current ... ok
+test playback::queue::tests::repeat_one_only_replays_on_natural_completion ... ok
+test playback::queue::upcoming_reset_tests::reset_keeps_current_identity_previous_and_repeat_but_discards_upcoming ... ok
+test playback::queue::upcoming_reset_tests::reset_without_current_discards_every_pending_entry ... ok
+test playback::resolution_cache::tests::cap_is_enforced_by_evicting_oldest ... ok
+test playback::resolution_cache::tests::expired_entry_is_evicted_on_get ... ok
+test playback::resolution_cache::tests::insert_and_get_valid_entry ... ok
+test playback::resolution_cache::tests::parse_url_expiry_extracts_from_provider_url ... ok
+test playback::resolution_cache::tests::parse_url_expiry_returns_none_for_non_provider ... ok
+test playback::resolution_cache::tests::provider_expiry_clamps_to_fallback ... ok
+test playback::service::streaming_seek_tests::active_stream_exposes_seek_controls_and_accepts_seek_before_completion ... ok
+test playback::stream::preparation_tests::fixture_child ... ignored, isolated child, run by preparation_subprocess
+test playback::stream::preparation_tests::preparation_subprocess ... 
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.16s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.15s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.35s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.07s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.07s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.08s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.08s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 25.01s
+
+
+running 1 test
+test playback::stream::preparation_tests::fixture_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 30.01s
+
+ok
+test playback::stream::preparation_tests::reported_house_of_balloons_live ... ignored, isolated live provider check; no personal profile
+test profile::tests::test_normalize_avatar_empty_and_oversized ... ok
+test profile::tests::test_normalize_avatar_image_and_cache ... ok
+test providers::jiosaavn::chart_feed_tests::merges_international_and_regional_editorial_lists_with_real_artwork ... ok
+test providers::jiosaavn::tests::decodes_reference_envelope_without_using_drm_field ... ok
+test providers::jiosaavn::tests::parses_entities_numbers_versions_and_missing_fields ... ok
+test providers::strict_match::tests::requires_unique_evidence_and_preserves_recordings ... ok
+test recommendations::signals::release_tests::original_single_outranks_compilation_without_swapping_artwork ... ok
+
+test result: ok. 42 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 58.03s
+
+     Running unittests src/app.rs (target/debug/deps/kaze-98e010e10dbe3642)
+
+running 8 tests
+test linux_rendering::tests::covers_wayland_and_hybrid_nvidia_sessions ... ok
+test linux_rendering::tests::leaves_other_graphics_sessions_unchanged ... ok
+test linux_rendering::tests::preserves_explicit_overrides_including_empty_and_zero ... ok
+test startup::platform::tests::executable_escaping_and_write_failure ... ok
+test startup::platform::tests::registration_roundtrip_and_external_disable ... ok
+test startup::tests::only_explicit_login_argument_hides_the_window ... ok
+test window_chrome::tests::detects_niri_and_custom_sessions ... ok
+test window_chrome::tests::preserves_controls_for_other_or_unknown_desktops ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/music_player_cli-18b72b45a2e31bd5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/active_scoring_tests.rs (target/debug/deps/active_scoring_tests-09fe667d14194f7b)
+
+running 4 tests
+test manual_for_you_refresh_rotates_relevant_songs_without_changing_taste ... ok
+test partial_listens_all_sources_and_lifetime_history_keep_their_strength ... ok
+test recommendation_refresh_event_follows_successful_history_commit ... ok
+test repeated_listening_changes_for_you_order_and_skips_are_not_positive_affinity ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/auth_recovery_tests.rs (target/debug/deps/auth_recovery_tests-c3e329f19dfc6cc3)
+
+running 1 test
+test expired_sessions_clear_local_identity_and_synthetic_token_offline ... ignored, requires explicit disposable XDG data and an unavailable private credential bus
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cache_tests.rs (target/debug/deps/cache_tests-7fe07621bd7bf1a5)
+
+running 18 tests
+test full_song_cache_ignores_a_cached_preview ... ok
+test old_preview_cache_cannot_masquerade_as_a_full_song ... ok
+test preview_cache_never_enables_playback ... ok
+test test_active_download_protected_from_eviction ... ok
+test test_active_playing_track_protected_from_eviction ... ok
+test test_cache_hit_validation_and_mtime_update ... ok
+test test_cache_key_generation ... ok
+test test_cache_path_and_part_path_naming ... ok
+test test_clean_stale_partial_files_removes_old_parts_and_preserves_fresh ... ok
+test test_clear_cache_removes_unprotected_files_and_preserves_active ... ok
+test test_eviction_when_cache_below_limit_does_nothing ... ok
+test test_get_cache_stats_accurate ... ok
+test test_ipc_command_clear_cache_and_query_stats ... ok
+test test_lru_eviction_when_exceeding_max_cache_bytes ... ok
+test test_part_file_cleanup_guard_on_drop_and_disarm ... ok
+test test_safety_invariant_cannot_evict_outside_cache_dir ... ok
+test test_startup_does_not_import_legacy_provider_cache ... ok
+test test_symphonia_source_decodes_cached_audio ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/cloud_recording_tests.rs (target/debug/deps/cloud_recording_tests-a7371e5dd172d65b)
+
+running 12 tests
+test alias_conversion_preserves_selected_snapshot_and_imports_full_matching_snapshot ... ok
+test converted_aliases_and_canonical_song_keep_exact_snapshot_after_cloud_roundtrip ... ok
+test failed_canonical_insert_rolls_back_existing_alias_conversion_and_source ... ok
+test inconsistent_source_identity_is_rejected_before_writes ... ok
+test legacy_jiosaavn_identity_merges_with_canonical_on_either_device ... ok
+test multiple_legacy_provider_rows_restore_in_either_payload_order ... ok
+test old_canonical_cloud_labels_reconcile_legacy_pair_before_registration ... ok
+test older_payloads_and_conflicting_remote_bindings_do_not_erase_local_selection ... ok
+test reconciliation_write_failures_keep_the_original_identity_and_history ... ok
+test reconstructed_legacy_source_keeps_local_metadata_and_uses_reconciliation_time ... ok
+test restore_does_not_rewrite_physical_local_tracks ... ok
+test source_restore_errors_are_reported_and_song_insert_is_rolled_back ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.86s
+
+     Running tests/cloud_sync_tests.rs (target/debug/deps/cloud_sync_tests-f4ece28b50028790)
+
+running 4 tests
+test test_cloud_sync_payload_and_database_persistence ... ok
+test test_explicit_deletion_creates_tombstones ... ok
+test test_liked_songs_is_per_account_and_protected ... ok
+test test_logout_preserves_local_user_data_while_gating_ui ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.47s
+
+     Running tests/discovery_tests.rs (target/debug/deps/discovery_tests-5e492436e81360d6)
+
+running 4 tests
+test test_core_processor_discovery_and_wishlist_integration ... ok
+test test_discovery_coordinator_matching_and_recommendations ... ok
+test test_fuzzy_track_matcher_classifications ... ok
+test test_wishlist_manager_crud_and_status_transitions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.69s
+
+     Running tests/download_tests.rs (target/debug/deps/download_tests-b6295a6b22d9c403)
+
+running 9 tests
+test direct_download_uses_saved_recording_without_search_and_reuses_transfer ... ok
+test download_directory_write_failure_creates_no_phantom_transfer ... ok
+test interrupted_transfer_becomes_retryable_after_provider_restart ... ok
+test test_core_processor_download_commands_and_queries ... ok
+test test_core_processor_search_soulseek ... ok
+test test_download_provider_search_and_availability ... ok
+test test_download_service_cancel_flow ... ok
+test test_download_service_start_download_and_progress_flow ... ok
+test test_download_service_wishlist_integration_and_auto_import ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.57s
+
+     Running tests/flow_online_tests.rs (target/debug/deps/flow_online_tests-deef658cc11ccfdd)
+
+running 6 tests
+test artist_release_flow_keeps_familiarity_without_locking_to_a_compilation_cover ... ok
+test online_liked_songs_are_familiar_without_claiming_another_accounts_playlist ... ok
+test online_only_flow_plays_full_cached_audio_through_the_shared_rust_history_path ... ok
+test rediscover_keeps_room_for_online_songs_even_with_many_equal_scoring_local_candidates ... ok
+test runtime_flow_includes_taste_matched_online_songs_with_account_scoped_familiarity ... ok
+test steering_rebuilds_generated_upcoming_tracks_without_restarting_current_or_removing_manual_entries ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/flow_tests.rs (target/debug/deps/flow_tests-6bb684f3999eff9a)
+
+running 26 tests
+test album_details_uses_exact_id_all_members_and_current_account_feedback ... ok
+test artist_spacing_spans_batches_when_alternatives_exist ... ok
+test continuing_flow_does_not_start_duplicate_playback_session ... ok
+test exhausted_flow_refill_honors_new_steering ... ok
+test explanations_do_not_invent_unheard_status_or_missing_timestamps ... ok
+test flow_preview_is_read_only_local_deterministic_and_bounded ... ok
+test flow_stop_and_manual_selection_preserve_manual_queue ... ok
+test home_for_you_recomputes_when_listening_changes_before_cache_expiry ... ok
+test large_library_rapid_skips_refill_without_duplicate_sessions_or_upcoming_tracks ... ok
+test library_moment_counts_real_library_songs_and_ignores_online_placeholders ... ok
+test mature_thousand_track_library_produces_bounded_unique_batches ... ok
+test natural_completion_advances_flow_with_the_real_session_identity ... ok
+test new_flow_replaces_old_manual_queue_without_interrupting_current_audio_or_history ... ok
+test new_start_changes_generation_but_continue_does_not_and_inactive_continue_errors ... ok
+test pause_and_resume_preserve_flow_queue_steering_and_selection_evidence ... ok
+test preserved_current_finishes_with_original_history_session_then_flow_advances ... ok
+test rapid_start_uses_newest_generation_and_settings ... ok
+test ready_flow_does_not_wait_for_unrelated_legacy_catalog_network ... ok
+test refill_uses_runtime_user_and_steering_and_never_random_disliked_tracks ... ok
+test start_flow_resumes_paused_current_without_a_second_play_or_new_history_session ... ok
+test steering_changes_order_and_explanations_are_proven ... ok
+test structured_explanation_preserves_artist_affinity_without_frequency_claims ... ok
+test test_flow_empty_library ... ok
+test test_flow_library_no_history ... ok
+test test_flow_mature_history_steering_and_rediscovery ... ok
+test why_distinguishes_manual_queue_entries_from_generated_selections ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.34s
+
+     Running tests/foundation_tests.rs (target/debug/deps/foundation_tests-44dfc3647b6598be)
+
+running 4 tests
+test test_close_button_behavior_and_lifecycle ... ok
+test test_core_processor_commands_and_queries ... ok
+test test_database_initialization_and_migrations ... ok
+test test_event_bus_broadcast ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/history_tests.rs (target/debug/deps/history_tests-71e6503c5542f3be)
+
+running 3 tests
+test test_meaningful_play_and_history_logging ... ok
+test test_multi_factor_rankings ... ok
+test test_user_preferences_likes_dislikes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests/jiosaavn_live_tests.rs (target/debug/deps/jiosaavn_live_tests-6f2f605547b12036)
+
+running 6 tests
+test catalog_playlist_and_exact_download_gate ... ignored, requires live JioSaavn catalog and audio download
+test full_track_decoder_and_native_seek_gate ... ignored, requires live JioSaavn network and native audio output
+test reported_bruno_mars_song_has_full_provider_audio ... ignored, requires live JioSaavn search and full audio
+test saved_catalog_entries_play_the_exact_version_shown ... ignored, requires live JioSaavn and native audio output
+test sia_artist_edition_keeps_artwork_and_download_on_the_verified_release ... ignored, requires live artist-edition metadata, cover and full audio
+test unified_player_stream_cache_and_identity_gate ... ignored, requires live JioSaavn network and native audio output
+
+test result: ok. 0 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/jiosaavn_tests.rs (target/debug/deps/jiosaavn_tests-7a2708f4cfc254bc)
+
+running 15 tests
+test artist_release_discovery_checks_album_credits_and_preserves_the_saved_compilation ... ok
+test artist_release_search_prefers_single_over_recent_compilation_without_mixing_artwork ... ok
+test catalog_hides_unavailable_rows_but_preserves_saved_records_and_local_files ... ok
+test displayed_catalog_version_is_persistent_and_plays_without_matching_again ... ok
+test editorial_charts_send_language_cookie_parse_legacy_rows_and_refresh_cache ... ok
+test enrichment_rejects_ambiguity_versions_and_insufficient_evidence ... ok
+test enrichment_rescan_removal_and_offline_restart_preserve_source_tags ... ok
+test jiosaavn_charts_use_provider_ids_and_playlist_songs_keep_actual_metadata ... ok
+test provider_reports_rate_limit_changed_shape_unavailable_and_caches_metadata ... ok
+test real_local_file_plays_despite_stale_online_format_and_disabled_jiosaavn ... ok
+test registration_and_cloud_roundtrip_keep_exact_provider_identity ... ok
+test song_search_excludes_unavailable_catalog_entries_without_extra_requests ... ok
+test trending_fetches_playlists_together_and_restores_cache_without_network ... ok
+test trial_rejects_old_provider_requests ... ok
+test validated_artwork_uses_existing_loader_after_offline_restart ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+     Running tests/library_paging_tests.rs (target/debug/deps/library_paging_tests-05c9ab774f7a3b8f)
+
+running 1 test
+test pages_are_complete_stable_local_and_account_scoped ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/library_tests.rs (target/debug/deps/library_tests-5d2721a00e0ea436)
+
+running 4 tests
+test test_onboarding_and_default_music_dir ... ok
+test test_scanner_incremental_and_search ... ok
+test test_strict_boundary_containment ... ok
+test test_supported_audio_formats ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/lifecycle_tests.rs (target/debug/deps/lifecycle_tests-c5f7174a4a8f08cd)
+
+running 8 tests
+test close_setting_defaults_persists_and_is_loaded_before_first_query ... ok
+test concurrent_quit_drains_the_real_session_once_without_skip_or_completion ... ok
+test empty_quit_never_creates_a_history_session ... ok
+test failed_setting_write_keeps_previous_behavior ... ok
+test interface_style_storage_failure_preserves_saved_choice ... ok
+test interface_style_uses_existing_settings_and_survives_relaunch ... ok
+test serialized_close_setting_is_strict_and_defaults_when_missing ... ok
+test startup_and_concurrent_writes_cannot_restore_an_old_close_setting ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests/listening_engagement_tests.rs (target/debug/deps/listening_engagement_tests-8cf7aecfb68a2a9f)
+
+running 11 tests
+test brief_previews_are_neutral_and_cannot_become_positive_from_completion_flags ... ok
+test brief_sessions_do_not_add_preference_and_false_completions_are_reclassified_on_read ... ok
+test eof_after_seek_and_playback_failure_do_not_manufacture_listens_or_skip_penalties ... ok
+test leaving_a_buffering_song_is_neutral_instead_of_a_dislike ... ok
+test listening_tiers_have_real_time_floors_and_safe_boundaries ... ok
+test longer_listens_gain_more_taste_and_a_quick_skip_reduces_preference ... ok
+test new_policy_expires_only_automatic_mix_caches ... ok
+test permissive_legacy_play_counters_cannot_turn_short_previews_into_familiarity ... ok
+test ranked_scores_ignore_neutral_preview_time_but_usage_totals_remain_true ... ok
+test recommendation_performance_rewards_qualified_time_and_respects_dislikes ... ok
+test repeated_previews_cannot_fill_on_repeat_or_hide_genuinely_repeated_songs ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+     Running tests/playback_restore_tests.rs (target/debug/deps/playback_restore_tests-80e1c970ee8cc792)
+
+running 11 tests
+test checkpoint_uses_existing_monitor_for_recovery_before_clean_quit ... ok
+test cold_launch_restores_paused_identity_queue_settings_and_exact_position_without_history ... ok
+test cold_online_resume_waits_for_seekable_cache_then_starts_at_saved_offset ... ok
+test failed_bookmark_write_still_stops_audio_and_finishes_shutdown ... ok
+test invalid_or_newer_bookmarks_do_not_break_startup_or_new_playback ... ok
+test quit_cancels_a_cold_online_resume_before_draining_commands ... ok
+test reopening_again_preserves_bookmark_and_seek_before_play_changes_resume_position ... ok
+test source_linked_online_and_missing_local_media_restore_without_audio ... ok
+test unknown_duration_eof_before_first_tick_advances_once ... ok
+test unknown_duration_preserves_identity_pause_and_restoration_position ... ok
+test unknown_duration_repeat_one_creates_one_completion_per_session ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.12s
+
+     Running tests/playback_tests.rs (target/debug/deps/playback_tests-1319bf1a72f115be)
+
+running 7 tests
+test test_independent_playback_keeps_played_history_for_previous ... ok
+test test_online_tracks_can_be_queued_and_played_through_unified_backend ... ok
+test test_playback_controls_lifecycle ... ok
+test test_playback_queue_and_navigation ... ok
+test test_queue_enqueue_dequeue_and_playback_state_enrichment ... ok
+test test_queue_refills_randomly_after_the_planned_tracks_finish ... ok
+test test_repeat_modes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/playlist_uniqueness_tests.rs (target/debug/deps/playlist_uniqueness_tests-04add89fe8922b21)
+
+running 1 test
+test playlist_rejects_repeat_ids_and_duplicate_song_metadata ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/progressive_stream_tests.rs (target/debug/deps/progressive_stream_tests-0ea51bba8d3bd3ae)
+
+running 15 tests
+test active_stream_can_seek_before_download_completion ... ok
+test cancelled_reader_rejects_even_buffered_bytes_and_late_eof_is_silent ... ok
+test completed_stream_announces_seekability_without_resuming_playback ... ok
+test compressed_decoder_seeks_while_download_is_incomplete ... ok
+test current_reader_buffering_is_session_scoped_and_recovers_without_resume ... ok
+test decoder_seeks_forward_and_backward_on_an_active_partial_wave ... ok
+test download_terminal_states_clear_a_waiting_readers_buffering_flag ... ok
+test native_paused_stream_seeks_before_completion ... ignored, requires native audio output; run with a disposable ALSA null device
+test preparing_a_stream_does_not_publish_player_transport_events ... ok
+test seeking_into_missing_data_wakes_on_cancel_or_failure ... ok
+test test_progressive_cancellation_removes_part_file ... ok
+test test_progressive_reader_buffering_state_transitions ... ok
+test test_progressive_reader_cancellation_terminates_promptly ... ok
+test test_progressive_reader_failure_terminates_promptly ... ok
+test test_progressive_reader_incremental_read_and_wake ... ok
+
+test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/provider_tests.rs (target/debug/deps/provider_tests-82d14a0d49ca21a3)
+
+running 1 test
+test only_jiosaavn_is_announced_as_an_online_provider ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/recommendation_feedback_tests.rs (target/debug/deps/recommendation_feedback_tests-248601d4520ff723)
+
+running 2 tests
+test not_interested_blocks_aliases_future_releases_mixes_and_queue_but_preserves_manual_access ... ok
+test source_aliases_share_listening_and_language_year_affinity_without_guessing_genres ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+     Running tests/recommendation_setup_tests.rs (target/debug/deps/recommendation_setup_tests-c9746ca9f4c7d8c3)
+
+running 9 tests
+test artist_only_choices_rank_starters_and_recorded_feedback_takes_precedence ... ok
+test empty_player_rejects_resume_and_toggle_without_resumed_event ... ok
+test existing_account_with_positive_feedback_does_not_get_first_use_prompt ... ok
+test fresh_catalog_bootstrap_is_shared_by_discovery_home_and_flow_without_fake_history ... ok
+test genre_only_search_provenance_works_without_forging_song_metadata ... ok
+test queued_unloaded_song_starts_with_toggle_and_paused_song_resumes_in_place ... ok
+test setup_persists_across_database_reopen_without_prompting_again ... ok
+test start_flow_bootstraps_a_fresh_catalog_before_selecting_and_uses_existing_audio_path ... ok
+test taste_setup_roundtrip_is_separate_from_listening_and_skip_is_persistent ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.80s
+
+     Running tests/recommendation_tests.rs (target/debug/deps/recommendation_tests-7fa4d790014ea8a5)
+
+running 5 tests
+test test_multi_user_taste_and_stats_isolation ... ok
+test test_offline_local_recommendations_and_diversity ... ok
+test test_scoring_repetition_penalty_and_discovery_bonus ... ok
+test test_smart_mix_generation_and_persistence ... ok
+test test_taste_profile_generation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/source_resolution_tests.rs (target/debug/deps/source_resolution_tests-dd52a8fb876d8de2)
+
+running 11 tests
+test legacy_identity_cannot_reuse_old_disk_or_memory_audio ... ok
+test test_parse_url_expiry_from_media_url ... ok
+test test_peek_next_repeat_all_and_repeat_one ... ok
+test test_peek_next_sequential_and_bounds ... ok
+test test_peek_next_with_shuffle ... ok
+test test_resolution_cache_expiry_and_pruning ... ok
+test test_resolution_cache_hit_miss_and_invalidation ... ok
+test test_resolution_cache_max_capacity_eviction ... ok
+test test_resolve_source_only_disk_cache_hit_bypasses_network ... ok
+test test_resolve_source_only_memory_cache_hit_bypasses_provider ... ok
+test test_resolve_source_only_never_creates_part_file ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/statistics_audit_tests.rs (target/debug/deps/statistics_audit_tests-4b3899855c4818be)
+
+running 11 tests
+test atomic_session_retry_and_midnight_start_day ... ok
+test concurrent_device_initialization_is_stable ... ok
+test duplicate_finish_stop_and_account_switch_preserve_owner ... ok
+test failed_daily_write_rolls_back_history_and_lifetime ... ok
+test fresh_install_restore_multi_device_lifetime ... ok
+test offline_accumulation_restore_and_payload_privacy ... ok
+test old_year_uses_daily_rows_instead_of_stale_archive ... ok
+test read_only_live_stats_overview ... ignored, read-only local production audit; requires this workstation's database
+test registration_does_not_claim_guest_history_or_aggregates ... ok
+test seven_days_includes_today_and_six_prior_dates_only ... ok
+test stale_equal_and_future_clocks_never_regress_daily_snapshots ... ok
+
+test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+     Running tests/stats_and_account_tests.rs (target/debug/deps/stats_and_account_tests-6012b5663a842d3e)
+
+running 16 tests
+test run_migration_on_live_database ... ignored, manual production migration with stale fixture totals; never run against live user data in the test suite
+test test_authenticated_playback_writes_account_user_id ... ok
+test test_cloudinary_avatar_metadata_persistence_and_profile ... ok
+test test_daily_aggregate_recording ... ok
+test test_daily_user_stats_backfill ... ok
+test test_guest_playback_remains_guest_default ... ok
+test test_legacy_user_stats_migration_and_stats_overview ... ok
+test test_multi_device_daily_sync ... ok
+test test_phase22_correctness_suite ... ok
+test test_query_serde_deserialization ... ok
+test test_session_management_lifecycle_and_hybrid_expiry ... ok
+test test_stats_lifetime_and_all_time_rankings_architecture ... ok
+test test_stats_overview_and_top_days ... ok
+test test_unreachable_cloud_worker_does_not_create_local_password_authority ... ok
+test test_user_signup_login_and_claim_data ... ok
+test test_user_switch_during_active_session_retains_session_owner ... ok
+
+test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.44s
+
+   Doc-tests music_player_backend
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

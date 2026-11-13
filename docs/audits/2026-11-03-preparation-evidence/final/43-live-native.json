@@ -1,0 +1,10 @@
+{
+  "gate": "43-live-native",
+  "command": "dbus-run-session -- python3 docs/audits/2026-11-03-preparation-evidence/native-live.py /tmp/kaze-preparation-production-final",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T08:37:21Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 3.38,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

@@ -1,0 +1,44 @@
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=2045273 comm="/tmp/kaze-qa-20261031/kaze")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=2045282 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=2045282 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=2045282 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:2045333): WARNING **: 10:34:17.116: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=2045333 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=2045282 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=2045282 comm="/usr/lib/xdg-desktop-portal")
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=2045273 comm="/tmp/kaze-qa-20261031/kaze")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=2045413 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[2045265]: [session uid=1000 pid=2045265 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+Traceback (most recent call last):
+  File "/home/abhi/Projects/music_player/scripts/test-playback-restore-native.py", line 157, in <module>
+    main()
+    ~~~~^^
+  File "/home/abhi/Projects/music_player/scripts/test-playback-restore-native.py", line 108, in main
+    assert saved['current_track']['title'] == 'Saved Track', saved
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'can_seek': True, 'current_queue_index': 0, 'current_track': {'album_title': None, 'artist_name': None, 'bitrate': 128, 'cover_art_url': None, 'created_at': 1, 'disc_number': 1, 'duration_secs': 120, 'file_path': '/tmp/kaze-restore-native-xhaph2h1/one.wav', 'file_size': 1920044, 'format': 'wav', 'genre_name': None, 'has_cover_art': 0, 'id': 'one', 'manual_like': 0, 'modified_timestamp': 1, 'musicbrainz_track_id': None, 'preview_url': None, 'sample_rate': 8000, 'spotify_id': None, 'title': 'one', 'track_number': None, 'year': None}, 'current_track_id': 'one', 'duration_secs': 120, 'is_buffering': False, 'is_muted': False, 'is_paused': True, 'is_playing': False, 'is_shuffle': False, 'position_secs': 37.125, 'queue_length': 2, 'queue_track_ids': ['two'], 'repeat_mode': 'off', 'volume': 0.4300000071525574}
+
+(/usr/lib/xdg-desktop-portal:2045282): xdg-desktop-portal-WARNING **: 10:34:25.217: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

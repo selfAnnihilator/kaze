@@ -1,0 +1,10 @@
+{
+  "gate": "26-native-preparation-tray",
+  "command": "dbus-run-session -- python3 scripts/test-preparation-tray.py /tmp/kaze-acceptance-native-0njbs23f/kaze-candidate",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T08:01:43Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 7.08,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

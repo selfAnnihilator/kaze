@@ -1,0 +1,22 @@
+    Blocking waiting for file lock on build directory
+   Compiling music-player-backend v2.0.3 (/home/abhi/Projects/music_player/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 21s
+     Running tests/download_tests.rs (target/debug/deps/download_tests-a298bf5ababe0ec1)
+
+running 1 test
+
+thread 'interrupted_transfer_becomes_retryable_after_provider_restart' (1101) panicked at src-tauri/tests/download_tests.rs:428:5:
+assertion `left == right` failed: a vanished in-memory transfer must not remain in progress
+  left: "DOWNLOADING"
+ right: "FAILED"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test interrupted_transfer_becomes_retryable_after_provider_restart ... FAILED
+
+failures:
+
+failures:
+    interrupted_transfer_becomes_retryable_after_provider_restart
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.05s
+
+error: test failed, to rerun pass `--test download_tests`

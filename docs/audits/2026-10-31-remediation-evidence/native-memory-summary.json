@@ -1,0 +1,112 @@
+{
+  "duration_seconds": 1800.0,
+  "sample_count": 60,
+  "renderer_pids": [
+    "379638"
+  ],
+  "endpoints": {
+    "start": {
+      "application_private_MiB": 320.91,
+      "renderer_private_MiB": 134.31,
+      "application_swap_MiB": 19.92,
+      "renderer_swap_MiB": 0.0
+    },
+    "end": {
+      "application_private_MiB": 239.59,
+      "renderer_private_MiB": 198.49,
+      "application_swap_MiB": 139.25,
+      "renderer_swap_MiB": 36.91
+    }
+  },
+  "spatial_home_phase_samples": [
+    {
+      "elapsed": 0,
+      "application_private_MiB": 320.91,
+      "renderer_private_MiB": 134.31,
+      "application_swap_MiB": 19.92,
+      "renderer_swap_MiB": 0.0
+    },
+    {
+      "elapsed": 30.0,
+      "application_private_MiB": 332.1,
+      "renderer_private_MiB": 145.55,
+      "application_swap_MiB": 19.92,
+      "renderer_swap_MiB": 0.0
+    },
+    {
+      "elapsed": 60.1,
+      "application_private_MiB": 327.23,
+      "renderer_private_MiB": 140.79,
+      "application_swap_MiB": 19.96,
+      "renderer_swap_MiB": 0.0
+    },
+    {
+      "elapsed": 90.1,
+      "application_private_MiB": 324.34,
+      "renderer_private_MiB": 140.08,
+      "application_swap_MiB": 19.96,
+      "renderer_swap_MiB": 0.0
+    },
+    {
+      "elapsed": 721.1,
+      "application_private_MiB": 207.66,
+      "renderer_private_MiB": 157.93,
+      "application_swap_MiB": 58.82,
+      "renderer_swap_MiB": 15.75
+    },
+    {
+      "elapsed": 751.2,
+      "application_private_MiB": 207.04,
+      "renderer_private_MiB": 161.33,
+      "application_swap_MiB": 59.34,
+      "renderer_swap_MiB": 15.15
+    },
+    {
+      "elapsed": 781.2,
+      "application_private_MiB": 210.24,
+      "renderer_private_MiB": 164.52,
+      "application_swap_MiB": 59.34,
+      "renderer_swap_MiB": 15.15
+    },
+    {
+      "elapsed": 811.2,
+      "application_private_MiB": 211.29,
+      "renderer_private_MiB": 165.55,
+      "application_swap_MiB": 59.32,
+      "renderer_swap_MiB": 15.15
+    },
+    {
+      "elapsed": 1442.1,
+      "application_private_MiB": 215.09,
+      "renderer_private_MiB": 175.69,
+      "application_swap_MiB": 137.43,
+      "renderer_swap_MiB": 31.43
+    },
+    {
+      "elapsed": 1472.2,
+      "application_private_MiB": 219.7,
+      "renderer_private_MiB": 180.36,
+      "application_swap_MiB": 137.47,
+      "renderer_swap_MiB": 31.47
+    },
+    {
+      "elapsed": 1502.2,
+      "application_private_MiB": 214.97,
+      "renderer_private_MiB": 175.75,
+      "application_swap_MiB": 137.81,
+      "renderer_swap_MiB": 31.81
+    },
+    {
+      "elapsed": 1532.2,
+      "application_private_MiB": 212.36,
+      "renderer_private_MiB": 176.72,
+      "application_swap_MiB": 138.3,
+      "renderer_swap_MiB": 32.3
+    }
+  ],
+  "application_private_range_MiB": [
+    178.96,
+    357.43
+  ],
+  "note": "Endpoints are restored Spatial Home; swap and cache pressure limit causal interpretation. No allocation owner is inferred from these samples."
+}

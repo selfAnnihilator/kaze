@@ -1,0 +1,30 @@
+[
+  {
+    "phase": "warm_heap",
+    "live_JS_MiB": 5.338,
+    "nodes": 37160,
+    "renderer_private_MiB": 140.48,
+    "renderer_swap_MiB": 0.0
+  },
+  {
+    "phase": "profiled_5000_ticks",
+    "live_JS_MiB": 4.576,
+    "nodes": 36245,
+    "renderer_private_MiB": 202.39,
+    "renderer_swap_MiB": 0.0
+  },
+  {
+    "phase": "unprofiled_5000_ticks",
+    "live_JS_MiB": 4.693,
+    "nodes": 36236,
+    "renderer_private_MiB": 236.66,
+    "renderer_swap_MiB": 0.0
+  },
+  {
+    "phase": "static_track_5000_ticks",
+    "live_JS_MiB": 4.769,
+    "nodes": 36256,
+    "renderer_private_MiB": 268.66,
+    "renderer_swap_MiB": 0.0
+  }
+]

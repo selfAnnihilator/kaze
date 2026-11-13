@@ -1,0 +1,17 @@
+{
+  "total": 591,
+  "by_level": {
+    "warning": 272,
+    "error": 317,
+    "note": 2
+  },
+  "by_tool": {
+    "zizmor": 20,
+    "osv-scanner": 50,
+    "shellcheck": 14,
+    "radarlint-python": 25,
+    "bandit": 282,
+    "ruff": 200
+  },
+  "clippy_execution_failure": "Bundled Cargo 1.82 does not understand lockfile version 4; Qlty incorrectly labels invocation successful."
+}

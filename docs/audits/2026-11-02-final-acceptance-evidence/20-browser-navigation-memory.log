@@ -1,0 +1,60 @@
+PASS brutalist 1888×1004: selected For You restored with viewport-aware wheel behavior
+PASS brutalist: chapter 1, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 2, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 3, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 4, shelf, Back/Forward button and shortcut
+PASS brutalist: collection round trip restores Discovery chapter
+PASS brutalist: ordinary page vertical position retained
+PASS brutalist: Archive restores album shelf after opening a record, still windowed
+PASS brutalist 1440×900: selected For You restored with viewport-aware wheel behavior
+PASS brutalist: chapter 1, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 2, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 3, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 4, shelf, Back/Forward button and shortcut
+PASS brutalist: collection round trip restores Discovery chapter
+PASS brutalist: ordinary page vertical position retained
+PASS brutalist: Archive restores album shelf after opening a record, still windowed
+PASS brutalist 1024×600: selected For You restored with viewport-aware wheel behavior
+PASS brutalist: chapter 1, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 2, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 3, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 4, shelf, Back/Forward button and shortcut
+PASS brutalist: collection round trip restores Discovery chapter
+PASS brutalist: ordinary page vertical position retained
+PASS brutalist: Archive restores album shelf after opening a record, still windowed
+PASS brutalist 800×600: selected For You restored with viewport-aware wheel behavior
+PASS brutalist: chapter 1, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 2, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 3, shelf, Back/Forward button and shortcut
+PASS brutalist: chapter 4, shelf, Back/Forward button and shortcut
+PASS brutalist: collection round trip restores Discovery chapter
+PASS brutalist: ordinary page vertical position retained
+PASS brutalist: Archive restores album shelf after opening a record, still windowed
+PASS spatial 1888×1004: selected For You restored with viewport-aware wheel behavior
+PASS spatial: chapter 1, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 2, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 3, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 4, shelf, Back/Forward button and shortcut
+PASS spatial: collection round trip restores Discovery chapter
+PASS spatial: ordinary page vertical position retained
+PASS spatial 1440×900: selected For You restored with viewport-aware wheel behavior
+PASS spatial: chapter 1, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 2, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 3, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 4, shelf, Back/Forward button and shortcut
+PASS spatial: collection round trip restores Discovery chapter
+PASS spatial: ordinary page vertical position retained
+PASS spatial 1024×600: selected For You restored with viewport-aware wheel behavior
+PASS spatial: chapter 1, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 2, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 3, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 4, shelf, Back/Forward button and shortcut
+PASS spatial: collection round trip restores Discovery chapter
+PASS spatial: ordinary page vertical position retained
+PASS spatial 800×600: selected For You restored with viewport-aware wheel behavior
+PASS spatial: chapter 1, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 2, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 3, shelf, Back/Forward button and shortcut
+PASS spatial: chapter 4, shelf, Back/Forward button and shortcut
+PASS spatial: collection round trip restores Discovery chapter
+PASS spatial: ordinary page vertical position retained

@@ -1,0 +1,3 @@
+PASS spatial: immediate confirmed label/queue refresh, debounce, current playback continuity and one subscription
+PASS Brutalist bar: mouse drag previews live and commits once on release
+PASS brutalist: immediate confirmed label/queue refresh, debounce, current playback continuity and one subscription

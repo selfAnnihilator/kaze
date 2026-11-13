@@ -1,0 +1,10 @@
+{
+  "gate": "25-native-build",
+  "command": "CARGO_BUILD_JOBS=1 cargo +1.98.1 build --manifest-path src-tauri/Cargo.toml --offline --locked --features tauri/custom-protocol --bin kaze",
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "started_utc": "2026-11-02T05:51:31Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 10.54,
+  "candidate_after": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab"
+}

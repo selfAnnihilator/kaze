@@ -1,0 +1,10 @@
+{
+  "gate": "21-browser-dual-interface",
+  "command": "node scripts/test-dual-interface.mjs",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T07:58:36Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 33.58,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

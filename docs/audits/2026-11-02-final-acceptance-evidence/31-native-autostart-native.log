@@ -1,0 +1,50 @@
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=725923 comm="/tmp/kaze-autostart-fa7skgnt/Kaze Player")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=725932 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=725932 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=725932 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:725955): WARNING **: 11:23:04.837: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=725955 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=725932 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=725932 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=725923 comm="/tmp/kaze-autostart-fa7skgnt/Kaze Player")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: real Settings switch enables/disables an XDG login entry with a quoted executable path
+PASS: failed registration leaves the confirmed switch off; retry succeeds
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: persisted preference and real switch saves also work in Brutalist
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: hidden cold login, tray restore, quiet duplicate login and normal-launch restore preserve one webview
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=726014 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[725898]: [session uid=1000 pid=725898 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS: no tray host falls back to an accessible window
+PASS: login preference persists and startup creates no playback history
+
+(/usr/lib/xdg-desktop-portal:725932): xdg-desktop-portal-WARNING **: 11:23:11.960: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

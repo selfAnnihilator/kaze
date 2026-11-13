@@ -32,4 +32,4 @@ Online input/search retains a 200 ms debounce. Existing result virtualization an
 
 The reference implementation is [cyberboysumanjay/JioSaavnAPI](https://github.com/cyberboysumanjay/JioSaavnAPI/tree/67ecd4d92186a72f65603d2947bd05a57e148f90), pinned to `67ecd4d92186a72f65603d2947bd05a57e148f90`. Endpoint selection and the ordinary media URL envelope are adapted into Rust. Its MIT copyright/license is preserved in [JioSaavnAPI-LICENSE](../third-party/JioSaavnAPI-LICENSE). The separate DRM media field and preview URL are not used for full-track playback.
 
-See [experiment guide](../jiosaavn-experiment.md) for acceptance evidence, repeatable isolated testing and limitations. The original requested scope is retained in [the supplied plan](../jiosaavn-plan.md).
+See [experiment guide](../archive/jiosaavn-experiment.md) for acceptance evidence, repeatable isolated testing and limitations. The original requested scope is retained in [the supplied plan](../archive/jiosaavn-plan.md).

@@ -1,0 +1,47 @@
+{
+  "exit_status": 1,
+  "result_count": 667,
+  "tools": {
+    "zizmor": 4,
+    "osv-scanner": 14,
+    "bandit": 337,
+    "radarlint-python": 31,
+    "ruff": 222,
+    "shellcheck": 11,
+    "clippy": 48
+  },
+  "levels": {
+    "error": 367,
+    "warning": 298,
+    "note": 2
+  },
+  "all_target_clippy": "passed",
+  "qlty_clippy_invocation_exit": [
+    0
+  ],
+  "tool_levels": {
+    "zizmor": {
+      "error": 4
+    },
+    "osv-scanner": {
+      "warning": 14
+    },
+    "bandit": {
+      "error": 337
+    },
+    "radarlint-python": {
+      "error": 26,
+      "note": 2,
+      "warning": 3
+    },
+    "ruff": {
+      "warning": 222
+    },
+    "shellcheck": {
+      "warning": 11
+    },
+    "clippy": {
+      "warning": 48
+    }
+  }
+}

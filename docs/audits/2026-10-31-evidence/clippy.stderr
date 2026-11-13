@@ -1,0 +1,2 @@
+   Compiling music-player-backend v2.0.3 (/home/abhi/Projects/music_player/src-tauri)
+error: could not compile `music-player-backend` (test "playback_restore_tests") due to 1 previous error

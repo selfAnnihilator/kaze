@@ -1,0 +1,29 @@
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=1486744 comm="/tmp/kaze-preparation-production-final")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=1486827 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=1486827 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=1486827 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:1486849): WARNING **: 14:07:22.220: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=1486849 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=1486827 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=1486827 comm="/usr/lib/xdg-desktop-portal")
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1486744 comm="/tmp/kaze-preparation-production-final")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1486960 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1486960 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1486960 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1486735]: [session uid=1000 pid=1486735 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+{"prepared": true, "native_position_advanced": true, "quit_seconds": 0.0703456470000674}
+
+(/usr/lib/xdg-desktop-portal:1486827): xdg-desktop-portal-WARNING **: 14:07:24.606: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

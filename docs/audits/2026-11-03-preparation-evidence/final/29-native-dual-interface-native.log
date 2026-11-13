@@ -1,0 +1,50 @@
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=1157278 comm="/tmp/kaze-acceptance-native-0njbs23f/kaze-candidat")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=1157320 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=1157320 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=1157320 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:1157342): WARNING **: 13:32:31.816: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=1157342 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=1157320 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=1157320 comm="/usr/lib/xdg-desktop-portal")
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1157278 comm="/tmp/kaze-acceptance-native-0njbs23f/kaze-candidat")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS native WebKitGTK split Discovery, large artwork, fitted panes and adjustable icon rail
+PASS native rapid vertical wheel bursts change one chapter per gesture without outer scrolling
+PASS native Library Moment cover plays directly; Open record opens its exact album without interrupting
+PASS native four-destination rail and circular familiarity dial update actual Flow steering
+PASS native Home exposes one Start/Pause action, resumes stopped/paused Flow and preserves audio/history identity and Continue generation
+PASS brutalist: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved
+PASS spatial: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved
+PASS brutalist: real playback, position, track, queue, Flow, MPRIS, route and mounted elements preserved
+PASS ten native hide/restore cycles suspend visual mutations and restore current progress, route, DOM and Flow
+PASS native pointer-focused Next then Space pauses/resumes Rust playback without advancing again
+PASS paused switching preserves exact position and history/journal session identity
+PASS native profile shortcut below Settings opens account and actual statistics without changing paused playback
+PASS native full screen uses the independent Brutalist poster and deck with exact paused playback
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1157476 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1157272]: [session uid=1000 pid=1157272 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS cold native relaunch loads saved Brutalist via existing SQLite settings
+
+(/usr/lib/xdg-desktop-portal:1157320): xdg-desktop-portal-WARNING **: 13:32:50.583: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

@@ -1,0 +1,10 @@
+{
+  "gate": "33-native-interface-startup-native",
+  "command": "dbus-run-session -- python3 scripts/test-interface-startup-native.py /tmp/kaze-acceptance-native-0njbs23f/kaze-candidate",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T08:03:21Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 11.74,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

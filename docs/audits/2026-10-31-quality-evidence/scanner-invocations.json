@@ -1,0 +1,36 @@
+{
+  "independent_all_target_clippy": "passed",
+  "note": "Only emitted uncached invocations appear. Nonzero exits for ripgrep/no matches or scanners/findings follow their documented success contracts. Unchanged inputs reuse Qlty cache. Earlier same-source Clippy invocation was also verified at actual exit 0.",
+  "invocations": [
+    {
+      "plugin": "clippy",
+      "exit_code": "0",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "ruff",
+      "exit_code": "0",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "bandit",
+      "exit_code": "0",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "radarlint-python",
+      "exit_code": "1",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "ripgrep",
+      "exit_code": "1",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "trufflehog",
+      "exit_code": "0",
+      "exit_result": "EXIT_RESULT_SUCCESS"
+    }
+  ]
+}

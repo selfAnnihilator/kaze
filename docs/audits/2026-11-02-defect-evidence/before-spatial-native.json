@@ -1,0 +1,163 @@
+{
+  "name": "spatial-unknown-duration",
+  "observations": [
+    {
+      "phase": "known",
+      "state": {
+        "can_seek": true,
+        "current_queue_index": 0,
+        "current_track": {
+          "album_title": "Review album 0000",
+          "artist_name": null,
+          "bitrate": null,
+          "cover_art_url": null,
+          "created_at": 1,
+          "disc_number": 1,
+          "duration_secs": 6,
+          "file_path": "/tmp/kaze-review-resume-hph4sq96/short0.wav",
+          "file_size": 28800044,
+          "format": "wav",
+          "genre_name": null,
+          "has_cover_art": 0,
+          "id": "t0000",
+          "manual_like": 0,
+          "modified_timestamp": 1,
+          "musicbrainz_track_id": null,
+          "preview_url": null,
+          "sample_rate": null,
+          "spotify_id": null,
+          "title": "Review track 0000",
+          "track_number": null,
+          "year": null
+        },
+        "current_track_id": "t0000",
+        "duration_secs": 6,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": false,
+        "is_playing": true,
+        "is_shuffle": false,
+        "position_secs": 0.65,
+        "queue_length": 3,
+        "queue_track_ids": [
+          "t0001",
+          "t0002"
+        ],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      },
+      "seek": {
+        "max": "6",
+        "disabled": false,
+        "value": "0.5"
+      }
+    },
+    {
+      "phase": "second-start",
+      "state": {
+        "can_seek": true,
+        "current_queue_index": 1,
+        "current_track_id": null,
+        "duration_secs": 0,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": false,
+        "is_playing": false,
+        "is_shuffle": false,
+        "position_secs": 0.265,
+        "queue_length": 3,
+        "queue_track_ids": [
+          "t0000",
+          "t0001",
+          "t0002"
+        ],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      },
+      "seek": {
+        "max": "6",
+        "disabled": false,
+        "value": "0"
+      }
+    },
+    {
+      "phase": "after-eof",
+      "state": {
+        "can_seek": true,
+        "current_queue_index": 1,
+        "current_track_id": null,
+        "duration_secs": 0,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": false,
+        "is_playing": false,
+        "is_shuffle": false,
+        "position_secs": 2,
+        "queue_length": 3,
+        "queue_track_ids": [
+          "t0000",
+          "t0001",
+          "t0002"
+        ],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      },
+      "seek": {
+        "max": "6",
+        "disabled": false,
+        "value": "0"
+      }
+    },
+    {
+      "phase": "manual-next",
+      "state": {
+        "can_seek": true,
+        "current_queue_index": 2,
+        "current_track": {
+          "album_title": "Review album 0002",
+          "artist_name": null,
+          "bitrate": null,
+          "cover_art_url": null,
+          "created_at": 1,
+          "disc_number": 1,
+          "duration_secs": 6,
+          "file_path": "/tmp/kaze-review-resume-hph4sq96/short2.wav",
+          "file_size": 28800044,
+          "format": "wav",
+          "genre_name": null,
+          "has_cover_art": 0,
+          "id": "t0002",
+          "manual_like": 0,
+          "modified_timestamp": 1,
+          "musicbrainz_track_id": null,
+          "preview_url": null,
+          "sample_rate": null,
+          "spotify_id": null,
+          "title": "Review track 0002",
+          "track_number": null,
+          "year": null
+        },
+        "current_track_id": "t0002",
+        "duration_secs": 6,
+        "is_buffering": false,
+        "is_muted": false,
+        "is_paused": false,
+        "is_playing": true,
+        "is_shuffle": false,
+        "position_secs": 0.265,
+        "queue_length": 3,
+        "queue_track_ids": [],
+        "repeat_mode": "off",
+        "volume": 0.800000011920929
+      },
+      "seek": {
+        "max": "6",
+        "disabled": false,
+        "value": "0"
+      }
+    }
+  ],
+  "completed": true,
+  "reproduced": true,
+  "control_passed": false
+}

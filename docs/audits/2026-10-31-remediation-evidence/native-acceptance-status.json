@@ -1,0 +1,28 @@
+{
+  "started_utc": "2026-10-31T09:56:34.361812+00:00",
+  "steps": [
+    {
+      "name": "tray-lifecycle",
+      "result": 0
+    },
+    {
+      "name": "playback-restore-native",
+      "result": 0
+    },
+    {
+      "name": "dual-interface-native",
+      "result": 0
+    },
+    {
+      "name": "interface-startup-native",
+      "result": 0
+    },
+    {
+      "name": "30-minute-soak",
+      "result": 0
+    }
+  ],
+  "completed": true,
+  "passed": true,
+  "finished_utc": "2026-10-31T10:28:36.117603+00:00"
+}

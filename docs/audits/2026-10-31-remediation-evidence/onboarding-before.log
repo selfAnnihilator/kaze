@@ -1,0 +1,2 @@
+REPRO spatial { dialog: 0, errors: [ 'Permission denied: audit folder' ] }
+REPRO brutalist { dialog: 0, errors: [ 'Permission denied: audit folder' ] }

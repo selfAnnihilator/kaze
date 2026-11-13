@@ -1,0 +1,438 @@
+{
+  "baseline": 162,
+  "current": 174,
+  "new": 12,
+  "removed": 0,
+  "new_rules": {
+    "bandit:B404": 1,
+    "bandit:B607": 5,
+    "bandit:B603": 6
+  },
+  "levels": {
+    "error": 125,
+    "warning": 47,
+    "note": 2
+  },
+  "new_reviews": [
+    {
+      "finding": {
+        "ruleId": "bandit:B404",
+        "level": "error",
+        "message": {
+          "text": "Consider possible security implications associated with the subprocess module."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 5,
+                "endLine": 5,
+                "endColumn": 17
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Import supports an explicitly opted-in native regression harness; import alone does not execute a command.",
+      "source_line": "import subprocess"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 7,
+                "endLine": 35,
+                "endColumn": 188
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Local harness intentionally uses installed Xvfb/xdotool/xwininfo from the trusted test operator PATH; not used in a privileged or product input path.",
+      "source_line": "xvfb = subprocess.Popen(['Xvfb', '-displayfd', '1', '-screen', '0', '1440x900x24', '-nolisten', 'tcp', '-noreset'], stdout=subprocess.PIPE, stderr=(ROOT / 'xvfb.log').open('w'), text=True)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 35,
+                "startColumn": 7,
+                "endLine": 35,
+                "endColumn": 188
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "xvfb = subprocess.Popen(['Xvfb', '-displayfd', '1', '-screen', '0', '1440x900x24', '-nolisten', 'tcp', '-noreset'], stdout=subprocess.PIPE, stderr=(ROOT / 'xvfb.log').open('w'), text=True)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 60,
+                "startColumn": 10,
+                "endLine": 60,
+                "endColumn": 103
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Local harness intentionally uses installed Xvfb/xdotool/xwininfo from the trusted test operator PATH; not used in a privileged or product input path.",
+      "source_line": "    ids = subprocess.check_output(['xdotool', 'search', '--onlyvisible', '--pid', str(pid)], text=True).split()"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 60,
+                "startColumn": 10,
+                "endLine": 60,
+                "endColumn": 103
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "    ids = subprocess.check_output(['xdotool', 'search', '--onlyvisible', '--pid', str(pid)], text=True).split()"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 63,
+                "startColumn": 14,
+                "endLine": 63,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Local harness intentionally uses installed Xvfb/xdotool/xwininfo from the trusted test operator PATH; not used in a privileged or product input path.",
+      "source_line": "        raw = subprocess.check_output(['xwininfo', '-id', xid], text=True)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 63,
+                "startColumn": 14,
+                "endLine": 63,
+                "endColumn": 74
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "        raw = subprocess.check_output(['xwininfo', '-id', xid], text=True)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 69,
+                "startColumn": 19,
+                "endLine": 69,
+                "endColumn": 96
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Local harness intentionally uses installed Xvfb/xdotool/xwininfo from the trusted test operator PATH; not used in a privileged or product input path.",
+      "source_line": "    d['focused'] = subprocess.run(['xdotool', 'getwindowfocus'], capture_output=True, text=True).stdout.strip() == d['xid']"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 69,
+                "startColumn": 19,
+                "endLine": 69,
+                "endColumn": 96
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "    d['focused'] = subprocess.run(['xdotool', 'getwindowfocus'], capture_output=True, text=True).stdout.strip() == d['xid']"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 75,
+                "startColumn": 10,
+                "endLine": 75,
+                "endColumn": 72
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "    app = subprocess.Popen([str(BINARY)], env=e, stdout=log, stderr=log)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B607",
+        "level": "error",
+        "message": {
+          "text": "Starting a process with a partial executable path"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 79,
+                "startColumn": 8,
+                "endLine": 79,
+                "endColumn": 82
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Local harness intentionally uses installed Xvfb/xdotool/xwininfo from the trusted test operator PATH; not used in a privileged or product input path.",
+      "source_line": "        subprocess.run(['xdotool', 'windowfocus', '--sync', w['xid']], check=True)"
+    },
+    {
+      "finding": {
+        "ruleId": "bandit:B603",
+        "level": "error",
+        "message": {
+          "text": "subprocess call - check for execution of untrusted input."
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "scripts/test-duration-native.py"
+              },
+              "region": {
+                "startLine": 79,
+                "startColumn": 8,
+                "endLine": 79,
+                "endColumn": 82
+              }
+            }
+          }
+        ],
+        "taxa": [
+          {
+            "id": "dependency_alert"
+          }
+        ]
+      },
+      "disposition": "reviewed fixture exception",
+      "reason": "Reviewed shell-free argument-vector subprocess calls invoke copied test binaries or local display/window tools; profiles, audio and output are disposable/controlled. No product or provider input reaches a shell.",
+      "source_line": "        subprocess.run(['xdotool', 'windowfocus', '--sync', w['xid']], check=True)"
+    }
+  ],
+  "unexplained": 0,
+  "scanner_invocations": [
+    {
+      "plugin": "ruff",
+      "exit_code": 0,
+      "result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "clippy",
+      "exit_code": 0,
+      "result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "radarlint-python",
+      "exit_code": 0,
+      "result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "ripgrep",
+      "exit_code": 1,
+      "result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "bandit",
+      "exit_code": 0,
+      "result": "EXIT_RESULT_SUCCESS"
+    },
+    {
+      "plugin": "trufflehog",
+      "exit_code": 0,
+      "result": "EXIT_RESULT_SUCCESS"
+    }
+  ],
+  "execution_failures": [],
+  "raw_quality_exit": 1,
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "comparison": "Rule/path/normalized-message multiset; numeric complexity changes normalized. Raw SARIF retained."
+}

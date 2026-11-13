@@ -1,0 +1,30 @@
+
+** (process:728746): WARNING **: 11:23:24.038: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK spatial repeat 1: native preference, no active transition/animation, usable App
+
+** (process:729036): WARNING **: 11:23:25.530: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK spatial repeat 2: native preference, no active transition/animation, usable App
+
+** (process:729277): WARNING **: 11:23:27.011: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK spatial repeat 3: native preference, no active transition/animation, usable App
+
+** (process:729572): WARNING **: 11:23:28.477: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK spatial repeat 4: native preference, no active transition/animation, usable App
+
+** (process:729814): WARNING **: 11:23:29.904: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK spatial repeat 5: native preference, no active transition/animation, usable App
+
+** (process:730123): WARNING **: 11:23:31.373: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK brutalist repeat 1: native preference, no active transition/animation, usable App
+
+** (process:730393): WARNING **: 11:23:32.886: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK brutalist repeat 2: native preference, no active transition/animation, usable App
+
+** (process:730694): WARNING **: 11:23:34.430: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK brutalist repeat 3: native preference, no active transition/animation, usable App
+
+** (process:730958): WARNING **: 11:23:35.904: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK brutalist repeat 4: native preference, no active transition/animation, usable App
+
+** (process:731283): WARNING **: 11:23:37.385: Can't connect to a11y bus: Could not connect: Connection refused
+PASS reduced motion WebKitGTK brutalist repeat 5: native preference, no active transition/animation, usable App

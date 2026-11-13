@@ -1,0 +1,38 @@
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.portal.Desktop' requested by ':1.1' (uid=1000 pid=1166274 comm="/tmp/kaze-acceptance-native-0njbs23f/kaze-candidat")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.impl.portal.PermissionStore' requested by ':1.2' (uid=1000 pid=1166283 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.PermissionStore'
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.portal.Documents' requested by ':1.2' (uid=1000 pid=1166283 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.freedesktop.portal.Documents'
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gnome' requested by ':1.2' (uid=1000 pid=1166283 comm="/usr/lib/xdg-desktop-portal")
+
+** (xdg-desktop-portal-gnome:1166306): WARNING **: 13:33:21.904: Failed to open service channel Wayland connection, portal dialogs may misbehave (Cannot invoke method; proxy is for the well-known name org.gnome.Mutter.ServiceChannel without an owner, and proxy was constructed with the G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START flag).
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.gtk.vfs.Daemon' requested by ':1.5' (uid=1000 pid=1166306 comm="/usr/lib/xdg-desktop-portal-gnome")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.gtk.vfs.Daemon'
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gnome'
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.impl.portal.desktop.gtk' requested by ':1.2' (uid=1000 pid=1166283 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.freedesktop.impl.portal.desktop.gtk'
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.secrets' requested by ':1.2' (uid=1000 pid=1166283 comm="/usr/lib/xdg-desktop-portal")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.freedesktop.portal.Desktop'
+discover_other_daemon: 1GNOME_KEYRING_CONTROL=/run/user/1000/keyring
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.1' (uid=1000 pid=1166274 comm="/tmp/kaze-acceptance-native-0njbs23f/kaze-candidat")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS brutalist: native theme-specific motion, advancing frames and saved theme from first intro/shell commit
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activating service name='org.freedesktop.systemd1' requested by ':1.12' (uid=1000 pid=1166381 comm="/usr/bin/dbus-broker-launch --config-file=/usr/sha")
+dbus-daemon[1166268]: [session uid=1000 pid=1166268 pidfd=5] Activated service 'org.freedesktop.systemd1' failed: Process org.freedesktop.systemd1 exited with status 1
+PASS spatial: native theme-specific motion, advancing frames and saved theme from first intro/shell commit
+
+(/usr/lib/xdg-desktop-portal:1166283): xdg-desktop-portal-WARNING **: 13:33:33.411: Failed to create secret proxy: Error calling StartServiceByName for org.freedesktop.secrets: The connection is closed
+A connection to the bus can't be made

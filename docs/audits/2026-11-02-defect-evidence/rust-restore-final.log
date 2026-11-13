@@ -1,0 +1,19 @@
+   Compiling music-player-backend v2.0.3 (/home/abhi/Projects/music_player/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.61s
+     Running tests/playback_restore_tests.rs (target/debug/deps/playback_restore_tests-57d84c566250dc5f)
+
+running 11 tests
+test failed_bookmark_write_still_stops_audio_and_finishes_shutdown ... ok
+test unknown_duration_preserves_identity_pause_and_restoration_position ... ok
+test cold_launch_restores_paused_identity_queue_settings_and_exact_position_without_history ... ok
+test source_linked_online_and_missing_local_media_restore_without_audio ... ok
+test reopening_again_preserves_bookmark_and_seek_before_play_changes_resume_position ... ok
+test invalid_or_newer_bookmarks_do_not_break_startup_or_new_playback ... ok
+test unknown_duration_eof_before_first_tick_advances_once ... ok
+test quit_cancels_a_cold_online_resume_before_draining_commands ... ok
+test cold_online_resume_waits_for_seekable_cache_then_starts_at_saved_offset ... ok
+test unknown_duration_repeat_one_creates_one_completion_per_session ... ok
+test checkpoint_uses_existing_monitor_for_recovery_before_clean_quit ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.56s
+

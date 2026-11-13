@@ -1,0 +1,2 @@
+PASS spatial: current-session buffering clears; stale responses and next/obsolete sessions ignored; progress/pause preserved; started audio clears pending command loading
+PASS brutalist: current-session buffering clears; stale responses and next/obsolete sessions ignored; progress/pause preserved; started audio clears pending command loading

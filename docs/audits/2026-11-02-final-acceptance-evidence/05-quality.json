@@ -1,0 +1,10 @@
+{
+  "gate": "05-quality",
+  "command": "scripts/check-quality.sh --no-upgrade-check --sarif",
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "started_utc": "2026-11-02T05:44:37Z",
+  "exit_code": 1,
+  "status": "failed",
+  "elapsed_seconds": 24.61,
+  "candidate_after": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab"
+}

@@ -1,0 +1,2016 @@
+{
+  "target": "native WebKitGTK",
+  "catalogue": "controlled 1036 tracks / 130 albums; actual Rust audio",
+  "measurements": {
+    "warmup_playing": {
+      "commits": 242,
+      "renders": {
+        "anonymous": 245,
+        "td": 1,
+        "Do": 1,
+        "Pt": 2,
+        "Ve": 4,
+        "Yo": 4,
+        "Tc": 1,
+        "zc": 1,
+        "H": 1
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 1,
+      "mutations": {
+        ".progress-container": 1263,
+        ".interface-toolbar": 3,
+        "other": 3
+      },
+      "ipc": {
+        "GetHomeOverview": 1
+      },
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 594,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 2.29,
+          "private_kib": 166164,
+          "swap_kib": 20400,
+          "rss_kib": 258376
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 1.13,
+          "private_kib": 137464,
+          "swap_kib": 0,
+          "rss_kib": 209152
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24856,
+          "swap_kib": 0,
+          "rss_kib": 65924
+        }
+      },
+      "cpu_percent_one_core": 4.23,
+      "renderer_cpu_percent": 1.05
+    },
+    "soak_start": {
+      "commits": 242,
+      "renders": {
+        "anonymous": 245,
+        "td": 1,
+        "Do": 1,
+        "Pt": 2,
+        "Ve": 4,
+        "Yo": 4,
+        "Tc": 1,
+        "zc": 1,
+        "H": 1
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 1,
+      "mutations": {
+        ".progress-container": 1263,
+        ".interface-toolbar": 3,
+        "other": 3
+      },
+      "ipc": {
+        "GetHomeOverview": 1,
+        "GetPlaybackState": 1
+      },
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 594,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 2.29,
+          "private_kib": 166224,
+          "swap_kib": 20400,
+          "rss_kib": 258436
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 1.13,
+          "private_kib": 137536,
+          "swap_kib": 0,
+          "rss_kib": 209224
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24856,
+          "swap_kib": 0,
+          "rss_kib": 65924
+        }
+      }
+    },
+    "soak_end": {
+      "commits": 6646,
+      "renders": {
+        "anonymous": 7353,
+        "td": 60,
+        "Do": 60,
+        "Pt": 21,
+        "Ve": 77,
+        "Yo": 51,
+        "Tc": 60,
+        "zc": 60,
+        "H": 60,
+        "hc": 19,
+        "pc": 134,
+        "ve": 100,
+        "Ht": 100,
+        "Zs": 22,
+        "Bs": 3,
+        "dc": 151
+      },
+      "layouts": 10,
+      "resizeDeliveries": 15,
+      "raf": 0,
+      "timer": 5,
+      "mutations": {
+        ".progress-container": 21544,
+        ".interface-toolbar": 239,
+        "other": 13883,
+        ".sidebar": 77,
+        ".home-view": 72,
+        ".discovery-chapters": 102
+      },
+      "ipc": {
+        "GetHomeOverview": 5,
+        "GetPlaybackState": 1,
+        "get_autostart": 14,
+        "GetSettings": 14,
+        "SetInterfaceStyle": 10,
+        "GetCharts": 5,
+        "GetFlowSession": 1
+      },
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 602,
+      "images": 13,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "window:DOMContentLoaded:true": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:keydown:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 2,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 60.65,
+          "private_kib": 33432,
+          "swap_kib": 96636,
+          "rss_kib": 87524
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 18.08,
+          "private_kib": 203256,
+          "swap_kib": 37796,
+          "rss_kib": 252872
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8648,
+          "swap_kib": 8164,
+          "rss_kib": 28700
+        }
+      }
+    }
+  },
+  "soak_start": {
+    "can_seek": true,
+    "current_queue_index": 0,
+    "current_track": {
+      "album_title": null,
+      "artist_name": null,
+      "bitrate": 128,
+      "cover_art_url": null,
+      "created_at": 1,
+      "disc_number": 1,
+      "duration_secs": 1800,
+      "file_path": "/tmp/kaze-frontend-perf-6r43xfxa/audio-0.wav",
+      "file_size": 28800044,
+      "format": "wav",
+      "genre_name": null,
+      "has_cover_art": 0,
+      "id": "t0",
+      "manual_like": 0,
+      "modified_timestamp": 1,
+      "musicbrainz_track_id": null,
+      "preview_url": null,
+      "sample_rate": 8000,
+      "spotify_id": null,
+      "title": "audio-0",
+      "track_number": null,
+      "year": null
+    },
+    "current_track_id": "t0",
+    "duration_secs": 1800,
+    "is_buffering": false,
+    "is_muted": false,
+    "is_paused": false,
+    "is_playing": true,
+    "is_shuffle": false,
+    "position_secs": 60.225,
+    "queue_length": 2,
+    "queue_track_ids": [
+      "t1"
+    ],
+    "repeat_mode": "off",
+    "volume": 0.800000011920929
+  },
+  "soak_samples": [
+    {
+      "elapsed": 30.0,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 3.21,
+          "private_kib": 166172,
+          "swap_kib": 20400,
+          "rss_kib": 258384
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 1.47,
+          "private_kib": 149044,
+          "swap_kib": 0,
+          "rss_kib": 220732
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24856,
+          "swap_kib": 0,
+          "rss_kib": 65924
+        }
+      }
+    },
+    {
+      "elapsed": 60.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 4.13,
+          "private_kib": 166128,
+          "swap_kib": 20444,
+          "rss_kib": 258324
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 1.81,
+          "private_kib": 144164,
+          "swap_kib": 0,
+          "rss_kib": 215916
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24792,
+          "swap_kib": 0,
+          "rss_kib": 65924
+        }
+      }
+    },
+    {
+      "elapsed": 90.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 5.08,
+          "private_kib": 163892,
+          "swap_kib": 20444,
+          "rss_kib": 256732
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 2.07,
+          "private_kib": 143444,
+          "swap_kib": 0,
+          "rss_kib": 216628
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24792,
+          "swap_kib": 0,
+          "rss_kib": 65924
+        }
+      }
+    },
+    {
+      "elapsed": 120.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 6.12,
+          "private_kib": 164424,
+          "swap_kib": 20444,
+          "rss_kib": 257000
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 2.41,
+          "private_kib": 163044,
+          "swap_kib": 0,
+          "rss_kib": 235652
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65992
+        }
+      }
+    },
+    {
+      "elapsed": 150.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 7.07,
+          "private_kib": 164492,
+          "swap_kib": 20404,
+          "rss_kib": 257068
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 2.88,
+          "private_kib": 166804,
+          "swap_kib": 0,
+          "rss_kib": 239412
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65992
+        }
+      }
+    },
+    {
+      "elapsed": 180.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 8.05,
+          "private_kib": 162536,
+          "swap_kib": 29356,
+          "rss_kib": 255112
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 3.33,
+          "private_kib": 165392,
+          "swap_kib": 0,
+          "rss_kib": 238060
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 210.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 9.05,
+          "private_kib": 162536,
+          "swap_kib": 29356,
+          "rss_kib": 255112
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 3.71,
+          "private_kib": 160816,
+          "swap_kib": 0,
+          "rss_kib": 233484
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 240.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 10.07,
+          "private_kib": 163896,
+          "swap_kib": 29356,
+          "rss_kib": 256472
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 4.23,
+          "private_kib": 177320,
+          "swap_kib": 0,
+          "rss_kib": 249988
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 270.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 11.08,
+          "private_kib": 162176,
+          "swap_kib": 29756,
+          "rss_kib": 255012
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 4.6,
+          "private_kib": 176696,
+          "swap_kib": 0,
+          "rss_kib": 250312
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 300.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 12.16,
+          "private_kib": 162140,
+          "swap_kib": 29764,
+          "rss_kib": 255004
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 4.88,
+          "private_kib": 176352,
+          "swap_kib": 0,
+          "rss_kib": 250332
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 330.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 13.19,
+          "private_kib": 125908,
+          "swap_kib": 67116,
+          "rss_kib": 218772
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.16,
+          "private_kib": 175052,
+          "swap_kib": 0,
+          "rss_kib": 249144
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24796,
+          "swap_kib": 0,
+          "rss_kib": 65940
+        }
+      }
+    },
+    {
+      "elapsed": 360.5,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 14.26,
+          "private_kib": 91624,
+          "swap_kib": 99412,
+          "rss_kib": 180804
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.48,
+          "private_kib": 164616,
+          "swap_kib": 13732,
+          "rss_kib": 238708
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 16740,
+          "swap_kib": 8056,
+          "rss_kib": 57884
+        }
+      }
+    },
+    {
+      "elapsed": 390.6,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 15.1,
+          "private_kib": 89888,
+          "swap_kib": 99424,
+          "rss_kib": 178780
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.56,
+          "private_kib": 157416,
+          "swap_kib": 14592,
+          "rss_kib": 230084
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 12644,
+          "swap_kib": 8068,
+          "rss_kib": 53788
+        }
+      }
+    },
+    {
+      "elapsed": 420.7,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 16.0,
+          "private_kib": 89868,
+          "swap_kib": 99420,
+          "rss_kib": 178760
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.62,
+          "private_kib": 157160,
+          "swap_kib": 14592,
+          "rss_kib": 229828
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 12644,
+          "swap_kib": 8068,
+          "rss_kib": 53788
+        }
+      }
+    },
+    {
+      "elapsed": 450.7,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 16.86,
+          "private_kib": 89872,
+          "swap_kib": 99416,
+          "rss_kib": 178764
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.67,
+          "private_kib": 157520,
+          "swap_kib": 14592,
+          "rss_kib": 230188
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 12644,
+          "swap_kib": 8068,
+          "rss_kib": 53788
+        }
+      }
+    },
+    {
+      "elapsed": 480.7,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 17.71,
+          "private_kib": 91492,
+          "swap_kib": 98244,
+          "rss_kib": 184056
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 5.8,
+          "private_kib": 166944,
+          "swap_kib": 14384,
+          "rss_kib": 239612
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 12588,
+          "swap_kib": 8068,
+          "rss_kib": 53732
+        }
+      }
+    },
+    {
+      "elapsed": 510.8,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 18.75,
+          "private_kib": 91092,
+          "swap_kib": 98220,
+          "rss_kib": 183684
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 6.15,
+          "private_kib": 167680,
+          "swap_kib": 14308,
+          "rss_kib": 240348
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 12588,
+          "swap_kib": 8068,
+          "rss_kib": 53732
+        }
+      }
+    },
+    {
+      "elapsed": 540.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 19.85,
+          "private_kib": 40100,
+          "swap_kib": 98160,
+          "rss_kib": 102716
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 6.47,
+          "private_kib": 132356,
+          "swap_kib": 16024,
+          "rss_kib": 178028
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10804,
+          "swap_kib": 8068,
+          "rss_kib": 34012
+        }
+      }
+    },
+    {
+      "elapsed": 570.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 20.89,
+          "private_kib": 40092,
+          "swap_kib": 98160,
+          "rss_kib": 102708
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 6.83,
+          "private_kib": 137528,
+          "swap_kib": 15992,
+          "rss_kib": 183200
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10804,
+          "swap_kib": 8068,
+          "rss_kib": 34012
+        }
+      }
+    },
+    {
+      "elapsed": 600.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 21.99,
+          "private_kib": 40148,
+          "swap_kib": 98156,
+          "rss_kib": 102624
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 7.28,
+          "private_kib": 152588,
+          "swap_kib": 15836,
+          "rss_kib": 198120
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10852,
+          "swap_kib": 8068,
+          "rss_kib": 34060
+        }
+      }
+    },
+    {
+      "elapsed": 631.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 23.02,
+          "private_kib": 40056,
+          "swap_kib": 98140,
+          "rss_kib": 102596
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 7.63,
+          "private_kib": 153044,
+          "swap_kib": 15804,
+          "rss_kib": 198576
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10852,
+          "swap_kib": 8068,
+          "rss_kib": 34052
+        }
+      }
+    },
+    {
+      "elapsed": 661.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 24.01,
+          "private_kib": 40056,
+          "swap_kib": 98140,
+          "rss_kib": 102596
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 7.87,
+          "private_kib": 153208,
+          "swap_kib": 15804,
+          "rss_kib": 198740
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10852,
+          "swap_kib": 8068,
+          "rss_kib": 34052
+        }
+      }
+    },
+    {
+      "elapsed": 691.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 24.97,
+          "private_kib": 40056,
+          "swap_kib": 98140,
+          "rss_kib": 102596
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 8.12,
+          "private_kib": 153992,
+          "swap_kib": 15804,
+          "rss_kib": 199524
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10852,
+          "swap_kib": 8068,
+          "rss_kib": 34052
+        }
+      }
+    },
+    {
+      "elapsed": 721.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 26.03,
+          "private_kib": 40076,
+          "swap_kib": 36032,
+          "rss_kib": 102616
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 8.42,
+          "private_kib": 161716,
+          "swap_kib": 16128,
+          "rss_kib": 207248
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 10852,
+          "swap_kib": 8068,
+          "rss_kib": 34052
+        }
+      }
+    },
+    {
+      "elapsed": 751.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 27.0,
+          "private_kib": 37992,
+          "swap_kib": 37172,
+          "rss_kib": 100204
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 8.69,
+          "private_kib": 165200,
+          "swap_kib": 15512,
+          "rss_kib": 210492
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8820,
+          "swap_kib": 8084,
+          "rss_kib": 31948
+        }
+      }
+    },
+    {
+      "elapsed": 781.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 27.96,
+          "private_kib": 38004,
+          "swap_kib": 37168,
+          "rss_kib": 100216
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 8.91,
+          "private_kib": 168464,
+          "swap_kib": 15512,
+          "rss_kib": 213756
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8820,
+          "swap_kib": 8084,
+          "rss_kib": 31948
+        }
+      }
+    },
+    {
+      "elapsed": 811.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 28.87,
+          "private_kib": 38016,
+          "swap_kib": 37148,
+          "rss_kib": 100228
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 9.11,
+          "private_kib": 169524,
+          "swap_kib": 15512,
+          "rss_kib": 214828
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8820,
+          "swap_kib": 8084,
+          "rss_kib": 31948
+        }
+      }
+    },
+    {
+      "elapsed": 841.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 29.79,
+          "private_kib": 38072,
+          "swap_kib": 37144,
+          "rss_kib": 100284
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 9.41,
+          "private_kib": 182852,
+          "swap_kib": 15452,
+          "rss_kib": 228152
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8812,
+          "swap_kib": 8084,
+          "rss_kib": 31948
+        }
+      }
+    },
+    {
+      "elapsed": 871.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 30.74,
+          "private_kib": 37944,
+          "swap_kib": 37144,
+          "rss_kib": 99744
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 9.75,
+          "private_kib": 169976,
+          "swap_kib": 15396,
+          "rss_kib": 214816
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8812,
+          "swap_kib": 8084,
+          "rss_kib": 31736
+        }
+      }
+    },
+    {
+      "elapsed": 901.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 31.71,
+          "private_kib": 30264,
+          "swap_kib": 37144,
+          "rss_kib": 89220
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 10.07,
+          "private_kib": 168980,
+          "swap_kib": 15392,
+          "rss_kib": 212428
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8812,
+          "swap_kib": 8084,
+          "rss_kib": 31440
+        }
+      }
+    },
+    {
+      "elapsed": 931.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 32.71,
+          "private_kib": 30296,
+          "swap_kib": 37124,
+          "rss_kib": 89252
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 10.4,
+          "private_kib": 169540,
+          "swap_kib": 15628,
+          "rss_kib": 212988
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8780,
+          "swap_kib": 8084,
+          "rss_kib": 31364
+        }
+      }
+    },
+    {
+      "elapsed": 961.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 33.68,
+          "private_kib": 30340,
+          "swap_kib": 37124,
+          "rss_kib": 89296
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 10.85,
+          "private_kib": 180232,
+          "swap_kib": 15632,
+          "rss_kib": 223680
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8776,
+          "swap_kib": 8084,
+          "rss_kib": 31348
+        }
+      }
+    },
+    {
+      "elapsed": 991.6,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 34.67,
+          "private_kib": 26928,
+          "swap_kib": 40500,
+          "rss_kib": 85884
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.11,
+          "private_kib": 175696,
+          "swap_kib": 20536,
+          "rss_kib": 219144
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8156,
+          "rss_kib": 31276
+        }
+      }
+    },
+    {
+      "elapsed": 1021.6,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 35.63,
+          "private_kib": 26708,
+          "swap_kib": 40816,
+          "rss_kib": 85664
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.32,
+          "private_kib": 175176,
+          "swap_kib": 23300,
+          "rss_kib": 218624
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8156,
+          "rss_kib": 31276
+        }
+      }
+    },
+    {
+      "elapsed": 1051.6,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 36.59,
+          "private_kib": 26036,
+          "swap_kib": 102480,
+          "rss_kib": 84992
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.54,
+          "private_kib": 167680,
+          "swap_kib": 32872,
+          "rss_kib": 211128
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8696,
+          "swap_kib": 8164,
+          "rss_kib": 31268
+        }
+      }
+    },
+    {
+      "elapsed": 1081.6,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 37.51,
+          "private_kib": 27804,
+          "swap_kib": 100992,
+          "rss_kib": 83088
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.77,
+          "private_kib": 172936,
+          "swap_kib": 32864,
+          "rss_kib": 216384
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31316
+        }
+      }
+    },
+    {
+      "elapsed": 1111.7,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 38.34,
+          "private_kib": 27836,
+          "swap_kib": 100948,
+          "rss_kib": 83120
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.83,
+          "private_kib": 173144,
+          "swap_kib": 32864,
+          "rss_kib": 216592
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31316
+        }
+      }
+    },
+    {
+      "elapsed": 1141.7,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 39.16,
+          "private_kib": 27780,
+          "swap_kib": 100948,
+          "rss_kib": 83064
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.88,
+          "private_kib": 173616,
+          "swap_kib": 32864,
+          "rss_kib": 217064
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31316
+        }
+      }
+    },
+    {
+      "elapsed": 1171.7,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 39.98,
+          "private_kib": 27784,
+          "swap_kib": 100944,
+          "rss_kib": 83068
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 11.93,
+          "private_kib": 174072,
+          "swap_kib": 32864,
+          "rss_kib": 217520
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31316
+        }
+      }
+    },
+    {
+      "elapsed": 1201.8,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 40.8,
+          "private_kib": 28572,
+          "swap_kib": 100400,
+          "rss_kib": 87528
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 12.06,
+          "private_kib": 178992,
+          "swap_kib": 32300,
+          "rss_kib": 222440
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31316
+        }
+      }
+    },
+    {
+      "elapsed": 1231.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 41.75,
+          "private_kib": 28528,
+          "swap_kib": 100400,
+          "rss_kib": 85976
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 12.37,
+          "private_kib": 182244,
+          "swap_kib": 32244,
+          "rss_kib": 225480
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 31220
+        }
+      }
+    },
+    {
+      "elapsed": 1261.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 42.73,
+          "private_kib": 28460,
+          "swap_kib": 100392,
+          "rss_kib": 83812
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 12.64,
+          "private_kib": 183116,
+          "swap_kib": 32240,
+          "rss_kib": 224236
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 29464
+        }
+      }
+    },
+    {
+      "elapsed": 1291.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 43.66,
+          "private_kib": 28452,
+          "swap_kib": 100392,
+          "rss_kib": 83804
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 12.89,
+          "private_kib": 186424,
+          "swap_kib": 32240,
+          "rss_kib": 227544
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8744,
+          "swap_kib": 8164,
+          "rss_kib": 28856
+        }
+      }
+    },
+    {
+      "elapsed": 1321.9,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 44.71,
+          "private_kib": 28500,
+          "swap_kib": 100396,
+          "rss_kib": 83836
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 13.26,
+          "private_kib": 192196,
+          "swap_kib": 32208,
+          "rss_kib": 233284
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8740,
+          "swap_kib": 8164,
+          "rss_kib": 28780
+        }
+      }
+    },
+    {
+      "elapsed": 1352.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 45.77,
+          "private_kib": 28428,
+          "swap_kib": 100392,
+          "rss_kib": 83752
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 13.58,
+          "private_kib": 182816,
+          "swap_kib": 32208,
+          "rss_kib": 223892
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8736,
+          "swap_kib": 8164,
+          "rss_kib": 28776
+        }
+      }
+    },
+    {
+      "elapsed": 1382.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 46.8,
+          "private_kib": 31584,
+          "swap_kib": 100388,
+          "rss_kib": 83756
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 13.84,
+          "private_kib": 175772,
+          "swap_kib": 32208,
+          "rss_kib": 223728
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28776
+        }
+      }
+    },
+    {
+      "elapsed": 1412.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 47.78,
+          "private_kib": 31576,
+          "swap_kib": 100388,
+          "rss_kib": 83748
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 14.1,
+          "private_kib": 175412,
+          "swap_kib": 32208,
+          "rss_kib": 223368
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28776
+        }
+      }
+    },
+    {
+      "elapsed": 1442.1,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 48.78,
+          "private_kib": 31640,
+          "swap_kib": 100380,
+          "rss_kib": 83812
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 14.41,
+          "private_kib": 179908,
+          "swap_kib": 32184,
+          "rss_kib": 227864
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28776
+        }
+      }
+    },
+    {
+      "elapsed": 1472.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 49.75,
+          "private_kib": 31584,
+          "swap_kib": 100380,
+          "rss_kib": 83316
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 14.69,
+          "private_kib": 184688,
+          "swap_kib": 32228,
+          "rss_kib": 232136
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28768
+        }
+      }
+    },
+    {
+      "elapsed": 1502.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 50.69,
+          "private_kib": 31456,
+          "swap_kib": 100376,
+          "rss_kib": 79144
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 14.91,
+          "private_kib": 179968,
+          "swap_kib": 32576,
+          "rss_kib": 226856
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28736
+        }
+      }
+    },
+    {
+      "elapsed": 1532.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 51.63,
+          "private_kib": 27784,
+          "swap_kib": 100376,
+          "rss_kib": 79144
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 15.11,
+          "private_kib": 180964,
+          "swap_kib": 33080,
+          "rss_kib": 227852
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28736
+        }
+      }
+    },
+    {
+      "elapsed": 1562.2,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 52.58,
+          "private_kib": 27836,
+          "swap_kib": 100372,
+          "rss_kib": 79196
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 15.4,
+          "private_kib": 189328,
+          "swap_kib": 32304,
+          "rss_kib": 236216
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28736
+        }
+      }
+    },
+    {
+      "elapsed": 1592.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 53.58,
+          "private_kib": 31376,
+          "swap_kib": 100372,
+          "rss_kib": 78832
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 15.75,
+          "private_kib": 184708,
+          "swap_kib": 31828,
+          "rss_kib": 231348
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8704,
+          "swap_kib": 8164,
+          "rss_kib": 28700
+        }
+      }
+    },
+    {
+      "elapsed": 1622.3,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 54.59,
+          "private_kib": 31372,
+          "swap_kib": 100372,
+          "rss_kib": 78832
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 16.07,
+          "private_kib": 186372,
+          "swap_kib": 31380,
+          "rss_kib": 233904
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8648,
+          "swap_kib": 8164,
+          "rss_kib": 28700
+        }
+      }
+    },
+    {
+      "elapsed": 1652.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 55.64,
+          "private_kib": 30512,
+          "swap_kib": 101232,
+          "rss_kib": 77976
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 16.42,
+          "private_kib": 185944,
+          "swap_kib": 34024,
+          "rss_kib": 233524
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8616,
+          "swap_kib": 8196,
+          "rss_kib": 28668
+        }
+      }
+    },
+    {
+      "elapsed": 1682.4,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 56.67,
+          "private_kib": 30568,
+          "swap_kib": 101220,
+          "rss_kib": 78032
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 16.91,
+          "private_kib": 205032,
+          "swap_kib": 33380,
+          "rss_kib": 252632
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8616,
+          "swap_kib": 8196,
+          "rss_kib": 28668
+        }
+      }
+    },
+    {
+      "elapsed": 1712.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 57.63,
+          "private_kib": 30516,
+          "swap_kib": 101220,
+          "rss_kib": 77980
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 17.19,
+          "private_kib": 197488,
+          "swap_kib": 32888,
+          "rss_kib": 245088
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8616,
+          "swap_kib": 8196,
+          "rss_kib": 28668
+        }
+      }
+    },
+    {
+      "elapsed": 1742.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 58.68,
+          "private_kib": 34840,
+          "swap_kib": 97524,
+          "rss_kib": 82304
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 17.44,
+          "private_kib": 196804,
+          "swap_kib": 32512,
+          "rss_kib": 244404
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8616,
+          "swap_kib": 8196,
+          "rss_kib": 28668
+        }
+      }
+    },
+    {
+      "elapsed": 1772.5,
+      "hidden": false,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 59.64,
+          "private_kib": 34852,
+          "swap_kib": 97524,
+          "rss_kib": 82316
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 17.65,
+          "private_kib": 195636,
+          "swap_kib": 33964,
+          "rss_kib": 243236
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8612,
+          "swap_kib": 8200,
+          "rss_kib": 28664
+        }
+      }
+    },
+    {
+      "elapsed": 1800.0,
+      "hidden": true,
+      "processes": {
+        "379593": {
+          "name": "kaze-final-nati",
+          "cpu": 60.53,
+          "private_kib": 31044,
+          "swap_kib": 97748,
+          "rss_kib": 78508
+        },
+        "379638": {
+          "name": "WebKitWebProces",
+          "cpu": 17.88,
+          "private_kib": 197444,
+          "swap_kib": 38676,
+          "rss_kib": 245044
+        },
+        "379636": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 8644,
+          "swap_kib": 8168,
+          "rss_kib": 28696
+        }
+      }
+    }
+  ],
+  "soak_elapsed": 1800.0,
+  "soak_end": {
+    "can_seek": true,
+    "current_queue_index": 1,
+    "current_track": {
+      "album_title": null,
+      "artist_name": null,
+      "bitrate": 128,
+      "cover_art_url": null,
+      "created_at": 1,
+      "disc_number": 1,
+      "duration_secs": 1800,
+      "file_path": "/tmp/kaze-frontend-perf-6r43xfxa/audio-1.wav",
+      "file_size": 28800044,
+      "format": "wav",
+      "genre_name": null,
+      "has_cover_art": 0,
+      "id": "t1",
+      "manual_like": 0,
+      "modified_timestamp": 1,
+      "musicbrainz_track_id": null,
+      "preview_url": null,
+      "sample_rate": 8000,
+      "spotify_id": null,
+      "title": "audio-1",
+      "track_number": null,
+      "year": null
+    },
+    "current_track_id": "t1",
+    "duration_secs": 1800,
+    "is_buffering": false,
+    "is_muted": false,
+    "is_paused": false,
+    "is_playing": true,
+    "is_shuffle": false,
+    "position_secs": 64.845,
+    "queue_length": 2,
+    "queue_track_ids": [],
+    "repeat_mode": "off",
+    "volume": 0.800000011920929
+  },
+  "passed": true
+}

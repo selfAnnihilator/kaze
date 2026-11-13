@@ -1,0 +1,1520 @@
+{
+  "target": "development Chromium",
+  "measurements": {
+    "initial": {
+      "commits": 13,
+      "renders": {
+        "StartupScreen2": 1,
+        "App": 6,
+        "anonymous": 22,
+        "SpatialNavigation2": 2,
+        "ProfileNavigation2": 2,
+        "SpatialUtilities2": 1,
+        "ViewMemoryProvider": 6,
+        "SpatialHome2": 6,
+        "Artwork2": 28,
+        "FamiliarityDial2": 1,
+        "_c3": 6,
+        "PlaybackNotice2": 2,
+        "RecommendationSetupGate2": 2,
+        "NotInterestedButton2": 29,
+        "WindowedList": 6,
+        "Le": 12,
+        "Row": 12,
+        "ToastContainer": 2,
+        "UpdateBanner": 2,
+        "AddToPlaylistModal": 2
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 7,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 580,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 4716516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2
+      }
+    },
+    "playback_100_ticks": {
+      "commits": 100,
+      "renders": {
+        "anonymous": 100
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {
+        ".progress-container": 510
+      },
+      "ipc": {},
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 580,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 4716516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2
+      }
+    },
+    "download_100_ticks": {
+      "commits": 0,
+      "renders": {},
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 580,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 4716516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2
+      }
+    },
+    "discovery_mounted": {
+      "commits": 6,
+      "renders": {
+        "App": 1,
+        "anonymous": 5,
+        "SpatialNavigation2": 1,
+        "ViewMemoryProvider": 1,
+        "_c3": 1,
+        "ToastContainer": 1,
+        "UpdateBanner": 1,
+        "AddToPlaylistModal": 1,
+        "DiscoveryChapters2": 2,
+        "Artwork2": 9,
+        "WindowedStrip": 3,
+        "Sleeve": 22,
+        "DiscoveryPreviewTarget": 22,
+        "DiscoveryTrackCard": 22,
+        "DownloadButton2": 8,
+        "NotInterestedButton2": 8
+      },
+      "layouts": 0,
+      "resizeDeliveries": 1,
+      "raf": 0,
+      "timer": 101,
+      "mutations": {
+        ".sidebar": 5,
+        ".interface-toolbar": 5,
+        ".home-view": 1,
+        "other": 8,
+        ".progress-container": 3,
+        ".discovery-chapters": 23
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        }
+      ],
+      "route": "discovery",
+      "visibility": "visible",
+      "dom": 509,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 9,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 2,
+        "window:offline:false": 2,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 3
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        }
+      ],
+      "effects": [],
+      "artworkPixels": 4762116,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 2
+      }
+    },
+    "scroll_80_steps": {
+      "commits": 1,
+      "renders": {
+        "WindowedStrip": 1,
+        "Sleeve": 1,
+        "DiscoveryPreviewTarget": 1,
+        "DiscoveryTrackCard": 1,
+        "Artwork2": 1,
+        "DownloadButton2": 1,
+        "NotInterestedButton2": 1
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 80,
+      "mutations": {
+        ".discovery-chapters": 5
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        }
+      ],
+      "route": "discovery",
+      "visibility": "visible",
+      "dom": 545,
+      "images": 11,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 10,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 2,
+        "window:offline:false": 2,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 3
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        }
+      ],
+      "effects": [],
+      "artworkPixels": 5122116,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 2
+      }
+    },
+    "before_cycles": {
+      "commits": 5,
+      "renders": {
+        "WindowedStrip": 1,
+        "Sleeve": 1,
+        "DiscoveryPreviewTarget": 1,
+        "DiscoveryTrackCard": 1,
+        "Artwork2": 1,
+        "DownloadButton2": 1,
+        "NotInterestedButton2": 1,
+        "App": 1,
+        "anonymous": 3,
+        "SpatialNavigation2": 1,
+        "ViewMemoryProvider": 1,
+        "SettingsView2": 1,
+        "StartupSettings2": 3,
+        "MetadataSettings2": 2,
+        "_c3": 1,
+        "ToastContainer": 1,
+        "UpdateBanner": 1,
+        "AddToPlaylistModal": 1
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 80,
+      "mutations": {
+        ".discovery-chapters": 8,
+        ".sidebar": 6,
+        ".interface-toolbar": 4,
+        "other": 27,
+        ".progress-container": 3
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": ""
+        }
+      ],
+      "route": "settings",
+      "visibility": "visible",
+      "dom": 265,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 1932516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 3,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 2
+      }
+    },
+    "after_20_cycles": {
+      "commits": 64,
+      "renders": {
+        "WindowedStrip": 1,
+        "Sleeve": 1,
+        "DiscoveryPreviewTarget": 1,
+        "DiscoveryTrackCard": 1,
+        "Artwork2": 21,
+        "DownloadButton2": 1,
+        "NotInterestedButton2": 21,
+        "App": 41,
+        "anonymous": 93,
+        "SpatialNavigation2": 11,
+        "ViewMemoryProvider": 41,
+        "SettingsView2": 41,
+        "StartupSettings2": 3,
+        "MetadataSettings2": 2,
+        "_c3": 21,
+        "ToastContainer": 41,
+        "UpdateBanner": 41,
+        "AddToPlaylistModal": 41,
+        "BrutalistNavigation2": 10,
+        "BrutalistDeck2": 20,
+        "OverflowTitle2": 10,
+        "ProfileNavigation2": 20,
+        "SpatialUtilities2": 10
+      },
+      "layouts": 0,
+      "resizeDeliveries": 10,
+      "raf": 0,
+      "timer": 80,
+      "mutations": {
+        ".discovery-chapters": 8,
+        ".sidebar": 17,
+        ".interface-toolbar": 184,
+        "other": 526,
+        ".progress-container": 33
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        }
+      ],
+      "route": "settings",
+      "visibility": "visible",
+      "dom": 265,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 1932516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 3,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 5,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 2,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 2
+      }
+    },
+    "brutalist_download_100_ticks": {
+      "commits": 0,
+      "renders": {},
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "PLAYINGKeralaBonoboDownloadFeatherNujabesDownloadF"
+        },
+        {
+          "type": "click",
+          "text": "For You"
+        },
+        {
+          "type": "click",
+          "text": "Trending Songs"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "01Home"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 653,
+      "images": 18,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 2
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 6338400,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 5,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 6,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 7,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 4
+      }
+    },
+    "brutalist_playback_100_ticks": {
+      "commits": 100,
+      "renders": {
+        "anonymous": 100
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {
+        "other": 510
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "PLAYINGKeralaBonoboDownloadFeatherNujabesDownloadF"
+        },
+        {
+          "type": "click",
+          "text": "For You"
+        },
+        {
+          "type": "click",
+          "text": "Trending Songs"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "01Home"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 653,
+      "images": 18,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 2,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 2
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 6338400,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 5,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 6,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 7,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 4
+      }
+    },
+    "visible_download_100_ticks": {
+      "commits": 100,
+      "renders": {
+        "LiveDownloadTask2": 100
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {
+        "other": 100
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "PLAYINGKeralaBonoboDownloadFeatherNujabesDownloadF"
+        },
+        {
+          "type": "click",
+          "text": "For You"
+        },
+        {
+          "type": "click",
+          "text": "Trending Songs"
+        },
+        {
+          "type": "click",
+          "text": ""
+        },
+        {
+          "type": "click",
+          "text": "Brutalist"
+        },
+        {
+          "type": "click",
+          "text": "01Home"
+        },
+        {
+          "type": "click",
+          "text": "Settings"
+        },
+        {
+          "type": "click",
+          "text": "Spatial"
+        },
+        {
+          "type": "click",
+          "text": "Your space"
+        },
+        {
+          "type": "click",
+          "text": "Downloads"
+        }
+      ],
+      "route": "downloads",
+      "visibility": "visible",
+      "dom": 203,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "window:beforeunload:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:keydown:true": 1,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:click:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:__playwright_global_listeners_check__:false": 1,
+        "window:mousemove:true": 1,
+        "window:pointerdown:true": 1,
+        "window:pointerup:true": 1,
+        "window:touchstart:true": 1,
+        "window:touchend:true": 1,
+        "window:touchcancel:true": 1,
+        "window:mousedown:true": 1,
+        "window:mouseup:true": 1,
+        "window:click:true": 1,
+        "window:auxclick:true": 1,
+        "window:dblclick:true": 1,
+        "window:contextmenu:true": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 1
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 1932516,
+      "backendListeners": 1,
+      "updateListeners": 1,
+      "queries": {
+        "GetSettings": 7,
+        "GetLibraryTracksPage": 6,
+        "GetLibraryAlbumsPage": 6,
+        "GetAlbums": 6,
+        "GetOnboardingStatus": 2,
+        "GetPlaybackState": 3,
+        "GetRecommendationFeedback": 5,
+        "GetPlaylists": 4,
+        "GetTrackPlaylistMemberships": 4,
+        "GetWishlist": 4,
+        "GetDownloads": 4,
+        "GetDiscoveryRecommendations": 4,
+        "GetCachedWorldTrending": 4,
+        "GetHomeOverview": 6,
+        "GetCurrentUser": 3,
+        "GetWorldTrending": 4,
+        "GetTrackCoverArt": 7,
+        "GetRecommendationSetup": 2,
+        "GetCharts": 4
+      }
+    }
+  },
+  "drag": {
+    "left": 338,
+    "behavior": "auto",
+    "start": 238
+  },
+  "releasedShelf": 338,
+  "restoredShelf": 338,
+  "lyricsTimers": {
+    "mounted": 1,
+    "afterLeaving": 0
+  },
+  "toastKeyframes": [
+    {
+      "offset": 0,
+      "easing": "linear",
+      "composite": "auto",
+      "transform": "scaleX(1)",
+      "computedOffset": 0
+    },
+    {
+      "offset": 1,
+      "easing": "linear",
+      "composite": "auto",
+      "transform": "scaleX(0)",
+      "computedOffset": 1
+    }
+  ]
+}

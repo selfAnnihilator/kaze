@@ -1,0 +1,10 @@
+{
+  "gate": "42-production-build",
+  "command": "CARGO_BUILD_JOBS=4 cargo build --manifest-path src-tauri/Cargo.toml --offline --locked --features tauri/custom-protocol --bin kaze",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T08:35:11Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 126.01,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

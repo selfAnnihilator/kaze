@@ -1,0 +1,221 @@
+[
+  {
+    "style": "spatial",
+    "name": "paging-head-of-line",
+    "reproduced": true,
+    "evidence": {
+      "before": 3,
+      "blocked": {
+        "requests": 3,
+        "rows": 0,
+        "text": "No tracks found in library\n\nAdd music files to your configured folder and click Rescan."
+      },
+      "recovered_rows": 18
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "stale-scoped-results",
+    "reproduced": true,
+    "evidence": {
+      "pending": {
+        "query": "modal-soul",
+        "row": "2Library track 10BonobomigrationFLAC4:00",
+        "busy": null
+      },
+      "command": {
+        "command": "PlayTrack",
+        "payload": {
+          "track_id": "t10"
+        }
+      },
+      "failed": {
+        "query": "NO_MATCH_REVIEW",
+        "row": "1FeatherNujabesmodal-soulFLAC4:00",
+        "alerts": 0
+      }
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "zero-duration",
+    "reproduced": true,
+    "evidence": {
+      "before": "240",
+      "after": {
+        "max": "240",
+        "value": "2",
+        "disabled": false
+      }
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "artwork-invalidation",
+    "reproduced": true,
+    "evidence": {
+      "images": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "migration",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "modal-soul",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "con-todo",
+          "parent": "album-card"
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "Kerala",
+          "parent": "player-artwork"
+        }
+      ]
+    }
+  },
+  {
+    "style": "spatial",
+    "name": "subscription-recovery",
+    "reproduced": true,
+    "evidence": {
+      "before": {
+        "attempts": 2,
+        "listeners": 0
+      },
+      "after": {
+        "attempts": 2,
+        "listeners": 0,
+        "backend": "Feather",
+        "player": "KeralaBonobo0:474:00",
+        "alerts": 0
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "paging-head-of-line",
+    "reproduced": true,
+    "evidence": {
+      "before": 3,
+      "blocked": {
+        "requests": 3,
+        "rows": 0,
+        "text": "0 local audio tracks indexed\n\nNo tracks found in library\n\nAdd music files to your configured folder and click Rescan."
+      },
+      "recovered_rows": 18
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "stale-scoped-results",
+    "reproduced": true,
+    "evidence": {
+      "pending": {
+        "query": "modal-soul",
+        "row": "2Library track 10BonobomigrationFLAC4:00",
+        "busy": null
+      },
+      "command": {
+        "command": "PlayTrack",
+        "payload": {
+          "track_id": "t10"
+        }
+      },
+      "failed": {
+        "query": "NO_MATCH_REVIEW",
+        "row": "1FeatherNujabesmodal-soulFLAC4:00",
+        "alerts": 0
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "zero-duration",
+    "reproduced": true,
+    "evidence": {
+      "before": "240",
+      "after": {
+        "max": "240",
+        "value": "2",
+        "disabled": false
+      }
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "artwork-invalidation",
+    "reproduced": true,
+    "evidence": {
+      "images": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "migration",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "modal-soul",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "con-todo",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "in-rainbows",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "moon-safari",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "mezzanine",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"blue\"/></svg>",
+          "alt": "dummy",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "Kerala",
+          "parent": "music-artwork "
+        },
+        {
+          "src": "data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><rect width=\"32\" height=\"32\" fill=\"red\"/></svg>",
+          "alt": "",
+          "parent": "music-artwork "
+        }
+      ]
+    }
+  },
+  {
+    "style": "brutalist",
+    "name": "subscription-recovery",
+    "reproduced": true,
+    "evidence": {
+      "before": {
+        "attempts": 2,
+        "listeners": 0
+      },
+      "after": {
+        "attempts": 2,
+        "listeners": 0,
+        "backend": "Feather",
+        "player": "THE DECK01 / 04NOW PLAYINGKeralaKeralaBonoboPAUSEPREVNEXTPOSITION 0:47 / 4:00UP NEXT01FeatherNujabes02Friday MorningKhruangbin03Weird FishesRadioheadFLOWON80SettingsMProfileKeralaBonoboTHE DECK ",
+        "alerts": 0
+      }
+    }
+  }
+]

@@ -1,0 +1,3 @@
+PASS archive count follows Albums, Tracks, Playlists and Liked, including exact album scope
+PASS brutalist: Library Moment cover plays/pauses/resumes directly; Open record opens its uncached album by ID without interrupting
+PASS spatial: Library Moment cover plays/pauses/resumes directly; Open record opens its uncached album by ID without interrupting

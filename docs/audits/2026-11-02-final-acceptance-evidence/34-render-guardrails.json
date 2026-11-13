@@ -1,0 +1,10 @@
+{
+  "gate": "34-render-guardrails",
+  "command": "node scripts/profile-frontend.mjs /home/abhi/.codex-work/visualizations/2026/11/02/01a19aa7-1e6d-7f22-90f4-6785f7b41df3/kaze-final-acceptance-20261102/render-guardrails.json",
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "started_utc": "2026-11-02T05:53:38Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 18.47,
+  "candidate_after": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab"
+}

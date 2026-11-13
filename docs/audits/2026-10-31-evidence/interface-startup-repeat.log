@@ -1,0 +1,16 @@
+PASS spatial startup animation: flowing fade and circular motion
+PASS spatial: delayed settings produce only the expected theme from the first commit
+PASS brutalist startup animation: flowing fade, bold lettering, square frame and red sweep
+PASS brutalist: delayed settings produce only the expected theme from the first commit
+PASS brutalist: delayed settings produce only the expected theme from the first commit
+PASS spatial: delayed settings produce only the expected theme from the first commit
+PASS spatial startup animation: still reduced-motion composition
+PASS spatial: delayed settings produce only the expected theme from the first commit
+PASS brutalist startup animation: still reduced-motion composition
+PASS brutalist: delayed settings produce only the expected theme from the first commit
+PASS brutalist: delayed settings produce only the expected theme from the first commit
+PASS startup cancellation: failed App code remains retryable after a late settings response
+PASS spatial: delayed settings with no saved preference produce only the expected theme from the first commit
+PASS brutalist: delayed settings and retry produce only the expected theme from the first commit
+PASS brutalist: standalone study makes no startup IPC calls
+PASS spatial: standalone study makes no startup IPC calls

@@ -1,0 +1,22 @@
+{
+  "qlty --version": {
+    "exit_code": 0,
+    "stdout": "qlty 0.662.0 linux-x64 (f48face 2026-10-23)\n",
+    "stderr": ""
+  },
+  "niri --version": {
+    "exit_code": 0,
+    "stdout": "niri 26.04 (8ed0da4)\n",
+    "stderr": ""
+  },
+  "pkg-config --modversion webkit2gtk-4.1": {
+    "exit_code": 0,
+    "stdout": "2.54.2\n",
+    "stderr": ""
+  },
+  "dbus-run-session --version": {
+    "exit_code": 0,
+    "stdout": "dbus-run-session 1.16.2\nCopyright (C) 2003-2006 Red Hat, Inc.\nCopyright (C) 2006 Thiago Macieira\nCopyright \u00a9 2011-2012 Nokia Corporation\nCopyright \u00a9 2018, 2021 Ralf Habacker\n\nThis is free software; see the source for copying conditions.\nThere is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n",
+    "stderr": ""
+  }
+}

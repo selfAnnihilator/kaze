@@ -1,4 +1,4 @@
-//! Unofficial web API adapter. See docs/jiosaavn-experiment.md for provenance.
+//! Unofficial web API adapter. See docs/archive/jiosaavn-experiment.md for provenance.
 use super::types::ExternalTrackMetadata;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use des::{

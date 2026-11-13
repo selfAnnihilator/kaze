@@ -1,0 +1,36 @@
+{
+  "rust": {
+    "passed": 259,
+    "failed": 0,
+    "ignored": 11
+  },
+  "node_test_files": {
+    "passed": 15,
+    "failed": 0
+  },
+  "native_scripts": {
+    "passed": 6,
+    "failed_final": 0
+  },
+  "webkit_scripts": {
+    "passed": 3,
+    "failed_final": 0
+  },
+  "qa_support_cases": 4,
+  "gaana_parser_cases": 3,
+  "arch_recipe_cases": 7,
+  "quality_gate_cases": 3,
+  "bandit_policy_control": "passed: only test B101 exempt; production B101 and test B602 remain",
+  "initial_harness_failures": [
+    {
+      "name": "single-instance",
+      "exit": 1
+    },
+    {
+      "name": "single-instance",
+      "exit": 1
+    }
+  ],
+  "harness_correction": "Both single-instance heading assertions now use current Music Folders; identity, route, scroll and playback assertions retained",
+  "not_executed": "11 guarded Rust cases, Windows/non-Linux runtime, live provider/account, physical media keys, previous memory soak not repeated"
+}

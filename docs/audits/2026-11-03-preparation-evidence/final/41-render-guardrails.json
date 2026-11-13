@@ -1,0 +1,10 @@
+{
+  "gate": "41-render-guardrails",
+  "command": "node scripts/profile-frontend.mjs /home/abhi/Projects/music_player/docs/audits/2026-11-03-preparation-evidence/final/render-guardrails.json",
+  "candidate": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f",
+  "started_utc": "2026-11-03T08:03:49Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 18.5,
+  "candidate_after": "ae5d34bf3bf37cd79450c7a3f2d17050c4d1bb867d3d21a789b76bfb9ded056f"
+}

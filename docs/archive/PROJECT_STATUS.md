@@ -3,7 +3,7 @@
 ## Current Development Phase
 **Phase 21: Three-Layer Compact Cloud-Synced Daily Statistics Architecture — Implemented &amp; Audited (2026-09-17)**
 
-See audit report: [`docs/audits/2026-09-17-statistics-history.md`](docs/audits/2026-09-17-statistics-history.md)
+See audit report: [`docs/audits/2026-09-17-statistics-history.md`](../audits/2026-09-17-statistics-history.md)
 
 **Verdict:** The three-layer architecture is sound and targeted audit fixes are in place. The implementation is *not* cleared for an unconditional long-term reliability sign-off — the correctness gaps listed below must be addressed before that bar is met.
 

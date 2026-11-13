@@ -1,0 +1,14 @@
+PASS spatial 1036 tracks, subsequent-page failure/retry and bounded rows
+PASS spatial delayed general refresh cannot overwrite album destination
+PASS spatial feedback remains consistent across cached general and album lists
+PASS spatial 201 albums loaded through bounded presentation
+PASS spatial saved playlist survives list refresh failure and refresh retry never creates another
+PASS spatial playlist rejection, cancellation, pending guards and successful retry
+PASS spatial membership rejection displayed and retry handled without page errors
+PASS brutalist 1036 tracks, subsequent-page failure/retry and bounded rows
+PASS brutalist delayed general refresh cannot overwrite album destination
+PASS brutalist feedback remains consistent across cached general and album lists
+PASS brutalist 201 albums loaded through bounded presentation
+PASS brutalist saved playlist survives list refresh failure and refresh retry never creates another
+PASS brutalist playlist rejection, cancellation, pending guards and successful retry
+PASS brutalist membership rejection displayed and retry handled without page errors

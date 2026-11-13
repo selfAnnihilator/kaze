@@ -1,0 +1,10 @@
+PASS 1920×1080: reference shell, record poster, Discovery heading, Library tabs and bounded record spines
+PASS 1440×900: reference shell, record poster, Discovery heading, Library tabs and bounded record spines
+PASS 1024×600: reference shell, record poster, Discovery heading, Library tabs and bounded record spines
+PASS 800×700: reference shell, record poster, Discovery heading, Library tabs and bounded record spines
+PASS aligned numbered playlists, Liked excluded from custom playlists and independent full screen poster/deck
+PASS vertical wheel changes one bin in place per gesture, clamps at both ends and preserves horizontal browsing
+PASS independent Discovery selection, wrapped chapter arrows and native sleeve dragging
+PASS actual Home and deck Flow actions with the thick familiarity bar
+PASS Home previous/current/next identities, smaller side covers, transport actions and opaque placeholders
+PASS narrow preview composition, compact deck link and account access

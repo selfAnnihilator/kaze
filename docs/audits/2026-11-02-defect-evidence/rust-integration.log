@@ -1,0 +1,45 @@
+   Compiling music-player-backend v2.0.3 (/home/abhi/Projects/music_player/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.36s
+     Running tests/auth_recovery_tests.rs (target/debug/deps/auth_recovery_tests-b0e32d3d3906eb50)
+
+running 1 test
+test expired_sessions_clear_local_identity_and_synthetic_token_offline ... ignored, requires explicit disposable XDG data and an unavailable private credential bus
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/library_paging_tests.rs (target/debug/deps/library_paging_tests-cc31949e537f9e73)
+
+running 1 test
+test pages_are_complete_stable_local_and_account_scoped ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/playback_restore_tests.rs (target/debug/deps/playback_restore_tests-57d84c566250dc5f)
+
+running 10 tests
+test failed_bookmark_write_still_stops_audio_and_finishes_shutdown ... ok
+test unknown_duration_preserves_identity_pause_and_restoration_position ... ok
+test cold_launch_restores_paused_identity_queue_settings_and_exact_position_without_history ... ok
+test source_linked_online_and_missing_local_media_restore_without_audio ... ok
+test reopening_again_preserves_bookmark_and_seek_before_play_changes_resume_position ... ok
+test invalid_or_newer_bookmarks_do_not_break_startup_or_new_playback ... ok
+test unknown_duration_eof_before_first_tick_advances_once ... ok
+test quit_cancels_a_cold_online_resume_before_draining_commands ... ok
+test cold_online_resume_waits_for_seekable_cache_then_starts_at_saved_offset ... ok
+test checkpoint_uses_existing_monitor_for_recovery_before_clean_quit ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.52s
+
+     Running tests/playback_tests.rs (target/debug/deps/playback_tests-8069b02824c9a2d2)
+
+running 7 tests
+test test_playback_controls_lifecycle ... ok
+test test_queue_enqueue_dequeue_and_playback_state_enrichment ... ok
+test test_playback_queue_and_navigation ... ok
+test test_independent_playback_keeps_played_history_for_previous ... ok
+test test_online_tracks_can_be_queued_and_played_through_unified_backend ... ok
+test test_queue_refills_randomly_after_the_planned_tracks_finish ... ok
+test test_repeat_modes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+

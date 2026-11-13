@@ -1,0 +1,39 @@
+npm notice run intelligent-music-player@2.0.3 build
+npm notice run tsc && vite build
+vite v6.4.5 building for production...
+transforming...
+✓ 1702 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /home/abhi/Projects/music_player/src/components/spatial-design/Library.tsx is dynamically imported by /home/abhi/Projects/music_player/src/components/spatial-design/SpatialDesignLab.tsx, /home/abhi/Projects/music_player/src/components/spatial-design/SpatialDesignLab.tsx but also statically imported by /home/abhi/Projects/music_player/src/components/spatial-design/SpatialDesignLab.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                 0.46 kB │ gzip:  0.30 kB
+dist/assets/128x128@2x-Pa7-e2yd.png            65.07 kB
+dist/assets/index-D4MS_qPH.css                 25.63 kB │ gzip:  6.24 kB
+dist/assets/BrutalistDesignLab-oihs5zGi.css    25.89 kB │ gzip:  5.64 kB
+dist/assets/SpatialDesignLab-BquMVK6q.css      39.09 kB │ gzip:  8.21 kB
+dist/assets/App-0rzgJZTd.css                  164.43 kB │ gzip: 26.44 kB
+dist/assets/user-g4_9gGP7.js                    0.37 kB │ gzip:  0.29 kB
+dist/assets/wind-BsDSW4Nw.js                    0.43 kB │ gzip:  0.31 kB
+dist/assets/core-b35iMLeV.js                    0.88 kB │ gzip:  0.48 kB
+dist/assets/event-CY3QU2Iq.js                   1.44 kB │ gzip:  0.69 kB
+dist/assets/FullScreenPlayerView-C5biCknD.js    1.79 kB │ gzip:  0.85 kB
+dist/assets/DownloadsView-CXKmrKVC.js           2.65 kB │ gzip:  1.12 kB
+dist/assets/Discovery-BUb9NTnD.js               3.29 kB │ gzip:  1.39 kB
+dist/assets/WishlistView-Bs645JQU.js            3.31 kB │ gzip:  1.40 kB
+dist/assets/sliders-horizontal-Dvpvn4it.js      3.44 kB │ gzip:  0.95 kB
+dist/assets/data-CY_gw7Io.js                    5.41 kB │ gzip:  2.19 kB
+dist/assets/NotificationsView-DFl41m0Z.js       5.54 kB │ gzip:  1.75 kB
+dist/assets/LyricsView-CvKXeISB.js              5.56 kB │ gzip:  2.31 kB
+dist/assets/AuthModal-CjNzCrS7.js               6.53 kB │ gzip:  2.03 kB
+dist/assets/AddToPlaylistModal-Bnr4ZcEY.js      6.92 kB │ gzip:  2.40 kB
+dist/assets/window-CmQ5z7rO.js                 14.33 kB │ gzip:  3.56 kB
+dist/assets/react-window-BCNZ3mP1.js           14.99 kB │ gzip:  4.90 kB
+dist/assets/BrutalistDesignLab-Bw8yrg0Y.js     23.16 kB │ gzip:  6.95 kB
+dist/assets/SpatialDesignLab-DcKwJvSL.js       30.24 kB │ gzip:  9.07 kB
+dist/assets/StatsView-Dn0r3Oi_.js              32.11 kB │ gzip:  6.68 kB
+dist/assets/DiscoveryView-BaLawB76.js          52.01 kB │ gzip: 12.98 kB
+dist/assets/index-B71HbQ-1.js                 230.86 kB │ gzip: 73.21 kB
+dist/assets/App-BO11mPdY.js                   265.97 kB │ gzip: 70.03 kB
+✓ built in 1.43s

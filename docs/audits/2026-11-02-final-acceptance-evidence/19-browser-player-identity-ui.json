@@ -1,0 +1,10 @@
+{
+  "gate": "19-browser-player-identity-ui",
+  "command": "node scripts/test-player-identity-ui.mjs",
+  "candidate": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab",
+  "started_utc": "2026-11-02T05:47:35Z",
+  "exit_code": 0,
+  "status": "passed",
+  "elapsed_seconds": 6.58,
+  "candidate_after": "66b379114a094cc660ca9eb62e785ba6cd74c0bea3310f6a5fe5df6eabbf43ab"
+}
