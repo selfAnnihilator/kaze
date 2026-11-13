@@ -38,7 +38,10 @@ test("Play all toggles pause/resume and shuffle is a per-section toggle", () => 
   assert.match(view, /aria-pressed=\{shuffleEnabled\}/);
   const app = read("src/App.tsx");
   // Section-local shuffle state: never derived from the queue-wide is_shuffled flag.
-  assert.match(app, /const \[libraryShuffle, setLibraryShuffle\] = useState\(false\)/);
+  assert.match(app, /const \[libraryShuffle, setLibraryShuffle\] = useState<boolean>\(/);
+  // Persisted across restarts under a section-specific key.
+  assert.match(app, /localStorage\.getItem\(DOWNLOADS_SHUFFLE_KEY\) === "1"/);
+  assert.match(app, /localStorage\.setItem\(DOWNLOADS_SHUFFLE_KEY/);
   assert.match(app, /command: "SetArchiveShuffle"/);
   assert.match(app, /playbackState\.source === "archive"/);
   assert.match(read("src/hooks/useScopedTracks.ts"), /online:\/\//);

@@ -81,6 +81,9 @@ import { BrutalistDeck } from "./presentation/BrutalistDeck";
 import { BrutalistPoster } from "./presentation/BrutalistPoster";
 import { SpatialUtilities, SpatialLibraryHeader } from "./presentation/SpatialUtilities";
 
+// Downloads section shuffle toggle, persisted per device ("1" on, "0" off).
+const DOWNLOADS_SHUFFLE_KEY = "kaze.downloads.shuffle";
+
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
 const DownloadsView = lazy(() =>
   import("./components/views/DownloadsView").then((m) => ({
@@ -1464,8 +1467,14 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // Downloads view: ordered list playback (plays in order, stops at the end).
   // The shuffle toggle belongs to this section only: it is never read back from
-  // the queue, so other sections (playlists) cannot flip it and it is not persisted.
-  const [libraryShuffle, setLibraryShuffle] = useState(false);
+  // the queue, so other sections (playlists) cannot flip it. Persisted across restarts.
+  const [libraryShuffle, setLibraryShuffle] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(DOWNLOADS_SHUFFLE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const downloadsListActive =
     playbackState.source === "archive" && (playbackState.is_playing || Boolean(playbackState.is_paused));
   const startLibraryList = useCallback(
@@ -1514,6 +1523,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const handleLibraryToggleShuffle = useCallback(async () => {
     const next = !libraryShuffle;
     setLibraryShuffle(next);
+    try {
+      localStorage.setItem(DOWNLOADS_SHUFFLE_KEY, next ? "1" : "0");
+    } catch {
+      // Storage unavailable: toggle still applies for this session.
+    }
     // Takes effect after the current song: only the upcoming Downloads tracks are reordered.
     if (playbackState.source === "archive") {
       await dispatchCommand({ command: "SetArchiveShuffle", payload: { enabled: next } });
