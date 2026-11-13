@@ -30,7 +30,7 @@ export const BrutalistNavigation = memo(function BrutalistNavigation({
           [
             ["home", "Home"],
             ["discovery", "Discover Music"],
-            ["albums", "Downloads"],
+            ["albums", "Library"],
             ["queue", "Queue"],
           ] as const
         ).map(([id, label], i) => (
@@ -70,11 +70,11 @@ export const BrutalistLibraryHeader = memo(function BrutalistLibraryHeader({
     <header className="press-library-heading">
       <div className="press-view-heading">
         <div>
-          <span className="press-micro">LOCAL + DOWNLOADED</span>
+          <span className="press-micro">YOUR MUSIC / ALL IN ONE PLACE</span>
           <h1>
-            DOWN
+            THE
             <br />
-            LOADS.
+            ARCHIVE.
           </h1>
         </div>
         <span className="press-big-index">
@@ -113,7 +113,7 @@ export const BrutalistLibraryHeader = memo(function BrutalistLibraryHeader({
         {(
           [
             ["albums", "Albums"],
-            ["library", "Tracks"],
+            ["library", "Downloads"],
             ["playlists", "Playlists"],
           ] as const
         ).map(([id, label]) => (

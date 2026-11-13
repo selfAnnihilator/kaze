@@ -6,7 +6,7 @@ import { ProfileNavigation } from "./ProfileNavigation";
 const primary = [
   ["home", "Home", Home],
   ["discovery", "Discover Music", Radio],
-  ["albums", "Downloads", Library],
+  ["albums", "Library", Library],
   ["queue", "Queue", ListMusic],
 ] as const;
 const clamp = (width: number) => Math.min(160, Math.max(56, width));

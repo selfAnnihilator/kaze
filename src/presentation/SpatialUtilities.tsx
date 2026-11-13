@@ -144,7 +144,7 @@ export const SpatialLibraryHeader = memo(function SpatialLibraryHeader({
         {(
           [
             ["albums", "Albums"],
-            ["library", "Tracks"],
+            ["library", "Downloads"],
             ["playlists", "Playlists"],
           ] as const
         ).map(([id, title]) => (

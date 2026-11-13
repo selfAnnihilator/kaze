@@ -4,11 +4,12 @@ import { readFileSync } from "node:fs";
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
-test("archive section is renamed Downloads", () => {
+test("tracks tab is renamed Downloads and archive heading is unchanged", () => {
   const nav = read("src/presentation/BrutalistNavigation.tsx");
-  assert.match(nav, /\["albums", "Downloads"\]/);
-  assert.doesNotMatch(nav, /ARCHIVE\./);
-  assert.match(nav, /LOADS\./);
+  assert.match(nav, /\["library", "Downloads"\]/);
+  assert.match(nav, /\["albums", "Library"\]/);
+  assert.match(nav, /ARCHIVE\./);
+  assert.match(read("src/presentation/SpatialUtilities.tsx"), /\["library", "Downloads"\]/);
 });
 
 test("library tracks view has no indexed/loaded text and offers play all + shuffle", () => {
