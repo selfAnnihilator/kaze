@@ -40,6 +40,8 @@ exclude_patterns = [
   "**/templates/**",
   "**/testdata/**",
   "**/vendor/**",
+  # Frozen audit evidence: archived reproduction scripts, kept verbatim.
+  "docs/audits/**",
 ]
 
 test_patterns = [
