@@ -415,7 +415,7 @@ fn native_paused_stream_seeks_before_completion() {
     state.update_downloaded(split as u64);
     let reader = ProgressiveStreamReader::new(&path, state.clone()).unwrap();
     let source = SymphoniaSource::from_media_source(Box::new(reader), Default::default(), "native").unwrap();
-    let mut backend = RodioAudioBackend::try_new().unwrap();
+    let mut backend = RodioAudioBackend::new();
     backend.set_volume(0.0).unwrap();
     backend.load_and_play_source(PlayerSource::Symphonia(source), Some(&path)).unwrap();
     state.activate_playback("native-session".into());

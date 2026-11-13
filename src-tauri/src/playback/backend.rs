@@ -39,39 +39,64 @@ pub struct RodioAudioBackend {
 }
 
 impl RodioAudioBackend {
-    pub fn try_new() -> AppResult<Self> {
+    /// Creates the backend, opening the default output device if one exists.
+    /// Without a device the backend still constructs; `load_and_play_source`
+    /// retries the device so playback recovers once one is plugged in.
+    pub fn new() -> Self {
+        let stream_handle = Self::open_output_stream();
+        if stream_handle.is_none() {
+            warn!("No audio output device at startup; will retry on next playback.");
+        }
+        Self {
+            stream_handle,
+            sink: None,
+            current_path: None,
+            volume: 0.8,
+            is_paused: false,
+        }
+    }
+
+    fn open_output_stream() -> Option<OutputStreamHandle> {
         match OutputStream::try_default() {
             Ok((stream, handle)) => {
                 // Keep the audio output stream active for the process lifetime
                 std::mem::forget(stream);
-                Ok(Self {
-                    stream_handle: Some(handle),
-                    sink: None,
-                    current_path: None,
-                    volume: 0.8,
-                    is_paused: false,
-                })
+                Some(handle)
             }
             Err(err) => {
-                warn!("Audio device initialization failed: {}. Playback engine fallback active.", err);
-                Ok(Self {
-                    stream_handle: None,
-                    sink: None,
-                    current_path: None,
-                    volume: 0.8,
-                    is_paused: false,
-                })
+                warn!("Audio device initialization failed: {}", err);
+                None
             }
         }
     }
 }
 
+impl Default for RodioAudioBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioBackend for RodioAudioBackend {
     fn load_and_play_source(&mut self, source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
+        if self.stream_handle.is_none() {
+            self.stream_handle = Self::open_output_stream();
+            if self.stream_handle.is_some() {
+                info!("Audio output device became available");
+            }
+        }
         if let Some(ref handle) = self.stream_handle {
-            let sink = Sink::try_new(handle).map_err(|e| {
-                AppError::Playback(format!("Failed to initialize audio sink: {}", e))
-            })?;
+            let sink = match Sink::try_new(handle) {
+                Ok(sink) => sink,
+                Err(e) => {
+                    // The device may have gone away; reopen it on the next attempt.
+                    self.stream_handle = None;
+                    return Err(AppError::Playback(format!(
+                        "Failed to initialize audio sink: {}",
+                        e
+                    )));
+                }
+            };
             sink.set_volume(self.volume);
             sink.append(source);
             sink.play();

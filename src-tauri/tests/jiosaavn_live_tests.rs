@@ -18,7 +18,7 @@ async fn full_track_decoder_and_native_seek_gate() {
         .timeout(Duration::from_secs(90))
         .build()
         .unwrap();
-    let mut backend = RodioAudioBackend::try_new().unwrap();
+    let mut backend = RodioAudioBackend::new();
     backend.set_volume(0.0).unwrap();
     for query in [
         "Kesariya",
@@ -114,7 +114,7 @@ async fn unified_player_stream_cache_and_identity_gate() {
     let core = CoreProcessor::new_with_backend(
         pool.clone(),
         config,
-        Box::new(RodioAudioBackend::try_new().unwrap()),
+        Box::new(RodioAudioBackend::new()),
     );
     core.dispatch_command(Command::SetVolume { volume: 0.0 })
         .await
@@ -358,7 +358,7 @@ async fn saved_catalog_entries_play_the_exact_version_shown() {
     let core = CoreProcessor::new_with_backend(
         pool.clone(),
         config,
-        Box::new(RodioAudioBackend::try_new().unwrap()),
+        Box::new(RodioAudioBackend::new()),
     );
     core.dispatch_command(Command::SetVolume { volume: 0.0 })
         .await

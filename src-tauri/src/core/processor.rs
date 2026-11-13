@@ -76,9 +76,7 @@ pub struct CoreProcessor {
 impl CoreProcessor {
     /// Constructs a new CoreProcessor instance with standard Rodio audio backend.
     pub fn new(db_pool: SqlitePool, config: AppConfig) -> Self {
-        let backend = Box::new(RodioAudioBackend::try_new().unwrap_or_else(|_| {
-            panic!("Fatal error creating fallback audio backend");
-        }));
+        let backend = Box::new(RodioAudioBackend::new());
         Self::new_with_backend(db_pool, config, backend)
     }
 
