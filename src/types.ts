@@ -221,6 +221,7 @@ export type Command =
   | { command: "RemoveProviderEnrichment" }
   | { command: "SetMetadataPreference"; payload: { key: string; enabled: boolean } }
   | { command: "PlayTrack"; payload: { track_id: string; source?: string } }
+  | { command: "PlayTrackList"; payload: { track_ids: string[] | null; start_track_id?: string | null; shuffle: boolean } }
   | { command: "PlayQueueIndex"; payload: { index: number } }
   | { command: "Pause" }
   | { command: "Resume" }

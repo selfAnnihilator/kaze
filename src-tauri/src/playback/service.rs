@@ -1097,6 +1097,74 @@ impl PlaybackService {
         self.play_item(&queue_item).await
     }
 
+    /// Plays an ordered list of local tracks (Downloads "Play all" / "Shuffle").
+    /// The queue is the list itself: it plays in order and stops at the end
+    /// (source "archive" never auto-refills with random tracks).
+    pub async fn play_track_list(
+        &self,
+        track_ids: Option<Vec<String>>,
+        start_track_id: Option<String>,
+        shuffle: bool,
+    ) -> AppResult<()> {
+        self.interrupt_preparation();
+        let ids: Vec<String> = match track_ids {
+            Some(ids) => ids,
+            None => match &self.pool {
+                Some(pool) => sqlx::query_scalar(
+                    "SELECT id FROM tracks WHERE file_path NOT LIKE 'online://%' ORDER BY title ASC, id ASC",
+                )
+                .fetch_all(pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?,
+                None => Vec::new(),
+            },
+        };
+
+        let mut items: Vec<QueueItem> = Vec::with_capacity(ids.len());
+        for id in &ids {
+            if let Some(track) = self.track_repo.find_by_id(id).await? {
+                items.push(QueueItem {
+                    queue_id: Uuid::new_v4().to_string(),
+                    track_id: track.id.clone(),
+                    title: track.title.clone(),
+                    artist: track.artist_name.clone().unwrap_or_else(|| "Unknown Artist".into()),
+                    duration_secs: track.duration_secs,
+                });
+            }
+        }
+        if items.is_empty() {
+            return Err(AppError::NotFound("No tracks to play".into()));
+        }
+
+        let mut start_idx = start_track_id
+            .as_ref()
+            .and_then(|sid| items.iter().position(|i| &i.track_id == sid))
+            .unwrap_or(0);
+        if shuffle {
+            items.shuffle(&mut thread_rng());
+            if let Some(sid) = start_track_id.as_ref() {
+                if let Some(pos) = items.iter().position(|i| &i.track_id == sid) {
+                    items.swap(0, pos);
+                }
+            }
+            start_idx = 0;
+        }
+
+        let first = items[start_idx].clone();
+        self.prepare_track_source(&first.track_id).await?;
+
+        let operation = self.flow_operation.lock().await;
+        self.stop_flow_inner().await;
+        *self.current_source.write().await = "archive".to_string();
+        *self.current_duration_secs.write().await = first.duration_secs;
+        {
+            let mut q_guard = self.queue.write().await;
+            q_guard.set_queue(items, Some(start_idx));
+        }
+        drop(operation);
+        self.play_item(&first).await
+    }
+
     /// Plays an online or remote track, ensuring it is registered and streamed through the unified engine.
     pub async fn play_online_track(
         &self,
@@ -1658,7 +1726,7 @@ impl PlaybackService {
                     next_item = self.refill_flow_queue(&fe).await?;
                 }
             }
-            if next_item.is_none() && src != "flow" {
+            if next_item.is_none() && src != "flow" && src != "archive" {
                 next_item = self.refill_random_queue().await?;
             }
         }
@@ -1709,7 +1777,7 @@ impl PlaybackService {
                     next_item = self.refill_flow_queue(&fe).await?;
                 }
             }
-            if next_item.is_none() && src != "flow" {
+            if next_item.is_none() && src != "flow" && src != "archive" {
                 next_item = self.refill_random_queue().await?;
             }
         }

@@ -1,7 +1,7 @@
 import { PagingFeedback } from "../../presentation/PagingFeedback";
 import React, { useState, useRef, useEffect } from "react";
 import { List, RowComponentProps } from "react-window";
-import { Pause, Play, Search, RotateCw, Heart, Check, Bookmark, BookmarkCheck, ListPlus,
+import { Pause, Play, Search, RotateCw, Shuffle, Heart, Check, Bookmark, BookmarkCheck, ListPlus,
 } from "lucide-react";
 import { Track } from "../../types";
 
@@ -16,6 +16,8 @@ interface LibraryViewProps {
   isPlaying?: boolean;
   queuedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
+  onPlayAll?: () => void;
+  onShuffleAll?: () => void;
   loadingTrackId?: string | null;
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
@@ -35,6 +37,8 @@ const formatSeconds = (secs: number) => {
 };
 
 const ROW_HEIGHT = 48;
+const LIBRARY_GRID_COLUMNS =
+  "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 84px 70px 120px";
 
 type LibraryRowProps = {
   tracks: Track[];
@@ -82,8 +86,8 @@ const LibraryRow = ({
       style={{
         ...style,
         display: "grid",
-        gridTemplateColumns:
-          "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 68px 70px 120px",
+        gridTemplateColumns: LIBRARY_GRID_COLUMNS,
+        columnGap: "12px",
         alignItems: "center",
         padding: "0 14px",
         fontSize: "0.9rem",
@@ -251,6 +255,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
     isPlaying,
     queuedTrackIds,
     onPlayTrack,
+    onPlayAll,
+    onShuffleAll,
     loadingTrackId,
     onEnqueueTrack,
     onLikeTrack,
@@ -301,18 +307,25 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
         }}
       >
         <div className="view-header" style={{ flexShrink: 0 }}>
-          <div>
-            <h1 className="view-title">Music Library</h1>
-            <p
-              style={{
-                color: "var(--text-dim)",
-                fontSize: "0.88rem",
-                marginTop: "4px",
-              }}
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              className="btn btn-primary"
+              onClick={onPlayAll}
+              disabled={!onPlayAll || total === 0}
+              title="Play all tracks in order"
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
             >
-              {total} local audio track{total === 1 ? "" : "s"}{" "}
-              indexed
-            </p>
+              <Play size={16} /> Play all
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={onShuffleAll}
+              disabled={!onShuffleAll || total === 0}
+              title="Shuffle all tracks"
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              <Shuffle size={16} /> Shuffle
+            </button>
           </div>
 
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
@@ -356,7 +369,6 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
         </div>
 
         <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
-        {total > tracks.length && <p>{tracks.length} loaded of {total}</p>}
         {tracks.length === 0 && !loading && !pagingError ? (
           <div
             style={{
@@ -391,8 +403,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               className="library-list-header"
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 68px 70px 120px",
+                gridTemplateColumns: LIBRARY_GRID_COLUMNS,
+                columnGap: "12px",
                 padding: "10px 14px",
                 color: "var(--text-dim)",
                 fontSize: "0.8rem",

@@ -265,11 +265,11 @@ export const Library = memo(function Library({
     <section className="bk-library">
       <header className="bk-view-heading">
         <div>
-          <span className="bk-micro">YOUR MUSIC / ALL IN ONE PLACE</span>
+          <span className="bk-micro">LOCAL + DOWNLOADED</span>
           <h1>
-            THE
+            DOWN
             <br />
-            ARCHIVE.
+            LOADS.
           </h1>
         </div>
         <span className="bk-big-index" aria-hidden="true">

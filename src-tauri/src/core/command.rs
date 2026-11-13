@@ -44,6 +44,14 @@ pub enum Command {
         track_id: String,
         source: Option<String>,
     },
+    /// Ordered list playback that stops at the end (Downloads Play all / Shuffle).
+    /// `track_ids: None` plays every local library track in library order.
+    PlayTrackList {
+        track_ids: Option<Vec<String>>,
+        start_track_id: Option<String>,
+        #[serde(default)]
+        shuffle: bool,
+    },
     PlayOnlineTrack {
         track_id: String,
         title: String,

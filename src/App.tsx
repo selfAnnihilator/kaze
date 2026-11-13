@@ -1461,6 +1461,47 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     ],
   );
 
+  // Downloads view: ordered list playback (plays in order, stops at the end).
+  const handlePlayLibraryList = useCallback(
+    async (startId?: string, shuffle = false) => {
+      if (!shuffle && startId && playbackState.current_track?.id === startId && (playbackState.is_playing || playbackState.is_paused)) {
+        await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
+        await fetchPlaybackState();
+        return;
+      }
+      const requestId = beginPlaybackLoading(startId ?? "library-list");
+      try {
+        await dispatchCommand({
+          command: "PlayTrackList",
+          payload: {
+            track_ids: libraryScoped ? tracks.map((t) => t.id) : null,
+            start_track_id: startId ?? null,
+            shuffle,
+          },
+        });
+        await fetchPlaybackState();
+      } catch (err) {
+        await fetchPlaybackState();
+        throw err;
+      } finally {
+        endPlaybackLoading(requestId);
+      }
+    },
+    [
+      tracks,
+      libraryScoped,
+      playbackState.current_track?.id,
+      playbackState.is_playing,
+      playbackState.is_paused,
+      fetchPlaybackState,
+      beginPlaybackLoading,
+      endPlaybackLoading,
+    ],
+  );
+  const handleLibraryRowPlay = useCallback((trackId: string) => handlePlayLibraryList(trackId, false), [handlePlayLibraryList]);
+  const handleLibraryPlayAll = useCallback(() => handlePlayLibraryList(undefined, false), [handlePlayLibraryList]);
+  const handleLibraryShuffleAll = useCallback(() => handlePlayLibraryList(undefined, true), [handlePlayLibraryList]);
+
   const handlePlayOnlineTrack = useCallback(
     async (
       rec: DiscoveryRecommendation,
@@ -3842,7 +3883,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       currentTrackId={playbackState.current_track?.id}
                       isPlaying={playbackState.is_playing}
                       queuedTrackIds={queuedTrackIds}
-                      onPlayTrack={handlePlayTrack}
+                      onPlayTrack={handleLibraryRowPlay}
+                      onPlayAll={handleLibraryPlayAll}
+                      onShuffleAll={handleLibraryShuffleAll}
                       loadingTrackId={loadingTrackId}
                       onEnqueueTrack={handleEnqueueTrack}
                       onLikeTrack={handleLike}
