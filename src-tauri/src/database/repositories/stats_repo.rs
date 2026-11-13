@@ -81,6 +81,8 @@ pub struct StatsOverview {
     pub monthly_graph: Vec<DailyListeningPoint>,
     pub top_songs: Vec<RankedTrackItem>,
     pub top_artists: Vec<RankedArtistItem>,
+    #[serde(default)]
+    pub top_genres: Vec<RankedGenreItem>,
     pub top_days: Vec<TopListeningDay>,
 }
 
@@ -211,6 +213,13 @@ pub trait StatsRepository: Send + Sync {
         limit: u32,
     ) -> AppResult<Vec<RankedTrackItem>>;
 
+    async fn get_all_time_ranked_genres(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedGenreItem>>;
+
     async fn get_all_time_ranked_artists(
         &self,
         user_id: &str,
@@ -315,39 +324,27 @@ impl StatsRepository for SqliteStatsRepository {
             .ok()
             .flatten();
 
-            if let Some((Some(artist_id), genre_id)) = track_info {
-                let _ = sqlx::query(
-                    "INSERT INTO artist_statistics (user_id, artist_id, play_count, total_time_listened, last_played_at, affinity_score)
-                     VALUES (?, ?, 1, ?, ?, 1.0)
-                     ON CONFLICT(user_id, artist_id) DO UPDATE SET
-                        play_count = play_count + 1,
-                        total_time_listened = total_time_listened + excluded.total_time_listened,
-                        last_played_at = excluded.last_played_at,
-                        affinity_score = affinity_score + 1.0"
-                )
-                .bind(user_id)
-                .bind(&artist_id)
-                .bind(listened_secs)
-                .bind(now)
-                .execute(&self.pool)
-                .await;
-
-                if let Some(gid) = genre_id {
-                    let _ = sqlx::query(
-                        "INSERT INTO genre_statistics (user_id, genre_id, play_count, total_time_listened, last_played_at, affinity_score)
-                         VALUES (?, ?, 1, ?, ?, 1.0)
-                         ON CONFLICT(user_id, genre_id) DO UPDATE SET
-                            play_count = play_count + 1,
-                            total_time_listened = total_time_listened + excluded.total_time_listened,
-                            last_played_at = excluded.last_played_at,
-                            affinity_score = affinity_score + 1.0"
-                    )
-                    .bind(user_id)
-                    .bind(&gid)
-                    .bind(listened_secs)
-                    .bind(now)
-                    .execute(&self.pool)
-                    .await;
+            if let Some((artist_id, genre_id)) = track_info {
+                for (table, column, id) in [("artist_statistics", "artist_id", artist_id),
+                                            ("genre_statistics", "genre_id", genre_id)] {
+                    if let Some(id) = id {
+                        let sql = format!(
+                            "INSERT INTO {table} (user_id, {column}, play_count, total_time_listened, last_played_at, affinity_score)
+                             VALUES (?, ?, 1, ?, ?, 1.0)
+                             ON CONFLICT(user_id, {column}) DO UPDATE SET
+                                play_count = play_count + 1,
+                                total_time_listened = total_time_listened + excluded.total_time_listened,
+                                last_played_at = excluded.last_played_at,
+                                affinity_score = affinity_score + 1.0");
+                        sqlx::query(&sql)
+                            .bind(user_id)
+                            .bind(&id)
+                            .bind(listened_secs)
+                            .bind(now)
+                            .execute(&self.pool)
+                            .await
+                            .map_err(|e| AppError::Database(format!("Failed to update {table}: {e}")))?;
+                    }
                 }
             }
         }
@@ -829,9 +826,23 @@ impl StatsRepository for SqliteStatsRepository {
         .unwrap_or(0.0);
 
         // For all-time / current year rankings, base on track_statistics to encompass cloud-restored and local playback
-        let top_songs = self.get_all_time_ranked_tracks(user_id, weights, 10).await.unwrap_or_default();
-        let top_artists = self.get_all_time_ranked_artists(user_id, weights, 10).await.unwrap_or_default();
-        let top_days = self.get_top_listening_days(user_id, 5).await.unwrap_or_default();
+        // Top 10 songs; top 5 artists + top 5 genres share the same card height.
+        let top_songs = self.get_all_time_ranked_tracks(user_id, weights, 10).await.unwrap_or_else(|e| {
+            tracing::warn!(%e, "stats overview: top songs query failed");
+            Vec::new()
+        });
+        let top_artists = self.get_all_time_ranked_artists(user_id, weights, 5).await.unwrap_or_else(|e| {
+            tracing::warn!(%e, "stats overview: top artists query failed");
+            Vec::new()
+        });
+        let top_genres = self.get_all_time_ranked_genres(user_id, weights, 5).await.unwrap_or_else(|e| {
+            tracing::warn!(%e, "stats overview: top genres query failed");
+            Vec::new()
+        });
+        let top_days = self.get_top_listening_days(user_id, 5).await.unwrap_or_else(|e| {
+            tracing::warn!(%e, "stats overview: top days query failed");
+            Vec::new()
+        });
 
         Ok(StatsOverview {
             app_start_date,
@@ -850,6 +861,7 @@ impl StatsRepository for SqliteStatsRepository {
             monthly_graph,
             top_songs,
             top_artists,
+            top_genres,
             top_days,
         })
     }
@@ -982,8 +994,8 @@ impl StatsRepository for SqliteStatsRepository {
         let scored_history = crate::recommendations::engagement::scored_history_sql();
         let sql = format!("
             SELECT
-                COALESCE(a.id, et.artist, 'artist_' || COALESCE(a.name, et.artist, 'Unknown')) as artist_id,
-                COALESCE(a.name, et.artist, 'Unknown Artist') as name,
+                MIN(COALESCE(a.id, et.artist, 'artist_' || COALESCE(a.name, et.artist, 'Unknown'))) as artist_id,
+                MIN(COALESCE(a.name, et.artist, 'Unknown Artist')) as name,
                 COALESCE(COUNT(CASE WHEN h.completed = 1 OR h.seconds_listened >= 30.0 THEN 1 END), 0) as play_count,
                 COALESCE(SUM(h.seconds_listened), 0.0) as total_seconds,
                 (
@@ -1092,7 +1104,7 @@ impl StatsRepository for SqliteStatsRepository {
             LEFT JOIN artists a ON t.artist_id = a.id
             LEFT JOIN external_tracks et ON ts.track_id = et.id
             WHERE ts.user_id = ?
-            GROUP BY artist_id
+            GROUP BY LOWER(TRIM(COALESCE(a.name, et.artist, 'Unknown Artist')))
             HAVING score > 0 OR play_count > 0 OR total_seconds > 0
             ORDER BY score DESC, total_seconds DESC, play_count DESC
             LIMIT ?
@@ -1109,5 +1121,47 @@ impl StatsRepository for SqliteStatsRepository {
             .map_err(|e| AppError::Database(format!("All-time ranked artists query failed: {}", e)))?;
 
         Ok(records)
+    }
+
+    async fn get_all_time_ranked_genres(
+        &self,
+        user_id: &str,
+        weights: &RankingWeightsConfig,
+        limit: u32,
+    ) -> AppResult<Vec<RankedGenreItem>> {
+        let scored_stats = crate::recommendations::engagement::scored_stats_sql();
+        let sql = format!("
+            SELECT
+                MIN(COALESCE(g.id, 'genre_' || LOWER(TRIM(et.genre)))) as genre_id,
+                MIN(COALESCE(g.name, TRIM(et.genre))) as name,
+                CAST(SUM(ts.play_count) AS INTEGER) as play_count,
+                CAST(SUM(ts.total_time_listened) AS REAL) as total_seconds,
+                (
+                    (? * SUM(ts.scored_play_count)) +
+                    (? * (SUM(ts.qualified_time_listened) / 60.0)) -
+                    (? * SUM(ts.scored_skip_count))
+                ) as score
+            FROM ({scored_stats}) ts
+            LEFT JOIN tracks t ON ts.track_id = t.id
+            LEFT JOIN genres g ON t.genre_id = g.id
+            LEFT JOIN external_tracks et ON ts.track_id = et.id
+            WHERE ts.user_id = ?
+              AND COALESCE(g.name, et.genre, '') <> ''
+              AND TRIM(COALESCE(g.name, et.genre, '')) <> ''
+            GROUP BY LOWER(TRIM(COALESCE(g.name, et.genre)))
+            HAVING score > 0 OR play_count > 0 OR total_seconds > 0
+            ORDER BY score DESC, total_seconds DESC, play_count DESC
+            LIMIT ?
+        ");
+
+        sqlx::query_as::<_, RankedGenreItem>(&sql)
+            .bind(weights.play_count_weight)
+            .bind(weights.listening_duration_weight)
+            .bind(weights.skip_penalty)
+            .bind(user_id)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(format!("All-time ranked genres query failed: {}", e)))
     }
 }

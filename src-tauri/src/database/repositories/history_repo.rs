@@ -144,8 +144,10 @@ impl HistoryRepository for SqliteHistoryRepository {
                 "SELECT artist_id, genre_id FROM tracks WHERE id = ?")
                 .bind(&entry.track_id).fetch_optional(&mut *tx).await
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            if let Some((Some(artist), genre)) = metadata {
-                for (table, column, id) in [("artist_statistics", "artist_id", Some(artist)),
+            // Artist and genre aggregates are independent: a track with a genre but no
+            // artist (or the reverse) must still count toward the one it has.
+            if let Some((artist, genre)) = metadata {
+                for (table, column, id) in [("artist_statistics", "artist_id", artist),
                                             ("genre_statistics", "genre_id", genre)] {
                     if let Some(id) = id {
                         let sql = format!("INSERT INTO {table}

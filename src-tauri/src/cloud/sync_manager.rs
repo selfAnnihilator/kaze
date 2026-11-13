@@ -718,7 +718,7 @@ impl SyncManager {
             } else {
                 &ss.user_id
             };
-            let _ = sqlx::query(
+            sqlx::query(
                 "INSERT INTO track_statistics (user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(user_id, track_id) DO UPDATE SET
@@ -738,7 +738,8 @@ impl SyncManager {
             .bind(ss.last_played_at)
             .bind(ss.manual_like)
             .execute(pool)
-            .await;
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to reconcile song stats: {}", e)))?;
         }
 
         crate::recommendations::signals::remember_imported_dislikes(pool, user_id).await?;
@@ -800,8 +801,9 @@ impl SyncManager {
             .execute(pool)
             .await.map_err(|e| AppError::Database(format!("Failed to reconcile track device stats: {}", e)))?;
 
-            // Also keep track_statistics compatibility layer synchronized with the sum across all devices
-            let _ = sqlx::query(
+            // Keep the track_statistics compatibility layer at least the sum across devices;
+            // MAX so plays recorded before per-device rows existed are never wiped.
+            sqlx::query(
                 "INSERT INTO track_statistics (
                     user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at
                  )
@@ -810,16 +812,17 @@ impl SyncManager {
                  WHERE user_id = ? AND track_id = ?
                  GROUP BY user_id, track_id
                  ON CONFLICT(user_id, track_id) DO UPDATE SET
-                     play_count = excluded.play_count,
-                     total_time_listened = excluded.total_time_listened,
-                     completion_count = excluded.completion_count,
-                     skip_count = excluded.skip_count,
-                     last_played_at = excluded.last_played_at"
+                     play_count = MAX(track_statistics.play_count, excluded.play_count),
+                     total_time_listened = MAX(track_statistics.total_time_listened, excluded.total_time_listened),
+                     completion_count = MAX(track_statistics.completion_count, excluded.completion_count),
+                     skip_count = MAX(track_statistics.skip_count, excluded.skip_count),
+                     last_played_at = MAX(COALESCE(track_statistics.last_played_at, 0), COALESCE(excluded.last_played_at, 0))"
             )
             .bind(stat_user_id)
             .bind(&tds.track_id)
             .execute(pool)
-            .await;
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to sync track statistics from device rows: {}", e)))?;
         }
 
         // 5. User stats (yearly archive)

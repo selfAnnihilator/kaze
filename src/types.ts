@@ -466,6 +466,14 @@ export interface RankedArtistItem {
   score: number;
 }
 
+export interface RankedGenreItem {
+  genre_id: string;
+  name: string;
+  play_count: number;
+  total_seconds: number;
+  score: number;
+}
+
 export interface TopListeningDay {
   day_date: string;
   day_name: string;
@@ -495,6 +503,7 @@ export interface StatsOverview {
   monthly_graph: DailyListeningPoint[];
   top_songs: RankedTrackItem[];
   top_artists: RankedArtistItem[];
+  top_genres?: RankedGenreItem[];
   top_days: TopListeningDay[];
 }
 
