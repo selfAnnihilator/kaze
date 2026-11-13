@@ -1,3 +1,4 @@
+use crate::core::sync::{MutexExt, RwLockExt};
 use crate::core::command::RepeatMode;
 use crate::core::error::{AppError, AppResult};
 use crate::core::event::{Event, QueueItem};
@@ -144,8 +145,7 @@ impl PlaybackService {
         });
         *service
             .monitor_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some(task);
+            .lock_or_recover() = Some(task);
 
         // Flow session steering: listen for finalized listen outcomes. Subscribe
         // synchronously so no outcome published after construction is missed;
@@ -189,8 +189,7 @@ impl PlaybackService {
         });
         *service
             .session_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some(session_task);
+            .lock_or_recover() = Some(session_task);
 
         service
     }
@@ -214,7 +213,7 @@ impl PlaybackService {
             Some(flow) if flow.user_id == user_id => flow.generation,
             _ => return,
         };
-        let Some(fe) = self.flow_engine.read().unwrap().clone() else {
+        let Some(fe) = self.flow_engine.read_or_recover().clone() else {
             return;
         };
         let keys = match fe.style_keys(track_id).await {
@@ -368,15 +367,14 @@ impl PlaybackService {
 
     pub fn set_stream_manager(&self, sm: Arc<StreamPlaybackManager>) {
         sm.set_event_bus(self.event_bus.clone());
-        let mut w = self.stream_manager.write().unwrap();
+        let mut w = self.stream_manager.write_or_recover();
         *w = Some(sm);
     }
 
     /// Restore metadata/controls only. Audio and history begin on an explicit Play.
     fn online_catalog(&self) -> Option<Arc<crate::providers::online_catalog::OnlineCatalog>> {
         self.stream_manager
-            .read()
-            .unwrap()
+            .read_or_recover()
             .as_ref()
             .and_then(|manager| manager.catalog.clone())
     }
@@ -385,10 +383,10 @@ impl PlaybackService {
         &self,
         user: Arc<RwLock<Option<crate::database::repositories::UserProfile>>>,
     ) {
-        *self.recommendation_user.write().unwrap() = Some(user);
+        *self.recommendation_user.write_or_recover() = Some(user);
     }
     async fn recommendation_user_id(&self) -> String {
-        let context = self.recommendation_user.read().unwrap().clone();
+        let context = self.recommendation_user.read_or_recover().clone();
         if let Some(user) = context {
             return user
                 .read()
@@ -560,11 +558,11 @@ impl PlaybackService {
         &self,
         coordinator: Arc<crate::discovery::DiscoveryCoordinator>,
     ) {
-        *self.starter_preparation.write().unwrap() = Some(coordinator);
+        *self.starter_preparation.write_or_recover() = Some(coordinator);
     }
 
     pub fn set_flow_engine(&self, fe: Arc<crate::recommendations::FlowEngine>) {
-        let mut w = self.flow_engine.write().unwrap();
+        let mut w = self.flow_engine.write_or_recover();
         *w = Some(fe);
     }
 
@@ -587,7 +585,7 @@ impl PlaybackService {
             + 1;
         // Catalog migration runs in the background; the selected recording is
         // bound by play_item. Unrelated legacy songs must not delay Start Flow.
-        let preparation = self.starter_preparation.read().unwrap().clone();
+        let preparation = self.starter_preparation.read_or_recover().clone();
         if let Some(coordinator) = preparation {
             coordinator
                 .ensure_starter_candidates(user_id, false)
@@ -909,21 +907,21 @@ impl PlaybackService {
 
     fn interrupt_preparation(&self) {
         self.play_generation.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if let Some(manager) = self.stream_manager.read().unwrap().as_ref() {
+        if let Some(manager) = self.stream_manager.read_or_recover().as_ref() {
             manager.request_cancel();
         }
-        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+        if let Some(state) = self.active_stream_state.read_or_recover().as_ref() {
             state.deactivate_playback();
             state.set_cancelled();
         }
     }
 
     pub async fn cancel_active_stream(&self) {
-        if let Some(state) = self.active_stream_state.write().unwrap().take() {
+        if let Some(state) = self.active_stream_state.write_or_recover().take() {
             state.deactivate_playback();
             state.set_cancelled();
         }
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         if let Some(sm) = sm_opt {
             sm.cancel_active_stream().await;
         }
@@ -1315,7 +1313,7 @@ impl PlaybackService {
         }
         drop(operation);
         let prepared_res = if is_online {
-            let sm_opt = self.stream_manager.read().unwrap().clone();
+            let sm_opt = self.stream_manager.read_or_recover().clone();
             if let Some(sm) = sm_opt {
                 let artist = track.artist_name.as_deref().unwrap_or("Unknown Artist");
                 sm.resolve_and_prepare_playback(&track.id, &track.title, artist)
@@ -1353,7 +1351,7 @@ impl PlaybackService {
                         {
                             return Err(AppError::Playback("Playback request superseded".into()));
                         }
-                        match state.status.lock().unwrap().clone() {
+                        match state.status.lock_or_recover().clone() {
                             crate::playback::progressive::StreamStatus::Completed => return Ok(()),
                             crate::playback::progressive::StreamStatus::Failed(error) => {
                                 return Err(AppError::Playback(error))
@@ -1416,7 +1414,7 @@ impl PlaybackService {
 
         let (file_path_to_protect, actual_duration) = match prepared {
             crate::playback::stream::PreparedPlayback::LocalFile { path, duration } => {
-                *self.active_stream_state.write().unwrap() = None;
+                *self.active_stream_state.write_or_recover() = None;
                 let mut backend = self.backend.lock().await;
                 backend.load_and_play(&path)?;
                 if let Some(position) = start_position {
@@ -1436,7 +1434,7 @@ impl PlaybackService {
                 duration,
                 state,
             } => {
-                *self.active_stream_state.write().unwrap() = Some(state);
+                *self.active_stream_state.write_or_recover() = Some(state);
                 let mut backend = self.backend.lock().await;
                 backend.load_and_play_source(source, Some(&part_path))?;
                 (target_path.to_string_lossy().to_string(), duration)
@@ -1446,7 +1444,7 @@ impl PlaybackService {
         *self.current_duration_secs.write().await = actual_duration;
         *self.restored_track.write().await = None;
 
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         if let Some(sm) = sm_opt {
             sm.set_active_playing_path(Some(PathBuf::from(&file_path_to_protect)))
                 .await;
@@ -1465,7 +1463,7 @@ impl PlaybackService {
             duration_secs: actual_duration,
             source: src,
         });
-        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+        if let Some(state) = self.active_stream_state.read_or_recover().as_ref() {
             state.activate_playback(session_id);
         }
 
@@ -1560,7 +1558,7 @@ impl PlaybackService {
             track_id,
             position_secs: pos,
         });
-        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+        if let Some(state) = self.active_stream_state.read_or_recover().as_ref() {
             state.activate_playback(session_id);
         }
         Ok(())
@@ -1575,7 +1573,7 @@ impl PlaybackService {
         self.interrupt_preparation();
         // Command draining may be waiting for a seek on the audio thread.
         // Wake that reader before shutdown waits for in-flight commands.
-        if let Some(state) = self.active_stream_state.read().unwrap().as_ref() {
+        if let Some(state) = self.active_stream_state.read_or_recover().as_ref() {
             state.deactivate_playback();
             state.set_cancelled();
         }
@@ -1597,8 +1595,7 @@ impl PlaybackService {
         self.request_shutdown();
         let task = self
             .monitor_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .lock_or_recover()
             .take();
         if let Some(task) = task {
             task.abort();
@@ -1606,8 +1603,7 @@ impl PlaybackService {
         }
         let session_task = self
             .session_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .lock_or_recover()
             .take();
         if let Some(task) = session_task {
             task.abort();
@@ -1644,7 +1640,7 @@ impl PlaybackService {
         backend.stop()?;
         *self.current_duration_secs.write().await = 0.0;
 
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         if let Some(sm) = sm_opt {
             sm.set_active_playing_path(None).await;
         }
@@ -1676,7 +1672,7 @@ impl PlaybackService {
                 return Ok(());
             }
         }
-        let can_seek = match &*self.active_stream_state.read().unwrap() {
+        let can_seek = match &*self.active_stream_state.read_or_recover() {
             Some(state) => state.can_seek(),
             None => true,
         };
@@ -1723,7 +1719,7 @@ impl PlaybackService {
         if next_item.is_none() {
             let src = self.current_source.read().await.clone();
             if src == "flow" {
-                let fe_opt = self.flow_engine.read().unwrap().clone();
+                let fe_opt = self.flow_engine.read_or_recover().clone();
                 if let Some(fe) = fe_opt {
                     next_item = self.refill_flow_queue(&fe).await?;
                 }
@@ -1774,7 +1770,7 @@ impl PlaybackService {
         if next_item.is_none() {
             let src = self.current_source.read().await.clone();
             if src == "flow" {
-                let fe_opt = self.flow_engine.read().unwrap().clone();
+                let fe_opt = self.flow_engine.read_or_recover().clone();
                 if let Some(fe) = fe_opt {
                     next_item = self.refill_flow_queue(&fe).await?;
                 }
@@ -2142,12 +2138,12 @@ impl PlaybackService {
             q_guard.items().iter().map(|i| i.track_id.clone()).collect()
         };
 
-        let can_seek = match &*self.active_stream_state.read().unwrap() {
+        let can_seek = match &*self.active_stream_state.read_or_recover() {
             Some(state) => state.can_seek(),
             None => true,
         };
         let is_buffering = self.is_resolving.load(std::sync::atomic::Ordering::Relaxed)
-            || match &*self.active_stream_state.read().unwrap() {
+            || match &*self.active_stream_state.read_or_recover() {
                 Some(state) => !is_paused && !is_finished && state.is_buffering(),
                 None => false,
             };
@@ -2255,7 +2251,7 @@ impl PlaybackService {
             return;
         };
 
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         let Some(sm) = sm_opt else {
             return;
         };
@@ -2277,7 +2273,7 @@ impl PlaybackService {
     }
 
     pub async fn clear_remote_audio_cache(&self) -> AppResult<(u64, usize)> {
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         if let Some(sm) = sm_opt {
             let res = sm.clear_cache().await?;
             Ok((res.bytes_freed, res.files_removed))
@@ -2289,7 +2285,7 @@ impl PlaybackService {
     pub async fn get_remote_audio_cache_stats(
         &self,
     ) -> AppResult<crate::playback::stream::RemoteAudioCacheStats> {
-        let sm_opt = self.stream_manager.read().unwrap().clone();
+        let sm_opt = self.stream_manager.read_or_recover().clone();
         if let Some(sm) = sm_opt {
             sm.get_cache_stats().await
         } else {
@@ -2315,7 +2311,7 @@ mod streaming_seek_tests {
         );
         let state = Arc::new(ProgressiveStreamState::new("stream".into(), None));
         state.activate_playback("session".into());
-        *service.active_stream_state.write().unwrap() = Some(state.clone());
+        *service.active_stream_state.write_or_recover() = Some(state.clone());
         let mut events = bus.subscribe();
         assert!(service.get_playback_state().await.can_seek);
         service.seek(42.0).await.unwrap();

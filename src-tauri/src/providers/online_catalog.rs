@@ -1,4 +1,5 @@
 //! Bind online catalog rows before presentation. Playback only follows the saved ID.
+use crate::core::sync::RwLockExt;
 use super::{jiosaavn::JioSaavnProvider, strict_match::normalized, ExternalTrackMetadata};
 use crate::{
     core::{AppError, AppResult},
@@ -41,7 +42,7 @@ impl OnlineCatalog {
     }
 
     pub fn set_event_bus(&self, bus: Arc<crate::core::event_bus::EventBus>) {
-        *self.bus.write().unwrap() = Some(bus);
+        *self.bus.write_or_recover() = Some(bus);
     }
 
     /// Playback follows an identity already bound during import/presentation.
@@ -238,7 +239,7 @@ impl OnlineCatalog {
             .changed
             .swap(false, std::sync::atomic::Ordering::AcqRel)
         {
-            if let Some(bus) = self.bus.read().unwrap().as_ref() {
+            if let Some(bus) = self.bus.read_or_recover().as_ref() {
                 let _ = bus.publish(crate::core::event::Event::LibraryMetadataUpdated);
             }
         }

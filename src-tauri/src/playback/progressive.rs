@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use std::fs::File;
@@ -47,7 +48,7 @@ impl ProgressiveStreamState {
 
     /// Updates the downloaded byte count and wakes any waiting reader threads.
     pub fn update_downloaded(&self, new_bytes: u64) {
-        let _status = self.status.lock().unwrap();
+        let _status = self.status.lock_or_recover();
         self.downloaded_bytes.store(new_bytes, Ordering::Release);
         self.set_buffering(false);
         self.condvar.notify_all();
@@ -56,14 +57,14 @@ impl ProgressiveStreamState {
     /// Attach only after PlaybackStarted. Probing/preparation and obsolete
     /// streams must never publish transport or current-song buffering events.
     pub fn activate_playback(&self, session_id: String) {
-        let _status = self.status.lock().unwrap();
-        *self.playback_session.lock().unwrap() = Some(session_id);
+        let _status = self.status.lock_or_recover();
+        *self.playback_session.lock_or_recover() = Some(session_id);
         self.publish_buffering(self.is_buffering());
     }
 
     pub fn deactivate_playback(&self) {
-        let _status = self.status.lock().unwrap();
-        *self.playback_session.lock().unwrap() = None;
+        let _status = self.status.lock_or_recover();
+        *self.playback_session.lock_or_recover() = None;
     }
 
     // All callers hold status, serializing the flag and its notification with
@@ -75,7 +76,7 @@ impl ProgressiveStreamState {
     }
 
     fn publish_buffering(&self, is_buffering: bool) {
-        if let (Some(bus), Some(session_id)) = (&self.event_bus, self.playback_session.lock().unwrap().as_ref()) {
+        if let (Some(bus), Some(session_id)) = (&self.event_bus, self.playback_session.lock_or_recover().as_ref()) {
             let _ = bus.publish(Event::PlaybackBufferingChanged {
                 session_id: session_id.clone(),
                 track_id: self.track_id.clone(),
@@ -87,7 +88,7 @@ impl ProgressiveStreamState {
     /// Marks the download as completed successfully.
     pub fn set_completed(&self) {
         {
-            let mut s = self.status.lock().unwrap();
+            let mut s = self.status.lock_or_recover();
             if !matches!(*s, StreamStatus::Downloading) { return; }
             *s = StreamStatus::Completed;
             self.set_buffering(false);
@@ -95,7 +96,7 @@ impl ProgressiveStreamState {
         self.condvar.notify_all();
         // A paused player has no position ticks. Tell controllers that seeking
         // became available without pretending playback resumed.
-        if let (Some(bus), Some(_session)) = (&self.event_bus, self.playback_session.lock().unwrap().as_ref()) {
+        if let (Some(bus), Some(_session)) = (&self.event_bus, self.playback_session.lock_or_recover().as_ref()) {
             let _ = bus.publish(Event::PlaybackCapabilitiesChanged {
                 track_id: self.track_id.clone(),
             });
@@ -106,7 +107,7 @@ impl ProgressiveStreamState {
     /// Marks the download as failed with an error description.
     pub fn set_failed(&self, err: String) {
         {
-            let mut s = self.status.lock().unwrap();
+            let mut s = self.status.lock_or_recover();
             if !matches!(*s, StreamStatus::Downloading) { return; }
             *s = StreamStatus::Failed(err);
             self.set_buffering(false);
@@ -117,7 +118,7 @@ impl ProgressiveStreamState {
     /// Marks the download as cancelled.
     pub fn set_cancelled(&self) {
         {
-            let mut s = self.status.lock().unwrap();
+            let mut s = self.status.lock_or_recover();
             *s = StreamStatus::Cancelled;
             self.set_buffering(false);
         }
@@ -125,23 +126,23 @@ impl ProgressiveStreamState {
     }
 
     pub fn is_completed(&self) -> bool {
-        matches!(*self.status.lock().unwrap(), StreamStatus::Completed)
+        matches!(*self.status.lock_or_recover(), StreamStatus::Completed)
     }
 
     /// Keep initial format probing forward-only to avoid speculative seeks.
     /// The producer already runs independently while probing reads wait.
     /// Once playback is attached, reads after a seek can buffer normally.
     pub fn can_seek(&self) -> bool {
-        let status = self.status.lock().unwrap();
+        let status = self.status.lock_or_recover();
         match &*status {
             StreamStatus::Completed => true,
-            StreamStatus::Downloading => self.playback_session.lock().unwrap().is_some(),
+            StreamStatus::Downloading => self.playback_session.lock_or_recover().is_some(),
             StreamStatus::Failed(_) | StreamStatus::Cancelled => false,
         }
     }
 
     pub fn is_cancelled(&self) -> bool {
-        matches!(*self.status.lock().unwrap(), StreamStatus::Cancelled)
+        matches!(*self.status.lock_or_recover(), StreamStatus::Cancelled)
     }
 
     pub fn is_buffering(&self) -> bool {
@@ -177,7 +178,7 @@ impl Read for ProgressiveStreamReader {
         }
 
         loop {
-            let status_guard = self.state.status.lock().unwrap();
+            let status_guard = self.state.status.lock_or_recover();
             // Interrupted may be retried indefinitely by Read::read_exact.
             // Cancellation is terminal, including when bytes remain buffered.
             if matches!(*status_guard, StreamStatus::Cancelled) {
@@ -217,7 +218,7 @@ impl Read for ProgressiveStreamReader {
                     self.state.set_buffering(true);
 
                     // Wait on condvar with a 500ms timeout to wake up reliably
-                    let _ = self.state.condvar.wait_timeout(status_guard, Duration::from_millis(500)).unwrap();
+                    let _ = self.state.condvar.wait_timeout(status_guard, Duration::from_millis(500)).unwrap_or_else(std::sync::PoisonError::into_inner);
 
                     // Synchronize file read offset in case of desync
                     let _ = self.file.seek(SeekFrom::Start(self.read_pos));

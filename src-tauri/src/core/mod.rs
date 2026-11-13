@@ -4,6 +4,7 @@ pub mod event;
 pub mod event_bus;
 pub mod processor;
 pub mod query;
+pub mod sync;
 
 pub use command::{Command, CommandResponse, RepeatMode, SmartMixType, WishlistStatus};
 pub use error::{AppError, AppResult};

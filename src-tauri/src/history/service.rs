@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use crate::config::HistoryConfig;
 use crate::core::error::AppResult;
 use crate::core::event::Event;
@@ -96,7 +97,7 @@ impl HistoryService {
         let task = tokio::spawn(async move {
             s_clone.listen_to_events(rx, shutdown_rx).await;
         });
-        *service.task.lock().unwrap_or_else(|e| e.into_inner()) = Some(task);
+        *service.task.lock_or_recover() = Some(task);
 
         service
     }
@@ -110,9 +111,9 @@ impl HistoryService {
     pub async fn shutdown(&self) {
         let _shutdown = self.shutdown_lock.lock().await;
         self.begin_shutdown();
-        let signal = self.shutdown_signal.lock().unwrap_or_else(|e| e.into_inner()).take();
+        let signal = self.shutdown_signal.lock_or_recover().take();
         if let Some(signal) = signal { let _ = signal.send(()); }
-        let task = self.task.lock().unwrap_or_else(|e| e.into_inner()).take();
+        let task = self.task.lock_or_recover().take();
         if let Some(task) = task {
             if let Err(error) = task.await { error!(%error, "History writer shutdown failed"); }
         }

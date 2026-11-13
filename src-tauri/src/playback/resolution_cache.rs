@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -97,7 +98,7 @@ impl ResolutionCache {
     /// Look up a cached resolved URL.  Returns `None` when the entry is absent
     /// or has expired (expired entries are evicted on the spot).
     pub fn get(&self, key: &str) -> Option<ResolvedEntry> {
-        let mut map = self.inner.lock().unwrap();
+        let mut map = self.inner.lock_or_recover();
         match map.get(key) {
             Some(entry) if entry.is_valid() => Some(entry.clone()),
             Some(_) => {
@@ -114,7 +115,7 @@ impl ResolutionCache {
     ///   2. If the cache is still at capacity, the oldest entry by
     ///      `resolved_at` is evicted.
     pub fn insert(&self, key: String, entry: ResolvedEntry) {
-        let mut map = self.inner.lock().unwrap();
+        let mut map = self.inner.lock_or_recover();
 
         // Step 1: evict all expired entries.
         map.retain(|_, v| v.is_valid());
@@ -136,14 +137,13 @@ impl ResolutionCache {
     /// Remove a specific entry (e.g., after a stream error reveals the URL is
     /// stale despite being within the TTL window).
     pub fn invalidate(&self, key: &str) {
-        self.inner.lock().unwrap().remove(key);
+        self.inner.lock_or_recover().remove(key);
     }
 
     /// Number of currently valid (non-expired) entries.
     pub fn valid_len(&self) -> usize {
         self.inner
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .values()
             .filter(|e| e.is_valid())
             .count()
@@ -194,12 +194,11 @@ mod tests {
         };
         cache
             .inner
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .insert("key2".to_string(), entry);
         assert!(cache.get("key2").is_none());
         // Should have been removed.
-        assert!(cache.inner.lock().unwrap().get("key2").is_none());
+        assert!(cache.inner.lock_or_recover().get("key2").is_none());
     }
 
     #[test]

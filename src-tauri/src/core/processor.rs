@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use crate::cloud::{
     credentials, device, AuthSessionState, CloudClient, CloudSessionMetadata, CloudSyncStatus,
     CloudUser, SessionExpiredReason, SyncManager,
@@ -620,8 +621,7 @@ impl CoreProcessor {
         let tasks = std::mem::take(
             &mut *self
                 .background_tasks
-                .lock()
-                .unwrap_or_else(|e| e.into_inner()),
+                .lock_or_recover(),
         );
         for task in &tasks {
             task.abort();

@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use super::*;
 use std::time::{Duration, Instant};
 
@@ -87,8 +88,8 @@ fn fixture_child() {
             let task = tokio::spawn(async move { playing.dispatch_command(Command::PlayTrack { track_id: "jiosaavn:fixture".into(), source: None }).await });
             tokio::time::timeout(Duration::from_secs(3), async {
                 loop {
-                    let ready = manager.preparation.lock().unwrap().as_ref()
-                        .and_then(|p| p.state.lock().unwrap().clone()).is_some_and(|s| s.is_buffering());
+                    let ready = manager.preparation.lock_or_recover().as_ref()
+                        .and_then(|p| p.state.lock_or_recover().clone()).is_some_and(|s| s.is_buffering());
                     if ready { break; }
                     tokio::time::sleep(Duration::from_millis(10)).await;
                 }

@@ -1,4 +1,5 @@
 //! Unofficial web API adapter. See docs/archive/jiosaavn-experiment.md for provenance.
+use crate::core::sync::MutexExt;
 use super::types::ExternalTrackMetadata;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use des::{
@@ -62,7 +63,7 @@ impl JioSaavnProvider {
     async fn request(&self, call: &str, params: &[(&str, &str)], refresh: bool) -> Result<Value> {
         let key = format!("{call}:{params:?}");
         if !refresh {
-            if let Some((at, value)) = self.cache.lock().unwrap().get(&key) {
+            if let Some((at, value)) = self.cache.lock_or_recover().get(&key) {
                 if at.elapsed() < Duration::from_secs(300) {
                     return Ok(value.clone());
                 }
@@ -119,7 +120,7 @@ impl JioSaavnProvider {
         }
         let value: Value = serde_json::from_slice(&bytes)
             .map_err(|_| JioSaavnError::Malformed("invalid JSON".into()))?;
-        let mut cache = self.cache.lock().unwrap();
+        let mut cache = self.cache.lock_or_recover();
         cache.retain(|_, (at, _)| at.elapsed() < Duration::from_secs(300));
         if cache.len() >= 128 {
             if let Some(oldest) = cache

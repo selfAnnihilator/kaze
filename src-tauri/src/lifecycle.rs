@@ -1,4 +1,5 @@
 //! Desktop lifetime only: hiding never destroys the webview or touches playback.
+use music_player_backend::core::sync::MutexExt;
 use music_player_backend::core::processor::CoreProcessor;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -28,7 +29,7 @@ impl DesktopLifecycle {
     }
 
     pub fn spawn(&self, future: impl std::future::Future<Output = ()> + Send + 'static) {
-        let mut tasks = self.tasks.lock().unwrap_or_else(|e| e.into_inner());
+        let mut tasks = self.tasks.lock_or_recover();
         if self.started.load(Ordering::Acquire) {
             return;
         }
@@ -45,7 +46,7 @@ impl DesktopLifecycle {
         if let Some(processor) = app.try_state::<Arc<CoreProcessor>>() {
             processor.begin_quit();
         }
-        let tasks = std::mem::take(&mut *self.tasks.lock().unwrap_or_else(|e| e.into_inner()));
+        let tasks = std::mem::take(&mut *self.tasks.lock_or_recover());
         for task in &tasks {
             task.abort();
         }

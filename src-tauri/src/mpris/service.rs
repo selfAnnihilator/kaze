@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -112,14 +113,14 @@ impl MprisPlayer {
     }
 
     fn spawn_command(&self, future: impl std::future::Future<Output = ()> + Send + 'static) {
-        let mut tasks = self.command_tasks.lock().unwrap_or_else(|e| e.into_inner());
+        let mut tasks = self.command_tasks.lock_or_recover();
         tasks.retain(|task| !task.is_finished());
         tasks.push(tokio::spawn(future));
     }
 
     async fn cancel_commands(&self) {
         let tasks =
-            std::mem::take(&mut *self.command_tasks.lock().unwrap_or_else(|e| e.into_inner()));
+            std::mem::take(&mut *self.command_tasks.lock_or_recover());
         for task in &tasks {
             task.abort();
         }
@@ -421,8 +422,7 @@ impl MprisServiceHandle {
         let _ = self.connection.clone().close().await;
         let task = self
             .task_handle
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .lock_or_recover()
             .take();
         if let Some(task) = task {
             task.abort();

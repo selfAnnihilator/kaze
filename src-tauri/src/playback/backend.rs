@@ -1,3 +1,4 @@
+use crate::core::sync::MutexExt;
 use crate::core::error::{AppError, AppResult};
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 use std::fs::File;
@@ -211,7 +212,7 @@ impl MockAudioBackend {
 
 impl AudioBackend for MockAudioBackend {
     fn load_and_play_source(&mut self, _source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
-        let mut path_guard = self.loaded_path.lock().unwrap();
+        let mut path_guard = self.loaded_path.lock_or_recover();
         *path_guard = file_path.map(|p| p.to_path_buf());
         self.is_paused_flag.store(false, Ordering::SeqCst);
         self.is_finished_flag.store(false, Ordering::SeqCst);
@@ -220,7 +221,7 @@ impl AudioBackend for MockAudioBackend {
     }
 
     fn load_and_play(&mut self, file_path: &Path) -> AppResult<()> {
-        let mut path_guard = self.loaded_path.lock().unwrap();
+        let mut path_guard = self.loaded_path.lock_or_recover();
         *path_guard = Some(file_path.to_path_buf());
         self.is_paused_flag.store(false, Ordering::SeqCst);
         self.is_finished_flag.store(false, Ordering::SeqCst);
@@ -239,7 +240,7 @@ impl AudioBackend for MockAudioBackend {
     }
 
     fn stop(&mut self) -> AppResult<()> {
-        let mut path_guard = self.loaded_path.lock().unwrap();
+        let mut path_guard = self.loaded_path.lock_or_recover();
         *path_guard = None;
         self.is_paused_flag.store(false, Ordering::SeqCst);
         self.is_finished_flag.store(true, Ordering::SeqCst);
@@ -253,7 +254,7 @@ impl AudioBackend for MockAudioBackend {
     }
 
     fn set_volume(&mut self, volume: f32) -> AppResult<()> {
-        let mut guard = self.volume_level.lock().unwrap();
+        let mut guard = self.volume_level.lock_or_recover();
         *guard = volume.clamp(0.0, 1.0);
         Ok(())
     }

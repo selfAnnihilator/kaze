@@ -1,3 +1,4 @@
+use crate::core::sync::{MutexExt, RwLockExt};
 use crate::core::error::{AppError, AppResult};
 use crate::downloads::DownloadService;
 use crate::playback::resolution_cache::{parse_url_expiry, ResolutionCache, ResolvedEntry};
@@ -155,7 +156,7 @@ impl Preparation {
 
     fn cancel(&self) {
         self.cancelled.send_replace(true);
-        if let Some(state) = self.state.lock().unwrap().as_ref() {
+        if let Some(state) = self.state.lock_or_recover().as_ref() {
             state.deactivate_playback();
             state.set_cancelled();
         }
@@ -278,8 +279,8 @@ impl StreamPlaybackManager {
             protected.insert(path.clone());
             protected.insert(Self::get_part_path(path));
         }
-        if let Some(preparation) = self.preparation.lock().unwrap().as_ref() {
-            protected.extend(preparation.paths.lock().unwrap().iter().cloned());
+        if let Some(preparation) = self.preparation.lock_or_recover().as_ref() {
+            protected.extend(preparation.paths.lock_or_recover().iter().cloned());
         }
         protected
     }
@@ -310,26 +311,26 @@ impl StreamPlaybackManager {
     /// Local library files are handled by PlaybackService before this resolver.
     /// No preview URL is treated as playable audio.
     pub fn set_event_bus(&self, bus: Arc<EventBus>) {
-        *self.event_bus.write().unwrap() = Some(bus);
+        *self.event_bus.write_or_recover() = Some(bus);
     }
 
     /// Synchronous signal: callers must invoke this before operation locks/draining.
     pub fn request_cancel(&self) {
-        if let Some(preparation) = self.preparation.lock().unwrap().as_ref() {
+        if let Some(preparation) = self.preparation.lock_or_recover().as_ref() {
             preparation.cancel();
         }
     }
 
     fn begin_preparation(&self) -> Arc<Preparation> {
         let preparation = Preparation::new();
-        if let Some(old) = self.preparation.lock().unwrap().replace(preparation.clone()) {
+        if let Some(old) = self.preparation.lock_or_recover().replace(preparation.clone()) {
             old.cancel();
         }
         preparation
     }
 
     pub async fn cancel_active_stream(&self) {
-        let preparation = self.preparation.lock().unwrap().take();
+        let preparation = self.preparation.lock_or_recover().take();
         if let Some(preparation) = preparation {
             preparation.cancel();
             preparation.drain().await;
@@ -337,8 +338,8 @@ impl StreamPlaybackManager {
     }
 
     pub async fn can_seek_current(&self) -> bool {
-        self.preparation.lock().unwrap().as_ref()
-            .and_then(|p| p.state.lock().unwrap().clone())
+        self.preparation.lock_or_recover().as_ref()
+            .and_then(|p| p.state.lock_or_recover().clone())
             .is_none_or(|state| state.can_seek())
     }
 
@@ -417,7 +418,7 @@ impl StreamPlaybackManager {
         // One preparation owns resolution and download, including retries.
         // Replacements cancel the old owner; no detached slot cleanup or
         // completion waiter may mutate a newer request's bookkeeping.
-        preparation.paths.lock().unwrap().insert(cache_path.clone());
+        preparation.paths.lock_or_recover().insert(cache_path.clone());
 
         // 4a. Check in-memory resolution cache before calling provider.
         let candidates = if let Some(resolved) = self.resolution_cache.get(&cache_key) {
@@ -575,7 +576,7 @@ impl StreamPlaybackManager {
         // Each attempt owns a unique path. An obsolete attempt cannot unlink a
         // newer request's file, even when both resolve to the same cache key.
         let part_path = part_path.with_extension(format!("{}.part", uuid::Uuid::new_v4()));
-        preparation.paths.lock().unwrap().insert(part_path.clone());
+        preparation.paths.lock_or_recover().insert(part_path.clone());
         let response = tokio::time::timeout(std::time::Duration::from_secs(12),
             self.http_client.get(stream_url).header(reqwest::header::USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36").send()).await
             .map_err(|_| AppError::Playback("Audio stream connection timed out (12s)".into()))?
@@ -596,12 +597,12 @@ impl StreamPlaybackManager {
         // a Tokio file-create future can otherwise create a file after cleanup.
         let file = tokio::fs::File::from_std(std::fs::File::create(&part_path)
             .map_err(|e| AppError::Io(e.to_string()))?);
-        let state = Arc::new(ProgressiveStreamState::new(track_id.into(), self.event_bus.read().unwrap().clone()));
+        let state = Arc::new(ProgressiveStreamState::new(track_id.into(), self.event_bus.read_or_recover().clone()));
         state.content_length.store(length, std::sync::atomic::Ordering::Release);
         // Serialize registration with cancellation, including cancellation that
         // arrived while the HTTP headers were being fetched.
         {
-            let mut slot = preparation.state.lock().unwrap();
+            let mut slot = preparation.state.lock_or_recover();
             *slot = Some(state.clone());
             if *preparation.cancelled.borrow() { state.set_cancelled(); }
         }
