@@ -244,13 +244,6 @@ impl OnlineCatalog {
         }
     }
 
-    pub async fn prepare_existing(self: &Arc<Self>) -> AppResult<()> {
-        let ids: Vec<String> = sqlx::query_scalar("SELECT e.id FROM external_tracks e LEFT JOIN tracks t ON t.id=e.id WHERE t.id IS NULL OR t.file_path LIKE 'online://%' ORDER BY e.created_at DESC LIMIT 2000").fetch_all(&self.pool).await?;
-        self.prepare_ids(ids).await;
-        self.notify_changes();
-        Ok(())
-    }
-
     pub async fn prepare_ids(
         self: &Arc<Self>,
         ids: Vec<String>,

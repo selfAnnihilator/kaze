@@ -52,7 +52,7 @@ async fn playlist_fixture() -> (
     );
     // Replace only the import dependency; no production endpoint/configuration override.
     let mut provider =
-        ProviderCoordinator::new(pool.clone(), core.event_bus.clone(), config.cache_dir);
+        ProviderCoordinator::new(pool.clone(), core.event_bus.clone());
     provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     core.provider_coordinator = Arc::new(provider);
     (temp, core, pool, count, task)

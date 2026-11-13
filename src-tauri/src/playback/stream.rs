@@ -267,12 +267,6 @@ impl StreamPlaybackManager {
         self.active_downloads.lock().await.insert(path);
     }
 
-    /// For testing purposes: unregister an active in-flight download path.
-    #[doc(hidden)]
-    pub async fn unmark_active_download_for_test(&self, path: &Path) {
-        self.active_downloads.lock().await.remove(path);
-    }
-
     /// Retrieves all protected paths (currently playing file, active downloads, and their .part files).
     async fn get_protected_paths(&self) -> HashSet<PathBuf> {
         let mut protected = HashSet::new();
@@ -308,16 +302,6 @@ impl StreamPlaybackManager {
         } else if let Ok(file) = std::fs::File::open(path) {
             let _ = file.set_times(times);
         }
-    }
-
-    /// Updates the cache configuration.
-    pub async fn set_config(&self, new_config: RemoteAudioCacheConfig) {
-        *self.config.write().await = new_config;
-    }
-
-    /// Returns the current cache configuration.
-    pub async fn get_config(&self) -> RemoteAudioCacheConfig {
-        self.config.read().await.clone()
     }
 
     /// Resolves an audio track to a playable local file path and duration.
@@ -721,124 +705,6 @@ impl StreamPlaybackManager {
     fn spawn_cache_eviction(&self) {
         let manager = self.clone_for_bg();
         tokio::spawn(async move { let _ = manager.enforce_cache_limits().await; });
-    }
-
-    /// Downloads the remote audio stream to a `.part` file, verifies size, and atomically renames it.
-    #[allow(dead_code)]
-    async fn download_and_cache(&self, url: &str, target_path: &Path) -> AppResult<()> {
-        tokio::fs::create_dir_all(&self.cache_dir)
-            .await
-            .map_err(|e| AppError::Io(format!("Failed to create remote-audio cache dir: {}", e)))?;
-
-        let part_path = Self::get_part_path(target_path);
-        let mut guard = PartFileCleanupGuard::new(part_path.clone());
-
-        let request = self
-            .http_client
-            .get(url)
-            .header(
-                reqwest::header::USER_AGENT,
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            );
-
-        let response = request
-            .send()
-            .await
-            .map_err(|e| {
-                #[cfg(test)] eprintln!("fixture connection diagnostic: {e:?}");
-                AppError::Playback(format!("Failed to connect to audio stream: {}", e))
-            })?;
-
-        let status = response.status();
-        if !status.is_success() && status != reqwest::StatusCode::PARTIAL_CONTENT {
-            return Err(AppError::Playback(format!(
-                "Audio stream returned HTTP {}",
-                status
-            )));
-        }
-        if response.headers().get(reqwest::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .is_some_and(|content_type| content_type.starts_with("text/") || content_type.contains("json"))
-        {
-            return Err(AppError::Playback("Audio source returned a page instead of audio".to_string()));
-        }
-
-        let config = self.config.read().await.clone();
-        let range_total = if status == reqwest::StatusCode::PARTIAL_CONTENT {
-            response.headers().get(reqwest::header::CONTENT_RANGE)
-                .and_then(|value| value.to_str().ok())
-                .and_then(|value| {
-                    let (range, total) = value.strip_prefix("bytes ")?.split_once('/')?;
-                    if !range.starts_with("0-") { return None; }
-                    total.parse::<u64>().ok()
-                })
-        } else { None };
-        if let Some(content_length) = response.content_length() {
-            if content_length > config.max_single_file_bytes {
-                return Err(AppError::Playback(format!(
-                    "Remote audio source ({} bytes) exceeds maximum allowable single cache file size ({} bytes)",
-                    content_length, config.max_single_file_bytes
-                )));
-            }
-        }
-
-        let mut file = tokio::fs::File::create(&part_path)
-            .await
-            .map_err(|e| AppError::Io(format!("Failed to create partial cache file: {}", e)))?;
-
-        let mut downloaded_bytes: u64 = 0;
-        let mut mut_resp = response;
-        loop {
-            let chunk_opt = tokio::time::timeout(std::time::Duration::from_secs(25), mut_resp.chunk())
-                .await
-                .map_err(|_| AppError::Playback("Audio stream download timed out (no data received for 25s)".to_string()))?
-                .map_err(|e| AppError::Playback(format!("Stream read error: {}", e)))?;
-
-            let chunk = match chunk_opt {
-                Some(c) => c,
-                None => break,
-            };
-
-            downloaded_bytes += chunk.len() as u64;
-            if downloaded_bytes > config.max_single_file_bytes {
-                return Err(AppError::Playback(format!(
-                    "Remote audio stream exceeded maximum single cache file size ({} bytes)",
-                    config.max_single_file_bytes
-                )));
-            }
-            file.write_all(&chunk)
-                .await
-                .map_err(|e| AppError::Io(e.to_string()))?;
-        }
-
-        file.flush()
-            .await
-            .map_err(|e| AppError::Io(e.to_string()))?;
-        drop(file);
-
-        if downloaded_bytes == 0 {
-            return Err(AppError::Playback("Audio stream was empty".to_string()));
-        }
-        if let Some(expected_bytes) = range_total {
-            if downloaded_bytes != expected_bytes {
-                return Err(AppError::Playback(format!(
-                    "Incomplete ranged audio stream: received {} of {} bytes",
-                    downloaded_bytes, expected_bytes
-                )));
-            }
-        }
-
-        // Atomic rename from .part to final .audio
-        tokio::fs::rename(&part_path, target_path)
-            .await
-            .map_err(|e| AppError::Io(format!("Failed to finalize cache file: {}", e)))?;
-
-        // Succeeded: disarm cleanup guard
-        guard.disarm();
-        Self::touch_cache_entry(target_path);
-
-        info!(bytes = downloaded_bytes, path = %target_path.display(), "Successfully cached remote stream");
-        Ok(())
     }
 
     /// Enforces the bounded cache size using LRU eviction down to the eviction target.

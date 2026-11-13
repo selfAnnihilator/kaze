@@ -32,7 +32,6 @@ end
 subgraph group_media["Library Playback"]
   node_library_service["Library Service<br/>[service.rs]"]
   node_library_scanner["Library Scanner<br/>[scanner.rs]"]
-  node_folder_watcher["Folder Watcher<br/>[watcher.rs]"]
   node_playback_service["Playback Service<br/>[service.rs]"]
   node_history_service["History Service<br/>[service.rs]"]
 end
@@ -73,7 +72,6 @@ node_core_processor -->|"queries"| node_ranking_engine
 node_core_processor -->|"commands"| node_download_service
 node_core_processor -->|"coordinates sync"| node_cloud_sync
 node_library_service -->|"scans"| node_library_scanner
-node_folder_watcher -->|"notifies changes"| node_library_service
 node_library_scanner -->|"writes catalog"| node_sqlite
 node_library_service -->|"reads catalog"| node_sqlite
 node_playback_service -->|"reads tracks"| node_sqlite
@@ -103,7 +101,6 @@ click node_core_processor "https://github.com/selfannihilator/kaze/blob/prod/src
 click node_event_bus "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/core/event_bus.rs"
 click node_library_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/service.rs"
 click node_library_scanner "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/scanner.rs"
-click node_folder_watcher "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/watcher.rs"
 click node_playback_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/playback/service.rs"
 click node_history_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/history/service.rs"
 click node_sqlite "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/database/mod.rs"
@@ -126,7 +123,7 @@ classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
 classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
 class node_react_ui,node_api_bridge toneBlue
 class node_tauri_gateway,node_core_processor,node_event_bus toneAmber
-class node_library_service,node_library_scanner,node_folder_watcher,node_playback_service,node_history_service,node_spotify_api,node_cloud_api toneMint
+class node_library_service,node_library_scanner,node_playback_service,node_history_service,node_spotify_api,node_cloud_api toneMint
 class node_discovery,node_recommendations,node_ranking_engine,node_wishlist_manager toneRose
 class node_sqlite,node_playlist_repo,node_provider_coordinator,node_download_service,node_cloud_sync,node_cloud_client,node_user,node_metadata_providers,node_download_sources toneIndigo
 ```

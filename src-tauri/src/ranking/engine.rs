@@ -85,13 +85,4 @@ impl RankingEngine {
         }
     }
 
-    /// Retrieves ranked entities according to multi-factor scoring formula (defaults to default user).
-    pub async fn get_rankings(
-        &self,
-        window: TimeWindow,
-        entity: RankingEntity,
-        limit: u32,
-    ) -> AppResult<RankedOutput> {
-        self.get_rankings_for_user(None, window, entity, limit).await
-    }
 }

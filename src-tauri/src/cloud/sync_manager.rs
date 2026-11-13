@@ -88,23 +88,6 @@ impl SyncManager {
         Ok(())
     }
 
-    pub async fn update_session_expiry(
-        pool: &SqlitePool,
-        user_id: &str,
-        idle_expires_at: i64,
-        absolute_expires_at: i64,
-    ) -> AppResult<()> {
-        sqlx::query("UPDATE cloud_sessions SET idle_expires_at = ?, absolute_expires_at = ? WHERE user_id = ?")
-            .bind(idle_expires_at)
-            .bind(absolute_expires_at)
-            .bind(user_id)
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Database(format!("Failed to update session expiry: {}", e)))?;
-
-        Ok(())
-    }
-
     pub async fn delete_session(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
         let _ = super::credentials::delete_session_token(user_id);
         sqlx::query("DELETE FROM cloud_sessions WHERE user_id = ?")
@@ -112,31 +95,6 @@ impl SyncManager {
             .execute(pool)
             .await
             .map_err(|e| AppError::Database(format!("Failed to delete cloud session: {}", e)))?;
-
-        Ok(())
-    }
-
-    pub async fn clear_all_sessions(pool: &SqlitePool) -> AppResult<()> {
-        if let Ok(Some(s)) = Self::get_active_session(pool).await {
-            let _ = super::credentials::delete_session_token(&s.user_id);
-        }
-        sqlx::query("DELETE FROM cloud_sessions")
-            .execute(pool)
-            .await
-            .map_err(|e| AppError::Database(format!("Failed to clear cloud sessions: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Clears session token and local session metadata on logout or revocation.
-    /// In accordance with the local-first security architecture, local songs,
-    /// playlists, statistics, and pending sync data are NOT deleted.
-    pub async fn clear_user_local_data(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
-        let _ = super::credentials::delete_session_token(user_id);
-        let _ = sqlx::query("DELETE FROM cloud_sessions WHERE user_id = ?")
-            .bind(user_id)
-            .execute(pool)
-            .await;
 
         Ok(())
     }

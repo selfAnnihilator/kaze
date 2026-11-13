@@ -1225,35 +1225,6 @@ impl PlaybackService {
         self.play_track(track_id, source).await
     }
 
-    /// Enqueues an online or remote track, ensuring it is registered in the database.
-    pub async fn enqueue_online_track(
-        &self,
-        track_id: &str,
-        title: &str,
-        artist: &str,
-        album: Option<&str>,
-        duration_secs: Option<f64>,
-        cover_art_url: Option<&str>,
-        preview_url: Option<&str>,
-        play_next: bool,
-    ) -> AppResult<bool> {
-        if let Some(pool) = &self.pool {
-            crate::recommendations::mixes::ensure_online_track(
-                pool,
-                track_id,
-                title,
-                Some(artist),
-                album,
-                duration_secs,
-                cover_art_url,
-                preview_url,
-            )
-            .await?;
-        }
-
-        self.enqueue_track(track_id, play_next).await
-    }
-
     /// Plays an item from the current queue by index.
     pub async fn play_queue_index(&self, index: usize) -> AppResult<()> {
         self.interrupt_preparation();

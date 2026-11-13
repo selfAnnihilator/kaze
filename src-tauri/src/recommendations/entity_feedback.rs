@@ -25,16 +25,6 @@ pub fn genre_norm(genre: &str) -> String {
     genre.trim().to_lowercase()
 }
 
-/// Normalized key for a (kind, raw name) pair; artists use their first credit.
-pub fn entity_key(kind: &str, name: &str) -> Option<String> {
-    let key = match kind {
-        "artist" => artist_credits(name).into_iter().next()?,
-        "genre" => genre_norm(name),
-        _ => return None,
-    };
-    (!key.is_empty()).then_some(key)
-}
-
 pub async fn load_rows(pool: &SqlitePool, user: &str) -> AppResult<Vec<EntityFeedbackRow>> {
     Ok(sqlx::query_as::<_, EntityFeedbackRow>(
         "SELECT kind, key_norm AS key, display, level, created_at

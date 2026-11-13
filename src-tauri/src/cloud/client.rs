@@ -280,33 +280,6 @@ impl CloudClient {
             .unwrap_or_else(|| chrono::Utc::now().timestamp()))
     }
 
-    pub async fn get_profile(&self, worker_url: &str, token: &str) -> AppResult<CloudUser> {
-        let url = format!("{}/api/profile", worker_url.trim_end_matches('/'));
-        let res = self
-            .client
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", token))
-            .send()
-            .await
-            .map_err(|e| AppError::Network(format!("Failed to fetch profile: {}", e)))?;
-
-        let status = res.status();
-        let body: serde_json::Value = res
-            .json()
-            .await
-            .map_err(|e| AppError::Network(format!("Invalid profile response: {}", e)))?;
-
-        if !status.is_success() || body["success"] != true {
-            let msg = body["error"].as_str().unwrap_or("Failed to fetch profile");
-            return Err(AppError::Network(msg.to_string()));
-        }
-
-        let user: CloudUser = serde_json::from_value(body["user"].clone())
-            .map_err(|e| AppError::Validation(format!("Invalid profile data: {}", e)))?;
-
-        Ok(user)
-    }
-
     pub async fn upload_avatar(
         &self,
         worker_url: &str,

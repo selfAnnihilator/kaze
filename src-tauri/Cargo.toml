@@ -12,10 +12,6 @@ name = "music_player_backend"
 path = "src/lib.rs"
 
 [[bin]]
-name = "music-player-cli"
-path = "src/main.rs"
-
-[[bin]]
 name = "kaze"
 path = "src/app.rs"
 
@@ -57,7 +53,6 @@ keyring = "3"
 
 # Metadata & Filesystem Scanning
 lofty = "0.22"
-notify = "8.0"
 
 # Audio Playback
 rodio = { version = "0.20", default-features = false, features = ["symphonia-all"] }

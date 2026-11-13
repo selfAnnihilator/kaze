@@ -44,9 +44,6 @@ pub enum Query {
         offset: u32,
         limit: u32,
     },
-    GetArtistDetails {
-        artist_id: String,
-    },
     GetAlbums {
         offset: u32,
         limit: u32,

@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::{Mutex, OnceCell, RwLock};
-use tracing::{info, warn};
+use tracing::info;
 
 /// Central processing coordinator for commands, queries, and event dispatching.
 pub struct CoreProcessor {
@@ -140,7 +140,6 @@ impl CoreProcessor {
         let provider_coordinator = Arc::new(ProviderCoordinator::new(
             db_pool.clone(),
             event_bus.clone(),
-            config.cache_dir.clone(),
         ));
         let gap_enrichment = Arc::new(crate::providers::enrichment::GapEnrichmentService::new(
             db_pool.clone(),
@@ -3298,10 +3297,6 @@ impl CoreProcessor {
                     .await?;
                 let val = session.and_then(|s| serde_json::to_value(s).ok());
                 Ok(QueryResponse::FlowSession(val))
-            }
-            _ => {
-                warn!(?query, "Query handler routed to fallback");
-                Ok(QueryResponse::Empty)
             }
         }
     }

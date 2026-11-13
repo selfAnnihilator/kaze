@@ -39,7 +39,6 @@ pub struct DiscoveryCoordinator {
     wishlist_repo: Arc<dyn WishlistRepository>,
     track_repo: Arc<dyn TrackRepository>,
     taste_engine: Arc<TasteProfileEngine>,
-    #[allow(dead_code)]
     provider_coordinator: Option<Arc<ProviderCoordinator>>,
     artist_edition_cache: tokio::sync::Mutex<HashMap<String, std::time::Instant>>,
     artist_candidate_cache:

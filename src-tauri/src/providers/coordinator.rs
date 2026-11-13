@@ -7,11 +7,10 @@ use crate::{
     },
 };
 use sqlx::SqlitePool;
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 /// The single online catalog and local-file metadata source.
 pub struct ProviderCoordinator {
-    cache_dir: PathBuf,
     pub jiosaavn: Arc<JioSaavnProvider>,
     pool: SqlitePool,
     event_bus: Arc<EventBus>,
@@ -28,11 +27,10 @@ impl ProviderCoordinator {
             Err(_) => false,
         }
     }
-    pub fn new(pool: SqlitePool, event_bus: Arc<EventBus>, cache_dir: PathBuf) -> Self {
+    pub fn new(pool: SqlitePool, event_bus: Arc<EventBus>) -> Self {
         Self {
             pool,
             event_bus,
-            cache_dir,
             jiosaavn: Arc::new(JioSaavnProvider::new()),
         }
     }
@@ -42,16 +40,6 @@ impl ProviderCoordinator {
             available: true,
             message: Some("Music, artwork and catalog metadata".into()),
         });
-    }
-    pub async fn enrich_track(self: &Arc<Self>, track_id: &str) -> AppResult<bool> {
-        super::enrichment::GapEnrichmentService::new(
-            self.pool.clone(),
-            self.clone(),
-            self.cache_dir.clone(),
-            self.event_bus.clone(),
-        )
-        .enrich(track_id)
-        .await
     }
     /// Reuse any pre-existing saved provider identity, including cloud aliases.
     pub async fn persist(&self, track: ExternalTrackMetadata) -> AppResult<ExternalTrackRecord> {

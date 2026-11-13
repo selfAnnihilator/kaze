@@ -100,11 +100,6 @@ pub enum Event {
         seconds_listened: f64,
         completed: bool,
     },
-    TrackSkipped {
-        track_id: String,
-        seconds_listened: f64,
-        percentage_listened: f64,
-    },
 
     // --- Library Lifecycle ---
     LibraryScanStarted { folder_path: String },
@@ -126,10 +121,6 @@ pub enum Event {
         playlist_id: String,
         mix_type: String,
         track_count: usize,
-    },
-    RecommendationsRefreshed {
-        session_id: String,
-        recommendation_count: usize,
     },
 
     // --- Provider Status ---
@@ -153,7 +144,6 @@ pub enum Query {
     GetTracks { offset: u32, limit: u32, sort_by: Option<String>, ascending: bool },
     GetTrackById { track_id: String },
     GetArtists { offset: u32, limit: u32 },
-    GetArtistDetails { artist_id: String },
     GetAlbums { offset: u32, limit: u32 },
     GetAlbumDetails { album_id: String },
     GetPlaylists,

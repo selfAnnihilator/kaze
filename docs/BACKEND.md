@@ -28,8 +28,7 @@ src-tauri/src/
 ├── library/
 │   ├── mod.rs
 │   ├── service.rs           // LibraryService: folder management & scans
-│   ├── scanner.rs           // Recursive directory scanner with lofty extraction
-│   └── watcher.rs           // notify-based filesystem watcher
+│   └── scanner.rs           // Recursive directory scanner with lofty extraction
 │
 ├── database/
 │   ├── mod.rs               // SqlitePool initialization & migrations

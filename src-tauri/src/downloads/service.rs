@@ -449,10 +449,6 @@ impl DownloadService {
         self.repo.list_tasks(status_filter, limit).await
     }
 
-    /// Fetches a download task by ID.
-    pub async fn get_download(&self, task_id: &str) -> AppResult<Option<DownloadTaskRecord>> {
-        self.repo.get_task_by_id(task_id).await
-    }
 }
 
 /// Helper parsing "Artist - Title.ext" or "Title.ext" from a filename string.

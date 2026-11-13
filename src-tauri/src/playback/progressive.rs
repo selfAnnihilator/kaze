@@ -2,7 +2,7 @@ use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
@@ -157,8 +157,6 @@ pub struct ProgressiveStreamReader {
     file: File,
     read_pos: u64,
     state: Arc<ProgressiveStreamState>,
-    #[allow(dead_code)]
-    part_path: PathBuf,
 }
 
 impl ProgressiveStreamReader {
@@ -168,7 +166,6 @@ impl ProgressiveStreamReader {
             file,
             read_pos: 0,
             state,
-            part_path: part_path.to_path_buf(),
         })
     }
 }

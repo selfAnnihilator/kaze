@@ -139,17 +139,6 @@ impl ResolutionCache {
         self.inner.lock().unwrap().remove(key);
     }
 
-    /// Number of currently held entries (valid + expired-not-yet-evicted).
-    #[allow(dead_code)]
-    pub fn len(&self) -> usize {
-        self.inner.lock().unwrap().len()
-    }
-
-    /// Whether the cache holds no entries, including uncollected expired ones.
-    pub fn is_empty(&self) -> bool {
-        self.inner.lock().unwrap().is_empty()
-    }
-
     /// Number of currently valid (non-expired) entries.
     pub fn valid_len(&self) -> usize {
         self.inner

@@ -251,7 +251,7 @@ async fn enrichment_rescan_removal_and_offline_restart_preserve_source_tags() {
     let item = candidate("song1", "Song");
     let (url, requests, task) = server(json!({"results":[item.clone()],"song1":item}), 200).await;
     let bus = Arc::new(EventBus::default());
-    let mut providers = ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into());
+    let mut providers = ProviderCoordinator::new(pool.clone(), bus.clone());
     providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&url));
     let service =
         GapEnrichmentService::new(pool.clone(), Arc::new(providers), temp.path().into(), bus);
@@ -305,11 +305,7 @@ async fn enrichment_rescan_removal_and_offline_restart_preserve_source_tags() {
     let bus = Arc::new(EventBus::default());
     let service = GapEnrichmentService::new(
         pool.clone(),
-        Arc::new(ProviderCoordinator::new(
-            pool.clone(),
-            bus.clone(),
-            temp.path().into(),
-        )),
+        Arc::new(ProviderCoordinator::new(pool.clone(), bus.clone())),
         temp.path().into(),
         bus,
     );
@@ -335,7 +331,7 @@ async fn enrichment_rejects_ambiguity_versions_and_insufficient_evidence() {
         sqlx::query("INSERT INTO application_settings(key,value,updated_at) VALUES ('enable_musicbrainz','false',0)").execute(&pool).await.unwrap();
         let (url, _, task) = server(json!({"results":items}), 200).await;
         let bus = Arc::new(EventBus::default());
-        let mut providers = ProviderCoordinator::new(pool.clone(), bus.clone(), temp.path().into());
+        let mut providers = ProviderCoordinator::new(pool.clone(), bus.clone());
         providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&url));
         let service =
             GapEnrichmentService::new(pool.clone(), Arc::new(providers), temp.path().into(), bus);
@@ -816,11 +812,7 @@ async fn artist_release_discovery_checks_album_credits_and_preserves_the_saved_c
     config.cache_dir = temp.path().join("cache");
     let core =
         CoreProcessor::new_with_backend(pool.clone(), config, Box::new(MockAudioBackend::new()));
-    let mut providers = ProviderCoordinator::new(
-        pool.clone(),
-        Arc::new(EventBus::default()),
-        temp.path().into(),
-    );
+    let mut providers = ProviderCoordinator::new(pool.clone(), Arc::new(EventBus::default()));
     providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let providers = Arc::new(providers);
     let saved = providers.persist(source).await.unwrap();
@@ -930,11 +922,7 @@ async fn trending_fetches_playlists_together_and_restores_cache_without_network(
     config.cache_dir = temp.path().join("cache");
     let core =
         CoreProcessor::new_with_backend(pool.clone(), config, Box::new(MockAudioBackend::new()));
-    let mut providers = ProviderCoordinator::new(
-        pool.clone(),
-        Arc::new(EventBus::default()),
-        temp.path().into(),
-    );
+    let mut providers = ProviderCoordinator::new(pool.clone(), Arc::new(EventBus::default()));
     providers.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let providers = Arc::new(providers);
     let discovery = DiscoveryCoordinator::new(

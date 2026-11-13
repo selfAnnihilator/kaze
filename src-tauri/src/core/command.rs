@@ -289,10 +289,6 @@ pub enum CommandResponse {
     Ok,
     EntityFeedback(Vec<crate::recommendations::entity_feedback::EntityFeedbackRow>),
     EntityId(String),
-    QueuedIndex(usize),
-    ScanStarted {
-        task_id: String,
-    },
     MixGenerated {
         playlist_id: String,
         track_count: usize,

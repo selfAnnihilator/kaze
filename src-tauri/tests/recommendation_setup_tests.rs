@@ -130,7 +130,7 @@ async fn fresh_catalog_bootstrap_is_shared_by_discovery_home_and_flow_without_fa
         .await
         .unwrap();
     let mut provider =
-        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus(), std::env::temp_dir());
+        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus());
     provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let d = DiscoveryCoordinator::new(
         Arc::new(SqliteWishlistRepository::new(p.db_pool().clone())),
@@ -213,7 +213,7 @@ async fn genre_only_search_provenance_works_without_forging_song_metadata() {
         .await
         .unwrap();
     let mut provider =
-        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus(), std::env::temp_dir());
+        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus());
     provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let d = DiscoveryCoordinator::new(
         Arc::new(SqliteWishlistRepository::new(p.db_pool().clone())),
@@ -281,7 +281,7 @@ async fn artist_only_choices_rank_starters_and_recorded_feedback_takes_precedenc
         .await
         .unwrap();
     let mut provider =
-        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus(), std::env::temp_dir());
+        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus());
     provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let d = DiscoveryCoordinator::new(
         Arc::new(SqliteWishlistRepository::new(p.db_pool().clone())),
@@ -456,7 +456,7 @@ async fn start_flow_bootstraps_a_fresh_catalog_before_selecting_and_uses_existin
         .await
         .unwrap();
     let mut provider =
-        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus(), std::env::temp_dir());
+        ProviderCoordinator::new(p.db_pool().clone(), p.event_bus());
     provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
     let coordinator = Arc::new(DiscoveryCoordinator::new(
         Arc::new(SqliteWishlistRepository::new(p.db_pool().clone())),

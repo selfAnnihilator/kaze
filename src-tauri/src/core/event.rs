@@ -104,11 +104,6 @@ pub enum Event {
         seconds_listened: f64,
         completed: bool,
     },
-    TrackSkipped {
-        track_id: String,
-        seconds_listened: f64,
-        percentage_listened: f64,
-    },
     /// Committed listening outcome for one finished play (skip vs full listen).
     /// Published after the history row is stored; Flow uses it for in-session steering.
     ListenOutcome {
@@ -148,10 +143,6 @@ pub enum Event {
         playlist_id: String,
         mix_type: String,
         track_count: usize,
-    },
-    RecommendationsRefreshed {
-        session_id: String,
-        recommendation_count: usize,
     },
 
     // --- Provider Status ---
