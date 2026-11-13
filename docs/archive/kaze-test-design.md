@@ -5,8 +5,8 @@ Implemented 2026-09-15 on the existing `test` branch. Earlier uncommitted presen
 ## Design and implementation
 
 - `src/kaze-theme.css` supplies the current charcoal/rose palette and responsive presentation, layered after `src/index.css`.
-- Self-hosted Cormorant Garamond headings, Inter UI/body, and Caveat handwriting are in `public/fonts/`, with individual SIL Open Font License files. Sources: the corresponding `ofl/cormorantgaramond`, `ofl/inter`, and `ofl/caveat` directories in https://github.com/google/fonts.
-- `public/kaze-backdrop.png` is the supplied artwork with baked-in lettering removed. The sticky hero stays at its initial scroll position; opaque discovery content scrolls over it. A ResizeObserver accommodates the search area's size. No scroll listener or animation library is used.
+- Self-hosted Cormorant Garamond headings, Inter UI/body, and Caveat handwriting were in `public/fonts/` (only Inter remains, as `inter.woff2`), with individual SIL Open Font License files. Sources: the corresponding `ofl/cormorantgaramond`, `ofl/inter`, and `ofl/caveat` directories in https://github.com/google/fonts.
+- `public/kaze-backdrop.png` (now kept at `docs/assets/kaze-backdrop.png`) is the supplied artwork with baked-in lettering removed. The sticky hero stays at its initial scroll position; opaque discovery content scrolls over it. A ResizeObserver accommodates the search area's size. No scroll listener or animation library is used.
 - `public/kaze-icon.png` is the supplied icon recolored to ivory and dusty rose; native PNG sizes are in `src-tauri/icons/`.
 - `src/components/ListeningRail.tsx` renders current artwork and the existing local upcoming queue. It is hidden below 1191px; the persistent bottom playback controls remain available. Online playback has no exposed queue here, so no local queue is presented as online upcoming tracks.
 - Hero controls delegate to the existing unified playback handlers. Sidebar playlist shortcuts use the existing playlist playback handler. No new backend commands or persistence changes were introduced.

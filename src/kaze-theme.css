@@ -1,7 +1,5 @@
 /* Kaze / test: charcoal, burnt orange, slate, and violet. */
-@font-face { font-family: 'Cormorant Garamond'; src: url('/fonts/cormorant-garamond.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
-@font-face { font-family: Inter; src: url('/fonts/inter.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
-@font-face { font-family: Caveat; src: url('/fonts/caveat.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: Inter; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 
 :root {
   --bg-main: #1a1714;
@@ -39,7 +37,7 @@ button { font-weight: 450; }
     radial-gradient(circle, #e8d8c94d 0 .45px, transparent .7px);
   background-size: 180px 180px, 7px 7px;
 }
-.sidebar { width: 216px; padding-top: 32px; background-image: linear-gradient(#1a1714ed, #1a1714f7), url('/kaze-orange-backdrop.png'); background-size: cover; }
+.sidebar { width: 216px; padding-top: 32px; background-image: linear-gradient(#1a1714ed, #1a1714f7), url('/kaze-orange-backdrop.webp'); background-size: cover; }
 .kage-logo { width: 36px; height: 36px; border-radius: 10px; opacity: .92; transition: opacity 0.15s; }
 .kage-logo:hover { opacity: 1; }
 .nav-button { padding: 12px; font-size: 12px; border-radius: 9px; }
@@ -58,7 +56,7 @@ button { font-weight: 450; }
   background:
     linear-gradient(180deg, #1a17149c 0%, transparent 23%, transparent 66%, var(--bg-main) 100%),
     linear-gradient(90deg, #1a1714f7 0%, #1a1714bf 24%, #1a17142e 48%, #1a171445 100%),
-    url('/kaze-orange-backdrop.png') 58% center / cover;
+    url('/kaze-orange-backdrop.webp') 58% center / cover;
 }
 .discovery-hero-copy { padding: 30px 0 25px; max-width: 76%; display: flex; flex-direction: column; align-items: flex-start; }
 .hero-eyebrow { font-size: 8px; letter-spacing: .24em; margin-bottom: 15px; color: var(--accent-light); }
