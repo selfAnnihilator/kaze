@@ -856,6 +856,10 @@ impl CoreProcessor {
                 self.playback_service.play_track(&track_id, source).await?;
                 Ok(CommandResponse::Ok)
             }
+            Command::SetArchiveShuffle { enabled } => {
+                self.playback_service.set_archive_shuffle(enabled).await;
+                Ok(CommandResponse::Ok)
+            }
             Command::PlayTrackList { track_ids, start_track_id, shuffle } => {
                 self.playback_service
                     .play_track_list(track_ids, start_track_id, shuffle)

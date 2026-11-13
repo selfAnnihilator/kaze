@@ -17,8 +17,10 @@ export function useScopedTracks(account: string, album?: string, query?: string,
         ? {query: "GetAlbumDetails", payload: {album_id: album}}
         : {query: "SearchLibrary", payload: {query_text: query!, limit: 100}});
       if (current.current !== key || request !== generation.current) return;
-      const rows = album ? response.data?.tracks : response.data;
-      if (!Array.isArray(rows)) throw Error("Invalid library response");
+      const found = album ? response.data?.tracks : response.data;
+      if (!Array.isArray(found)) throw Error("Invalid library response");
+      // Downloads lists local files only; library search also matches cached online tracks.
+      const rows = album ? found : found.filter((t: Track) => !String(t.file_path ?? "").startsWith("online://"));
       setResult({key, rows, loading: false, error: null});
     } catch (error) {
       if (current.current === key && request === generation.current)

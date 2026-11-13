@@ -43,6 +43,9 @@ pub struct PlaybackStateDto {
     pub queue_length: usize,
     pub current_queue_index: Option<usize>,
     pub queue_track_ids: Vec<String>,
+    /// Which source owns the queue: "library", "flow", "archive" (Downloads list), ...
+    #[serde(default)]
+    pub source: String,
 }
 
 #[derive(Default)]
@@ -65,6 +68,8 @@ pub struct PlaybackService {
     track_repo: Arc<dyn TrackRepository>,
     current_duration_secs: Arc<RwLock<f64>>,
     current_source: Arc<RwLock<String>>,
+    /// Track ids of the active Downloads list in library order (to undo shuffle).
+    archive_order: Arc<RwLock<Vec<String>>>,
     volume: Arc<RwLock<f32>>,
     stream_manager: Arc<std::sync::RwLock<Option<Arc<StreamPlaybackManager>>>>,
     active_stream_state:
@@ -108,6 +113,7 @@ impl PlaybackService {
             track_repo,
             current_duration_secs: Arc::new(RwLock::new(0.0)),
             current_source: Arc::new(RwLock::new("library".to_string())),
+            archive_order: Arc::new(RwLock::new(Vec::new())),
             volume: Arc::new(RwLock::new(0.8)),
             stream_manager: Arc::new(std::sync::RwLock::new(None)),
             active_stream_state: Arc::new(std::sync::RwLock::new(None)),
@@ -1136,6 +1142,7 @@ impl PlaybackService {
             return Err(AppError::NotFound("No tracks to play".into()));
         }
 
+        *self.archive_order.write().await = items.iter().map(|i| i.track_id.clone()).collect();
         let mut start_idx = start_track_id
             .as_ref()
             .and_then(|sid| items.iter().position(|i| &i.track_id == sid))
@@ -1160,9 +1167,33 @@ impl PlaybackService {
         {
             let mut q_guard = self.queue.write().await;
             q_guard.set_queue(items, Some(start_idx));
+            // The list owns its own shuffle (SetArchiveShuffle); never inherit the
+            // queue-wide shuffle left over from another section.
+            q_guard.set_shuffle(false);
         }
         drop(operation);
         self.play_item(&first).await
+    }
+
+    /// Shuffles (or restores library order of) the songs after the current one in
+    /// the Downloads list. Only affects source "archive"; the playing song is untouched.
+    pub async fn set_archive_shuffle(&self, enabled: bool) {
+        if *self.current_source.read().await != "archive" {
+            return;
+        }
+        let order = self.archive_order.read().await.clone();
+        {
+            let mut q = self.queue.write().await;
+            q.reorder_upcoming(|upcoming| {
+                if enabled {
+                    upcoming.shuffle(&mut thread_rng());
+                } else {
+                    let rank = |id: &str| order.iter().position(|o| o == id).unwrap_or(usize::MAX);
+                    upcoming.sort_by_key(|item| rank(&item.track_id));
+                }
+            });
+        }
+        self.emit_queue_updated().await;
     }
 
     /// Plays an online or remote track, ensuring it is registered and streamed through the unified engine.
@@ -2170,18 +2201,22 @@ impl PlaybackService {
             queue_length: q_guard.len(),
             current_queue_index: q_guard.current_index(),
             queue_track_ids,
+            source: self.current_source.read().await.clone(),
         }
     }
 
     async fn emit_queue_updated(&self) {
-        let ids: HashSet<String> = self
+        // Archive queues can hold the whole library and are built from fresh
+        // metadata, so skip the per-track refresh that would cost one lookup each.
+        let source = self.current_source.read().await.clone();
+        let ids: HashSet<String> = if source == "archive" { HashSet::new() } else { self
             .queue
             .read()
             .await
             .items()
             .iter()
             .map(|item| item.track_id.clone())
-            .collect();
+            .collect() };
         for id in ids {
             if let Ok(Some(track)) = self.track_repo.find_by_id(&id).await {
                 self.queue.write().await.update_source_metadata(
@@ -2222,6 +2257,7 @@ impl PlaybackService {
             items,
             current_index,
             queue_track_ids,
+            source,
         });
 
         self.trigger_next_track_preresolution().await;

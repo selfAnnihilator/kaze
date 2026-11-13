@@ -106,3 +106,61 @@ async fn start_track_and_shuffle_keep_the_same_set() {
     assert_eq!(s["current_track_id"].as_str().unwrap(), ids[2], "start track leads a shuffled list");
     assert_eq!(s["current_queue_index"].as_u64().unwrap(), 0);
 }
+
+async fn queue_ids(p: &CoreProcessor) -> Vec<String> {
+    state(p).await["queue_track_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect()
+}
+
+#[tokio::test]
+async fn archive_shuffle_only_touches_upcoming_and_can_be_undone() {
+    let pool = create_in_memory_pool().await.unwrap();
+    let processor = CoreProcessor::new_with_backend(
+        pool,
+        AppConfig::default_with_dirs(),
+        Box::new(MockAudioBackend::new()),
+    );
+    let repo = processor.library_service().track_repo();
+    let mut ids = Vec::new();
+    for i in 0..12 {
+        let name = format!("T{:02}", i);
+        ids.push(repo.save_scanned_track(meta(&name, &format!("/m/{name}.wav"))).await.unwrap());
+    }
+    processor
+        .dispatch_command(Command::PlayTrackList { track_ids: None, start_track_id: None, shuffle: false })
+        .await
+        .unwrap();
+    assert_eq!(state(&processor).await["source"].as_str(), Some("archive"));
+    let ordered = queue_ids(&processor).await;
+    assert_eq!(ordered, ids[1..].to_vec());
+
+    // Shuffle on: current song and queue size are untouched; upcoming set is the same.
+    processor.dispatch_command(Command::SetArchiveShuffle { enabled: true }).await.unwrap();
+    let s = state(&processor).await;
+    assert_eq!(s["current_track_id"].as_str().unwrap(), ids[0]);
+    let shuffled = queue_ids(&processor).await;
+    let mut a = shuffled.clone();
+    let mut b = ordered.clone();
+    a.sort();
+    b.sort();
+    assert_eq!(a, b);
+    assert_ne!(shuffled, ordered, "11 items virtually never keep their order");
+
+    // Shuffle off: library order is restored for the remainder.
+    processor.dispatch_command(Command::SetArchiveShuffle { enabled: false }).await.unwrap();
+    assert_eq!(queue_ids(&processor).await, ordered);
+
+    // Another source breaks the list: it is no longer "archive" and shuffle is a no-op.
+    processor
+        .dispatch_command(Command::PlayTrack { track_id: ids[5].clone(), source: Some("library".into()) })
+        .await
+        .unwrap();
+    assert_eq!(state(&processor).await["source"].as_str(), Some("library"));
+    let before = queue_ids(&processor).await;
+    processor.dispatch_command(Command::SetArchiveShuffle { enabled: true }).await.unwrap();
+    assert_eq!(queue_ids(&processor).await, before);
+}

@@ -317,6 +317,16 @@ impl PlaybackQueue {
         }
     }
 
+    /// Rewrites only the items after the current one; the current item and
+    /// already-played items keep their place.
+    pub fn reorder_upcoming(&mut self, reorder: impl FnOnce(&mut Vec<QueueItem>)) {
+        let split_at = self.current_index.map_or(0, |index| index + 1).min(self.items.len());
+        let mut upcoming = self.items.split_off(split_at);
+        reorder(&mut upcoming);
+        self.items.append(&mut upcoming);
+        self.rebuild_shuffle_indices();
+    }
+
     /// Toggles or sets shuffle mode.
     pub fn set_shuffle(&mut self, enabled: bool) {
         self.shuffle_enabled = enabled;

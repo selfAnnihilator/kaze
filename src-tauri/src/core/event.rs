@@ -77,6 +77,9 @@ pub enum Event {
         items: Vec<QueueItem>,
         current_index: Option<usize>,
         queue_track_ids: Vec<String>,
+        /// Playback source that owns the queue ("library", "flow", "archive", ...).
+        #[serde(default)]
+        source: String,
     },
     PlaybackError {
         session_id: String,

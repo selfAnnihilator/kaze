@@ -1129,6 +1129,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             setPlaybackState((prev) => ({
               ...prev,
               current_queue_index: event.payload.current_index ?? null,
+              source: event.payload.source || prev.source,
             }));
           }
           if (Array.isArray(event.payload?.queue_track_ids)) {
@@ -1462,13 +1463,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
 
   // Downloads view: ordered list playback (plays in order, stops at the end).
-  const handlePlayLibraryList = useCallback(
-    async (startId?: string, shuffle = false) => {
-      if (!shuffle && startId && playbackState.current_track?.id === startId && (playbackState.is_playing || playbackState.is_paused)) {
-        await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
-        await fetchPlaybackState();
-        return;
-      }
+  // The shuffle toggle belongs to this section only: it is never read back from
+  // the queue, so other sections (playlists) cannot flip it and it is not persisted.
+  const [libraryShuffle, setLibraryShuffle] = useState(false);
+  const downloadsListActive =
+    playbackState.source === "archive" && (playbackState.is_playing || Boolean(playbackState.is_paused));
+  const startLibraryList = useCallback(
+    async (startId?: string) => {
       const requestId = beginPlaybackLoading(startId ?? "library-list");
       try {
         await dispatchCommand({
@@ -1476,7 +1477,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           payload: {
             track_ids: libraryScoped ? tracks.map((t) => t.id) : null,
             start_track_id: startId ?? null,
-            shuffle,
+            shuffle: libraryShuffle,
           },
         });
         await fetchPlaybackState();
@@ -1487,20 +1488,36 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         endPlaybackLoading(requestId);
       }
     },
-    [
-      tracks,
-      libraryScoped,
-      playbackState.current_track?.id,
-      playbackState.is_playing,
-      playbackState.is_paused,
-      fetchPlaybackState,
-      beginPlaybackLoading,
-      endPlaybackLoading,
-    ],
+    [tracks, libraryScoped, libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading],
   );
-  const handleLibraryRowPlay = useCallback((trackId: string) => handlePlayLibraryList(trackId, false), [handlePlayLibraryList]);
-  const handleLibraryPlayAll = useCallback(() => handlePlayLibraryList(undefined, false), [handlePlayLibraryList]);
-  const handleLibraryShuffleAll = useCallback(() => handlePlayLibraryList(undefined, true), [handlePlayLibraryList]);
+  const handleLibraryRowPlay = useCallback(
+    async (trackId: string) => {
+      if (playbackState.current_track?.id === trackId && (playbackState.is_playing || playbackState.is_paused)) {
+        await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
+        await fetchPlaybackState();
+        return;
+      }
+      await startLibraryList(trackId);
+    },
+    [playbackState.current_track?.id, playbackState.is_playing, playbackState.is_paused, fetchPlaybackState, startLibraryList],
+  );
+  // Play all doubles as Pause/Resume while the Downloads list is the active source.
+  const handleLibraryPlayAll = useCallback(async () => {
+    if (downloadsListActive) {
+      await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
+      await fetchPlaybackState();
+      return;
+    }
+    await startLibraryList();
+  }, [downloadsListActive, playbackState.is_playing, fetchPlaybackState, startLibraryList]);
+  const handleLibraryToggleShuffle = useCallback(async () => {
+    const next = !libraryShuffle;
+    setLibraryShuffle(next);
+    // Takes effect after the current song: only the upcoming Downloads tracks are reordered.
+    if (playbackState.source === "archive") {
+      await dispatchCommand({ command: "SetArchiveShuffle", payload: { enabled: next } });
+    }
+  }, [libraryShuffle, playbackState.source]);
 
   const handlePlayOnlineTrack = useCallback(
     async (
@@ -3885,7 +3902,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       queuedTrackIds={queuedTrackIds}
                       onPlayTrack={handleLibraryRowPlay}
                       onPlayAll={handleLibraryPlayAll}
-                      onShuffleAll={handleLibraryShuffleAll}
+                      listState={downloadsListActive ? (playbackState.is_playing ? "playing" : "paused") : "idle"}
+                      shuffleEnabled={libraryShuffle}
+                      onToggleShuffle={handleLibraryToggleShuffle}
                       loadingTrackId={loadingTrackId}
                       onEnqueueTrack={handleEnqueueTrack}
                       onLikeTrack={handleLike}

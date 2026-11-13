@@ -17,7 +17,7 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
   assert.doesNotMatch(view, /indexed/);
   assert.doesNotMatch(view, /loaded of/);
   assert.match(view, /onPlayAll/);
-  assert.match(view, /onShuffleAll/);
+  assert.match(view, /onToggleShuffle/);
   // Header and rows share one grid template with a column gap (no overlap).
   assert.equal((view.match(/LIBRARY_GRID_COLUMNS/g) ?? []).length >= 3, true);
   assert.match(view, /columnGap: "12px"/);
@@ -26,4 +26,17 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
 test("library playback dispatches ordered PlayTrackList", () => {
   const app = read("src/App.tsx");
   assert.match(app, /command: "PlayTrackList"/);
+});
+
+test("Play all toggles pause/resume and shuffle is a per-section toggle", () => {
+  const view = read("src/components/views/LibraryView.tsx");
+  assert.match(view, /listState === "playing" \? "Pause"/);
+  assert.match(view, /aria-pressed=\{shuffleEnabled\}/);
+  const app = read("src/App.tsx");
+  // Section-local shuffle state: never derived from the queue-wide is_shuffled flag.
+  assert.match(app, /const \[libraryShuffle, setLibraryShuffle\] = useState\(false\)/);
+  assert.match(app, /command: "SetArchiveShuffle"/);
+  assert.match(app, /playbackState\.source === "archive"/);
+  assert.match(read("src/hooks/useScopedTracks.ts"), /online:\/\//);
+  assert.match(view, /key=\{searchQuery\}/);
 });

@@ -17,7 +17,10 @@ interface LibraryViewProps {
   queuedTrackIds?: Set<string>;
   onPlayTrack: (trackId: string) => void;
   onPlayAll?: () => void;
-  onShuffleAll?: () => void;
+  /** Whether the Downloads list (Play all) is the active playback source. */
+  listState?: "idle" | "playing" | "paused";
+  shuffleEnabled?: boolean;
+  onToggleShuffle?: () => void;
   loadingTrackId?: string | null;
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
@@ -256,7 +259,9 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
     queuedTrackIds,
     onPlayTrack,
     onPlayAll,
-    onShuffleAll,
+    listState = "idle",
+    shuffleEnabled = false,
+    onToggleShuffle,
     loadingTrackId,
     onEnqueueTrack,
     onLikeTrack,
@@ -311,20 +316,22 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
             <button
               className="btn btn-primary"
               onClick={onPlayAll}
-              disabled={!onPlayAll || total === 0}
-              title="Play all tracks in order"
+              disabled={!onPlayAll || (total === 0 && listState === "idle")}
+              title={listState === "playing" ? "Pause" : listState === "paused" ? "Resume" : "Play all tracks in order"}
               style={{ display: "flex", alignItems: "center", gap: "6px" }}
             >
-              <Play size={16} /> Play all
+              {listState === "playing" ? <Pause size={16} /> : <Play size={16} />}
+              {listState === "playing" ? "Pause" : listState === "paused" ? "Resume" : "Play all"}
             </button>
             <button
-              className="btn btn-secondary"
-              onClick={onShuffleAll}
-              disabled={!onShuffleAll || total === 0}
-              title="Shuffle all tracks"
+              className={shuffleEnabled ? "btn btn-primary" : "btn btn-secondary"}
+              onClick={onToggleShuffle}
+              disabled={!onToggleShuffle}
+              aria-pressed={shuffleEnabled}
+              title={shuffleEnabled ? "Shuffle on (applies after the current song)" : "Shuffle off"}
               style={{ display: "flex", alignItems: "center", gap: "6px" }}
             >
-              <Shuffle size={16} /> Shuffle
+              <Shuffle size={16} /> Shuffle {shuffleEnabled ? "on" : "off"}
             </button>
           </div>
 
@@ -428,6 +435,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
             {/* Virtualized Body */}
             <div style={{ flex: 1, minHeight: 0 }}>
               <List<LibraryRowProps>
+                key={searchQuery}
                 rowCount={tracks.length}
                 onRowsRendered={({ stopIndex }) => { if (stopIndex >= tracks.length - 20) onEndReached?.(); }}
                 rowHeight={ROW_HEIGHT}

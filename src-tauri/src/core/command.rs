@@ -52,6 +52,11 @@ pub enum Command {
         #[serde(default)]
         shuffle: bool,
     },
+    /// Shuffle (or restore order of) the remaining tracks of the active Downloads
+    /// list. The current song is unaffected; no-op when another source is playing.
+    SetArchiveShuffle {
+        enabled: bool,
+    },
     PlayOnlineTrack {
         track_id: String,
         title: String,
