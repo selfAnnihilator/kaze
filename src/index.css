@@ -265,15 +265,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .kage-logo { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; }
 .nav-button.active svg { color: var(--accent); }
-.sidebar-landscape {
-  min-height: 145px;
-  flex-shrink: 0;
-  margin: 16px -14px 0;
-  padding: 16px 23px;
-  background: linear-gradient(180deg, var(--bg-sidebar), transparent), url('/kage-landscape.svg') 67% bottom / auto 165px;
-}
-.sidebar-landscape span { font-family: 'Noto Sans JP', serif; font-size: 12px; line-height: 1.8; }
-.sidebar-landscape small { display: block; font-size: 7px; letter-spacing: 1.6px; margin-top: 10px; color: var(--text-muted); }
 
 .logo-container {
   display: flex;
@@ -347,17 +338,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .discovery-view { isolation: isolate; }
-
-.discovery-scroll-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  margin-inline: calc(-1 * var(--content-gutter));
-  padding: 0 var(--content-gutter) 40px;
-  background: var(--bg-main);
-}
 
 .discovery-hero {
   min-height: 250px;
@@ -453,9 +433,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .badge-exact { background-color: rgba(139, 124, 246, 0.15); color: var(--accent-secondary); }
-.badge-likely { background-color: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-.badge-possible { background-color: rgba(243, 112, 30, 0.15); color: #f3701e; }
-.badge-missing { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
 .btn {
   display: inline-flex;
@@ -691,7 +668,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .discovery-hero-copy { padding: 25px 0; }
 }
 @media (max-height: 720px) {
-  .sidebar-landscape { min-height: 85px; }
+
   .nav-section { margin-bottom: 14px; }
   .discovery-hero { min-height: 210px; }
 }
@@ -736,23 +713,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid var(--border-light);
 }
 
-.subtab-btn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background-color: var(--bg-card);
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
-.subtab-btn.active {
-  background-color: var(--text-main);
-  color: #1a1714;
-}
-
 .input-field {
   background-color: var(--bg-sidebar);
   border: 1px solid var(--border-light);
@@ -766,65 +726,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .input-field:focus {
   border-color: var(--accent);
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  background-color: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-
-.progress-track {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background-color: var(--border-light);
-  overflow: hidden;
-  margin-top: 6px;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  background-color: var(--accent);
-  transition: width 0.3s ease;
-}
-
-/* Discovery Preview & Equalizer Animations */
-.discovery-thumb-container {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.discovery-thumb-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
-}
-
-.discovery-thumb-container:hover .discovery-thumb-overlay,
-.discovery-thumb-overlay.is-visible {
-  opacity: 1;
-}
-
-.discovery-thumb-overlay.is-playing {
-  opacity: 1;
-  background: rgba(243, 112, 30, 0.7);
 }
 
 @keyframes eqBounce {

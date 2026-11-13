@@ -868,8 +868,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
         query: "SearchOnlineMusic",
         payload: { query: q, limit: 35 },
       });
-      console.log("[DiscoveryView] SearchOnlineMusic response:", res);
-
       let incoming: DiscoveryRecommendation[] = [];
       if (res && Array.isArray(res.data)) {
         incoming = res.data;
@@ -1240,9 +1238,6 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
           isLocalPlaying={isLocalPlaying}
           onAddToPlaylist={onAddToPlaylist}
           onAddToWishlist={onAddToWishlist}
-          onSearchDirect={onSearchDirect}
-          downloads={downloads}
-          downloadTargets={downloadTargets}
           trackPlaylistMap={trackPlaylistMap}
           playlists={playlists}
           onSelectArtist={(artist) => {

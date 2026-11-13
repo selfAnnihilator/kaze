@@ -28,7 +28,6 @@ interface HomeViewProps {
   onEnqueueTrack?: (trackId: string) => void;
   onOpenAlbum?: (albumId: string) => void;
   loadingTrackId?: string | null;
-  activeTrackId?: string | null;
   isPlaying?: boolean;
   flowSteering: number;
   onFlowSteeringChange: (val: number) => void;

@@ -25,7 +25,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Track, DiscoveryRecommendation, DownloadTask } from "../../types";
+import { Track, DiscoveryRecommendation } from "../../types";
 import { filterPlaylistEntries } from "../../playlistSearch";
 
 export interface CollectionTrackItem {
@@ -67,13 +67,11 @@ interface CollectionDetailViewProps {
   onPlayAll: () => void;
   onShuffleAll?: () => void;
   onAddToWishlist?: (track: CollectionTrackItem) => void;
-  onDownload?: (artist: string, title: string) => void;
   onSaveToPlaylists?: (collection: CollectionData) => void;
   isSaved?: boolean;
   currentPlayingTrackId?: string | null;
   isPlaying?: boolean;
   isShuffled?: boolean;
-  downloads?: DownloadTask[];
   trackPlaylistMap?: Record<string, string[]>;
   onAddToPlaylist?: (track: CollectionTrackItem) => void;
   /** IDs of user-created (non-smart-mix) playlists — used to filter bookmark state */

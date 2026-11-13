@@ -137,28 +137,6 @@ export interface DiscoveryRecommendation {
   in_wishlist: boolean;
 }
 
-export interface OnlinePlayingTrack {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  cover_art_url?: string;
-  preview_url?: string;
-  duration: number;
-  currentTime: number;
-  isPlaying: boolean;
-  isLoading?: boolean;
-}
-
-export interface TasteProfile {
-  top_artists: Array<{ id_or_name: string; display_name: string; affinity: number;
-  }>;
-  top_genres: Array<{ id_or_name: string; display_name: string; affinity: number;
-  }>;
-  top_eras: Array<{ id_or_name: string; display_name: string; affinity: number;
-  }>;
-}
-
 export interface RecommendationSetup { user_id: string; status: "pending" | "completed" | "skipped"; artists: string[]; genres: string[]; revision: number; should_prompt: boolean; }
 
 export interface OnboardingStatus {
@@ -334,20 +312,6 @@ export type Command =
   | {
       command: "SetInterfaceStyle";
       payload: { style: "spatial" | "brutalist" };
-    }
-  | {
-      command: "RecordPlaybackSession";
-      payload: {
-        track_id: string;
-        title: string;
-        artist?: string;
-        album?: string;
-        duration_secs: number;
-        seconds_listened: number;
-        completed: boolean;
-        skipped: boolean;
-        source: string;
-      };
     };
 
 export type Query =
@@ -423,18 +387,6 @@ export type AuthSessionState =
   | { type: "SessionExpired"; reason: SessionExpiredReason }
   | { type: "CloudUnavailable" }
   | { type: "SyncPaused" };
-
-export interface SessionInfo {
-  id: string;
-  device_id: string;
-  device_name: string;
-  client_version?: string | null;
-  created_at?: number | null;
-  last_used_at?: number | null;
-  idle_expires_at: number;
-  absolute_expires_at: number;
-  is_current: boolean;
-}
 
 export interface CloudSyncStatus {
   connected: boolean;
@@ -570,19 +522,6 @@ export interface FlowExplanation {
   explore_bias?: number | null;
   selected_at?: number | null;
   from_existing_queue: boolean;
-}
-
-export interface FlowTrackItem {
-  track_id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  duration_secs: number;
-  cover_art_url?: string;
-  score: number;
-  reason: string;
-  reason_category: string;
-  explanation?: FlowExplanation;
 }
 
 export interface FlowSessionState {

@@ -111,7 +111,6 @@ cargo check --bin kaze --manifest-path src-tauri/Cargo.toml --offline
 KAZE_ASSERT_PERFORMANCE=1 node scripts/profile-frontend.mjs /absolute/output/development.json
 node scripts/test-dual-interface.mjs
 node scripts/test-spatial-layout.mjs
-node scripts/test-preview-parity.mjs
 cargo build --manifest-path src-tauri/Cargo.toml --offline --bin kaze --features tauri/custom-protocol
 KAZE_ASSERT_PERFORMANCE=1 KAZE_PRIVATE_PERF_TEST=1 dbus-run-session -- python3 scripts/profile-frontend-native.py /absolute/copied/kaze /absolute/output/native.json --soak-seconds 1260
 KAZE_PRIVATE_DUAL_TEST=1 dbus-run-session -- python3 scripts/test-dual-interface-native.py /absolute/copied/kaze

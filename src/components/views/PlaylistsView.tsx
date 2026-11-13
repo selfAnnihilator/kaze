@@ -31,7 +31,6 @@ interface PlaylistsViewProps {
   viewMode?: "playlists" | "smart_mixes" | "all";
   playlists: Playlist[];
   activePlaylistId?: string | null;
-  onSelectPlaylist: (playlistId: string) => void;
   onPlayPlaylist: (playlistId: string) => void;
   onCreatePlaylist: (name: string, description?: string) => Promise<string | null>;
   onRefreshPlaylists?: () => Promise<void>;

@@ -581,10 +581,6 @@
   opacity: 1 !important;
   transform: none !important;
 }
-:root[data-interface="spatial"] .spatial-chapter-content .subtab-btn {
-  font-size: 10px;
-  padding: 5px 7px;
-}
 :root[data-interface="spatial"] .spatial-chapter-content .scroll-arrow-btn {
   background: transparent;
   border: 0;

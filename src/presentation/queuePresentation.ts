@@ -69,10 +69,3 @@ export function withKnownMetadata(
     return hit ? { ...entry, title: hit.title, artist: entry.artist || hit.artist } : entry;
   });
 }
-
-export function queueTrack(
-  entry: QueueEntry,
-  tracks: readonly Track[],
-): Track | undefined {
-  return tracks.find((track) => track.id === entry.trackId);
-}

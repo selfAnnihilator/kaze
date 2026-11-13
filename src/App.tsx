@@ -1180,7 +1180,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           break;
 
         case "LibraryScanStarted":
-        case "ScanStarted":
           setIsScanning(true);
           break;
 
@@ -1191,7 +1190,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           fetchPlaybackState();
           break;
         case "LibraryScanCompleted":
-        case "ScanCompleted":
           clearCoverArtCache();
           setIsScanning(false);
           addAppNotification(
@@ -3816,9 +3814,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   onAddToWishlist={(track) =>
                     handleAddToWishlist(track.title, track.artist, track.album)
                   }
-                  onDownload={(artist, title) =>
-                    handleInitiateDirectDownloadSearch(artist, title)
-                  }
                   onSaveToPlaylists={handleSaveCollectionToPlaylists}
                   currentPlayingTrackId={
                     playbackState.is_playing
@@ -3828,7 +3823,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   isPlaying={isPlayingThisCollection}
                   isSaved={isCollectionSaved}
                   isShuffled={playbackState.is_shuffled}
-                  downloads={downloads}
                   trackPlaylistMap={regularTrackPlaylistMap}
                   userPlaylistIds={regularPlaylistIds}
                   onAddToPlaylist={(track) =>
@@ -3895,7 +3889,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onEnqueueTrack={handleEnqueueTrack}
                       onOpenAlbum={handleSelectAlbum}
                       loadingTrackId={loadingTrackId}
-                      activeTrackId={playbackState.current_track?.id}
                       isPlaying={playbackState.is_playing}
                       flowSteering={flowSteering}
                       onFlowSteeringChange={handleFlowSteeringChange}
@@ -3959,7 +3952,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       currentUser={currentUser}
                       onOpenAuthModal={() => setIsAuthModalOpen(true)}
                       activePlaylistId={playingPlaylistId}
-                      onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
                       onRefreshPlaylists={handleRefreshPlaylists}
@@ -3985,7 +3977,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       currentUser={currentUser}
                       onOpenAuthModal={() => setIsAuthModalOpen(true)}
                       activePlaylistId={playingPlaylistId}
-                      onSelectPlaylist={() => {}}
                       onPlayPlaylist={handlePlayPlaylist}
                       onCreatePlaylist={handleCreatePlaylist}
                       onRefreshPlaylists={handleRefreshPlaylists}

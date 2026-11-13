@@ -77,7 +77,7 @@ async function checkIntro(page, style, reducedMotion) {
   console.log(`PASS ${style} startup animation: ${reducedMotion ? "still reduced-motion composition" : style === "spatial" ? "flowing fade and circular motion" : "flowing fade, bold lettering, square frame and red sweep"}`);
 }
 
-async function scenario(style, { failFirst = false, lab = false, defaultStyle = false, inspectIntro = false, reducedMotion = false, readyImmediately = false, slowApp = false, failApp = false } = {}) {
+async function scenario(style, { failFirst = false, defaultStyle = false, inspectIntro = false, reducedMotion = false, readyImmediately = false, slowApp = false, failApp = false } = {}) {
   const context = await browser.newContext({ reducedMotion: reducedMotion ? "reduce" : "no-preference" });
   let releaseApp;
   if (inspectIntro || slowApp) {
@@ -136,14 +136,7 @@ async function scenario(style, { failFirst = false, lab = false, defaultStyle = 
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
-    await page.goto(lab ? `${base}/?lab=${style}` : base, { waitUntil: "domcontentloaded" });
-    if (lab) {
-      await page.locator(`.${style}-kaze`).waitFor();
-      assert.deepEqual(await page.evaluate(() => window.startupQueries), []);
-      assert.equal(await page.locator(".kaze-interface").count(), 0);
-      console.log(`PASS ${style}: standalone study makes no startup IPC calls`);
-      return;
-    }
+    await page.goto(base, { waitUntil: "domcontentloaded" });
     if (failApp) {
       await page.getByRole("button", { name: "Try again", exact: true }).waitFor();
       await page.waitForFunction(() => typeof window.releaseSettings === "function");
@@ -215,7 +208,6 @@ try {
   await scenario("brutalist", { failApp: true });
   await scenario("spatial", { defaultStyle: true });
   await scenario("brutalist", { failFirst: true });
-  for (const style of ["brutalist", "spatial"]) await scenario(style, { lab: true });
 } finally {
   await browser.close();
 }

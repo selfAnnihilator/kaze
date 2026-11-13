@@ -32,7 +32,6 @@ export async function subscribeBackendEvents(callback: (event: any) => void): Pr
       const unlisten = await listen("backend-event", (e) => {
         callback(e.payload);
       });
-      console.log("[Tauri API] Successfully subscribed to backend-event");
       return unlisten;
     } catch (err) {
       console.error("[Tauri API] Failed to subscribe to backend-event:", err);

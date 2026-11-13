@@ -95,9 +95,6 @@ button { font-weight: 450; }
 .sidebar-playlist small { display: block; color: var(--text-dim); margin-top: 5px; font-size: 10px; }
 .sidebar-playlist:hover { color: var(--accent-light); }
 
-.sidebar-landscape { background: linear-gradient(180deg, var(--bg-sidebar), #1a17148c), url('/kaze-orange-backdrop.png') 72% 55% / cover; min-height: 155px; padding: 40px 24px 20px; }
-.sidebar-landscape span { font: 17px/1.5 var(--font-heading); letter-spacing: .18em; color: var(--text-muted); }
-.sidebar-landscape small { font-size: 9px; letter-spacing: .2em; margin-top: 14px; }
 .main-content { --content-gutter: 32px; padding-top: 24px; }
 .global-search { position: relative; z-index: 2; background: transparent !important; border: 0 !important; padding: 0 !important; gap: 10px !important; margin-bottom: 8px !important; }
 .global-search form { justify-content: flex-end; }
@@ -118,17 +115,13 @@ button { font-weight: 450; }
 .hero-japanese { font-size: 12px; letter-spacing: .28em; color: var(--accent-light); margin-top: 16px; }
 .hero-signature { padding: 30px 0; justify-content: center; color: var(--accent-light); }
 .hero-signature span { font-size: 15px; letter-spacing: .55em; }
-.discovery-scroll-content { padding-top: 14px; }
-.discovery-scroll-content h2 { font-size: 26px !important; }
-.discovery-scroll-content h2 > svg { width: 15px; color: var(--accent-light); }
-.discovery-scroll-content h2 + p { font-size: 11px !important; }
 .album-card { border-radius: 7px; background: transparent; border-color: transparent; padding: 8px; box-shadow: none; }
 .mix-card { background: transparent !important; border-color: transparent !important; padding: 0 !important; box-shadow: none !important; }
 .mix-card > div:nth-child(2) { font: 20px var(--font-heading) !important; font-weight: 500 !important; color: var(--text-main) !important; }
 .content-card { border-radius: 8px; }
 .btn { font-weight: 500; }
 .btn-primary { color: #1a1714; }
-.tab-btn.active, .subtab-btn.active { color: var(--accent-light); }
+.tab-btn.active { color: var(--accent-light); }
 .player-bar { background-image: none; border-top-color: #4b607f66; height: 82px; }
 .play-pause-btn { background: transparent; border: 1px solid var(--accent-light); color: var(--text-main); }
 .player-icon-btn.active { color: var(--accent-light); }
@@ -150,7 +143,7 @@ button { font-weight: 450; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: var(--accent-secondary); }
 ::selection { background: #8b7cf64d; color: var(--text-main); }
 @media (max-width: 1000px) { .sidebar:not(.sidebar--collapsed) { width: 190px; } .main-content { --content-gutter: 26px; padding-inline: 26px; } .discovery-hero { min-height: 390px; } .logo-title { font-size: 20px; } }
-@media (max-height: 720px) { .discovery-hero { min-height: 340px; } .hero-eyebrow { display: none; } .discovery-hero h1 { font-size: 30px; } .sidebar-landscape { min-height: 100px; padding-top: 20px; } }
+@media (max-height: 720px) { .discovery-hero { min-height: 340px; } .hero-eyebrow { display: none; } .discovery-hero h1 { font-size: 30px; } }
 .sidebar-playlist.active {
   background: rgba(243, 112, 30, 0.16);
   box-shadow: inset 2px 0 0 var(--accent);

@@ -14,8 +14,7 @@ import {
   ListMusic,
   RefreshCw,
 } from "lucide-react";
-import { DiscoveryRecommendation, Track, Playlist, DownloadTask,
-} from "../../types";
+import { DiscoveryRecommendation, Track, Playlist } from "../../types";
 
 interface OnlineSearchResultsSectionProps {
   searchQuery: string;
@@ -32,9 +31,6 @@ interface OnlineSearchResultsSectionProps {
   isLocalPlaying?: boolean;
   onAddToPlaylist?: (rec: DiscoveryRecommendation) => void;
   onAddToWishlist?: (rec: DiscoveryRecommendation) => void;
-  onSearchDirect?: (artist: string, title: string) => void;
-  downloads?: DownloadTask[];
-  downloadTargets?: Record<string, { title: string; artist: string }>;
   trackPlaylistMap?: Record<string, string[]>;
   playlists?: Playlist[];
   onSelectArtist?: (artist: string) => void;
