@@ -1,5 +1,5 @@
 import { memo } from "react";
-import type { ViewType } from "../components/Sidebar";
+import type { ViewType } from "../viewTypes";
 
 /** Production destinations in the preview's horizontal catalogue navigation. */
 export const BrutalistNavigation = memo(function BrutalistNavigation({

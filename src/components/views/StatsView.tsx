@@ -421,7 +421,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                   cursor: isUploadingAvatar ? "not-allowed" : "pointer",
                   color: "#e8d8c9",
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
-                  transition: "all 0.15s ease",
+                  transition: "transform 0.15s ease, opacity 0.15s ease",
                   padding: 0,
                   zIndex: 10,
                 }}
@@ -697,7 +697,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       fontWeight: isActive ? 700 : 500,
                       fontSize: "13px",
                       cursor: "pointer",
-                      transition: "all 0.15s ease",
+                      transition: "transform 0.15s ease, opacity 0.15s ease",
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
@@ -726,7 +726,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               display: "flex",
               alignItems: "center",
               gap: "7px",
-              transition: "all 0.15s ease",
+              transition: "transform 0.15s ease, opacity 0.15s ease",
             }}
             title="Refresh listening stats"
           >

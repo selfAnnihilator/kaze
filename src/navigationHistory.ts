@@ -1,4 +1,4 @@
-import type { ViewType } from "./components/Sidebar";
+import type { ViewType } from "./viewTypes";
 import type { CollectionData } from "./components/views/CollectionDetailView";
 import type { DiscoveryRecommendation } from "./types";
 

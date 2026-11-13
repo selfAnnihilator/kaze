@@ -190,7 +190,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               fontSize: "13px",
               fontWeight: 600,
               cursor: "pointer",
-              transition: "all 0.15s ease",
+              transition: "transform 0.15s ease, opacity 0.15s ease",
             }}
           >
             Sign In
@@ -211,7 +211,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               fontSize: "13px",
               fontWeight: 600,
               cursor: "pointer",
-              transition: "all 0.15s ease",
+              transition: "transform 0.15s ease, opacity 0.15s ease",
             }}
           >
             Sign Up

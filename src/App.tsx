@@ -36,7 +36,7 @@ import { downloadProgress } from "./services/downloadProgress";
 import { subscribeCoverArt, coverArtGeneration, loadCoverArt, clearCoverArtCache } from "./services/coverArt";
 import { viewDestination } from "./navigationHistory";
 import { useNavigationHistory } from "./hooks/useNavigationHistory";
-import { Sidebar } from "./components/Sidebar";
+import { SpatialNavigation } from "./presentation/SpatialNavigation";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { TrackExplanation } from "./components/TrackExplanation";
@@ -3598,7 +3598,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, [playbackState.current_track, regularTrackPlaylistMap]);
 
   const handleSelectView = useCallback(
-    (view: import("./components/Sidebar").ViewType) => {
+    (view: import("./viewTypes").ViewType) => {
       if (view === "stats") setStatsRefreshTrigger((prev) => prev + 1);
       navigate(viewDestination(view));
     },
@@ -3717,18 +3717,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         {connectionError && <div className="connection-error" role="alert">Player connection lost. <button onClick={() => retryConnection.current()}>Retry connection</button></div>}
         <div className="app-body">
           {/* Left Sidebar Navigation */}
-          {interfacePreference.style === "spatial" && <Sidebar
+          {interfacePreference.style === "spatial" && <SpatialNavigation
             currentView={currentView}
             currentUser={currentUser}
             onSelectView={handleSelectView}
             unreadNotificationsCount={unreadNotificationsCount}
-            playlists={playlists}
-            activePlaylistId={
-              activeCollection?.type === "playlist"
-                ? activeCollection.playlistId || activeCollection.id
-                : null
-            }
-            onSelectPlaylist={handleSelectSidebarPlaylist}
           />}
 
           {/* Main Content Area */}

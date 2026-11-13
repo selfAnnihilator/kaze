@@ -45,7 +45,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         gap: "12px",
         boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6)",
         animation: "toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        transition: "all 0.2s ease",
+        transition: "transform 0.2s ease, opacity 0.2s ease",
         position: "relative",
         overflow: "hidden",
       }}

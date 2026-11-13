@@ -27,7 +27,7 @@ import {
 import type { NowPlayingBarProps } from "../components/NowPlayingBar";
 import { NowPlayingProgressBar } from "../components/NowPlayingBar";
 import type { Track, UserProfile } from "../types";
-import type { ViewType } from "../components/Sidebar";
+import type { ViewType } from "../viewTypes";
 import type { QueueEntry } from "./queuePresentation";
 import { ProfileNavigation } from "./ProfileNavigation";
 import { Artwork } from "./Artwork";

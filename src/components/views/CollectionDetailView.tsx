@@ -235,7 +235,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
             fontWeight: 600,
             cursor: "pointer",
             zIndex: 10,
-            transition: "all 0.15s ease",
+            transition: "transform 0.15s ease, opacity 0.15s ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)";
@@ -386,7 +386,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                transition: "all 0.15s ease",
+                transition: "transform 0.15s ease, opacity 0.15s ease",
                 position: "relative",
               }}
               onMouseEnter={(e) => {
@@ -456,7 +456,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                transition: "all 0.15s ease",
+                transition: "transform 0.15s ease, opacity 0.15s ease",
               }}
               title="Save collection to your library"
             >
@@ -571,7 +571,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                 fontSize: "0.82rem",
                 outline: "none",
                 width: "220px",
-                transition: "all 0.2s ease",
+                transition: "transform 0.2s ease, opacity 0.2s ease",
               }}
             />
             {searchQuery && (

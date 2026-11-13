@@ -347,7 +347,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       border: isMember
                         ? "1px solid rgba(243, 112, 30, 0.3)"
                         : "1px solid transparent",
-                      transition: "all 0.15s ease",
+                      transition: "transform 0.15s ease, opacity 0.15s ease",
                     }}
                     onMouseEnter={(e) => {
                       if (!isMember) {
@@ -377,7 +377,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        transition: "all 0.15s ease",
+                        transition: "transform 0.15s ease, opacity 0.15s ease",
                       }}
                     >
                       {isMember && (

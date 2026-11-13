@@ -8,7 +8,7 @@ import {
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
-import type { ViewType } from "../components/Sidebar";
+import type { ViewType } from "../viewTypes";
 const destinations = [
   ["albums", "Albums", Disc3],
   ["playlists", "Playlists", ListMusic],

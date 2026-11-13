@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { Home, Library, ListMusic, Radio, Settings } from "lucide-react";
-import type { SidebarProps, ViewType } from "../components/Sidebar";
+import type { NavigationProps, ViewType } from "../viewTypes";
 import { ProfileNavigation } from "./ProfileNavigation";
 
 const primary = [
@@ -16,10 +16,7 @@ export const SpatialNavigation = memo(function SpatialNavigation({
   currentView,
   currentUser,
   onSelectView,
-}: Pick<
-  SidebarProps,
-  "currentView" | "currentUser" | "onSelectView" | "unreadNotificationsCount"
->) {
+}: NavigationProps) {
   const rail = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(72);
   const gesture = useRef({ x: 0, start: 72, width: 72 });

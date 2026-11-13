@@ -279,7 +279,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
                   fontWeight: 700,
                   lineHeight: 1.45,
                   cursor: "pointer",
-                  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                  transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
                   color: isActive
                     ? "#e8d8c9"
                     : isPast
@@ -368,7 +368,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             fontWeight: 700,
             fontSize: "0.85rem",
             cursor: "pointer",
-            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             zIndex: 10,
           }}
         >

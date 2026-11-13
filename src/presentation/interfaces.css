@@ -222,44 +222,10 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   transition: none;
   border: 0;
 }
-.kaze-interface .sidebar--collapsed {
-  width: 62px !important;
-}
-.kaze-interface .sidebar:not(.spatial-navigation) {
-  overflow: hidden;
-}
-.sidebar-navigation-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-.sidebar-footer,
-.sidebar > .logo-container {
-  flex-shrink: 0;
-}
-.kaze-interface .logo-container {
-  margin: 0 0 20px;
-  padding: 0 4px 18px;
-  gap: 8px;
-}
-.kaze-interface .logo-title {
-  font-size: 21px;
-  letter-spacing: -0.06em;
-}
 .kaze-interface .kage-logo {
   width: 28px;
   height: 28px;
   border-radius: 0;
-}
-.kaze-interface .nav-section {
-  margin-bottom: 14px;
-  gap: 2px;
-}
-.kaze-interface .nav-section-title {
-  color: var(--text-dim);
-  font-size: 9px;
-  margin: 7px 10px;
 }
 .kaze-interface .nav-button {
   padding: 10px;
@@ -1082,9 +1048,6 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     width: 16px;
     flex-shrink: 0;
   }
-  .kaze-interface .logo-title {
-    font-size: 18px !important;
-  }
   .kaze-interface .main-content {
     padding-left: 16px;
     padding-right: 16px;
@@ -1208,13 +1171,6 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   .kaze-interface .sidebar {
     padding-top: 14px;
   }
-  .kaze-interface .logo-container {
-    margin-bottom: 8px;
-    padding-bottom: 10px;
-  }
-  .kaze-interface .nav-section {
-    margin-bottom: 9px;
-  }
   .kaze-interface .nav-button {
     padding-top: 7px;
     padding-bottom: 7px;
@@ -1258,9 +1214,6 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .kaze-interface .windowed-table td {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.kaze-interface .sidebar-playlist-dropdown [role="list"] {
-  max-height: 114px;
 }
 .wishlist-view > .view-header h1 {
   display: flex;
@@ -1358,9 +1311,6 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   .kaze-interface .library-list-header > div:nth-child(4) {
     visibility: hidden;
   }
-}
-.kaze-interface .nav-section {
-  margin-bottom: 10px;
 }
 .kaze-interface .nav-button {
   padding-top: 8px;

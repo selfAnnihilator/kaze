@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { UserRound } from "lucide-react";
 import type { UserProfile } from "../types";
-import type { ViewType } from "../components/Sidebar";
+import type { ViewType } from "../viewTypes";
 
 export const ProfileNavigation = memo(function ProfileNavigation({
   user,

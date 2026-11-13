@@ -124,7 +124,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isPlaying
           ? "0 0 20px rgba(139, 124, 246, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
           : isHovered
@@ -418,7 +418,7 @@ const MixCard: React.FC<{
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isHovered
           ? "0 10px 24px rgba(0, 0, 0, 0.4)"
           : "0 2px 8px rgba(0, 0, 0, 0.15)",
@@ -556,7 +556,7 @@ const ChartCard: React.FC<{
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isHovered
           ? "0 10px 24px rgba(0, 0, 0, 0.4)"
           : "0 2px 8px rgba(0, 0, 0, 0.15)",

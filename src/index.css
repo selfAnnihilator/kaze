@@ -236,69 +236,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex-direction: column;
   padding: 24px 14px 0;
   background-image: linear-gradient(140deg, #30261c55, transparent 45%);
-  transition: width 0.22s ease;
-}
-
-.sidebar--collapsed {
-  width: 62px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-/* Centre icons in nav-buttons when collapsed */
-.sidebar--collapsed .nav-button,
-.sidebar--collapsed .nav-button-group {
-  justify-content: center;
-  padding: 12px 8px;
-}
-
-.sidebar--collapsed .logo-container {
-  justify-content: center;
-  border: 0;
-  padding-bottom: 20px;
-  margin-bottom: 12px;
-}
-
-.sidebar--collapsed .nav-section {
-  gap: 4px;
 }
 
 .kage-logo { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; }
 .nav-button.active svg { color: var(--accent); }
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
-}
-
-.logo-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-main);
-  letter-spacing: -0.04em;
-  font-size: 1.65rem;
-}
-
-.nav-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 24px;
-}
-
-.nav-section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0 10px;
-  margin-bottom: 6px;
-}
 
 .nav-button {
   display: flex;
@@ -312,7 +253,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   text-align: left;
 }
 
@@ -444,7 +385,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-primary {
@@ -538,7 +479,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   justify-content: center;
   padding: 6px;
   border-radius: 50%;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   position: relative;
 }
 
@@ -660,7 +601,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .global-search form > div:focus-within { border-color: var(--accent-light) !important; }
 
 @media (max-width: 1000px) {
-  .sidebar:not(.sidebar--collapsed) { width: 195px; padding-left: 10px; padding-right: 10px; }
+  .sidebar { width: 195px; padding-left: 10px; padding-right: 10px; }
   .nav-button { gap: 9px; font-size: 12px; }
   .main-content { --content-gutter: 20px; padding: 20px; }
   .player-track-info { width: 250px; }
@@ -669,7 +610,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 @media (max-height: 720px) {
 
-  .nav-section { margin-bottom: 14px; }
   .discovery-hero { min-height: 210px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -698,7 +638,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: none;
   border: none;
   color: var(--text-muted);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
 }
 
@@ -786,7 +726,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .scroll-arrow-btn:hover {
