@@ -408,7 +408,8 @@ impl HistoryService {
             None => return,
         };
 
-        let rows: Vec<(String, String, String, String, String, i64, f64, f64, String)> =
+        type JournalRow = (String, String, String, String, String, i64, f64, f64, String);
+        let rows: Vec<JournalRow> =
             sqlx::query_as(
                 "SELECT session_id, user_id, track_id, device_id, stat_date,
                         started_at, listened_secs, duration_secs, source

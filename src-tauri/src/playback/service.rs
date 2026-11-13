@@ -1,3 +1,4 @@
+use crate::recommendations::mixes::OnlineTrackInput;
 use crate::core::sync::{MutexExt, RwLockExt};
 use crate::core::command::RepeatMode;
 use crate::core::error::{AppError, AppResult};
@@ -440,7 +441,7 @@ impl PlaybackService {
                 return Ok(item);
             }
             // Bypass repeat-one for a song the user has explicitly excluded.
-            item = self.queue.write().await.next().cloned();
+            item = self.queue.write().await.skip_forward().cloned();
         }
         Ok(None)
     }
@@ -1034,7 +1035,8 @@ impl PlaybackService {
             None => {
                 // If not in track_repo, check external_tracks for online / discovery track
                 if let Some(pool) = &self.pool {
-                    let ext: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                    type ExtRow = (String, String, Option<String>, Option<f64>, Option<String>, Option<String>);
+                    let ext: Option<ExtRow> = sqlx::query_as(
                         "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
                     )
                     .bind(track_id)
@@ -1047,13 +1049,15 @@ impl PlaybackService {
                     {
                         let _ = crate::recommendations::mixes::ensure_online_track(
                             pool,
-                            track_id,
-                            &title,
-                            Some(&artist),
-                            album.as_deref(),
-                            duration_secs,
-                            cover_art_url.as_deref(),
-                            preview_url.as_deref(),
+                            &OnlineTrackInput {
+                                id: track_id,
+                                title: &title,
+                                artist: Some(&artist),
+                                album: album.as_deref(),
+                                duration_secs,
+                                cover_art_url: cover_art_url.as_deref(),
+                                preview_url: preview_url.as_deref(),
+                            },
                         )
                         .await;
                         self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {
@@ -1197,30 +1201,14 @@ impl PlaybackService {
     /// Plays an online or remote track, ensuring it is registered and streamed through the unified engine.
     pub async fn play_online_track(
         &self,
-        track_id: &str,
-        title: &str,
-        artist: &str,
-        album: Option<&str>,
-        duration_secs: Option<f64>,
-        cover_art_url: Option<&str>,
-        preview_url: Option<&str>,
+        track: &crate::recommendations::mixes::OnlineTrackInput<'_>,
         source: Option<String>,
     ) -> AppResult<()> {
         if let Some(pool) = &self.pool {
-            crate::recommendations::mixes::ensure_online_track(
-                pool,
-                track_id,
-                title,
-                Some(artist),
-                album,
-                duration_secs,
-                cover_art_url,
-                preview_url,
-            )
-            .await?;
+            crate::recommendations::mixes::ensure_online_track(pool, track).await?;
         }
 
-        self.play_track(track_id, source).await
+        self.play_track(track.id, source).await
     }
 
     /// Plays an item from the current queue by index.
@@ -1712,7 +1700,7 @@ impl PlaybackService {
         let operation = self.flow_operation.lock().await;
         let mut next_item = {
             let mut q_guard = self.queue.write().await;
-            q_guard.next().cloned()
+            q_guard.skip_forward().cloned()
         };
 
         next_item = self.skip_blocked_queue_items(next_item).await?;
@@ -1870,7 +1858,7 @@ impl PlaybackService {
                     f.reasons.insert(t.track_id, t.explanation);
                 }
             }
-            q.next().cloned()
+            q.skip_forward().cloned()
         };
         drop(flow);
         self.emit_queue_updated().await;
@@ -1938,7 +1926,7 @@ impl PlaybackService {
             for item in items {
                 q_guard.enqueue(item, false);
             }
-            q_guard.next().cloned()
+            q_guard.skip_forward().cloned()
         };
         self.emit_queue_updated().await;
         Ok(next)
@@ -1965,7 +1953,8 @@ impl PlaybackService {
             Some(t) => t,
             None => {
                 if let Some(pool) = &self.pool {
-                    let ext: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                    type ExtRow = (String, String, Option<String>, Option<f64>, Option<String>, Option<String>);
+                    let ext: Option<ExtRow> = sqlx::query_as(
                         "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
                     )
                     .bind(track_id)
@@ -1978,13 +1967,15 @@ impl PlaybackService {
                     {
                         let _ = crate::recommendations::mixes::ensure_online_track(
                             pool,
-                            track_id,
-                            &title,
-                            Some(&artist),
-                            album.as_deref(),
-                            duration_secs,
-                            cover_art_url.as_deref(),
-                            preview_url.as_deref(),
+                            &OnlineTrackInput {
+                                id: track_id,
+                                title: &title,
+                                artist: Some(&artist),
+                                album: album.as_deref(),
+                                duration_secs,
+                                cover_art_url: cover_art_url.as_deref(),
+                                preview_url: preview_url.as_deref(),
+                            },
                         )
                         .await;
                         self.track_repo.find_by_id(track_id).await?.ok_or_else(|| {

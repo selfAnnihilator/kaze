@@ -22,7 +22,7 @@ impl DownloadStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn from_db_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "QUEUED" => DownloadStatus::Queued,
             "DOWNLOADING" => DownloadStatus::Downloading,

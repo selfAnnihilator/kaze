@@ -1,4 +1,5 @@
 //! Restore stable cloud song IDs without claiming a provider pair twice.
+use crate::recommendations::mixes::OnlineTrackInput;
 use super::models::{CloudOnlineSource, CloudSong};
 use crate::{
     core::{AppError, AppResult},
@@ -185,13 +186,15 @@ pub(super) async fn restore_song(pool: &SqlitePool, song: &CloudSong, now: i64) 
     // its exact source. Registration cannot promote a non-prefixed alias again.
     ensure_online_track(
         pool,
-        &song.id,
-        &song.title,
-        song.artist.as_deref(),
-        song.album.as_deref(),
-        Some(song.duration_secs),
-        song.cover_art_url.as_deref(),
-        song.preview_url.as_deref(),
+        &OnlineTrackInput {
+            id: &song.id,
+            title: &song.title,
+            artist: song.artist.as_deref(),
+            album: song.album.as_deref(),
+            duration_secs: Some(song.duration_secs),
+            cover_art_url: song.cover_art_url.as_deref(),
+            preview_url: song.preview_url.as_deref(),
+        },
     )
     .await?;
     Ok(())

@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     config::HistoryConfig,
     core::{event::Event, event_bus::EventBus},
@@ -17,7 +18,18 @@ use sqlx::SqlitePool;
 use std::{sync::Arc, time::Duration};
 
 async fn song(pool: &SqlitePool, id: &str, artist: &str) {
-    ensure_online_track(pool, id, id, Some(artist), None, Some(240.0), None, None)
+    ensure_online_track(
+        pool,
+        &OnlineTrackInput {
+            id,
+            title: id,
+            artist: Some(artist),
+            album: None,
+            duration_secs: Some(240.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
+    )
         .await
         .unwrap();
 }

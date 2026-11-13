@@ -8,16 +8,41 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 
+/// external_tracks row: id, title, artist, album, duration_secs, cover_art_url, preview_url.
+type OnlineCandidateRow = (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<f64>,
+    Option<String>,
+    Option<String>,
+);
+
+/// Metadata needed to register an online track (and its artist/album) locally.
+#[derive(Debug, Clone, Copy)]
+pub struct OnlineTrackInput<'a> {
+    pub id: &'a str,
+    pub title: &'a str,
+    pub artist: Option<&'a str>,
+    pub album: Option<&'a str>,
+    pub duration_secs: Option<f64>,
+    pub cover_art_url: Option<&'a str>,
+    pub preview_url: Option<&'a str>,
+}
+
 pub async fn ensure_online_track(
     pool: &SqlitePool,
-    id: &str,
-    title: &str,
-    artist: Option<&str>,
-    album: Option<&str>,
-    duration_secs: Option<f64>,
-    cover_art_url: Option<&str>,
-    preview_url: Option<&str>,
-) -> AppResult<()> {
+    track: &OnlineTrackInput<'_>) -> AppResult<()> {
+    let OnlineTrackInput {
+        id,
+        title,
+        artist,
+        album,
+        duration_secs,
+        cover_art_url,
+        preview_url,
+    } = *track;
     let now = chrono::Utc::now().timestamp();
 
     // 1. Ensure artist exists if given
@@ -157,7 +182,8 @@ pub async fn ensure_online_track(
 }
 
 pub async fn repair_legacy_online_tracks(pool: &SqlitePool) -> AppResult<()> {
-    let rows: Vec<(String, String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+    type LegacyOnlineRow = (String, String, String, Option<String>, Option<f64>, Option<String>, Option<String>);
+    let rows: Vec<LegacyOnlineRow> =
         sqlx::query_as(
             "SELECT ext.id, ext.title, ext.artist, ext.album, ext.duration_secs, ext.cover_art_url, ext.preview_url
              FROM external_tracks ext
@@ -171,13 +197,15 @@ pub async fn repair_legacy_online_tracks(pool: &SqlitePool) -> AppResult<()> {
     for (id, title, artist, album, duration_secs, cover_art_url, preview_url) in rows {
         let _ = ensure_online_track(
             pool,
-            &id,
-            &title,
-            Some(&artist),
-            album.as_deref(),
-            duration_secs,
-            cover_art_url.as_deref(),
-            preview_url.as_deref(),
+            &OnlineTrackInput {
+                id: &id,
+                title: &title,
+                artist: Some(&artist),
+                album: album.as_deref(),
+                duration_secs,
+                cover_art_url: cover_art_url.as_deref(),
+                preview_url: preview_url.as_deref(),
+            },
         )
         .await;
     }
@@ -618,7 +646,7 @@ impl SmartMixGenerator {
         }
 
         // Blend in online discovery songs from external_tracks
-        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+        let online_candidates: Vec<OnlineCandidateRow> =
             sqlx::query_as(
                 "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
                  FROM external_tracks
@@ -634,13 +662,15 @@ impl SmartMixGenerator {
             if seen.insert(oid.clone()) {
                 let _ = ensure_online_track(
                     &self.pool,
-                    &oid,
-                    &otitle,
-                    oartist.as_deref(),
-                    oalbum.as_deref(),
-                    odur,
-                    ocover.as_deref(),
-                    opreview.as_deref(),
+                    &OnlineTrackInput {
+                        id: &oid,
+                        title: &otitle,
+                        artist: oartist.as_deref(),
+                        album: oalbum.as_deref(),
+                        duration_secs: odur,
+                        cover_art_url: ocover.as_deref(),
+                        preview_url: opreview.as_deref(),
+                    },
                 )
                 .await;
                 track_ids.push(oid);
@@ -804,7 +834,7 @@ impl SmartMixGenerator {
         let mut seen: HashSet<String> = track_ids.iter().cloned().collect();
 
         // Blend in online songs for this genre from external_tracks
-        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+        let online_candidates: Vec<OnlineCandidateRow> =
             sqlx::query_as(
                 "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
                  FROM external_tracks
@@ -824,13 +854,15 @@ impl SmartMixGenerator {
             if seen.insert(oid.clone()) {
                 let _ = ensure_online_track(
                     &self.pool,
-                    &oid,
-                    &otitle,
-                    oartist.as_deref(),
-                    oalbum.as_deref(),
-                    odur,
-                    ocover.as_deref(),
-                    opreview.as_deref(),
+                    &OnlineTrackInput {
+                        id: &oid,
+                        title: &otitle,
+                        artist: oartist.as_deref(),
+                        album: oalbum.as_deref(),
+                        duration_secs: odur,
+                        cover_art_url: ocover.as_deref(),
+                        preview_url: opreview.as_deref(),
+                    },
                 )
                 .await;
                 track_ids.push(oid);
@@ -1006,7 +1038,7 @@ impl SmartMixGenerator {
         let mut seen: HashSet<String> = discovery_tracks.iter().cloned().collect();
 
         // Blend in online discovery tracks from external_tracks
-        let online_candidates: Vec<(String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>)> =
+        let online_candidates: Vec<OnlineCandidateRow> =
             sqlx::query_as(
                 "SELECT id, title, artist, album, duration_secs, cover_art_url, preview_url
                  FROM external_tracks
@@ -1022,13 +1054,15 @@ impl SmartMixGenerator {
             if seen.insert(oid.clone()) {
                 let _ = ensure_online_track(
                     &self.pool,
-                    &oid,
-                    &otitle,
-                    oartist.as_deref(),
-                    oalbum.as_deref(),
-                    odur,
-                    ocover.as_deref(),
-                    opreview.as_deref(),
+                    &OnlineTrackInput {
+                        id: &oid,
+                        title: &otitle,
+                        artist: oartist.as_deref(),
+                        album: oalbum.as_deref(),
+                        duration_secs: odur,
+                        cover_art_url: ocover.as_deref(),
+                        preview_url: opreview.as_deref(),
+                    },
                 )
                 .await;
                 discovery_tracks.push(oid);

@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     config::AppConfig,
     core::command::SmartMixType,
@@ -17,13 +18,15 @@ use music_player_backend::{
 async fn song(pool: &sqlx::SqlitePool, id: &str, title: &str, artist: &str, provider: &str) {
     ensure_online_track(
         pool,
-        id,
-        title,
-        Some(artist),
-        Some("Album"),
-        Some(180.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id,
+            title,
+            artist: Some(artist),
+            album: Some("Album"),
+            duration_secs: Some(180.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -32,13 +35,15 @@ async fn song(pool: &sqlx::SqlitePool, id: &str, title: &str, artist: &str, prov
 async fn alias(pool: &sqlx::SqlitePool, id: &str, provider: &str) {
     ensure_online_track(
         pool,
-        id,
-        "Song",
-        Some("Artist"),
-        Some("Album"),
-        Some(180.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id,
+            title: "Song",
+            artist: Some("Artist"),
+            album: Some("Album"),
+            duration_secs: Some(180.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();

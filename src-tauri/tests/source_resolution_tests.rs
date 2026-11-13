@@ -126,14 +126,14 @@ fn test_peek_next_sequential_and_bounds() {
     assert_eq!(queue.current_index(), Some(0));
 
     // Advance to t2
-    assert_eq!(queue.next().map(|i| i.track_id.as_str()), Some("t2"));
+    assert_eq!(queue.skip_forward().map(|i| i.track_id.as_str()), Some("t2"));
     assert_eq!(queue.current_index(), Some(1));
 
     // When at 1, peek_next() sees t3
     assert_eq!(queue.peek_next().map(|i| i.track_id.as_str()), Some("t3"));
 
     // Advance to t3
-    assert_eq!(queue.next().map(|i| i.track_id.as_str()), Some("t3"));
+    assert_eq!(queue.skip_forward().map(|i| i.track_id.as_str()), Some("t3"));
     assert_eq!(queue.current_index(), Some(2));
 
     // When at 2 (last), peek_next() with RepeatMode::None returns None
@@ -183,7 +183,7 @@ fn test_peek_next_with_shuffle() {
     assert_eq!(queue.current().unwrap().track_id, current);
 
     // Calling next() advances to that exact peeked item
-    let advanced = queue.next().unwrap().track_id.clone();
+    let advanced = queue.skip_forward().unwrap().track_id.clone();
     assert_eq!(advanced, peeked);
 }
 

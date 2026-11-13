@@ -470,16 +470,8 @@ async fn fetch_track_info(
     };
 
     // Query tracks table
-    let track_row: Option<(
-        String,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<i64>,
-        Option<String>,
-        f64,
-    )> = sqlx::query_as(
+    type TrackRow = (String, Option<String>, Option<String>, Option<String>, Option<String>, Option<i64>, Option<String>, f64);
+    let track_row: Option<TrackRow> = sqlx::query_as(
         "SELECT 
             t.title,
             a.name AS artist_name,
@@ -530,13 +522,8 @@ async fn fetch_track_info(
     }
 
     // Fallback: query external_tracks table
-    let ext_row: Option<(
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<f64>,
-    )> = sqlx::query_as(
+    type ExtRow = (Option<String>, Option<String>, Option<String>, Option<String>, Option<f64>);
+    let ext_row: Option<ExtRow> = sqlx::query_as(
         "SELECT title, artist, album, cover_art_url, duration_secs FROM external_tracks WHERE id = ? LIMIT 1",
     )
     .bind(track_id)

@@ -222,7 +222,7 @@ impl PlaybackQueue {
 
     /// Advances to the next track for an explicit user action. Repeat-one does not
     /// trap the Next button on the current track.
-    pub fn next(&mut self) -> Option<&QueueItem> {
+    pub fn skip_forward(&mut self) -> Option<&QueueItem> {
         self.advance(false)
     }
 
@@ -399,7 +399,7 @@ mod tests {
         queue.set_repeat_mode(RepeatMode::One);
 
         assert_eq!(queue.next_after_finish().map(|entry| entry.track_id.as_str()), Some("one"));
-        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("two"));
+        assert_eq!(queue.skip_forward().map(|entry| entry.track_id.as_str()), Some("two"));
     }
 
     #[test]
@@ -410,8 +410,8 @@ mod tests {
 
         assert_eq!(queue.current().map(|entry| entry.track_id.as_str()), Some("second"));
         assert_eq!(queue.previous().map(|entry| entry.track_id.as_str()), Some("first"));
-        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("second"));
-        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("queued"));
+        assert_eq!(queue.skip_forward().map(|entry| entry.track_id.as_str()), Some("second"));
+        assert_eq!(queue.skip_forward().map(|entry| entry.track_id.as_str()), Some("queued"));
     }
 
     // --- shuffle tests ---
@@ -434,7 +434,7 @@ mod tests {
 
             let mut seen = vec![current_id(&queue)];
             assert_eq!(seen[0], "t5", "current item stays current when shuffle starts");
-            while let Some(next) = queue.next() {
+            while let Some(next) = queue.skip_forward() {
                 seen.push(next.track_id.clone());
             }
 
@@ -453,9 +453,9 @@ mod tests {
         queue.set_shuffle(true);
         queue.set_repeat_mode(RepeatMode::All);
         for _ in 0..4 {
-            queue.next();
+            queue.skip_forward();
         }
-        assert_eq!(queue.next().map(|entry| entry.track_id.as_str()), Some("t0"));
+        assert_eq!(queue.skip_forward().map(|entry| entry.track_id.as_str()), Some("t0"));
     }
 
     #[test]
@@ -463,14 +463,14 @@ mod tests {
         let mut queue = PlaybackQueue::new();
         queue.set_queue(ids(6), Some(0));
         queue.set_shuffle(true);
-        queue.next();
-        queue.next();
+        queue.skip_forward();
+        queue.skip_forward();
         let resumed_at = queue.current_index().expect("current index");
 
         queue.set_shuffle(false);
         assert!(!queue.is_shuffle());
         let rest: Vec<String> =
-            std::iter::from_fn(|| queue.next().map(|entry| entry.track_id.clone())).collect();
+            std::iter::from_fn(|| queue.skip_forward().map(|entry| entry.track_id.clone())).collect();
         let expected: Vec<String> = ((resumed_at + 1)..6).map(|i| format!("t{i}")).collect();
         assert_eq!(rest, expected, "sequential order resumes after the current item");
     }
@@ -480,8 +480,8 @@ mod tests {
         let mut queue = PlaybackQueue::new();
         queue.set_queue(ids(8), Some(0));
         queue.set_shuffle(true);
-        queue.next();
-        queue.next();
+        queue.skip_forward();
+        queue.skip_forward();
         let playing = current_id(&queue);
 
         // Remove an item that is not current, then the current one.
@@ -498,7 +498,7 @@ mod tests {
         assert_eq!(queue.len(), 6);
 
         let mut steps = 0;
-        while let Some(next) = queue.next() {
+        while let Some(next) = queue.skip_forward() {
             assert_ne!(next.track_id, removed);
             assert_ne!(next.track_id, playing);
             steps += 1;
@@ -593,7 +593,7 @@ mod upcoming_reset_tests {
         assert_eq!(q.repeat_mode(), RepeatMode::One);
         assert!(!q.is_shuffle());
         q.enqueue(item("fresh-flow"), false);
-        assert_eq!(q.next().unwrap().track_id, "fresh-flow");
+        assert_eq!(q.skip_forward().unwrap().track_id, "fresh-flow");
         assert_eq!(q.previous().unwrap().track_id, "current");
         assert_eq!(q.previous().unwrap().track_id, "previous");
     }

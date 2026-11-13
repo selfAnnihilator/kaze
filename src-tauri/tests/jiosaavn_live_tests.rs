@@ -1,4 +1,5 @@
 //! Opt-in network/native gate. Uses only a disposable directory and muted output.
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     playback::{
         backend::{AudioBackend, RodioAudioBackend},
@@ -375,13 +376,15 @@ async fn saved_catalog_entries_play_the_exact_version_shown() {
         let id = format!("itunes:fixture{i}");
         ensure_online_track(
             &pool,
-            &id,
-            title,
-            Some(artist),
-            *album,
-            Some(210.0),
-            None,
-            None,
+            &OnlineTrackInput {
+                id: &id,
+                title,
+                artist: Some(artist),
+                album: *album,
+                duration_secs: Some(210.0),
+                cover_art_url: None,
+                preview_url: None,
+            },
         )
         .await
         .unwrap();

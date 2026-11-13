@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     config::AppConfig,
     core::{command::Command, event::Event, processor::CoreProcessor},
@@ -120,26 +121,30 @@ async fn runtime_flow_includes_taste_matched_online_songs_with_account_scoped_fa
     .await;
     ensure_online_track(
         p.db_pool(),
-        "online:other",
-        "Other account song",
-        Some("Other account artist"),
-        None,
-        Some(240.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "online:other",
+            title: "Other account song",
+            artist: Some("Other account artist"),
+            album: None,
+            duration_secs: Some(240.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
     stats(&p, "other-account", "online:other", 99, 1, 0).await;
     ensure_online_track(
         p.db_pool(),
-        "online:skipped",
-        "Skipped online",
-        Some("Favorite Artist"),
-        None,
-        Some(240.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "online:skipped",
+            title: "Skipped online",
+            artist: Some("Favorite Artist"),
+            album: None,
+            duration_secs: Some(240.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -317,13 +322,15 @@ async fn online_only_flow_plays_full_cached_audio_through_the_shared_rust_histor
     let (p, dir) = setup().await;
     ensure_online_track(
         p.db_pool(),
-        "jiosaavn:favorite",
-        "Online Favorite",
-        Some("Online Artist"),
-        None,
-        Some(240.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "jiosaavn:favorite",
+            title: "Online Favorite",
+            artist: Some("Online Artist"),
+            album: None,
+            duration_secs: Some(240.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -374,13 +381,15 @@ async fn online_liked_songs_are_familiar_without_claiming_another_accounts_playl
     let (p, _dir) = setup().await;
     ensure_online_track(
         p.db_pool(),
-        "jiosaavn:liked",
-        "Liked online",
-        Some("Liked artist"),
-        None,
-        Some(240.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "jiosaavn:liked",
+            title: "Liked online",
+            artist: Some("Liked artist"),
+            album: None,
+            duration_secs: Some(240.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -457,13 +466,15 @@ async fn artist_release_flow_keeps_familiarity_without_locking_to_a_compilation_
         external(&core, id, "Breathe Me", "Sia", "Pop").await;
         ensure_online_track(
             core.db_pool(),
-            id,
-            "Breathe Me",
-            Some("Sia"),
-            Some(album),
-            Some(272.0),
-            Some(&format!("https://example.test/{cover}.jpg")),
-            None,
+            &OnlineTrackInput {
+                id,
+                title: "Breathe Me",
+                artist: Some("Sia"),
+                album: Some(album),
+                duration_secs: Some(272.0),
+                cover_art_url: Some(&format!("https://example.test/{cover}.jpg")),
+                preview_url: None,
+            },
         )
         .await
         .unwrap();

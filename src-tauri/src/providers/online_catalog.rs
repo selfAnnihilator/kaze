@@ -1,4 +1,5 @@
 //! Bind online catalog rows before presentation. Playback only follows the saved ID.
+use crate::recommendations::mixes::OnlineTrackInput;
 use crate::core::sync::RwLockExt;
 use super::{jiosaavn::JioSaavnProvider, strict_match::normalized, ExternalTrackMetadata};
 use crate::{
@@ -217,13 +218,15 @@ impl OnlineCatalog {
         {
             ensure_online_track(
                 &self.pool,
-                id,
-                &metadata.title,
-                Some(&metadata.artist_name),
-                metadata.album_title.as_deref(),
-                metadata.duration_secs,
-                metadata.cover_art_url.as_deref(),
-                None,
+                &OnlineTrackInput {
+                    id,
+                    title: &metadata.title,
+                    artist: Some(&metadata.artist_name),
+                    album: metadata.album_title.as_deref(),
+                    duration_secs: metadata.duration_secs,
+                    cover_art_url: metadata.cover_art_url.as_deref(),
+                    preview_url: None,
+                },
             )
             .await?;
         }

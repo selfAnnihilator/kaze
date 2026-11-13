@@ -1,3 +1,4 @@
+use music_player_backend::database::repositories::stats_repo::DailyPlayback;
 fn local_midnight(date: &str) -> i64 {
     use chrono::TimeZone;
     let midnight = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -1380,7 +1381,7 @@ async fn test_stats_lifetime_and_all_time_rankings_architecture() {
     let stat_date = chrono::Local::now().format("%Y-%m-%d").to_string();
     let expected_history_start = local_midnight(&stat_date);
     stats_repo
-        .record_daily_playback(user_a, None, &stat_date, 200.0, true, true, false)
+        .record_daily_playback(user_a, None, &stat_date, DailyPlayback { seconds: 200.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record daily playback");
 
@@ -1494,7 +1495,7 @@ async fn test_daily_aggregate_recording() {
     // 1. Playback session increments daily aggregate for guest
     let today = "2026-09-17";
     stats_repo
-        .record_daily_playback(guest_user, Some(dev_1), today, 120.0, true, true, false)
+        .record_daily_playback(guest_user, Some(dev_1), today, DailyPlayback { seconds: 120.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record guest playback");
 
@@ -1518,13 +1519,13 @@ async fn test_daily_aggregate_recording() {
 
     // 2. Playback session increments daily aggregate for authenticated user using canonical ID
     stats_repo
-        .record_daily_playback(auth_user, Some(dev_1), today, 100.0, true, true, false)
+        .record_daily_playback(auth_user, Some(dev_1), today, DailyPlayback { seconds: 100.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record auth playback 1");
 
     // Same-day sessions accumulate
     stats_repo
-        .record_daily_playback(auth_user, Some(dev_1), today, 50.5, true, false, true)
+        .record_daily_playback(auth_user, Some(dev_1), today, DailyPlayback { seconds: 50.5, is_meaningful: true, completed: false, skipped: true })
         .await
         .expect("record auth playback 2");
 
@@ -1550,7 +1551,7 @@ async fn test_daily_aggregate_recording() {
     // 3. Next-day creates a new row
     let tomorrow = "2026-09-18";
     stats_repo
-        .record_daily_playback(auth_user, Some(dev_1), tomorrow, 300.0, true, true, false)
+        .record_daily_playback(auth_user, Some(dev_1), tomorrow, DailyPlayback { seconds: 300.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record auth playback next day");
 
@@ -1568,7 +1569,7 @@ async fn test_daily_aggregate_recording() {
 
     // 4. Record playback for other_user to test isolation
     stats_repo
-        .record_daily_playback(other_user, Some(dev_1), today, 999.0, true, true, false)
+        .record_daily_playback(other_user, Some(dev_1), today, DailyPlayback { seconds: 999.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record other user");
 
@@ -1613,12 +1614,12 @@ async fn test_multi_device_daily_sync() {
 
     // 1. Device A records 3600.0s, Device B records 1000.0s on the same day
     stats_repo
-        .record_daily_playback(user_id, Some(dev_a), today, 3600.0, true, true, false)
+        .record_daily_playback(user_id, Some(dev_a), today, DailyPlayback { seconds: 3600.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record dev A");
 
     stats_repo
-        .record_daily_playback(user_id, Some(dev_b), today, 1000.0, true, true, false)
+        .record_daily_playback(user_id, Some(dev_b), today, DailyPlayback { seconds: 1000.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record dev B");
 
@@ -1644,7 +1645,7 @@ async fn test_multi_device_daily_sync() {
     // 3. Pushing updates snapshot without duplicate sums:
     // Device A plays another 600.0s (total becomes 4200.0s)
     stats_repo
-        .record_daily_playback(user_id, Some(dev_a), today, 600.0, true, true, false)
+        .record_daily_playback(user_id, Some(dev_a), today, DailyPlayback { seconds: 600.0, is_meaningful: true, completed: true, skipped: false })
         .await
         .expect("record dev A more playback");
 

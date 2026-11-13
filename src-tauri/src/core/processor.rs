@@ -1,3 +1,5 @@
+use crate::recommendations::mixes::OnlineTrackInput;
+use crate::database::repositories::user_repo::AvatarFields;
 use crate::core::sync::MutexExt;
 use crate::cloud::{
     credentials, device, AuthSessionState, CloudClient, CloudSessionMetadata, CloudSyncStatus,
@@ -368,13 +370,15 @@ impl CoreProcessor {
                             cloud_user.username.clone(),
                             cloud_user.created_at,
                         ).with_avatar(
-                            cloud_user.display_name.clone(),
-                            avatar_key,
-                            cloud_user.avatar_public_id.clone(),
-                            cloud_user.avatar_url.clone(),
-                            cloud_user.avatar_version,
-                            cloud_user.avatar_updated_at,
-                            avatar_data_url,
+                            AvatarFields {
+                                display_name: cloud_user.display_name.clone(),
+                                avatar_key,
+                                avatar_public_id: cloud_user.avatar_public_id.clone(),
+                                avatar_url: cloud_user.avatar_url.clone(),
+                                avatar_version: cloud_user.avatar_version,
+                                avatar_updated_at: cloud_user.avatar_updated_at,
+                                avatar_data_url,
+                            },
                         );
 
                         *current_user_init.write().await = Some(profile.clone());
@@ -439,13 +443,15 @@ impl CoreProcessor {
                                 session.username.clone(),
                                 session.created_at,
                             ).with_avatar(
-                                None,
-                                if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
-                                None,
-                                None,
-                                None,
-                                None,
-                                cached_avatar,
+                                AvatarFields {
+                                    display_name: None,
+                                    avatar_key: if cached_avatar.is_some() { Some(format!("avatars/{}.webp", session.user_id)) } else { None },
+                                    avatar_public_id: None,
+                                    avatar_url: None,
+                                    avatar_version: None,
+                                    avatar_updated_at: None,
+                                    avatar_data_url: cached_avatar,
+                                },
                             );
                             *current_user_init.write().await = Some(profile.clone());
                             *session_state_init.write().await = AuthSessionState::OfflineAuthenticated {
@@ -875,13 +881,15 @@ impl CoreProcessor {
             } => {
                 self.playback_service
                     .play_online_track(
-                        &track_id,
-                        &title,
-                        &artist,
-                        album.as_deref(),
-                        duration_secs,
-                        cover_art_url.as_deref(),
-                        preview_url.as_deref(),
+                        &OnlineTrackInput {
+                            id: &track_id,
+                            title: &title,
+                            artist: Some(&artist),
+                            album: album.as_deref(),
+                            duration_secs,
+                            cover_art_url: cover_art_url.as_deref(),
+                            preview_url: preview_url.as_deref(),
+                        },
                         source,
                     )
                     .await?;
@@ -978,13 +986,15 @@ impl CoreProcessor {
             } => {
                 crate::recommendations::mixes::ensure_online_track(
                     &self.db_pool,
-                    &track_id,
-                    &title,
-                    Some(&artist),
-                    album.as_deref(),
-                    duration_secs,
-                    cover_art_url.as_deref(),
-                    preview_url.as_deref(),
+                    &OnlineTrackInput {
+                        id: &track_id,
+                        title: &title,
+                        artist: Some(&artist),
+                        album: album.as_deref(),
+                        duration_secs,
+                        cover_art_url: cover_art_url.as_deref(),
+                        preview_url: preview_url.as_deref(),
+                    },
                 )
                 .await?;
                 if self
@@ -1269,7 +1279,8 @@ impl CoreProcessor {
                             preview_url,
                         )
                     } else {
-                        let ext_opt: Option<(String, String, Option<String>, Option<f64>, Option<String>, Option<String>)> = sqlx::query_as(
+                        type ExtRow = (String, String, Option<String>, Option<f64>, Option<String>, Option<String>);
+                        let ext_opt: Option<ExtRow> = sqlx::query_as(
                             "SELECT title, artist, album, duration_secs, cover_art_url, preview_url FROM external_tracks WHERE id = ?"
                         )
                         .bind(&track_id)
@@ -1294,17 +1305,19 @@ impl CoreProcessor {
 
                     let _ = crate::recommendations::mixes::ensure_online_track(
                         &self.db_pool,
-                        &track_id,
-                        if t_title.is_empty() {
+                        &OnlineTrackInput {
+                            id: &track_id,
+                            title: if t_title.is_empty() {
                             &track_id
                         } else {
                             &t_title
                         },
-                        t_artist.as_deref(),
-                        t_album.as_deref(),
-                        t_dur,
-                        t_cover.as_deref(),
-                        t_prev.as_deref(),
+                            artist: t_artist.as_deref(),
+                            album: t_album.as_deref(),
+                            duration_secs: t_dur,
+                            cover_art_url: t_cover.as_deref(),
+                            preview_url: t_prev.as_deref(),
+                        },
                     )
                     .await;
                 }
@@ -1524,13 +1537,15 @@ impl CoreProcessor {
                         cloud_user.created_at,
                     )
                     .with_avatar(
-                        cloud_user.display_name.clone(),
-                        avatar_key,
-                        cloud_user.avatar_public_id.clone(),
-                        cloud_user.avatar_url.clone(),
-                        cloud_user.avatar_version,
-                        cloud_user.avatar_updated_at,
-                        avatar_data_url,
+                        AvatarFields {
+                            display_name: cloud_user.display_name.clone(),
+                            avatar_key,
+                            avatar_public_id: cloud_user.avatar_public_id.clone(),
+                            avatar_url: cloud_user.avatar_url.clone(),
+                            avatar_version: cloud_user.avatar_version,
+                            avatar_updated_at: cloud_user.avatar_updated_at,
+                            avatar_data_url,
+                        },
                     );
 
                     let now = chrono::Utc::now().timestamp();
@@ -1731,13 +1746,15 @@ impl CoreProcessor {
                         cloud_user.created_at,
                     )
                     .with_avatar(
-                        cloud_user.display_name.clone(),
-                        avatar_key,
-                        cloud_user.avatar_public_id.clone(),
-                        cloud_user.avatar_url.clone(),
-                        cloud_user.avatar_version,
-                        cloud_user.avatar_updated_at,
-                        avatar_data_url,
+                        AvatarFields {
+                            display_name: cloud_user.display_name.clone(),
+                            avatar_key,
+                            avatar_public_id: cloud_user.avatar_public_id.clone(),
+                            avatar_url: cloud_user.avatar_url.clone(),
+                            avatar_version: cloud_user.avatar_version,
+                            avatar_updated_at: cloud_user.avatar_updated_at,
+                            avatar_data_url,
+                        },
                     );
 
                     let now = chrono::Utc::now().timestamp();
@@ -2612,13 +2629,8 @@ impl CoreProcessor {
                     let count = self.playlist_repo.get_track_count(&p.id).await.unwrap_or(0);
 
                     // Query the first track in the playlist to use its thumbnail/cover
-                    let first_song: Option<(
-                        String,
-                        Option<String>,
-                        Option<String>,
-                        i64,
-                        Option<String>,
-                    )> = sqlx::query_as(
+                    type FirstSongRow = (String, Option<String>, Option<String>, i64, Option<String>);
+                    let first_song: Option<FirstSongRow> = sqlx::query_as(
                         "SELECT pt.track_id, 
                                 ext.cover_art_url, 
                                 al.cover_art_path, 
@@ -3064,17 +3076,19 @@ impl CoreProcessor {
                                 session.created_at,
                             )
                             .with_avatar(
-                                local_user.as_ref().and_then(|u| u.display_name.clone()),
-                                if cached_avatar.is_some() {
+                                AvatarFields {
+                                    display_name: local_user.as_ref().and_then(|u| u.display_name.clone()),
+                                    avatar_key: if cached_avatar.is_some() {
                                     Some(format!("avatars/{}.webp", session.user_id))
                                 } else {
                                     None
                                 },
-                                local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
-                                local_user.as_ref().and_then(|u| u.avatar_url.clone()),
-                                local_user.as_ref().and_then(|u| u.avatar_version),
-                                local_user.as_ref().and_then(|u| u.avatar_updated_at),
-                                cached_avatar,
+                                    avatar_public_id: local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
+                                    avatar_url: local_user.as_ref().and_then(|u| u.avatar_url.clone()),
+                                    avatar_version: local_user.as_ref().and_then(|u| u.avatar_version),
+                                    avatar_updated_at: local_user.as_ref().and_then(|u| u.avatar_updated_at),
+                                    avatar_data_url: cached_avatar,
+                                },
                             );
                             self.playback_service.stop_flow().await;
                             *self.current_user.write().await = Some(profile.clone());
@@ -3134,17 +3148,19 @@ impl CoreProcessor {
                         session.created_at,
                     )
                     .with_avatar(
-                        local_user.as_ref().and_then(|u| u.display_name.clone()),
-                        if cached_avatar.is_some() {
+                        AvatarFields {
+                            display_name: local_user.as_ref().and_then(|u| u.display_name.clone()),
+                            avatar_key: if cached_avatar.is_some() {
                             Some(format!("avatars/{}.webp", session.user_id))
                         } else {
                             None
                         },
-                        local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
-                        local_user.as_ref().and_then(|u| u.avatar_url.clone()),
-                        local_user.as_ref().and_then(|u| u.avatar_version),
-                        local_user.as_ref().and_then(|u| u.avatar_updated_at),
-                        cached_avatar,
+                            avatar_public_id: local_user.as_ref().and_then(|u| u.avatar_public_id.clone()),
+                            avatar_url: local_user.as_ref().and_then(|u| u.avatar_url.clone()),
+                            avatar_version: local_user.as_ref().and_then(|u| u.avatar_version),
+                            avatar_updated_at: local_user.as_ref().and_then(|u| u.avatar_updated_at),
+                            avatar_data_url: cached_avatar,
+                        },
                     );
                     let val = serde_json::to_value(&profile).ok();
                     return Ok(QueryResponse::Profile(val));
@@ -3308,19 +3324,22 @@ impl CoreProcessor {
             .await?
             .is_none()
         {
-            let row: Option<(String,String,Option<String>,Option<f64>,Option<String>)> = sqlx::query_as("SELECT title,artist,album,duration_secs,cover_art_url FROM external_tracks WHERE id=?").bind(track_id).fetch_optional(&self.db_pool).await?;
+            type ExternalTrackRow = (String,String,Option<String>,Option<f64>,Option<String>);
+            let row: Option<ExternalTrackRow> = sqlx::query_as("SELECT title,artist,album,duration_secs,cover_art_url FROM external_tracks WHERE id=?").bind(track_id).fetch_optional(&self.db_pool).await?;
             let Some((title, artist, album, duration, cover)) = row else {
                 return Err(AppError::NotFound("Song not found".into()));
             };
             crate::recommendations::mixes::ensure_online_track(
                 &self.db_pool,
-                track_id,
-                &title,
-                Some(&artist),
-                album.as_deref(),
-                duration,
-                cover.as_deref(),
-                None,
+                &OnlineTrackInput {
+                    id: track_id,
+                    title: &title,
+                    artist: Some(&artist),
+                    album: album.as_deref(),
+                    duration_secs: duration,
+                    cover_art_url: cover.as_deref(),
+                    preview_url: None,
+                },
             )
             .await?;
         }

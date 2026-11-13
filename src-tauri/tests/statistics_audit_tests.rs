@@ -1,3 +1,5 @@
+use music_player_backend::database::repositories::stats_repo::DailyPlayback;
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     cloud::{CloudDailyStat, SyncManager, SyncPayload},
     config::{HistoryConfig, RankingWeightsConfig},
@@ -19,7 +21,17 @@ fn entry(id: &str) -> PlaybackHistoryRecord {
 async fn pool() -> sqlx::SqlitePool {
     let p = create_in_memory_pool().await.unwrap();
     music_player_backend::recommendations::mixes::ensure_online_track(
-        &p,"song","Song",Some("Artist"),None,Some(600.),None,None).await.unwrap();
+        &p,
+        &OnlineTrackInput {
+            id: "song",
+            title: "Song",
+            artist: Some("Artist"),
+            album: None,
+            duration_secs: Some(600.),
+            cover_art_url: None,
+            preview_url: None,
+        },
+    ).await.unwrap();
     p
 }
 #[tokio::test]
@@ -132,7 +144,7 @@ async fn old_year_uses_daily_rows_instead_of_stale_archive() {
     let repo = SqliteStatsRepository::new(p.clone());
     let first = repo.get_stats_overview("A",0,0,Some(2025),Some(12),&RankingWeightsConfig::default()).await.unwrap();
     assert_eq!(first.total_year_seconds,600.);
-    repo.record_daily_playback("A",Some("other"),"2025-12-31",100.,true,false,false).await.unwrap();
+    repo.record_daily_playback("A", Some("other"), "2025-12-31", DailyPlayback { seconds: 100., is_meaningful: true, completed: false, skipped: false }).await.unwrap();
     let next = repo.get_stats_overview("A",0,0,Some(2025),Some(12),&RankingWeightsConfig::default()).await.unwrap();
     assert_eq!(next.total_year_seconds,700.);
     assert_eq!(next.top_songs.len(),1);
@@ -151,7 +163,7 @@ async fn seven_days_includes_today_and_six_prior_dates_only() {
     let today = chrono::Local::now().date_naive();
     for offset in 0..8 {
         let day = (today - chrono::Duration::days(offset)).format("%Y-%m-%d").to_string();
-        repo.record_daily_playback("A",Some("device"),&day,10.,false,false,false).await.unwrap();
+        repo.record_daily_playback("A", Some("device"), &day, DailyPlayback { seconds: 10., is_meaningful: false, completed: false, skipped: false }).await.unwrap();
     }
     let stats=repo.get_stats_overview("A",0,0,None,None,&RankingWeightsConfig::default()).await.unwrap();
     assert_eq!(stats.weekly_seconds,70.);

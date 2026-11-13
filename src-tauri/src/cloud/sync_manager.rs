@@ -258,15 +258,8 @@ impl SyncManager {
         let now = Utc::now().timestamp();
 
         // 1. Playlists: user-owned custom playlists (non-smart mixes)
-        let playlist_rows: Vec<(
-            String,
-            String,
-            Option<String>,
-            i64,
-            Option<String>,
-            i64,
-            i64,
-        )> = sqlx::query_as(
+        type PlaylistRow = (String, String, Option<String>, i64, Option<String>, i64, i64);
+        let playlist_rows: Vec<PlaylistRow> = sqlx::query_as(
             "SELECT id, name, description, is_smart_mix, mix_type, created_at, updated_at
                  FROM playlists WHERE user_id = ? AND is_smart_mix = 0",
         )
@@ -333,7 +326,8 @@ impl SyncManager {
         let mut songs: Vec<CloudSong> = Vec::new();
         for s_id in &song_ids {
             // Check external_tracks first
-            let ext_row: Option<(String, String, String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>, i64)> = sqlx::query_as(
+            type ExtRow = (String, String, String, String, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>, i64);
+            let ext_row: Option<ExtRow> = sqlx::query_as(
                 "SELECT id, provider, provider_id, title, artist, album, duration_secs, cover_art_url, preview_url, created_at
                  FROM external_tracks WHERE id = ?"
             )
@@ -379,7 +373,8 @@ impl SyncManager {
                 });
             } else {
                 // Check local tracks table
-                let trk_row: Option<(String, String, Option<String>, Option<String>, f64, i64, i64)> = sqlx::query_as(
+                type TrkRow = (String, String, Option<String>, Option<String>, f64, i64, i64);
+                let trk_row: Option<TrkRow> = sqlx::query_as(
                     "SELECT t.id, t.title, a.name, al.title, t.duration_secs, t.created_at, t.updated_at
                      FROM tracks t
                      LEFT JOIN artists a ON t.artist_id = a.id
@@ -414,7 +409,8 @@ impl SyncManager {
         // 4. Song stats (including liked/disliked songs: manual_like = 1 or -1)
         let mut song_stats: Vec<CloudSongStat> = Vec::new();
         if !song_ids.is_empty() {
-            let stat_rows: Vec<(String, i64, f64, i64, i64, Option<i64>, i64)> = sqlx::query_as(
+            type StatRow = (String, i64, f64, i64, i64, Option<i64>, i64);
+            let stat_rows: Vec<StatRow> = sqlx::query_as(
                 "SELECT track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, manual_like
                  FROM track_statistics WHERE user_id = ?"
             )
@@ -466,7 +462,8 @@ impl SyncManager {
             .collect();
 
         // 4.6. Track device stats
-        let tds_rows: Vec<(String, String, i64, f64, i64, i64, Option<i64>, i64)> = sqlx::query_as(
+        type TdsRow = (String, String, i64, f64, i64, i64, Option<i64>, i64);
+        let tds_rows: Vec<TdsRow> = sqlx::query_as(
             "SELECT device_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at, updated_at
              FROM track_device_statistics WHERE user_id = ?"
         )

@@ -1,3 +1,4 @@
+use crate::recommendations::mixes::OnlineTrackInput;
 use crate::core::error::{AppError, AppResult};
 use crate::recommendations::local::RecommendedTrackDetail;
 use crate::recommendations::scoring::{CandidateTrack, ScoringEngine};
@@ -162,10 +163,13 @@ struct FlowCandidateRow {
     preview_url: Option<String>,
 }
 
+/// Cached home picks per user: (computed_at, history_count_at_compute, tracks).
+type HomePickEntry = (i64, i64, Vec<RecommendedTrackDetail>);
+
 pub struct FlowEngine {
     pool: SqlitePool,
     taste_engine: Arc<TasteProfileEngine>,
-    home_picks: tokio::sync::Mutex<HashMap<String, (i64, i64, Vec<RecommendedTrackDetail>)>>,
+    home_picks: tokio::sync::Mutex<HashMap<String, HomePickEntry>>,
 }
 
 impl FlowEngine {
@@ -833,13 +837,15 @@ impl FlowEngine {
             if include_online && item.candidate.is_online {
                 crate::recommendations::mixes::ensure_online_track(
                     &self.pool,
-                    &item.candidate.id,
-                    &item.candidate.title,
-                    item.candidate.artist_name.as_deref(),
-                    item.candidate.album_title.as_deref(),
-                    Some(item.candidate.duration_secs),
-                    item.candidate.cover_art_url.as_deref(),
-                    item.candidate.preview_url.as_deref(),
+                    &OnlineTrackInput {
+                        id: &item.candidate.id,
+                        title: &item.candidate.title,
+                        artist: item.candidate.artist_name.as_deref(),
+                        album: item.candidate.album_title.as_deref(),
+                        duration_secs: Some(item.candidate.duration_secs),
+                        cover_art_url: item.candidate.cover_art_url.as_deref(),
+                        preview_url: item.candidate.preview_url.as_deref(),
+                    },
                 )
                 .await?;
             }
@@ -921,17 +927,8 @@ impl FlowEngine {
 
         // 3. Rediscover: Tracks previously played or liked, unplayed in > 14 days
         let cutoff_rediscover = now - (14 * 86400);
-        let rediscover_rows: Vec<(
-            String,
-            String,
-            Option<String>,
-            Option<String>,
-            f64,
-            Option<i64>,
-            Option<i64>,
-            Option<i64>,
-            i64,
-        )> = sqlx::query_as(
+        type RediscoverRow = (String, String, Option<String>, Option<String>, f64, Option<i64>, Option<i64>, Option<i64>, i64);
+        let rediscover_rows: Vec<RediscoverRow> = sqlx::query_as(
             "SELECT t.id, t.title, a.name as artist, al.title as album,
                     t.duration_secs, ts.last_played_at, ts.play_count, ts.manual_like,
                     t.has_cover_art
@@ -1048,7 +1045,8 @@ impl FlowEngine {
 
         // Only real library files can provide a library spotlight. Online rows
         // created for metadata/history are not an owned album collection.
-        let library_moment_row: Option<(String, String, Option<String>, Option<String>, i64, Option<i64>, String)> =
+        type LibraryMomentRow = (String, String, Option<String>, Option<String>, i64, Option<i64>, String);
+        let library_moment_row: Option<LibraryMomentRow> =
             sqlx::query_as(
                 "SELECT al.id,al.title,a.name,al.cover_art_path,COUNT(t.id),al.release_year,
                     (SELECT t2.id FROM tracks t2 WHERE t2.album_id=al.id

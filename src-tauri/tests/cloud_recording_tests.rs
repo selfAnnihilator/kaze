@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     cloud::{SyncManager, SyncPayload},
     database::create_in_memory_pool,
@@ -29,13 +30,15 @@ async fn seeded() -> SqlitePool {
     for id in IDS {
         ensure_online_track(
             &pool,
-            id,
-            "Song",
-            Some("Artist"),
-            Some("Selected release"),
-            Some(200.0),
-            None,
-            None,
+            &OnlineTrackInput {
+                id,
+                title: "Song",
+                artist: Some("Artist"),
+                album: Some("Selected release"),
+                duration_secs: Some(200.0),
+                cover_art_url: None,
+                preview_url: None,
+            },
         )
         .await
         .unwrap();
@@ -242,13 +245,15 @@ async fn recording_device(id: &str, with_snapshot: bool) -> (SqlitePool, SyncPay
     let pool = create_in_memory_pool().await.unwrap();
     ensure_online_track(
         &pool,
-        id,
-        "Song",
-        Some("Artist"),
-        Some("Selected release"),
-        Some(200.0),
-        Some("https://example.invalid/selected.jpg"),
-        None,
+        &OnlineTrackInput {
+            id,
+            title: "Song",
+            artist: Some("Artist"),
+            album: Some("Selected release"),
+            duration_secs: Some(200.0),
+            cover_art_url: Some("https://example.invalid/selected.jpg"),
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -320,13 +325,15 @@ async fn assert_recording_aliases(pool: &SqlitePool, ids: &[&str]) {
         assert_eq!(stats, (1, 7));
         ensure_online_track(
             pool,
-            id,
-            "Song",
-            Some("Artist"),
-            Some("Selected release"),
-            Some(200.0),
-            None,
-            None,
+            &OnlineTrackInput {
+                id,
+                title: "Song",
+                artist: Some("Artist"),
+                album: Some("Selected release"),
+                duration_secs: Some(200.0),
+                cover_art_url: None,
+                preview_url: None,
+            },
         )
         .await
         .unwrap();

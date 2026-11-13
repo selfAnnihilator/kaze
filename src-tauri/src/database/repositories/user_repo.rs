@@ -57,25 +57,28 @@ impl UserProfile {
         }
     }
 
-    pub fn with_avatar(
-        mut self,
-        display_name: Option<String>,
-        avatar_key: Option<String>,
-        avatar_public_id: Option<String>,
-        avatar_url: Option<String>,
-        avatar_version: Option<i64>,
-        avatar_updated_at: Option<i64>,
-        avatar_data_url: Option<String>,
-    ) -> Self {
-        self.display_name = display_name;
-        self.avatar_key = avatar_key;
-        self.avatar_public_id = avatar_public_id;
-        self.avatar_url = avatar_url;
-        self.avatar_version = avatar_version;
-        self.avatar_updated_at = avatar_updated_at;
-        self.avatar_data_url = avatar_data_url;
+    pub fn with_avatar(mut self, avatar: AvatarFields) -> Self {
+        self.display_name = avatar.display_name;
+        self.avatar_key = avatar.avatar_key;
+        self.avatar_public_id = avatar.avatar_public_id;
+        self.avatar_url = avatar.avatar_url;
+        self.avatar_version = avatar.avatar_version;
+        self.avatar_updated_at = avatar.avatar_updated_at;
+        self.avatar_data_url = avatar.avatar_data_url;
         self
     }
+}
+
+/// Display name and avatar metadata applied together by `UserProfile::with_avatar`.
+#[derive(Debug, Clone, Default)]
+pub struct AvatarFields {
+    pub display_name: Option<String>,
+    pub avatar_key: Option<String>,
+    pub avatar_public_id: Option<String>,
+    pub avatar_url: Option<String>,
+    pub avatar_version: Option<i64>,
+    pub avatar_updated_at: Option<i64>,
+    pub avatar_data_url: Option<String>,
 }
 
 pub fn hash_password(password: &str, salt: &str) -> String {

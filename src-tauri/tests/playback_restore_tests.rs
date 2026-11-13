@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     config::AppConfig,
     core::{
@@ -189,7 +190,16 @@ async fn source_linked_online_and_missing_local_media_restore_without_audio() {
         .await
         .unwrap();
     music_player_backend::recommendations::mixes::ensure_online_track(
-        first.db_pool(), "one", "one", None, None, Some(180.0), None, None,
+        first.db_pool(),
+        &OnlineTrackInput {
+            id: "one",
+            title: "one",
+            artist: None,
+            album: None,
+            duration_secs: Some(180.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     ).await.unwrap();
     sqlx::query("UPDATE external_tracks SET provider='jiosaavn',provider_id='one' WHERE id='one'")
         .execute(first.db_pool()).await.unwrap();
@@ -283,7 +293,16 @@ async fn cold_online_fixture(quit_while_loading: bool) {
         .await
         .unwrap();
     music_player_backend::recommendations::mixes::ensure_online_track(
-        second.db_pool(), "one", "one", None, None, Some(180.0), None, None,
+        second.db_pool(),
+        &OnlineTrackInput {
+            id: "one",
+            title: "one",
+            artist: None,
+            album: None,
+            duration_secs: Some(180.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     ).await.unwrap();
     sqlx::query("UPDATE external_tracks SET provider='jiosaavn',provider_id='one' WHERE id='one'")
         .execute(second.db_pool()).await.unwrap();

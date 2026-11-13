@@ -86,6 +86,16 @@ pub struct StatsOverview {
     pub top_days: Vec<TopListeningDay>,
 }
 
+/// One playback's contribution to a user's daily totals.
+#[derive(Debug, Clone, Copy)]
+pub struct DailyPlayback {
+    pub seconds: f64,
+    /// Counted as a play (listened long enough or completed).
+    pub is_meaningful: bool,
+    pub completed: bool,
+    pub skipped: bool,
+}
+
 #[async_trait]
 pub trait StatsRepository: Send + Sync {
     async fn update_track_playback_stats(
@@ -232,10 +242,7 @@ pub trait StatsRepository: Send + Sync {
         user_id: &str,
         device_id: Option<&str>,
         stat_date: &str,
-        seconds: f64,
-        is_meaningful: bool,
-        completed: bool,
-        skipped: bool,
+        playback: DailyPlayback,
     ) -> AppResult<()>;
 
     async fn backfill_daily_stats_from_history(&self, default_device_id: Option<&str>) -> AppResult<usize>;
@@ -357,16 +364,13 @@ impl StatsRepository for SqliteStatsRepository {
         user_id: &str,
         device_id: Option<&str>,
         stat_date: &str,
-        seconds: f64,
-        is_meaningful: bool,
-        completed: bool,
-        skipped: bool,
+        playback: DailyPlayback,
     ) -> AppResult<()> {
         let dev_id = self.resolve_device_id(device_id).await;
         let now = Utc::now().timestamp();
-        let play_inc: i64 = if is_meaningful { 1 } else { 0 };
-        let comp_inc: i64 = if completed { 1 } else { 0 };
-        let skip_inc: i64 = if skipped { 1 } else { 0 };
+        let play_inc = i64::from(playback.is_meaningful);
+        let comp_inc = i64::from(playback.completed);
+        let skip_inc = i64::from(playback.skipped);
 
         sqlx::query(
             "INSERT INTO daily_user_stats (
@@ -382,7 +386,7 @@ impl StatsRepository for SqliteStatsRepository {
         .bind(user_id)
         .bind(&dev_id)
         .bind(stat_date)
-        .bind(seconds)
+        .bind(playback.seconds)
         .bind(play_inc)
         .bind(comp_inc)
         .bind(skip_inc)

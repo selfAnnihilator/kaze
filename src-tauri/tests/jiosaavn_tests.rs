@@ -1,3 +1,4 @@
+use music_player_backend::recommendations::mixes::OnlineTrackInput;
 use music_player_backend::{
     cloud::SyncManager,
     core::EventBus,
@@ -356,25 +357,29 @@ async fn registration_and_cloud_roundtrip_keep_exact_provider_identity() {
     let pool = create_in_memory_pool().await.unwrap();
     ensure_online_track(
         &pool,
-        "jiosaavn:abc123",
-        "Song",
-        Some("Artist"),
-        None,
-        Some(200.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "jiosaavn:abc123",
+            title: "Song",
+            artist: Some("Artist"),
+            album: None,
+            duration_secs: Some(200.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
     ensure_online_track(
         &pool,
-        "jiosaavn:abc123",
-        "Song",
-        Some("Artist"),
-        None,
-        None,
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "jiosaavn:abc123",
+            title: "Song",
+            artist: Some("Artist"),
+            album: None,
+            duration_secs: None,
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -487,13 +492,15 @@ async fn displayed_catalog_version_is_persistent_and_plays_without_matching_agai
     let pool = create_in_memory_pool().await.unwrap();
     ensure_online_track(
         &pool,
-        "itunes:old",
-        "Dance With Me",
-        Some("Artist"),
-        Some("The Romantic"),
-        Some(210.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "itunes:old",
+            title: "Dance With Me",
+            artist: Some("Artist"),
+            album: Some("The Romantic"),
+            duration_secs: Some(210.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -501,13 +508,15 @@ async fn displayed_catalog_version_is_persistent_and_plays_without_matching_agai
     // Existing UNIQUE(provider,provider_id) must not prevent linking a saved alias.
     ensure_online_track(
         &pool,
-        "jiosaavn:albumversion",
-        "Dance With Me",
-        Some("Artist"),
-        Some("The Romantic"),
-        Some(219.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "jiosaavn:albumversion",
+            title: "Dance With Me",
+            artist: Some("Artist"),
+            album: Some("The Romantic"),
+            duration_secs: Some(219.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -599,13 +608,15 @@ async fn catalog_hides_unavailable_rows_but_preserves_saved_records_and_local_fi
     let pool = create_in_memory_pool().await.unwrap();
     ensure_online_track(
         &pool,
-        "itunes:missing",
-        "Missing",
-        Some("Artist"),
-        None,
-        Some(210.0),
-        None,
-        None,
+        &OnlineTrackInput {
+            id: "itunes:missing",
+            title: "Missing",
+            artist: Some("Artist"),
+            album: None,
+            duration_secs: Some(210.0),
+            cover_art_url: None,
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
@@ -818,13 +829,15 @@ async fn artist_release_discovery_checks_album_credits_and_preserves_the_saved_c
     let saved = providers.persist(source).await.unwrap();
     ensure_online_track(
         &pool,
-        &saved.id,
-        &saved.title,
-        Some(&saved.artist),
-        saved.album.as_deref(),
-        saved.duration_secs,
-        saved.cover_art_url.as_deref(),
-        None,
+        &OnlineTrackInput {
+            id: &saved.id,
+            title: &saved.title,
+            artist: Some(&saved.artist),
+            album: saved.album.as_deref(),
+            duration_secs: saved.duration_secs,
+            cover_art_url: saved.cover_art_url.as_deref(),
+            preview_url: None,
+        },
     )
     .await
     .unwrap();
