@@ -328,10 +328,11 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               onClick={onToggleShuffle}
               disabled={!onToggleShuffle}
               aria-pressed={shuffleEnabled}
+              aria-label={shuffleEnabled ? "Shuffle on" : "Shuffle off"}
               title={shuffleEnabled ? "Shuffle on (applies after the current song)" : "Shuffle off"}
-              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", aspectRatio: "1 / 1" }}
             >
-              <Shuffle size={16} /> Shuffle {shuffleEnabled ? "on" : "off"}
+              <Shuffle size={16} />
             </button>
           </div>
 
