@@ -26,6 +26,10 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
 test("library playback dispatches ordered PlayTrackList", () => {
   const app = read("src/App.tsx");
   assert.match(app, /command: "PlayTrackList"/);
+  // Search filters the view only: the list always plays the full library.
+  const start = app.slice(app.indexOf("const startLibraryList"), app.indexOf("const handleLibraryRowPlay"));
+  assert.match(start, /track_ids: null/);
+  assert.doesNotMatch(start, /tracks\.map/);
 });
 
 test("Play all toggles pause/resume and shuffle is a per-section toggle", () => {

@@ -1475,7 +1475,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         await dispatchCommand({
           command: "PlayTrackList",
           payload: {
-            track_ids: libraryScoped ? tracks.map((t) => t.id) : null,
+            // Search only filters the view; playback always covers the full Downloads list.
+            track_ids: null,
             start_track_id: startId ?? null,
             shuffle: libraryShuffle,
           },
@@ -1488,7 +1489,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         endPlaybackLoading(requestId);
       }
     },
-    [tracks, libraryScoped, libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading],
+    [libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading],
   );
   const handleLibraryRowPlay = useCallback(
     async (trackId: string) => {
