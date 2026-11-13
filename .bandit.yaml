@@ -6,7 +6,3 @@ assert_used:
     - "*/scripts/test-*.py"
     - "scripts/profile-frontend-native.py"
     - "*/scripts/profile-frontend-native.py"
-    - "docs/audits/2026-10-31-evidence/native-pagination.py"
-    - "*/docs/audits/2026-10-31-evidence/native-pagination.py"
-    - "docs/audits/2026-10-31-evidence/restore-corrected.py"
-    - "*/docs/audits/2026-10-31-evidence/restore-corrected.py"

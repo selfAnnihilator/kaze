@@ -68,6 +68,9 @@ jobs:
       - name: Build frontend assets for Rust lint
         run: npm run build
 
+      - name: Run frontend tests
+        run: npm test
+
       - name: Verify all-target Rust lint
         env:
           CARGO_BUILD_JOBS: '1'

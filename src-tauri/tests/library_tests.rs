@@ -209,3 +209,38 @@ async fn test_scanner_incremental_and_search() {
     let count_after_prune = library_service.track_repo().get_track_count().await.expect("count");
     assert_eq!(count_after_prune, 1);
 }
+
+#[tokio::test]
+async fn test_scan_failure_publishes_library_scan_failed() {
+    use music_player_backend::core::event::Event;
+
+    let pool = create_in_memory_pool().await.expect("DB pool");
+    let processor = CoreProcessor::new(pool, AppConfig::default_with_dirs());
+    let library_service = processor.library_service();
+
+    let root_dir = tempfile::tempdir().expect("root tempdir");
+    let folder_str = root_dir.path().to_string_lossy().to_string();
+    let folder_rec = library_service
+        .add_folder(&folder_str)
+        .await
+        .expect("add folder failed");
+
+    let mut events = library_service.event_bus().subscribe();
+
+    // The folder disappears after registration (unmounted drive, deleted dir).
+    root_dir.close().expect("remove tempdir");
+
+    let result = library_service
+        .scan_library(Some(folder_rec.id.clone()), false)
+        .await;
+    assert!(result.is_err(), "scan of a missing folder must fail");
+
+    let mut saw_failure = false;
+    while let Ok(event) = events.try_recv() {
+        if matches!(event, Event::LibraryScanFailed { .. }) {
+            saw_failure = true;
+            break;
+        }
+    }
+    assert!(saw_failure, "scan failure must publish LibraryScanFailed");
+}

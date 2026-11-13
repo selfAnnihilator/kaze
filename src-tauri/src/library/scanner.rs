@@ -93,7 +93,29 @@ impl LibraryScanner {
     }
 
     /// Recursively scans a designated folder, strictly bounded to root and its subdirectories.
+    ///
+    /// Publishes `LibraryScanFailed` when the scan cannot run, so callers that
+    /// run scans in the background (startup, post-download rescans) still
+    /// surface the failure to the UI.
     pub async fn scan_folder(
+        &self,
+        folder_id: &str,
+        folder_path_str: &str,
+        incremental: bool,
+    ) -> AppResult<ScanSummary> {
+        let result = self
+            .scan_folder_inner(folder_id, folder_path_str, incremental)
+            .await;
+        if let Err(err) = &result {
+            warn!(folder = %folder_path_str, "Library scan failed: {}", err);
+            let _ = self.event_bus.publish(Event::LibraryScanFailed {
+                error: err.to_string(),
+            });
+        }
+        result
+    }
+
+    async fn scan_folder_inner(
         &self,
         folder_id: &str,
         folder_path_str: &str,
