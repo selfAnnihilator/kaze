@@ -2,6 +2,7 @@ pub mod coordinator;
 pub mod types;
 pub mod jiosaavn;
 pub mod strict_match;
+pub mod spotify_embed;
 pub mod enrichment;
 
 pub use coordinator::*;

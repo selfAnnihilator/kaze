@@ -1,4 +1,4 @@
-use super::{jiosaavn::JioSaavnProvider, types::ExternalTrackMetadata};
+use super::{jiosaavn::JioSaavnProvider, spotify_embed::SpotifyEmbedClient, types::ExternalTrackMetadata};
 use crate::{
     core::{error::AppResult, event::Event, event_bus::EventBus},
     database::{
@@ -12,6 +12,8 @@ use std::sync::Arc;
 /// The single online catalog and local-file metadata source.
 pub struct ProviderCoordinator {
     pub jiosaavn: Arc<JioSaavnProvider>,
+    /// Metadata-only playlist reader; tracks are matched onto JioSaavn.
+    pub spotify: Arc<SpotifyEmbedClient>,
     pool: SqlitePool,
     event_bus: Arc<EventBus>,
 }
@@ -32,6 +34,7 @@ impl ProviderCoordinator {
             pool,
             event_bus,
             jiosaavn: Arc::new(JioSaavnProvider::new()),
+            spotify: Arc::new(SpotifyEmbedClient::new()),
         }
     }
     pub fn emit_status(&self) {

@@ -132,3 +132,71 @@ async fn playlist_import_remains_enabled_when_setting_is_absent() {
     core.shutdown().await.unwrap();
     server.abort();
 }
+
+#[tokio::test]
+async fn spotify_playlist_import_matches_onto_jiosaavn_and_reports_unmatched() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n\r\n") {
+                let mut byte = [0];
+                if socket.read(&mut byte).await.unwrap_or(0) == 0 {
+                    break;
+                }
+                request.push(byte[0]);
+            }
+            let head = String::from_utf8_lossy(&request).to_string();
+            let (kind, body) = if head.starts_with("GET /embed/playlist/") {
+                ("text/html", crate::providers::spotify_embed::fixture_html(
+                    r#"{"title":"Song - Original Version","subtitle":"Artist, Guest","duration":201000,"isPlayable":true},{"title":"Nowhere","subtitle":"Nobody","duration":180000,"isPlayable":true}"#,
+                ))
+            } else if head.contains("q=Song") {
+                ("application/json", serde_json::json!({"results":[{
+                    "id":"matched", "song":"Song", "primary_artists":"Artist", "album":"Album",
+                    "duration":"200", "rights":{"code":0},
+                    "encrypted_media_url":"ID2ieOjCrwfgWvL5sXl4B1ImC5QfbsDyryhkSYK5IH2E7FCO52VR6yhNbcEbes5iCcja4+W8xhE0SwtCJToN4Bw7tS9a8Gtq"
+                }]}).to_string())
+            } else {
+                ("application/json", serde_json::json!({"results":[]}).to_string())
+            };
+            let response = format!("HTTP/1.1 200 OK\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+            let _ = socket.write_all(response.as_bytes()).await;
+        }
+    });
+    let temp = tempfile::tempdir().unwrap();
+    let pool = create_in_memory_pool().await.unwrap();
+    let mut config = AppConfig::default_with_dirs();
+    config.cache_dir = temp.path().join("cache");
+    let mut core = CoreProcessor::new_with_backend(pool.clone(), config, Box::new(MockAudioBackend::new()));
+    let mut provider = ProviderCoordinator::new(pool.clone(), core.event_bus.clone());
+    provider.jiosaavn = Arc::new(JioSaavnProvider::with_endpoint(&endpoint));
+    provider.spotify = Arc::new(crate::providers::spotify_embed::SpotifyEmbedClient::with_endpoint(&endpoint));
+    core.provider_coordinator = Arc::new(provider);
+
+    let response = core
+        .execute_query(Query::ImportJioSaavnPlaylist {
+            url_or_id: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=x".into(),
+        })
+        .await
+        .unwrap();
+    let QueryResponse::JioSaavnPlaylistImport(value) = response else {
+        panic!("expected import")
+    };
+    assert_eq!(value["source"], "spotify");
+    assert_eq!(value["title"], "Fixture mix");
+    assert_eq!(value["total_tracks"], 1);
+    assert_eq!(value["source_total"], 2);
+    assert_eq!(value["tracks"][0]["track_id"], "jiosaavn:matched");
+    assert_eq!(value["unmatched"][0]["title"], "Nowhere");
+    assert_eq!(counts(&pool).await.0, 1);
+
+    let error = core
+        .execute_query(Query::ImportJioSaavnPlaylist { url_or_id: "https://example.com/x".into() })
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("JioSaavn or Spotify"));
+    core.shutdown().await.unwrap();
+    server.abort();
+}

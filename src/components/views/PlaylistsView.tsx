@@ -286,7 +286,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
         );
       }
     } catch (err: any) {
-      setJioSaavnMessage(err?.message || "Failed to fetch playlist.");
+      setJioSaavnMessage(
+        typeof err === "string" ? err : err?.message || "Failed to fetch playlist.",
+      );
     } finally {
       setInspectingJioSaavn(false);
     }
@@ -1458,9 +1460,9 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                 lineHeight: 1.5,
               }}
             >
-              Paste a public playlist link or ID. Kaze will inspect the
-              tracks, match them against your local library, and let you
-              save the selected recordings.
+              Paste a public JioSaavn or Spotify playlist link. Spotify songs
+              are matched to playable JioSaavn recordings; Kaze then lets you
+              save the selected tracks.
             </p>
 
             {/* Input Form */}
@@ -1470,7 +1472,7 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
             >
               <input
                 type="text"
-                placeholder="Playlist link or numeric ID"
+                placeholder="JioSaavn or Spotify playlist link"
                 value={jiosaavnInput}
                 onChange={(e) => setJioSaavnInput(e.target.value)}
                 className="input-field"
@@ -1567,6 +1569,47 @@ export const PlaylistsView: React.FC<PlaylistsViewProps> = ({
                         ● {jiosaavnResult.missing_tracks} Online
                       </span>
                     </div>
+                    {(jiosaavnResult.source_total ?? 0) > 50 && (
+                      <div
+                        style={{
+                          marginTop: "6px",
+                          fontSize: "0.78rem",
+                          color: "var(--text-dim)",
+                        }}
+                      >
+                        Only the first 50 of {jiosaavnResult.source_total} songs were checked.
+                      </div>
+                    )}
+                    {!!jiosaavnResult.unmatched?.length && (
+                      <details
+                        style={{
+                          marginTop: "6px",
+                          fontSize: "0.8rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        <summary style={{ cursor: "pointer" }}>
+                          {jiosaavnResult.unmatched.length} song
+                          {jiosaavnResult.unmatched.length === 1 ? "" : "s"} not
+                          found on JioSaavn
+                        </summary>
+                        <ul
+                          style={{
+                            margin: "6px 0 0",
+                            paddingLeft: "18px",
+                            maxHeight: "140px",
+                            overflowY: "auto",
+                          }}
+                        >
+                          {jiosaavnResult.unmatched.map((u, i) => (
+                            <li key={`${u.title}-${i}`}>
+                              {u.title}
+                              {u.artist ? ` — ${u.artist}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
                   </div>
 
                   <div>

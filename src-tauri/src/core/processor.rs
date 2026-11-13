@@ -3595,6 +3595,19 @@ impl CoreProcessor {
                 "Enable online music in Settings to import a JioSaavn playlist".into(),
             ));
         }
+        if let Some(id) = crate::providers::spotify_embed::playlist_id(reference) {
+            return self.import_spotify_playlist(&id).await;
+        }
+        let trimmed = reference.trim();
+        let is_jiosaavn = (trimmed.chars().all(|c| c.is_ascii_digit()) && !trimmed.is_empty())
+            || reqwest::Url::parse(trimmed).is_ok_and(|u| {
+                matches!(u.host_str(), Some("www.jiosaavn.com" | "jiosaavn.com"))
+            });
+        if !is_jiosaavn {
+            return Err(AppError::Validation(
+                "Paste a JioSaavn or Spotify playlist link".into(),
+            ));
+        }
         let (id, title, image, tracks) = self
             .provider_coordinator
             .jiosaavn
@@ -3603,15 +3616,83 @@ impl CoreProcessor {
         let mut songs = Vec::new();
         for track in tracks {
             let row = self.provider_coordinator.persist(track).await?;
-            songs.push(serde_json::json!({"track_id":row.id,"title":row.title,"artist":row.artist,
-                "album":row.album,"duration_secs":row.duration_secs,"cover_art_url":row.cover_art_url,
-                "in_library":false,"match_status":"NOT_FOUND","matched_local_track_id":null}));
+            songs.push(import_row(&row));
         }
         Ok(
-            serde_json::json!({"playlist_id":id,"title":title,"cover_url":image,
-            "total_tracks":songs.len(),"matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs}),
+            serde_json::json!({"playlist_id":id,"title":title,"cover_url":image,"source":"jiosaavn",
+            "total_tracks":songs.len(),"matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs,
+            "unmatched":[],"source_total":songs.len()}),
         )
     }
+
+    /// Spotify supplies names only; each track is matched to a playable JioSaavn recording.
+    async fn import_spotify_playlist(&self, id: &str) -> AppResult<serde_json::Value> {
+        const LIMIT: usize = 50;
+        const CONCURRENCY: usize = 4;
+        let playlist = self
+            .provider_coordinator
+            .spotify
+            .playlist(id)
+            .await
+            .map_err(|message| AppError::ExternalApi { provider: "spotify".into(), message })?;
+        let source_total = playlist.tracks.len();
+        let wanted: Vec<_> = playlist.tracks.into_iter().take(LIMIT).collect();
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(CONCURRENCY));
+        let mut tasks = tokio::task::JoinSet::new();
+        for (index, track) in wanted.iter().cloned().enumerate() {
+            let jiosaavn = self.provider_coordinator.jiosaavn.clone();
+            let semaphore = semaphore.clone();
+            tasks.spawn(async move {
+                let _permit = semaphore.acquire_owned().await.ok()?;
+                let title = crate::providers::strict_match::clean_title(&track.title);
+                let query = match track.artists.first() {
+                    Some(artist) => format!("{title} {artist}"),
+                    None => title,
+                };
+                let candidates = jiosaavn.search(&query, 10).await.ok()?;
+                let found = crate::providers::strict_match::import_match(
+                    &track.title,
+                    &track.artists,
+                    track.duration_secs,
+                    &candidates,
+                )
+                .cloned();
+                found.map(|found| (index, found))
+            });
+        }
+        let mut matches: Vec<Option<crate::providers::ExternalTrackMetadata>> =
+            vec![None; wanted.len()];
+        while let Some(joined) = tasks.join_next().await {
+            if let Ok(Some((index, found))) = joined {
+                matches[index] = Some(found);
+            }
+        }
+        let mut songs = Vec::new();
+        let mut unmatched = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for (track, found) in wanted.iter().zip(matches) {
+            match found {
+                Some(found) if seen.insert(found.provider_track_id.clone()) => {
+                    let row = self.provider_coordinator.persist(found).await?;
+                    songs.push(import_row(&row));
+                }
+                Some(_) => {}
+                None => unmatched.push(serde_json::json!({
+                    "title": track.title, "artist": track.artists.join(", ")
+                })),
+            }
+        }
+        Ok(serde_json::json!({"playlist_id":playlist.id,"title":playlist.title,
+            "cover_url":playlist.cover_url,"source":"spotify","total_tracks":songs.len(),
+            "matched_tracks":0,"missing_tracks":songs.len(),"tracks":songs,"unmatched":unmatched,
+            "source_total":source_total}))
+    }
+}
+
+fn import_row(row: &crate::database::models::ExternalTrackRecord) -> serde_json::Value {
+    serde_json::json!({"track_id":row.id,"title":row.title,"artist":row.artist,
+        "album":row.album,"duration_secs":row.duration_secs,"cover_art_url":row.cover_art_url,
+        "in_library":false,"match_status":"NOT_FOUND","matched_local_track_id":null})
 }
 
 #[cfg(test)]

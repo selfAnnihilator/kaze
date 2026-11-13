@@ -707,3 +707,25 @@ async fn sia_artist_edition_keeps_artwork_and_download_on_the_verified_release()
         cover.height()
     );
 }
+
+#[tokio::test]
+#[ignore = "requires live Spotify embed and JioSaavn network"]
+async fn spotify_playlist_matches_onto_jiosaavn_gate() {
+    use music_player_backend::providers::{spotify_embed::SpotifyEmbedClient, strict_match};
+    let playlist = SpotifyEmbedClient::new()
+        .playlist("37i9dQZF1DX0XUfTFmNBRM")
+        .await
+        .expect("public editorial playlist");
+    assert!(!playlist.tracks.is_empty());
+    let provider = JioSaavnProvider::new();
+    let mut matched = 0;
+    let sample: Vec<_> = playlist.tracks.iter().take(15).collect();
+    for track in &sample {
+        let query = format!("{} {}", strict_match::clean_title(&track.title), track.artists.first().cloned().unwrap_or_default());
+        let candidates = provider.search(&query, 10).await.unwrap_or_default();
+        let hit = strict_match::import_match(&track.title, &track.artists, track.duration_secs, &candidates);
+        eprintln!("{} | {} -> {:?}", track.title, track.artists.join(", "), hit.map(|h| (&h.title, &h.artist_name)));
+        matched += usize::from(hit.is_some());
+    }
+    assert!(matched * 2 >= sample.len(), "matched {matched}/{}", sample.len());
+}

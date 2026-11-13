@@ -193,6 +193,12 @@ export interface JioSaavnPlaylistImport {
   matched_tracks: number;
   missing_tracks: number;
   tracks: JioSaavnImportedTrack[];
+  /** "spotify" imports are metadata-only and matched onto JioSaavn. */
+  source?: "jiosaavn" | "spotify";
+  /** Source songs with no confident JioSaavn match. */
+  unmatched?: { title: string; artist: string }[];
+  /** Playable songs in the source playlist (only the first 50 are checked). */
+  source_total?: number;
 }
 
 export type Command =
