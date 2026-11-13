@@ -28,6 +28,7 @@ import type { InterfaceStyle } from "../../presentation/InterfaceContext";
 import { WindowedList } from "../../presentation/WindowedList";
 import { useViewMemory } from "../../presentation/ViewMemory";
 import { MetadataSettings } from "../MetadataSettings";
+import { EntityFeedbackSettings } from "../EntityFeedbackSettings";
 import { StartupSettings } from "../StartupSettings";
 
 type Section = "main" | "folders" | "system" | "taste";
@@ -387,6 +388,7 @@ export const SettingsView = memo(function SettingsView({
           </section>
           <StartupSettings />
           <MetadataSettings />
+          <EntityFeedbackSettings />
           <section
             className="settings-links"
             aria-labelledby="settings-library-heading"

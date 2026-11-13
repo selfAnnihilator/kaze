@@ -1,5 +1,7 @@
 import type { FlowExplanation } from "./types";
 
+const CONTEXT_COPY: Record<string, string> = { morning: "mornings", afternoon: "afternoons", evening: "evenings", night: "late nights" };
+
 export interface ExplanationCopy { title: string; body: string; secondary: string[] }
 
 // Never infer statistics from legacy prose. Selection evidence remains a snapshot.
@@ -25,14 +27,21 @@ export function presentFlowExplanation(e?: FlowExplanation | null): ExplanationC
   else if (e?.primary === "online") { title = "From your online listening"; body = "A song from your recorded online listening."; }
   else if (e?.primary === "library_exploration" && e.is_unplayed) { title = "A fresh pick from your library"; body = unplayed; }
   else if (e?.primary === "artist_affinity" && affinity) { title = `More from ${e.artist_name}`; body = `Your listening and feedback show an affinity for ${e.artist_name}.`; }
+  const similar = e?.similar_artist && !e.from_existing_queue && !e.primary.startsWith("starter_") ? e.similar_artist : null;
+  if (similar && (e?.primary === "online_discovery" || e?.primary === "library_exploration")) { title = `Fans of ${similar} also like this`; body = `Listeners who enjoy ${similar} often play ${e?.artist_name ?? "this artist"} too.`; }
   const secondary: string[] = [];
   if (!e?.from_existing_queue) {
+    if (similar && !title.startsWith("Fans of")) secondary.push(`Fans of ${similar} also like this.`);
+    const part = e?.context_bucket && CONTEXT_COPY[e.context_bucket];
+    if (part && !e?.primary.startsWith("starter_")) secondary.push(`Fits your ${part}.`);
+    if (e?.rec_slot === "explore" && e.explore_bias != null && e.explore_bias >= 0.03 && !e.primary.startsWith("starter_")) secondary.push("Exploring a bit more — you've liked new finds.");
+    if (e?.session_adjustment != null && e.session_adjustment > 0 && e.session_style) secondary.push(`You've been finishing ${e.session_style} this session.`);
     if (e?.is_liked && e.primary !== "liked") secondary.push("You liked this track.");
     if (age && days! >= 30 && e?.primary !== "rediscovery") secondary.push(rediscovery);
     if (e?.is_unplayed && e.primary !== "library_exploration" && e.primary !== "online_discovery") secondary.push(unplayed);
     if (affinity && e?.primary !== "artist_affinity" && !e?.primary.startsWith("starter_")) secondary.push(`Your listening and feedback point toward ${e?.artist_name}.`);
     if (e?.play_count != null && e.play_count > 0 && secondary.length < 2) secondary.push(`${e.play_count} recorded ${e.play_count === 1 ? "play" : "plays"} in Kaze${snapshot ? " when this was picked" : ""}.`);
-    if (e?.familiarity_ratio != null && secondary.length < 2) secondary.push(e.familiarity_ratio >= .75 ? "Picked with Flow leaning toward familiar music." : e.familiarity_ratio <= .25 ? "Picked with Flow leaning toward rediscovery." : "Picked with Flow balancing familiar music and rediscovery.");
+    if (e?.familiarity_ratio != null && secondary.length < 2) secondary.push(e.familiarity_ratio >= .75 ? "Picked with Flow leaning toward familiar music." : e.familiarity_ratio <= .25 ? "Picked with Flow leaning toward unfamiliar music." : "Picked with Flow balancing familiar and new music.");
   }
   return { title, body, secondary: secondary.slice(0, 2) };
 }

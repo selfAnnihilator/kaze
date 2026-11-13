@@ -1,3 +1,4 @@
+pub mod audio_features;
 pub mod cloud;
 pub mod config;
 pub mod core;

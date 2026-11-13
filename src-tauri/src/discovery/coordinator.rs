@@ -774,6 +774,13 @@ impl DiscoveryCoordinator {
             .collect();
         ranked_user_genres.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
+        let similarity = crate::recommendations::similarity::SimilarityIndex::load(
+            self.taste_engine.pool(),
+            user_id,
+            &crate::recommendations::similarity::seeds_from_profile(&profile),
+        )
+        .await
+        .unwrap_or_default();
         self.seed_artist_editions(user_id, force_refresh).await?;
         let mut ext_tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
         if self.provider_coordinator.is_some()
@@ -803,6 +810,20 @@ impl DiscoveryCoordinator {
                     .artist_candidates(&artist.display_name, force_refresh)
                     .await
                 {
+                    if seen.insert(track.id.clone()) {
+                        ext_tracks.push(track);
+                    }
+                }
+            }
+            // "Fans of your artists also like": search a few similar, unheard artists.
+            let exclude: HashSet<String> = profile
+                .top_artists
+                .iter()
+                .filter(|a| a.affinity > 0.0)
+                .flat_map(|a| crate::recommendations::signals::artist_credits(&a.display_name))
+                .collect();
+            for hit in similarity.top_similar(3, &exclude) {
+                for track in self.artist_candidates(&hit.display, force_refresh).await {
                     if seen.insert(track.id.clone()) {
                         ext_tracks.push(track);
                     }
@@ -931,12 +952,14 @@ impl DiscoveryCoordinator {
                 .copied()
                 .unwrap_or(0.0);
             let known = listening.manual_like == 1 || listening.play_count > 0;
+            let similar_hit = similarity.hit(&track.artist).filter(|h| h.boost > 0.2);
             let library_signal = is_library_artist && !listened_artists.contains_key(&artist_lower);
             if !is_listened_artist
                 && !library_signal
                 && genre_score <= 0.0
                 && language_affinity <= 0.0
                 && !known
+                && similar_hit.is_none()
                 && !starters.contains_key(&track.id)
             {
                 continue;
@@ -966,22 +989,27 @@ impl DiscoveryCoordinator {
                 chrono::Utc::now().timestamp(),
             )
             .final_score;
-            let base_score = 150.0 * artist_affinity
+            // Style (genre/language) leads; artist affinity is saturating and already
+            // includes the owned-library prior, so it is weighted more gently.
+            let base_score = 90.0 * artist_affinity
                 + genre_score
-                + 25.0 * language_affinity
-                + if library_signal { 15.0 } else { 0.0 }
+                + 35.0 * language_affinity
+                + if library_signal { 10.0 } else { 0.0 }
+                + similar_hit.map_or(0.0, |h| 40.0 * h.boost * (1.0 - artist_affinity))
                 + recording_score * 50.0;
 
             let reason = match status {
                 MatchStatus::NotFound => {
-                    if is_listened_artist {
+                    if is_listened_artist && profile.artist_breadth(&track.artist) > 0 {
                         format!(
                             "Based on your listening habit for {} ({:.0}% affinity)",
                             track.artist,
                             artist_affinity * 100.0
                         )
-                    } else if is_library_artist && !listened_artists.contains_key(&artist_lower) {
+                    } else if is_library_artist {
                         format!("By your library artist {}", track.artist)
+                    } else if let Some(hit) = similar_hit {
+                        format!("Fans of {} also like {}", hit.because_of, track.artist)
                     } else if let Some(ref genre) = matched_genre_display {
                         format!("Matches your {genre} listening")
                     } else if let Some(language) = language.filter(|_| language_affinity > 0.0) {
@@ -1109,9 +1137,7 @@ impl DiscoveryCoordinator {
             }
         }
 
-        // 6. Keep artist diversity (maximum two tracks per artist).
-        let mut artist_counts: HashMap<String, usize> = HashMap::new();
-        let mut recs = Vec::new();
+        // 6. Keep artist diversity (one song per artist in every eight cards).
         let mut seen_songs = HashSet::new();
 
         let to_recommendation = |scored: &ScoredCandidate| {
@@ -1148,31 +1174,42 @@ impl DiscoveryCoordinator {
             }
         };
 
-        // For You uses only personalized candidates, ordered by actual affinity.
-        for scored in &taste_candidates {
-            if recs.len() >= limit {
-                break;
-            }
-            if !seen_songs.insert(
-                crate::recommendations::signals::song_key(
-                    &scored.track.title,
-                    &scored.track.artist,
+        // For You uses only personalized candidates, ordered by actual affinity
+        // (and sticky selection). Rank is the diversifier score so that order holds
+        // wherever artist spacing allows it.
+        let unique: Vec<&ScoredCandidate> = taste_candidates
+            .iter()
+            .filter(|scored| {
+                seen_songs.insert(
+                    crate::recommendations::signals::song_key(
+                        &scored.track.title,
+                        &scored.track.artist,
+                    )
+                    .unwrap_or_else(|| scored.track.id.clone()),
                 )
-                .unwrap_or_else(|| scored.track.id.clone()),
-            ) {
-                continue;
-            }
-            let artist_key = crate::recommendations::signals::artist_credits(&scored.track.artist)
-                .into_iter()
-                .next()
-                .unwrap_or_default();
-            let count = artist_counts.entry(artist_key).or_insert(0);
-            if *count >= 2 {
-                continue;
-            }
-            *count += 1;
-            recs.push(to_recommendation(scored));
-        }
+            })
+            .collect();
+        let items: Vec<crate::recommendations::diversity::DiversityItem> = unique
+            .iter()
+            .enumerate()
+            .map(|(rank, scored)| crate::recommendations::diversity::DiversityItem {
+                score: -(rank as f64),
+                artist: scored.track.artist.clone(),
+                album: None,
+                is_online: false,
+                max_per_window: None,
+                features: None,
+            })
+            .collect();
+        let recs: Vec<DiscoveryRecommendation> = crate::recommendations::diversity::diversify(
+            &items,
+            limit,
+            &crate::recommendations::diversity::DiversityRules::shelf(),
+            &[],
+        )
+        .into_iter()
+        .map(|index| to_recommendation(unique[index]))
+        .collect();
 
         if force_refresh || selection.generation == 0 {
             selection.generation = selection.generation.saturating_add(1);

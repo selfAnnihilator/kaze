@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   upcomingFromEvent,
   upcomingFromPlayback,
+  withKnownMetadata,
 } from "../src/presentation/queuePresentation.ts";
 
 test("queue adapter retains absolute backend indices and duplicate occurrence identity", () => {
@@ -55,4 +56,24 @@ test("stopped and not-yet-started queues expose the full queue from zero", () =>
     }).map((e) => e.index),
     [0, 1],
   );
+});
+
+test("playback snapshot keeps titles learned from queue events", () => {
+  const prev = upcomingFromEvent(
+    [
+      { queue_id: "q0", track_id: "a", title: "Now", artist: "X" },
+      { queue_id: "q1", track_id: "online-1", title: "Bad Romance", artist: "Lady Gaga" },
+    ],
+    0,
+  );
+  const snapshot = upcomingFromPlayback({
+    current_queue_index: 0,
+    current_track_id: "a",
+    queue_track_ids: ["online-1", "online-2"],
+  });
+  const merged = withKnownMetadata(snapshot, prev);
+  assert.equal(merged[0].title, "Bad Romance");
+  assert.equal(merged[0].artist, "Lady Gaga");
+  assert.equal(merged[1].title, undefined);
+  assert.deepEqual(withKnownMetadata(snapshot, []), snapshot);
 });

@@ -7,7 +7,6 @@ use crate::database::repositories::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecommendedTrackDetail {
@@ -128,7 +127,12 @@ impl LocalRecommender {
                 user_feedback: feedback,
             };
 
-            let score = ScoringEngine::score_track(&candidate_input, profile, now);
+            let mut score = ScoringEngine::score_track(&candidate_input, profile, now);
+            score.final_score -= signals.less_penalty(
+                c.artist_name.as_deref().unwrap_or(""),
+                c.genre_name.as_deref(),
+                now,
+            );
             if score.final_score > 0.0 {
                 scored_tracks.push((c, score));
             }
@@ -141,34 +145,50 @@ impl LocalRecommender {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // Enforce artist diversity: max 2 tracks per artist
+        // Radio-style artist spacing shared with Flow: no artist within four
+        // picks, at most two per twenty, featured credits count as the artist.
         let mut seen_songs = std::collections::HashSet::new();
-        let mut artist_counts: HashMap<String, usize> = HashMap::new();
-        let mut selected: Vec<(CandidateRow, TrackRecommendationScore)> = Vec::new();
-
-        for (candidate, score) in scored_tracks {
-            if !seen_songs.insert(
+        scored_tracks.retain(|(candidate, _)| {
+            seen_songs.insert(
                 super::signals::song_key(
                     &candidate.title,
                     candidate.artist_name.as_deref().unwrap_or(""),
                 )
                 .unwrap_or_else(|| candidate.id.clone()),
-            ) {
-                continue;
-            }
-            let artist_key = candidate
-                .artist_id
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string());
-            let count = artist_counts.entry(artist_key).or_insert(0);
-            if *count < 2 {
-                *count += 1;
-                selected.push((candidate, score));
-                if selected.len() >= limit {
-                    break;
-                }
-            }
-        }
+            )
+        });
+        let items: Vec<super::diversity::DiversityItem> = scored_tracks
+            .iter()
+            .map(|(candidate, score)| super::diversity::DiversityItem {
+                score: score.final_score,
+                artist: candidate
+                    .artist_name
+                    .clone()
+                    .or_else(|| candidate.artist_id.clone())
+                    .unwrap_or_default(),
+                album: None,
+                is_online: false,
+                max_per_window: None,
+                features: None,
+            })
+            .collect();
+        let order = super::diversity::diversify(
+            &items,
+            limit,
+            // A recommendation list (not an endless queue): never more than two
+            // songs per artist, even if the library is dominated by one artist.
+            &super::diversity::DiversityRules {
+                max_total: Some(2),
+                ..super::diversity::DiversityRules::queue(0.0)
+            },
+            &[],
+        );
+        let mut slots: Vec<Option<(CandidateRow, TrackRecommendationScore)>> =
+            scored_tracks.into_iter().map(Some).collect();
+        let selected: Vec<(CandidateRow, TrackRecommendationScore)> = order
+            .into_iter()
+            .filter_map(|index| slots[index].take())
+            .collect();
 
         // Prepare records to save in recommendation session
         let session_id = uuid::Uuid::new_v4().to_string();

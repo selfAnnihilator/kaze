@@ -95,3 +95,10 @@
   gap: 12px;
 }
 .connection-error button { color: inherit; cursor: pointer; }
+.not-interested-control { position: relative; display: inline-flex; }
+.not-interested-menu { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; display: flex; flex-direction: column; min-width: 160px; padding: 4px; background: var(--bg-card, #24201b); color: var(--text-main); border: 1px solid var(--border); box-shadow: 0 4px 16px #0006; }
+.not-interested-menu button { padding: 8px 10px; text-align: left; white-space: nowrap; color: inherit; background: transparent; border: 0; cursor: pointer; font-size: .8125rem; }
+.not-interested-menu button:hover, .not-interested-menu button:focus-visible { background: color-mix(in srgb, var(--accent) 18%, transparent); outline: none; }
+.entity-feedback-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.entity-feedback-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.entity-feedback-list small { margin-left: 6px; color: var(--text-muted); }

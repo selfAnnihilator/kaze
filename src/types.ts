@@ -181,6 +181,7 @@ export interface AppSettings {
     provider_priority: string[];
     enable_jiosaavn?: boolean;
     auto_fill_metadata?: boolean;
+    enable_lastfm_similarity?: boolean;
   };
   downloads: {
     download_dir?: string;
@@ -299,6 +300,9 @@ export type Command =
   | { command: "LikeTrack"; payload: { track_id: string } }
   | { command: "DislikeTrack"; payload: { track_id: string } }
   | { command: "RemoveTrackFeedback"; payload: { track_id: string } }
+  | { command: "BlockArtist"; payload: { track_id: string } }
+  | { command: "LessLikeThis"; payload: { track_id: string } }
+  | { command: "ClearEntityFeedback"; payload: { kind: EntityFeedbackKind; key: string } }
   | { command: "AddToWishlist"; payload: { title: string; artist: string; album?: string; external_id?: string;
       };
     }
@@ -345,6 +349,7 @@ export type Command =
 export type Query =
   | { query: "GetRecommendationSetup" }
   | { query: "GetRecommendationFeedback" }
+  | { query: "GetEntityFeedback" }
   | { query: "RefreshCharts" }
   | { query: "GetOnboardingStatus" }
   | { query: "GetPlaybackState" }
@@ -544,6 +549,12 @@ export interface FlowExplanation {
   artist_affinity?: number | null;
   artist_name?: string | null;
   familiarity_ratio?: number | null;
+  session_style?: string | null;
+  session_adjustment?: number | null;
+  similar_artist?: string | null;
+  context_bucket?: string | null;
+  rec_slot?: "explore" | "familiar" | null;
+  explore_bias?: number | null;
   selected_at?: number | null;
   from_existing_queue: boolean;
 }
@@ -634,4 +645,14 @@ export interface HomeOverview {
   for_you: RecommendedTrackDetail[];
   library_moment?: LibraryMoment | null;
   your_week?: YourWeekStats | null;
+}
+
+export type EntityFeedbackKind = "artist" | "genre";
+export type EntityFeedbackLevel = "block" | "less";
+export interface EntityFeedbackRow {
+  kind: EntityFeedbackKind;
+  key: string;
+  display: string;
+  level: EntityFeedbackLevel;
+  created_at: number;
 }

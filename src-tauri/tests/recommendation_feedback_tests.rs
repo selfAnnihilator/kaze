@@ -292,7 +292,7 @@ async fn not_interested_blocks_aliases_future_releases_mixes_and_queue_but_prese
     // Fresh engines/restart do not discard an explicit exclusion.
     assert!(
         music_player_backend::recommendations::FlowEngine::new(pool.clone())
-            .generate_playback_tracks_after("default", 0.0, 100, &[], None)
+            .generate_playback_tracks_after("default", 0.0, 100, &[], &[])
             .await
             .unwrap()
             .iter()

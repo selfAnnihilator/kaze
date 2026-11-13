@@ -706,7 +706,7 @@ async fn artist_spacing_spans_batches_when_alternatives_exist() {
     }
     let tracks = processor
         .flow_engine()
-        .generate_flow_tracks_after("default", 0.5, 8, &[], Some("One"))
+        .generate_flow_tracks_after("default", 0.5, 8, &[], &["One".to_string()])
         .await
         .unwrap();
     assert_eq!(tracks[0].artist, "Two");
@@ -1565,11 +1565,20 @@ async fn album_details_uses_exact_id_all_members_and_current_account_feedback() 
         .unwrap();
     for number in 3..=105 {
         let track = add_track(
-            &processor, &format!("Song {number}"), "Sean Paul",
-            "No Lie (feat. Dua Lipa) - Single", "Pop", 2020,
-        ).await;
+            &processor,
+            &format!("Song {number}"),
+            "Sean Paul",
+            "No Lie (feat. Dua Lipa) - Single",
+            "Pop",
+            2020,
+        )
+        .await;
         sqlx::query("UPDATE tracks SET track_number=? WHERE id=?")
-            .bind(number).bind(track).execute(processor.db_pool()).await.unwrap();
+            .bind(number)
+            .bind(track)
+            .execute(processor.db_pool())
+            .await
+            .unwrap();
     }
     sqlx::query("INSERT INTO track_statistics(user_id,track_id,manual_like) VALUES('default',?,1),('another-user',?,-1)").bind(&first).bind(&first).execute(processor.db_pool()).await.unwrap();
     let result = processor
@@ -1602,5 +1611,475 @@ async fn album_details_uses_exact_id_all_members_and_current_account_feedback() 
             .await
             .is_err(),
         "missing albums report an error instead of silently doing nothing"
+    );
+}
+
+async fn full_listens(processor: &CoreProcessor, track_id: &str, count: i64) {
+    let history_repo = SqliteHistoryRepository::new(processor.db_pool().clone());
+    let now = chrono::Utc::now().timestamp();
+    for i in 0..count {
+        history_repo
+            .record_playback(&PlaybackHistoryRecord {
+                id: Uuid::new_v4().to_string(),
+                user_id: "default".into(),
+                track_id: track_id.to_string(),
+                started_at: now - 86400 - i * 3600,
+                ended_at: now - 86400 - i * 3600 + 240,
+                seconds_listened: 240.0,
+                percentage_listened: 1.0,
+                completed: 1,
+                skipped: 0,
+                source: "library".into(),
+                playlist_id: None,
+                recommendation_session_id: None,
+            })
+            .await
+            .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn two_listens_do_not_flood_flow_across_refills() {
+    let processor = setup_processor().await;
+    let mut heard = Vec::new();
+    for i in 0..10 {
+        heard.push(
+            add_track(
+                &processor,
+                &format!("Heard {i}"),
+                "Heard",
+                "H",
+                "Rock",
+                2020,
+            )
+            .await,
+        );
+    }
+    full_listens(&processor, &heard[0], 1).await;
+    full_listens(&processor, &heard[1], 1).await;
+    for a in 0..15 {
+        for i in 0..2 {
+            add_track(
+                &processor,
+                &format!("Other {a}-{i}"),
+                &format!("Other {a}"),
+                "O",
+                "Rock",
+                2020,
+            )
+            .await;
+        }
+    }
+    for ratio in [0.0, 0.5, 1.0] {
+        let mut exclude: Vec<String> = Vec::new();
+        let mut recent: Vec<String> = Vec::new();
+        let mut picked: Vec<String> = Vec::new();
+        for _ in 0..3 {
+            let batch = processor
+                .flow_engine()
+                .generate_flow_tracks_after("default", ratio, 7, &exclude, &recent)
+                .await
+                .unwrap();
+            for item in batch {
+                exclude.push(item.track_id.clone());
+                recent.push(item.artist.clone());
+                picked.push(item.artist);
+            }
+            let keep = recent.len().saturating_sub(15);
+            recent.drain(..keep);
+        }
+        let window = &picked[..picked.len().min(20)];
+        let heard_count = window.iter().filter(|a| *a == "Heard").count();
+        assert!(
+            heard_count <= 2,
+            "ratio {ratio}: Heard appeared {heard_count}x in {window:?}"
+        );
+        assert!(
+            window.windows(2).all(|p| p[0] != p[1]),
+            "ratio {ratio}: back-to-back {window:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn steering_runs_unfamiliar_to_familiar() {
+    let processor = setup_processor().await;
+    let mut known = Vec::new();
+    for a in 0..6 {
+        let id = add_track(
+            &processor,
+            &format!("Known {a}"),
+            &format!("Fav {a}"),
+            "F",
+            "Rock",
+            2020,
+        )
+        .await;
+        full_listens(&processor, &id, 3).await;
+        known.push(id);
+    }
+    for a in 0..6 {
+        add_track(
+            &processor,
+            &format!("Fresh {a}"),
+            &format!("New {a}"),
+            "N",
+            "Rock",
+            2020,
+        )
+        .await;
+    }
+    let mut known_share = Vec::new();
+    for ratio in [0.0, 1.0] {
+        let batch = processor
+            .flow_engine()
+            .generate_flow_tracks_after("default", ratio, 6, &[], &[])
+            .await
+            .unwrap();
+        let count = batch.iter().filter(|t| known.contains(&t.track_id)).count();
+        known_share.push(count);
+    }
+    assert!(
+        known_share[0] <= 2,
+        "Unfamiliar picked {} known songs",
+        known_share[0]
+    );
+    assert!(
+        known_share[1] >= 4,
+        "Familiar picked only {} known songs",
+        known_share[1]
+    );
+}
+
+#[tokio::test]
+async fn most_played_artist_does_not_flood_familiar_flow() {
+    let processor = setup_processor().await;
+    for i in 0..12 {
+        let id = add_track(&processor, &format!("Top {i}"), "Top", "T", "Rock", 2020).await;
+        full_listens(&processor, &id, 4).await;
+        sqlx::query("INSERT INTO track_statistics(user_id,track_id,manual_like) VALUES('default',?,1) ON CONFLICT(user_id,track_id) DO UPDATE SET manual_like=1")
+            .bind(&id).execute(processor.db_pool()).await.unwrap();
+    }
+    for a in 0..15 {
+        for i in 0..2 {
+            let id = add_track(
+                &processor,
+                &format!("Other {a}-{i}"),
+                &format!("Other {a}"),
+                "O",
+                "Rock",
+                2020,
+            )
+            .await;
+            if i == 0 {
+                full_listens(&processor, &id, 1).await;
+            }
+        }
+    }
+    let mut exclude: Vec<String> = Vec::new();
+    let mut recent: Vec<String> = Vec::new();
+    let mut picked: Vec<String> = Vec::new();
+    for _ in 0..3 {
+        let batch = processor
+            .flow_engine()
+            .generate_flow_tracks_after("default", 1.0, 7, &exclude, &recent)
+            .await
+            .unwrap();
+        for item in batch {
+            exclude.push(item.track_id.clone());
+            recent.push(item.artist.clone());
+            picked.push(item.artist);
+        }
+        let keep = recent.len().saturating_sub(15);
+        recent.drain(..keep);
+    }
+    let window = &picked[..picked.len().min(20)];
+    let top = window.iter().filter(|a| *a == "Top").count();
+    assert!(
+        top >= 1,
+        "Familiar should still include the favorite: {window:?}"
+    );
+    assert!(top <= 2, "most played artist appeared {top}x in {window:?}");
+    assert!(
+        window.windows(2).all(|p| p[0] != p[1]),
+        "back-to-back {window:?}"
+    );
+}
+
+#[tokio::test]
+async fn most_played_artist_does_not_flood_smart_mixes() {
+    use music_player_backend::{core::command::SmartMixType, recommendations::SmartMixGenerator};
+    let processor = setup_processor().await;
+    for i in 0..10 {
+        let id = add_track(&processor, &format!("Top {i}"), "Top", "T", "Rock", 2020).await;
+        full_listens(&processor, &id, 4).await;
+    }
+    for a in 0..6 {
+        let id = add_track(
+            &processor,
+            &format!("Other {a}"),
+            &format!("Other {a}"),
+            "O",
+            "Rock",
+            2020,
+        )
+        .await;
+        full_listens(&processor, &id, 2).await;
+    }
+    let pool = processor.db_pool().clone();
+    for mix_type in [SmartMixType::OnRepeat, SmartMixType::Daily] {
+        let mix = SmartMixGenerator::new(pool.clone())
+            .generate_mix("default", &mix_type)
+            .await
+            .unwrap();
+        let artists: Vec<String> = sqlx::query_scalar(
+            "SELECT a.name FROM playlist_tracks pt JOIN tracks t ON t.id=pt.track_id
+             JOIN artists a ON a.id=t.artist_id WHERE pt.playlist_id=? ORDER BY pt.position",
+        )
+        .bind(&mix.id)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        let top = artists.iter().filter(|a| *a == "Top").count();
+        assert!(!artists.is_empty(), "{mix_type:?} empty");
+        assert!(top <= 2, "{mix_type:?}: Top appeared {top}x in {artists:?}");
+    }
+}
+
+// ---- Session steering (live skips / full listens) ----
+
+use music_player_backend::recommendations::session::{SessionOutcome, SessionSteer, StyleKeys};
+
+const SKIP: SessionOutcome = SessionOutcome {
+    early_skip: true,
+    qualified: false,
+    near_complete: false,
+};
+const FULL: SessionOutcome = SessionOutcome {
+    early_skip: false,
+    qualified: true,
+    near_complete: true,
+};
+
+/// 15 Rock + 15 Jazz single-track artists. Returns (rock ids, jazz ids).
+async fn two_genre_library(processor: &CoreProcessor) -> (Vec<String>, Vec<String>) {
+    let mut rock = Vec::new();
+    let mut jazz = Vec::new();
+    for i in 0..15 {
+        rock.push(
+            add_track(
+                processor,
+                &format!("Riff {i}"),
+                &format!("Rocker {i}"),
+                "R",
+                "Rock",
+                2020,
+            )
+            .await,
+        );
+        jazz.push(
+            add_track(
+                processor,
+                &format!("Swing {i}"),
+                &format!("Cat {i}"),
+                "J",
+                "Jazz",
+                2020,
+            )
+            .await,
+        );
+    }
+    (rock, jazz)
+}
+
+fn count_in(
+    batch: &[music_player_backend::recommendations::FlowTrackItem],
+    ids: &[String],
+) -> usize {
+    batch.iter().filter(|t| ids.contains(&t.track_id)).count()
+}
+
+#[tokio::test]
+async fn session_skips_steer_away_from_genre() {
+    let processor = setup_processor().await;
+    let (rock, _jazz) = two_genre_library(&processor).await;
+    // Long-term taste leans Rock so the baseline is Rock-heavy.
+    full_listens(&processor, &rock[0], 2).await;
+    let fe = processor.flow_engine();
+    let baseline = fe
+        .generate_flow_tracks_with_session("default", 0.5, 10, &[], &[], None)
+        .await
+        .unwrap();
+    let mut steer = SessionSteer::default();
+    steer.record(&StyleKeys::new(Some("Rocker 1"), Some("Rock"), None), SKIP);
+    let trigger = steer.record(&StyleKeys::new(Some("Rocker 2"), Some("Rock"), None), SKIP);
+    assert!(trigger.fired(), "two Rock skips must trigger: {trigger:?}");
+    let steered = fe
+        .generate_flow_tracks_with_session("default", 0.5, 10, &[], &[], Some(&steer))
+        .await
+        .unwrap();
+    let (before, after) = (count_in(&baseline, &rock), count_in(&steered, &rock));
+    assert!(after < before, "Rock share must drop: {before} -> {after}");
+    assert!(after <= 3, "Rock still dominates after skips: {after}/10");
+    let noted = steered
+        .iter()
+        .find(|t| t.explanation.session_adjustment.is_some_and(|a| a < 0.0));
+    assert!(
+        noted.is_none()
+            || noted
+                .unwrap()
+                .explanation
+                .session_style
+                .as_deref()
+                .is_some_and(|s| s.eq_ignore_ascii_case("rock")),
+        "negative session note names the skipped style"
+    );
+}
+
+#[tokio::test]
+async fn session_full_listens_steer_toward_genre() {
+    let processor = setup_processor().await;
+    let (rock, jazz) = two_genre_library(&processor).await;
+    // One Jazz artist with a deep catalog: the artist cap must still hold.
+    let mut deep = Vec::new();
+    for i in 0..6 {
+        deep.push(
+            add_track(
+                &processor,
+                &format!("Deep {i}"),
+                "Deep Cat",
+                "D",
+                "Jazz",
+                2020,
+            )
+            .await,
+        );
+    }
+    full_listens(&processor, &rock[0], 2).await;
+    let fe = processor.flow_engine();
+    let baseline = fe
+        .generate_flow_tracks_with_session("default", 0.5, 10, &[], &[], None)
+        .await
+        .unwrap();
+    let mut steer = SessionSteer::default();
+    let mut trigger = None;
+    for artist in ["Cat 1", "Cat 2", "Cat 3"] {
+        trigger = Some(steer.record(&StyleKeys::new(Some(artist), Some("Jazz"), None), FULL));
+    }
+    assert!(trigger.unwrap().fired(), "three Jazz finishes must trigger");
+    let steered = fe
+        .generate_flow_tracks_with_session("default", 0.5, 10, &[], &[], Some(&steer))
+        .await
+        .unwrap();
+    let mut all_jazz = jazz.clone();
+    all_jazz.extend(deep.iter().cloned());
+    let (before, after) = (
+        count_in(&baseline, &all_jazz),
+        count_in(&steered, &all_jazz),
+    );
+    assert!(after > before, "Jazz share must grow: {before} -> {after}");
+    assert!(
+        count_in(&steered, &deep) <= 2,
+        "artist cap broken by session boost"
+    );
+    assert!(steered.iter().any(|t| t
+        .explanation
+        .session_style
+        .as_deref()
+        .is_some_and(|s| s.eq_ignore_ascii_case("jazz"))
+        && t.explanation.session_adjustment.is_some_and(|a| a > 0.0)));
+}
+
+async fn upcoming_ids(processor: &CoreProcessor) -> Vec<String> {
+    let state = processor.playback_service().get_playback_state().await;
+    let start = state.current_queue_index.map_or(0, |i| i + 1);
+    state.queue_track_ids[start..].to_vec()
+}
+
+async fn skip_outcome(processor: &CoreProcessor, track_id: &str) {
+    let _ =
+        processor
+            .event_bus()
+            .publish(music_player_backend::core::event::Event::ListenOutcome {
+                user_id: "default".into(),
+                track_id: track_id.to_string(),
+                early_skip: true,
+                qualified: false,
+                near_complete: false,
+                weight: -1.0,
+            });
+}
+
+async fn wait_for_change(processor: &CoreProcessor, before: &[String]) -> Vec<String> {
+    for _ in 0..100 {
+        let now = upcoming_ids(processor).await;
+        if now != before {
+            return now;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    panic!("upcoming Flow queue was not re-ranked");
+}
+
+#[tokio::test]
+async fn rapid_rock_skips_rerank_upcoming_flow() {
+    let processor = setup_processor().await;
+    let (rock, _jazz) = two_genre_library(&processor).await;
+    full_listens(&processor, &rock[0], 2).await;
+    processor
+        .dispatch_command(Command::StartFlow {
+            familiarity_ratio: Some(0.5),
+        })
+        .await
+        .unwrap();
+    let before = upcoming_ids(&processor).await;
+    let rock_before = before.iter().take(8).filter(|id| rock.contains(id)).count();
+    assert!(
+        rock_before >= 3,
+        "baseline should include Rock: {rock_before}"
+    );
+    skip_outcome(&processor, &rock[1]).await;
+    skip_outcome(&processor, &rock[2]).await;
+    let after = wait_for_change(&processor, &before).await;
+    let rock_after = after.iter().take(8).filter(|id| rock.contains(id)).count();
+    assert!(
+        rock_after < rock_before && rock_after <= 2,
+        "next 8 Rock count {rock_before} -> {rock_after}"
+    );
+    let service = processor.playback_service();
+    if let Some(reason) = service.flow_reason("default", &after[0]).await {
+        assert!(reason.session_adjustment.is_some() || !rock.contains(&after[0]));
+    }
+}
+
+#[tokio::test]
+async fn session_resets_on_start_flow() {
+    let processor = setup_processor().await;
+    let (rock, _jazz) = two_genre_library(&processor).await;
+    full_listens(&processor, &rock[0], 2).await;
+    let start = || {
+        processor.dispatch_command(Command::StartFlow {
+            familiarity_ratio: Some(0.5),
+        })
+    };
+    start().await.unwrap();
+    let before = upcoming_ids(&processor).await;
+    skip_outcome(&processor, &rock[1]).await;
+    skip_outcome(&processor, &rock[2]).await;
+    wait_for_change(&processor, &before).await;
+    start().await.unwrap();
+    let service = processor.playback_service();
+    let current = service
+        .get_playback_state()
+        .await
+        .current_track_id
+        .expect("restarted Flow plays a track");
+    let reason = service
+        .flow_reason("default", &current)
+        .await
+        .expect("restarted Flow explains its pick");
+    assert!(
+        reason.session_adjustment.is_none(),
+        "fresh Flow must not carry the old session steer"
     );
 }

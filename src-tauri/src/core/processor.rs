@@ -55,6 +55,7 @@ pub struct CoreProcessor {
     smart_mix_generator: Arc<SmartMixGenerator>,
     provider_coordinator: Arc<ProviderCoordinator>,
     gap_enrichment: Arc<crate::providers::enrichment::GapEnrichmentService>,
+    similarity_service: Arc<crate::providers::similarity_worker::SimilarityService>,
     wishlist_manager: Arc<WishlistManager>,
     discovery_coordinator: Arc<DiscoveryCoordinator>,
     download_service: Arc<DownloadService>,
@@ -148,6 +149,18 @@ impl CoreProcessor {
             event_bus.clone(),
         ));
         background_tasks.push(tokio::spawn(gap_enrichment.clone().run()));
+        let similarity_service = Arc::new(
+            crate::providers::similarity_worker::SimilarityService::new(
+                db_pool.clone(),
+                event_bus.clone(),
+            ),
+        );
+        background_tasks.push(tokio::spawn(similarity_service.clone().run()));
+        let audio_features = Arc::new(crate::audio_features::AudioFeaturesService::new(
+            db_pool.clone(),
+            event_bus.clone(),
+        ));
+        background_tasks.push(tokio::spawn(audio_features.run()));
         let cover_art_cache = Arc::new(tokio::sync::RwLock::new(HashMap::new()));
         let cover_cache_updates = cover_art_cache.clone();
         let metadata_playback = playback_service.clone();
@@ -477,6 +490,7 @@ impl CoreProcessor {
             smart_mix_generator,
             provider_coordinator,
             gap_enrichment,
+            similarity_service,
             wishlist_manager,
             discovery_coordinator,
             download_service,
@@ -1030,6 +1044,16 @@ impl CoreProcessor {
                 self.set_song_feedback(&track_id, 0).await?;
                 Ok(CommandResponse::Ok)
             }
+            Command::BlockArtist { track_id } => Ok(CommandResponse::EntityFeedback(
+                self.set_entity_feedback(&track_id, "block").await?,
+            )),
+            Command::LessLikeThis { track_id } => Ok(CommandResponse::EntityFeedback(
+                self.set_entity_feedback(&track_id, "less").await?,
+            )),
+            Command::ClearEntityFeedback { kind, key } => {
+                self.clear_entity_feedback(&kind, &key).await?;
+                Ok(CommandResponse::Ok)
+            }
             Command::EnsureLikedSongsPlaylist => {
                 let user_id = self.current_user_id().await;
                 let id = self
@@ -1324,7 +1348,10 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::SetMetadataPreference { key, enabled } => {
-                if !matches!(key.as_str(), "enable_jiosaavn" | "auto_fill_metadata") {
+                if !matches!(
+                    key.as_str(),
+                    "enable_jiosaavn" | "auto_fill_metadata" | "enable_lastfm_similarity"
+                ) {
                     return Err(AppError::Validation("Unknown metadata preference".into()));
                 }
                 self.settings_repo
@@ -1332,6 +1359,9 @@ impl CoreProcessor {
                     .await?;
                 if enabled && key == "auto_fill_metadata" {
                     self.gap_enrichment.request_fill(false).await?;
+                }
+                if enabled && key == "enable_lastfm_similarity" {
+                    self.similarity_service.wake();
                 }
                 Ok(CommandResponse::Ok)
             }
@@ -2357,7 +2387,11 @@ impl CoreProcessor {
                     Some("brutalist") => "brutalist",
                     _ => "spatial",
                 });
-                for (key, default) in [("enable_jiosaavn", true), ("auto_fill_metadata", true)] {
+                for (key, default) in [
+                    ("enable_jiosaavn", true),
+                    ("auto_fill_metadata", true),
+                    ("enable_lastfm_similarity", true),
+                ] {
                     val["metadata"][key] =
                         serde_json::json!(self.gap_enrichment.enabled(key, default).await);
                 }
@@ -2699,6 +2733,13 @@ impl CoreProcessor {
                     .unwrap_or_default(),
                 ))
             }
+            Query::GetEntityFeedback => Ok(QueryResponse::EntityFeedback(
+                crate::recommendations::entity_feedback::load_rows(
+                    &self.db_pool,
+                    &self.current_user_id().await,
+                )
+                .await?,
+            )),
             Query::GetRecommendationFeedback => {
                 let signals = crate::recommendations::signals::SongSignals::load(
                     &self.db_pool,
@@ -3359,6 +3400,119 @@ impl CoreProcessor {
         let _ = self
             .event_bus
             .publish(Event::TasteProfileChanged { user_id: user });
+        self.trigger_background_sync().await;
+        Ok(())
+    }
+
+    /// Writes artist-level ("block") or artist+genre ("less") feedback for a
+    /// track and invalidates every cached recommendation surface.
+    async fn set_entity_feedback(
+        &self,
+        track_id: &str,
+        level: &str,
+    ) -> AppResult<Vec<crate::recommendations::entity_feedback::EntityFeedbackRow>> {
+        use crate::recommendations::entity_feedback::{self as ef, EntityFeedbackRow};
+        let user = self.current_user_id().await;
+        let local: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT COALESCE(a.name, ''), g.name FROM tracks t
+             LEFT JOIN artists a ON a.id = t.artist_id
+             LEFT JOIN genres g ON g.id = t.genre_id WHERE t.id = ?",
+        )
+        .bind(track_id)
+        .fetch_optional(&self.db_pool)
+        .await?;
+        let (artist, genre) = match local {
+            Some(row) => row,
+            None => sqlx::query_as::<_, (String, Option<String>)>(
+                "SELECT artist, genre FROM external_tracks WHERE id = ?",
+            )
+            .bind(track_id)
+            .fetch_optional(&self.db_pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Song not found".into()))?,
+        };
+        let now = chrono::Utc::now().timestamp();
+        let mut rows = Vec::new();
+        for (key, display) in crate::recommendations::cooccurrence::display_credits(&artist) {
+            ef::upsert(&self.db_pool, &user, "artist", &key, &display, level, now).await?;
+            rows.push(EntityFeedbackRow {
+                kind: "artist".into(),
+                key,
+                display,
+                level: level.into(),
+                created_at: now,
+            });
+        }
+        if level == "less" {
+            if let Some(genre) = genre.as_deref().map(str::trim).filter(|g| !g.is_empty()) {
+                let key = ef::genre_norm(genre);
+                ef::upsert(&self.db_pool, &user, "genre", &key, genre, "less", now).await?;
+                rows.push(EntityFeedbackRow {
+                    kind: "genre".into(),
+                    key,
+                    display: genre.into(),
+                    level: "less".into(),
+                    created_at: now,
+                });
+            }
+        }
+        if rows.is_empty() {
+            return Err(AppError::NotFound("Song has no artist or genre".into()));
+        }
+        if level == "block" {
+            let index =
+                crate::recommendations::signals::SongSignals::load(&self.db_pool, &user).await?;
+            let ids: Vec<String> = index
+                .identities
+                .values()
+                .filter(|song| index.entity.is_blocked_artist(&song.artist))
+                .map(|song| song.id.clone())
+                .collect();
+            sqlx::query("DELETE FROM playlist_tracks WHERE track_id IN (SELECT value FROM json_each(?)) AND playlist_id IN (SELECT id FROM playlists WHERE user_id=? AND is_smart_mix=1)")
+                .bind(serde_json::to_string(&ids).unwrap_or_else(|_| "[]".into()))
+                .bind(&user)
+                .execute(&self.db_pool)
+                .await?;
+            self.playback_service
+                .remove_recommended_songs(&user, &ids)
+                .await?;
+        }
+        self.after_entity_feedback(&user, rows.clone(), false).await?;
+        Ok(rows)
+    }
+
+    async fn clear_entity_feedback(&self, kind: &str, key: &str) -> AppResult<()> {
+        let user = self.current_user_id().await;
+        let rows: Vec<_> = crate::recommendations::entity_feedback::load_rows(&self.db_pool, &user)
+            .await?
+            .into_iter()
+            .filter(|row| row.kind == kind && row.key == key)
+            .collect();
+        if crate::recommendations::entity_feedback::clear(&self.db_pool, &user, kind, key).await? {
+            self.after_entity_feedback(&user, rows, true).await?;
+        }
+        Ok(())
+    }
+
+    async fn after_entity_feedback(
+        &self,
+        user: &str,
+        rows: Vec<crate::recommendations::entity_feedback::EntityFeedbackRow>,
+        cleared: bool,
+    ) -> AppResult<()> {
+        sqlx::query("UPDATE playlists SET expires_at=0 WHERE user_id=? AND is_smart_mix=1")
+            .bind(user)
+            .execute(&self.db_pool)
+            .await?;
+        self.flow_engine.invalidate_home_picks(user).await;
+        let _ = self.event_bus.publish(Event::EntityFeedbackChanged {
+            user_id: user.into(),
+            rows,
+            cleared,
+        });
+        let _ = self.event_bus.publish(Event::TasteProfileChanged {
+            user_id: user.into(),
+        });
         self.trigger_background_sync().await;
         Ok(())
     }

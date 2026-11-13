@@ -56,7 +56,7 @@ import {
   CollectionData,
   CollectionTrackItem,
 } from "./components/views/CollectionDetailView";
-import { StatsOverview, UserProfile } from "./types";
+import { StatsOverview, UserProfile, type EntityFeedbackRow } from "./types";
 import { X, Sparkles } from "lucide-react";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
@@ -65,6 +65,7 @@ import { QueueView } from "./presentation/QueueView";
 import {
   upcomingFromEvent,
   upcomingFromPlayback,
+  withKnownMetadata,
   type QueueEntry,
   type PlaybackArtworkTrack,
 } from "./presentation/queuePresentation";
@@ -230,7 +231,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
 
   // Home & Flow State
-  const [recommendationNotice, setRecommendationNotice] = useState<{ id: string; title: string } | null>(null);
+  const [recommendationNotice, setRecommendationNotice] = useState<RecommendationNoticeValue | null>(null);
   const [homeOverview, setHomeOverview] = useState<HomeOverview | null>(null);
   const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
   const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | null>(null);
@@ -615,7 +616,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         });
         if (Array.isArray(res.data.queue_track_ids)) {
           setQueuedTrackIds(new Set(res.data.queue_track_ids));
-          setQueueEntries(upcomingFromPlayback(res.data));
+          setQueueEntries((prev) => withKnownMetadata(upcomingFromPlayback(res.data), prev));
         }
       }
     } catch (err) {
@@ -1277,6 +1278,19 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           }
           setPlaybackState(previous => previous.current_track && ids.has(previous.current_track.id)
             ? { ...previous, current_track: { ...previous.current_track, manual_like: event.payload.manual_like } } : previous);
+          void fetchPlaylists();
+          break;
+        }
+        case "EntityFeedbackChanged": {
+          if (event.payload?.user_id !== currentUserIdRef.current) break;
+          ++homeRequestRef.current; ++discoveryRequestRef.current; ++chartRequestRef.current;
+          setIsTrendingLoading(false);
+          void recommendationPreferences.refresh();
+          const rows: EntityFeedbackRow[] = event.payload?.rows || [];
+          if (!event.payload?.cleared && rows.length) {
+            setRecommendationNotice({ id: `entity:${rows.map(row => `${row.kind}:${row.key}`).join("|")}`, title: rows[0].display, entities: rows });
+          }
+          void fetchDiscovery(false, false);
           void fetchPlaylists();
           break;
         }

@@ -73,7 +73,7 @@ test("explanations use verified evidence for all five cases and avoid unsupporte
 test("secondary evidence preserves recorded counts and steering without inventing low-play rankings", () => {
   const copy = presentFlowExplanation(evidence({ play_count: 2, familiarity_ratio: .1, selected_at: 100 }));
   assert.match(copy.secondary[0], /2 recorded plays/);
-  assert.match(copy.secondary[1], /rediscovery/);
+  assert.match(copy.secondary[1], /unfamiliar music/);
   assert.doesNotMatch(JSON.stringify(copy), /less than most|low.play|batch|database|generation|scorer/i);
 });
 
@@ -93,4 +93,30 @@ test("online Flow discoveries keep their source visible without claiming local-l
   const known = presentFlowExplanation(evidence({ primary: "online", play_count: 3 }));
   assert.equal(known.title, "From your online listening");
   assert.doesNotMatch(known.body, /library/);
+});
+
+test("session steering surfaces only a positive in-session style note", () => {
+  const toward = presentFlowExplanation(evidence({ session_style: "Jazz", session_adjustment: .12, play_count: 3 }));
+  assert.match(toward.secondary[0], /finishing Jazz this session/);
+  const away = presentFlowExplanation(evidence({ session_style: "Rock", session_adjustment: -.26 }));
+  assert.doesNotMatch(JSON.stringify(away), /Rock|session/);
+});
+
+test("time-of-day context names the day part and ignores unknown buckets", () => {
+  const evening = presentFlowExplanation(evidence({ context_bucket: "evening", play_count: 2 }));
+  assert.equal(evening.secondary[0], "Fits your evenings.");
+  const night = presentFlowExplanation(evidence({ context_bucket: "night" }));
+  assert.ok(night.secondary.includes("Fits your late nights."));
+  const unknown = presentFlowExplanation(evidence({ context_bucket: "brunch" }));
+  assert.doesNotMatch(JSON.stringify(unknown), /Fits your/);
+  const starter = presentFlowExplanation(evidence({ primary: "starter_genre", context_bucket: "evening" }));
+  assert.doesNotMatch(JSON.stringify(starter), /Fits your/);
+});
+
+test("learned exploration nudge is named only on explore picks with a real positive bias", () => {
+  const nudged = presentFlowExplanation(evidence({ rec_slot: "explore", explore_bias: .06 }));
+  assert.ok(nudged.secondary.includes("Exploring a bit more — you've liked new finds."));
+  for (const extra of [{ rec_slot: "familiar", explore_bias: .06 }, { rec_slot: "explore", explore_bias: .01 }, { rec_slot: "explore", explore_bias: -.08 }, { rec_slot: "explore" }]) {
+    assert.doesNotMatch(JSON.stringify(presentFlowExplanation(evidence(extra))), /Exploring a bit more/);
+  }
 });

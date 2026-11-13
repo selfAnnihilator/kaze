@@ -219,8 +219,44 @@ impl SmartMixGenerator {
         user_id: &str,
         mix_type: &SmartMixType,
     ) -> AppResult<PlaylistRecord> {
+        self.generate_mix_with(user_id, mix_type, None).await
+    }
+
+    /// `clusters` lets a caller building several Daily Mix N reuse one clustering pass.
+    async fn generate_mix_with(
+        &self,
+        user_id: &str,
+        mix_type: &SmartMixType,
+        clusters: Option<&[super::clusters::Cluster]>,
+    ) -> AppResult<PlaylistRecord> {
         let now = Utc::now().timestamp();
         let (name, description, mix_type_str, generation_reason, track_ids) = match mix_type {
+            SmartMixType::DailyCluster(index) => {
+                let computed;
+                let clusters = match clusters {
+                    Some(clusters) => clusters,
+                    None => {
+                        computed = self.taste_clusters(user_id).await?;
+                        &computed[..]
+                    }
+                };
+                let cluster = clusters
+                    .get((*index as usize).wrapping_sub(1))
+                    .ok_or_else(|| {
+                        AppError::NotFound(format!("No taste cluster for Daily Mix {index}"))
+                    })?;
+                let track_ids = self.generate_cluster_mix(user_id, cluster).await?;
+                (
+                    format!("Daily Mix {index}"),
+                    Some(format!(
+                        "{} and artists like them, refreshed daily",
+                        cluster.artists.iter().take(2).cloned().collect::<Vec<_>>().join(" & ")
+                    )),
+                    format!("daily:{index}"),
+                    cluster.label.clone(),
+                    track_ids,
+                )
+            }
             SmartMixType::Daily => {
                 let track_ids = self.generate_daily_mix(user_id).await?;
                 (
@@ -338,6 +374,46 @@ impl SmartMixGenerator {
                 seen.insert(key)
             })
             .collect::<Vec<_>>();
+        // Mixes are queues too: space artists like radio and cap each artist at two
+        // songs, however much it is played. Artist Radio is the one intended exception.
+        let track_ids = if matches!(mix_type, SmartMixType::Artist(_)) {
+            track_ids
+        } else {
+            let count = track_ids.len();
+            let items: Vec<super::diversity::DiversityItem> = track_ids
+                .iter()
+                .enumerate()
+                .map(|(rank, id)| super::diversity::DiversityItem {
+                    // Rank order, nudged down by fading "less like this" feedback.
+                    score: (count - rank) as f64 / count as f64
+                        - feedback
+                            .identities
+                            .get(id)
+                            .map_or(0.0, |song| feedback.less_penalty(&song.artist, None, now)),
+                    artist: feedback
+                        .identities
+                        .get(id)
+                        .map(|song| song.artist.clone())
+                        .unwrap_or_else(|| id.clone()),
+                    album: None,
+                    is_online: false,
+                    max_per_window: None,
+                    features: None,
+                })
+                .collect();
+            super::diversity::diversify(
+                &items,
+                count,
+                &super::diversity::DiversityRules {
+                    max_total: Some(2),
+                    ..super::diversity::DiversityRules::queue(0.0)
+                },
+                &[],
+            )
+            .into_iter()
+            .map(|index| track_ids[index].clone())
+            .collect()
+        };
 
         // Reuse existing mix ID and record for this smart mix so we update its contents in-place,
         // without creating a duplicate mix collection beside it
@@ -354,7 +430,7 @@ impl SmartMixGenerator {
 
         // Daily mixes expire every 24 hours (86,400s); other mixes change weekly (7 days / 604,800s)
         let expires_at = match mix_type {
-            SmartMixType::Daily => Some(now + 86400),
+            SmartMixType::Daily | SmartMixType::DailyCluster(_) => Some(now + 86400),
             _ => Some(now + (7 * 86400)),
         };
 
@@ -387,6 +463,130 @@ impl SmartMixGenerator {
         Ok(playlist)
     }
 
+    async fn taste_clusters(&self, user_id: &str) -> AppResult<Vec<super::clusters::Cluster>> {
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        super::clusters::taste_clusters(&self.pool, user_id, &profile).await
+    }
+
+    /// ~70% songs by the cluster's own artists, ~30% by artists similar to them
+    /// that are not already among the user's top artists. Rest of the pipeline
+    /// (blocked filter, dedupe, artist spacing) runs in `generate_mix_with`.
+    async fn generate_cluster_mix(
+        &self,
+        user_id: &str,
+        cluster: &super::clusters::Cluster,
+    ) -> AppResult<Vec<String>> {
+        use rand::seq::SliceRandom;
+        const SIZE: usize = 30;
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT t.id, a.name FROM tracks t
+             JOIN artists a ON a.id = t.artist_id
+             LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
+             WHERE COALESCE(ts.manual_like, 0) != -1",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        let known: HashSet<String> = profile
+            .top_artists
+            .iter()
+            .filter_map(|a| super::signals::artist_credits(&a.display_name).into_iter().next())
+            .collect();
+        let seeds: Vec<(String, f64)> = cluster.artists.iter().map(|a| (a.clone(), 1.0)).collect();
+        let index = super::similarity::SimilarityIndex::load(&self.pool, user_id, &seeds).await?;
+        let similar: HashSet<String> = index
+            .top_similar(8, &known)
+            .into_iter()
+            .filter_map(|hit| super::signals::artist_credits(&hit.display).into_iter().next())
+            .collect();
+
+        let mut own = Vec::new();
+        let mut neighbours = Vec::new();
+        for (id, artist) in rows {
+            let credits = super::signals::artist_credits(&artist);
+            if credits.iter().any(|c| cluster.norms.contains(c)) {
+                own.push(id);
+            } else if credits.iter().any(|c| similar.contains(c)) {
+                neighbours.push(id);
+            }
+        }
+        let mut rng = rand::thread_rng();
+        own.shuffle(&mut rng);
+        neighbours.shuffle(&mut rng);
+        let neighbour_take = neighbours.len().min(SIZE * 3 / 10);
+        let own_take = own.len().min(SIZE - neighbour_take);
+        let mut picked: Vec<String> = own.into_iter().take(own_take).collect();
+        // Interleave neighbours evenly so they are not all bunched at the end.
+        let step = if neighbour_take == 0 { 0 } else { (picked.len() / neighbour_take).max(1) + 1 };
+        for (i, id) in neighbours.into_iter().take(neighbour_take).enumerate() {
+            let at = ((i + 1) * step).min(picked.len());
+            picked.insert(at, id);
+        }
+        Ok(picked)
+    }
+
+    /// Keeps the Daily family consistent: one "Daily Mix N" per taste cluster
+    /// when there are at least two clusters, otherwise the single Daily Mix.
+    /// Regenerates the whole family together once any member is missing or expired.
+    async fn sync_daily_family(&self, user_id: &str, existing: &[PlaylistRecord]) -> AppResult<()> {
+        let now = Utc::now().timestamp();
+        let family: Vec<&PlaylistRecord> = existing
+            .iter()
+            .filter(|m| {
+                m.mix_type
+                    .as_deref()
+                    .is_some_and(|t| t == "daily" || t.starts_with("daily:"))
+            })
+            .collect();
+        let stale = family.is_empty() || family.iter().any(|m| m.expires_at.is_some_and(|e| now >= e));
+        if !stale {
+            return Ok(());
+        }
+        let clusters = self.taste_clusters(user_id).await?;
+        let keep_cluster_mixes = clusters.len() >= 2;
+        if keep_cluster_mixes {
+            for index in 1..=clusters.len() {
+                self.generate_mix_with(user_id, &SmartMixType::DailyCluster(index as u8), Some(&clusters))
+                    .await?;
+            }
+        } else if family.is_empty() && !self.has_library_or_starters(user_id).await? {
+            return Ok(());
+        } else {
+            self.generate_mix(user_id, &SmartMixType::Daily).await?;
+        }
+        // Drop family members that no longer match the current clustering.
+        let current = self.playlist_repo.get_smart_mixes_for_user(user_id).await?;
+        for mix in current {
+            let Some(kind) = mix.mix_type.as_deref() else { continue };
+            let obsolete = if keep_cluster_mixes {
+                kind == "daily"
+                    || kind
+                        .strip_prefix("daily:")
+                        .and_then(|n| n.parse::<usize>().ok())
+                        .is_some_and(|n| n == 0 || n > clusters.len())
+            } else {
+                kind.starts_with("daily:")
+            };
+            if obsolete {
+                self.playlist_repo.delete_playlist(&mix.id).await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn has_library_or_starters(&self, user_id: &str) -> AppResult<bool> {
+        let total_tracks: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tracks")
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(0);
+        if total_tracks > 0 {
+            return Ok(true);
+        }
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        Ok(!super::setup::members(&self.pool, user_id, &profile).await?.is_empty())
+    }
+
     async fn starter_mix(&self, user: &str) -> AppResult<Option<Vec<String>>> {
         let profile = self.taste_engine.compute_taste_profile(user).await?;
         if profile.has_learned_taste
@@ -397,7 +597,7 @@ impl SmartMixGenerator {
             return Ok(None);
         }
         let tracks = super::FlowEngine::new(self.pool.clone())
-            .generate_playback_tracks_after(user, 0.5, 25, &[], None)
+            .generate_playback_tracks_after(user, 0.5, 25, &[], &[])
             .await?;
         Ok(Some(tracks.into_iter().map(|t| t.track_id).collect()))
     }
@@ -696,8 +896,43 @@ impl SmartMixGenerator {
         Ok(track_ids)
     }
 
-    /// Late night mix: mellow / calm selections.
+    /// Late night mix: the styles this user actually plays at night (when the
+    /// night context bucket has enough listens), topped up with mellow picks.
     async fn generate_late_night_mix(&self, user_id: &str) -> AppResult<Vec<String>> {
+        let profile = self.taste_engine.compute_taste_profile(user_id).await?;
+        let mut night_genres: Vec<(String, f64)> = profile
+            .context_affinity
+            .get("night")
+            .map(|night| night.genres.iter().map(|(g, v)| (g.clone(), *v)).collect())
+            .unwrap_or_default();
+        night_genres.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(&b.0))
+        });
+        night_genres.truncate(3);
+        let mut track_ids: Vec<String> = Vec::new();
+        if !night_genres.is_empty() {
+            let placeholders = vec!["?"; night_genres.len()].join(",");
+            let sql = format!(
+                "SELECT t.id
+                 FROM tracks t
+                 LEFT JOIN genres g ON g.id = t.genre_id
+                 LEFT JOIN track_statistics ts ON ts.track_id = t.id AND ts.user_id = ?
+                 WHERE COALESCE(ts.manual_like, 0) != -1
+                   AND LOWER(TRIM(COALESCE(g.name, ''))) IN ({placeholders})
+                 ORDER BY RANDOM()
+                 LIMIT 15"
+            );
+            let mut query = sqlx::query_scalar::<_, String>(&sql).bind(user_id);
+            for (genre, _) in &night_genres {
+                query = query.bind(genre);
+            }
+            track_ids = query
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+        }
         let rows: Vec<String> = sqlx::query_scalar(
             "SELECT t.id
              FROM tracks t
@@ -720,7 +955,15 @@ impl SmartMixGenerator {
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(rows)
+        for id in rows {
+            if track_ids.len() >= 25 {
+                break;
+            }
+            if !track_ids.contains(&id) {
+                track_ids.push(id);
+            }
+        }
+        Ok(track_ids)
     }
 
     /// Discovery mix: local tracks with 0 plays that align with user taste.
@@ -807,7 +1050,8 @@ impl SmartMixGenerator {
                 if now >= expires_at {
                     if let Some(ref mt) = mix.mix_type {
                         let smart_mix_type = match mt.as_str() {
-                            "daily" => Some(SmartMixType::Daily),
+                            // The Daily family is regenerated together below.
+                            s if s == "daily" || s.starts_with("daily:") => None,
                             "on_repeat" => Some(SmartMixType::OnRepeat),
                             "forgotten_favorites" => Some(SmartMixType::ForgottenFavorites),
                             "late_night" => Some(SmartMixType::LateNight),
@@ -828,6 +1072,10 @@ impl SmartMixGenerator {
             }
         }
 
+        let existing = self.playlist_repo.get_smart_mixes_for_user(user_id).await?;
+        if let Err(error) = self.sync_daily_family(user_id, &existing).await {
+            tracing::warn!("Daily mix family refresh failed for {user_id}: {error}");
+        }
         let existing = self.playlist_repo.get_smart_mixes_for_user(user_id).await?;
         if existing.len() >= 3 {
             return Ok(existing);
@@ -854,7 +1102,10 @@ impl SmartMixGenerator {
 
         // 1. Daily Mix
         if !existing.iter().any(|m| {
-            m.mix_type.as_deref() == Some("daily") || m.name.eq_ignore_ascii_case("Daily Mix")
+            m.mix_type
+                .as_deref()
+                .is_some_and(|t| t == "daily" || t.starts_with("daily:"))
+                || m.name.eq_ignore_ascii_case("Daily Mix")
         }) {
             let _ = self.generate_mix(user_id, &SmartMixType::Daily).await;
         }

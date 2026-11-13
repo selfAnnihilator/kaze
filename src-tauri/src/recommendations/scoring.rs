@@ -36,6 +36,10 @@ pub struct CandidateTrack {
     pub user_feedback: Option<String>, // "like", "dislike", or None
 }
 
+pub(crate) const ARTIST_WEIGHT: f64 = 0.20;
+pub(crate) const GENRE_WEIGHT: f64 = 0.32;
+pub(crate) const LANGUAGE_WEIGHT: f64 = 0.14;
+
 pub struct ScoringEngine;
 
 impl ScoringEngine {
@@ -66,7 +70,8 @@ impl ScoringEngine {
 
         let mut base_score = 0.0;
 
-        // 2. Artist Affinity (Weight: 35%)
+        // 2. Artist Affinity (Weight: 20%). Style (genre/language/era) carries more
+        // weight than artist so one liked song does not pull in an artist's catalog.
         let artist_score = candidate
             .artist_id
             .as_ref()
@@ -82,7 +87,7 @@ impl ScoringEngine {
                     candidate.artist_name.as_deref().unwrap_or("Artist"),
                     artist_score * 100.0
                 ),
-                weight: artist_score * 0.35,
+                weight: artist_score * ARTIST_WEIGHT,
             });
         }
         if let Some(language) = candidate.language.as_ref() {
@@ -92,17 +97,17 @@ impl ScoringEngine {
                 .copied()
                 .unwrap_or(0.0);
             if affinity > 0.0 {
-                base_score += affinity * 0.10;
+                base_score += affinity * LANGUAGE_WEIGHT;
                 reasons.push(RecommendationReason {
                     factor: "language_affinity".into(),
                     description: format!("Matches your {language} listening"),
-                    weight: affinity * 0.10,
+                    weight: affinity * LANGUAGE_WEIGHT,
                 });
             }
         }
-        base_score += artist_score * 0.35;
+        base_score += artist_score * ARTIST_WEIGHT;
 
-        // 3. Genre Affinity (Weight: 25%)
+        // 3. Genre Affinity (Weight: 32%)
         let mut genre_score = 0.0;
         if let Some(genre) = &candidate.genre_name {
             if let Some(&aff) = profile.genre_affinities.get(genre.trim()) {
@@ -111,12 +116,12 @@ impl ScoringEngine {
                     reasons.push(RecommendationReason {
                         factor: "genre_affinity".to_string(),
                         description: format!("Favorite genre {}: {:.0}% match", genre, aff * 100.0),
-                        weight: aff * 0.25,
+                        weight: aff * GENRE_WEIGHT,
                     });
                 }
             }
         }
-        base_score += genre_score * 0.25;
+        base_score += genre_score * GENRE_WEIGHT;
 
         // 4. Era Affinity (Weight: 10%)
         if let Some(year) = candidate.year {
@@ -189,7 +194,17 @@ impl ScoringEngine {
         // 7. Discovery Bonus for Unplayed Gems (Weight: +0.20)
         let mut is_discovery = false;
         if candidate.play_count == 0 && candidate.skip_count == 0 {
-            if artist_score > 0.25 || genre_score > 0.25 {
+            let language_score = candidate
+                .language
+                .as_ref()
+                .and_then(|language| profile.language_affinities.get(&language.to_lowercase()))
+                .copied()
+                .unwrap_or(0.0);
+            // A style match qualifies on its own; an artist match only once the user
+            // has enjoyed several different songs by that artist.
+            let broad_artist = artist_score > 0.25
+                && profile.artist_breadth(candidate.artist_name.as_deref().unwrap_or("")) >= 3;
+            if genre_score > 0.35 || language_score > 0.35 || broad_artist {
                 base_score += 0.20;
                 is_discovery = true;
                 reasons.push(RecommendationReason {

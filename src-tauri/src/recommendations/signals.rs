@@ -110,6 +110,7 @@ pub struct SongSignals {
     blocked_songs: HashSet<String>,
     blocked_sources: HashSet<String>,
     blocked_ids: HashSet<String>,
+    pub entity: super::entity_feedback::EntityFeedbackSet,
 }
 impl SongSignals {
     pub async fn load(pool: &SqlitePool, user: &str) -> AppResult<Self> {
@@ -254,6 +255,7 @@ impl SongSignals {
                 .blocked_credits
                 .extend(recording_credits(&preference.title, &preference.artist));
         }
+        index.entity = super::entity_feedback::EntityFeedbackSet::load(pool, user).await?;
         Ok(index)
     }
     fn record(&mut self, id: &str, mut signal: ListeningSignal) {
@@ -283,7 +285,8 @@ impl SongSignals {
         }
     }
     pub fn blocked(&self, id: &str, title: &str, artist: &str) -> bool {
-        recording_credits(title, artist)
+        self.entity.is_blocked_artist(artist)
+            || recording_credits(title, artist)
             .iter()
             .any(|key| self.blocked_credits.contains(key))
             || self.blocked_ids.contains(id)
@@ -310,6 +313,11 @@ impl SongSignals {
             .is_some_and(|source| self.artist_releases.contains(source));
         let (quality, year) = crate::providers::releases::release_rank(title, album, year);
         (verified, quality, year)
+    }
+
+    /// Soft "less like this" penalty for an artist/genre (decays over 90 days).
+    pub fn less_penalty(&self, artist: &str, genre: Option<&str>, now: i64) -> f64 {
+        self.entity.less_penalty(artist, genre, now)
     }
 
     pub fn blocked_id(&self, id: &str) -> bool {

@@ -85,9 +85,10 @@ async fn partial_listens_all_sources_and_lifetime_history_keep_their_strength() 
             .unwrap()
             .affinity
     };
+    let partial = affinity("Partial Artist");
     assert!(
-        (affinity("Partial Artist") - 0.35).abs() < 0.01,
-        "qualified partial listens use baseline tier strength"
+        partial > 0.0 && partial < 0.5,
+        "qualified partial listens count but saturate low: {partial}"
     );
     assert!(
         affinity("Old Artist") > 0.0,

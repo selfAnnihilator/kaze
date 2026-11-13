@@ -23,6 +23,11 @@ pub enum Event {
         disliked: bool,
         manual_like: i64,
     },
+    EntityFeedbackChanged {
+        user_id: String,
+        rows: Vec<crate::recommendations::entity_feedback::EntityFeedbackRow>,
+        cleared: bool,
+    },
     // --- Playback State Changes ---
     PlaybackStarted {
         session_id: String,
@@ -100,6 +105,16 @@ pub enum Event {
         track_id: String,
         seconds_listened: f64,
         percentage_listened: f64,
+    },
+    /// Committed listening outcome for one finished play (skip vs full listen).
+    /// Published after the history row is stored; Flow uses it for in-session steering.
+    ListenOutcome {
+        user_id: String,
+        track_id: String,
+        early_skip: bool,
+        qualified: bool,
+        near_complete: bool,
+        weight: f64,
     },
 
     // --- Library Lifecycle ---

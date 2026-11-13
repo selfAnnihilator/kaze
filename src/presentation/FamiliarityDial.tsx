@@ -4,10 +4,10 @@ const quantize = (value: number) =>
   Math.round(Math.max(0, Math.min(1, value)) * 20) / 20;
 const description = (value: number) =>
   value <= 0.25
-    ? "Rediscover: less-heard songs and online discoveries"
+    ? "Unfamiliar: new songs and artists in styles you like"
     : value >= 0.75
-      ? "Familiar: songs you have played or liked"
-      : "Balanced blend: familiar favourites and rediscovery";
+      ? "Familiar: more of your favourite songs and styles"
+      : "Balanced blend: favourites mixed with new discoveries";
 
 /** Dragging previews in this leaf. Only release or a keyboard step commits to Flow. */
 export const FamiliarityDial = memo(function FamiliarityDial({
@@ -155,7 +155,7 @@ export const FamiliarityDial = memo(function FamiliarityDial({
         </span>
       </div>
       <div className="dial-endpoints" aria-hidden="true">
-        <span>Rediscover</span>
+        <span>Unfamiliar</span>
         <span>Familiar</span>
       </div>
       <span className="spatial-sr-only">

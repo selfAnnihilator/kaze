@@ -165,7 +165,7 @@ async fn fresh_catalog_bootstrap_is_shared_by_discovery_home_and_flow_without_fa
     assert!(!home.for_you.is_empty());
     let flow = p
         .flow_engine()
-        .generate_playback_tracks_after("default", 0.5, 20, &[], None)
+        .generate_playback_tracks_after("default", 0.5, 20, &[], &[])
         .await
         .unwrap();
     assert!(!flow.is_empty());
@@ -224,7 +224,7 @@ async fn genre_only_search_provenance_works_without_forging_song_metadata() {
     d.ensure_starter_candidates("default", false).await.unwrap();
     let flow = p
         .flow_engine()
-        .generate_playback_tracks_after("default", 1.0, 10, &[], None)
+        .generate_playback_tracks_after("default", 1.0, 10, &[], &[])
         .await
         .unwrap();
     assert!(!flow.is_empty());
@@ -292,7 +292,7 @@ async fn artist_only_choices_rank_starters_and_recorded_feedback_takes_precedenc
     d.ensure_starter_candidates("default", false).await.unwrap();
     let tracks = p
         .flow_engine()
-        .generate_playback_tracks_after("default", 1.0, 10, &[], None)
+        .generate_playback_tracks_after("default", 1.0, 10, &[], &[])
         .await
         .unwrap();
     let favorite = tracks
@@ -317,7 +317,7 @@ async fn artist_only_choices_rank_starters_and_recorded_feedback_takes_precedenc
     );
     let next = p
         .flow_engine()
-        .generate_playback_tracks_after("default", 0.5, 20, &[], None)
+        .generate_playback_tracks_after("default", 0.5, 20, &[], &[])
         .await
         .unwrap();
     assert!(
@@ -334,7 +334,7 @@ async fn artist_only_choices_rank_starters_and_recorded_feedback_takes_precedenc
     d.ensure_starter_candidates("default", false).await.unwrap();
     assert!(
         !p.flow_engine()
-            .generate_playback_tracks_after("default", 0.5, 20, &[], None)
+            .generate_playback_tracks_after("default", 0.5, 20, &[], &[])
             .await
             .unwrap()
             .is_empty(),

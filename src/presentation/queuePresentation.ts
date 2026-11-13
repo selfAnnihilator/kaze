@@ -48,6 +48,28 @@ export function upcomingFromPlayback(state: PlaybackState): QueueEntry[] {
   }));
 }
 
+/**
+ * Playback snapshots carry only track ids; keep titles/artists learned from
+ * earlier QueueUpdated events so online/Flow entries never fall back to a
+ * placeholder after pause or other state refreshes.
+ */
+export function withKnownMetadata(
+  next: QueueEntry[],
+  prev: readonly QueueEntry[],
+): QueueEntry[] {
+  if (prev.length === 0) return next;
+  const known = new Map<string, QueueEntry>();
+  for (const entry of prev) {
+    if (entry.title) known.set(entry.trackId, entry);
+  }
+  if (known.size === 0) return next;
+  return next.map((entry) => {
+    if (entry.title) return entry;
+    const hit = known.get(entry.trackId);
+    return hit ? { ...entry, title: hit.title, artist: entry.artist || hit.artist } : entry;
+  });
+}
+
 export function queueTrack(
   entry: QueueEntry,
   tracks: readonly Track[],

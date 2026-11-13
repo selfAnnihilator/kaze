@@ -40,10 +40,10 @@ export const FamiliarityBar = memo(function FamiliarityBar({
   };
   const description =
     draft <= 0.25
-      ? "Rediscover: less-heard songs and online discoveries"
+      ? "Unfamiliar: new songs and artists in styles you like"
       : draft >= 0.75
-        ? "Familiar: songs you have played or liked"
-        : "Balanced blend: familiar favourites and rediscovery";
+        ? "Familiar: more of your favourite songs and styles"
+        : "Balanced blend: favourites mixed with new discoveries";
   return (
     <div className="press-familiarity">
       <div className="press-familiarity-heading">
@@ -129,7 +129,7 @@ export const FamiliarityBar = memo(function FamiliarityBar({
         />
       </div>
       <div className="press-familiarity-endpoints" aria-hidden="true">
-        <span>Rediscover</span>
+        <span>Unfamiliar</span>
         <span>Familiar</span>
       </div>
     </div>

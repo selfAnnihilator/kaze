@@ -548,9 +548,31 @@ impl HistoryService {
             Ok(_) => {
                 // Clean up the crash-recovery journal entry ONLY on successful finalization.
                 self.delete_journal_entry(&entry.id).await;
+                if entry.source == "flow" {
+                    if let Some(pool) = &self.pool {
+                        if let Err(error) = crate::recommendations::exploration::stamp_listen(
+                            pool,
+                            &entry.id,
+                            &entry.user_id,
+                            &entry.track_id,
+                        )
+                        .await
+                        {
+                            tracing::warn!(%error, "Failed to stamp Flow exploration slot");
+                        }
+                    }
+                }
                 if heard.weight != 0.0 {
                     let _ = self.event_bus.publish(Event::TasteProfileChanged { user_id: entry.user_id.clone() });
                 }
+                let _ = self.event_bus.publish(Event::ListenOutcome {
+                    user_id: entry.user_id.clone(),
+                    track_id: entry.track_id.clone(),
+                    early_skip: heard.early_skip,
+                    qualified: heard.qualified,
+                    near_complete: heard.near_complete,
+                    weight: heard.weight,
+                });
             }
             Err(err) => {
                 error!(session_id = %entry.id, %err, "Failed to commit playback session; leaving crash journal entry for recovery on next launch");

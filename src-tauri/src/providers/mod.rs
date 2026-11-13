@@ -10,3 +10,5 @@ pub use types::*;
 pub mod online_catalog;
 
 pub mod releases;
+pub mod lastfm;
+pub mod similarity_worker;

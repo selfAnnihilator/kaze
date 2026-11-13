@@ -15,6 +15,8 @@ pub enum RepeatMode {
 #[serde(rename_all = "snake_case")]
 pub enum SmartMixType {
     Daily,
+    /// One of the per-taste-cluster "Daily Mix N" playlists (1-based).
+    DailyCluster(u8),
     OnRepeat,
     Genre(String),
     Artist(String),
@@ -177,6 +179,18 @@ pub enum Command {
     RemoveTrackFeedback {
         track_id: String,
     },
+    /// "Not this artist": blocks every credit of the track's artist everywhere.
+    BlockArtist {
+        track_id: String,
+    },
+    /// "Less like this": soft, decaying penalty on the track's artist and genre.
+    LessLikeThis {
+        track_id: String,
+    },
+    ClearEntityFeedback {
+        kind: String,
+        key: String,
+    },
 
     // --- Discovery & Wishlist ---
     AddToWishlist {
@@ -260,6 +274,7 @@ pub enum Command {
 #[serde(tag = "status", content = "data")]
 pub enum CommandResponse {
     Ok,
+    EntityFeedback(Vec<crate::recommendations::entity_feedback::EntityFeedbackRow>),
     EntityId(String),
     QueuedIndex(usize),
     ScanStarted {

@@ -163,11 +163,11 @@ async fn runtime_flow_includes_taste_matched_online_songs_with_account_scoped_fa
         .unwrap();
     assert_eq!(count, 0);
     let familiar = engine
-        .generate_playback_tracks_after("default", 1.0, 10, &[], None)
+        .generate_playback_tracks_after("default", 1.0, 10, &[], &[])
         .await
         .unwrap();
     let discover = engine
-        .generate_playback_tracks_after("default", 0.0, 10, &[], None)
+        .generate_playback_tracks_after("default", 0.0, 10, &[], &[])
         .await
         .unwrap();
     assert_eq!(
@@ -198,7 +198,7 @@ async fn runtime_flow_includes_taste_matched_online_songs_with_account_scoped_fa
     assert_eq!(history, 0, "preparing a Flow is not a listen");
     external(&p, "itunes:alias", "Fresh Song", "Favorite Artist", "Rock").await;
     let duplicates = engine
-        .generate_playback_tracks_after("default", 0.0, 10, &[], None)
+        .generate_playback_tracks_after("default", 0.0, 10, &[], &[])
         .await
         .unwrap();
     assert_eq!(
@@ -210,7 +210,7 @@ async fn runtime_flow_includes_taste_matched_online_songs_with_account_scoped_fa
         "catalog aliases cannot duplicate a song"
     );
     let excluded = engine
-        .generate_playback_tracks_after("default", 0.0, 10, &["itunes:fresh".into()], None)
+        .generate_playback_tracks_after("default", 0.0, 10, &["itunes:fresh".into()], &[])
         .await
         .unwrap();
     assert!(
@@ -391,14 +391,14 @@ async fn online_liked_songs_are_familiar_without_claiming_another_accounts_playl
         .unwrap();
     let engine = p.flow_engine();
     let own = engine
-        .generate_playback_tracks_after("listener", 1.0, 10, &[], None)
+        .generate_playback_tracks_after("listener", 1.0, 10, &[], &[])
         .await
         .unwrap();
     assert_eq!(own.len(), 1);
     assert!(own[0].explanation.is_liked);
     assert_eq!(own[0].reason_category, "liked");
     assert!(engine
-        .generate_playback_tracks_after("other", 1.0, 10, &[], None)
+        .generate_playback_tracks_after("other", 1.0, 10, &[], &[])
         .await
         .unwrap()
         .is_empty());
@@ -425,11 +425,11 @@ async fn rediscover_keeps_room_for_online_songs_even_with_many_equal_scoring_loc
     }
     let engine = p.flow_engine();
     let familiar = engine
-        .generate_playback_tracks_after("default", 1.0, 12, &[], None)
+        .generate_playback_tracks_after("default", 1.0, 12, &[], &[])
         .await
         .unwrap();
     let explore = engine
-        .generate_playback_tracks_after("default", 0.0, 12, &[], None)
+        .generate_playback_tracks_after("default", 0.0, 12, &[], &[])
         .await
         .unwrap();
     let online_count = |tracks: &[music_player_backend::recommendations::FlowTrackItem]| {
@@ -479,7 +479,7 @@ async fn artist_release_flow_keeps_familiarity_without_locking_to_a_compilation_
     stats(&core, "default", "jiosaavn:compilation", 12, 1, 7).await;
     let picks = core
         .flow_engine()
-        .generate_playback_tracks_after("default", 1.0, 20, &[], None)
+        .generate_playback_tracks_after("default", 1.0, 20, &[], &[])
         .await
         .unwrap();
     let song = picks

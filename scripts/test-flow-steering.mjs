@@ -14,7 +14,7 @@ try {
       f.command = async c => {
         const result = await command(c);
         if (c.command === "SetFlowSteering") f.flow.flow_label = c.payload.familiarity_ratio >= .75
-          ? "Familiar mix · Your favorites" : "Rediscovery mix · Deep cuts";
+          ? "Familiar mix · Styles you love" : "Unfamiliar mix · New songs & artists";
         return result;
       };
     }, style);
@@ -35,7 +35,7 @@ try {
     await slider.press("End");
     await slider.press("Home");
     await slider.press("End");
-    await page.getByText("Familiar mix · Your favorites", { exact: true }).waitFor();
+    await page.getByText("Familiar mix · Styles you love", { exact: true }).waitFor();
     const changed = await page.evaluate(() => ({
       commands: window.__kazeFixture.commands,
       queries: window.__kazeFixture.queries,
@@ -51,8 +51,8 @@ try {
     assert.ok(changed.queries.filter(q => q.query === "GetPlaybackState").length > baseline.playbackQueries);
     assert.equal(changed.subscriptions, 1);
     await slider.press("Home");
-    await page.getByText("Rediscovery mix · Deep cuts", { exact: true }).waitFor();
-    assert.match(await slider.getAttribute("aria-valuetext"), /online discoveries/);
+    await page.getByText("Unfamiliar mix · New songs & artists", { exact: true }).waitFor();
+    assert.match(await slider.getAttribute("aria-valuetext"), /new songs and artists/);
     if (style === "brutalist") {
       const commands = () => page.evaluate(() => window.__kazeFixture.commands.filter(c => c.command === "SetFlowSteering"));
       const beforeDrag = (await commands()).length;
@@ -64,7 +64,7 @@ try {
       await page.waitForTimeout(350);
       assert.equal((await commands()).length, beforeDrag, "drag preview cannot send steering commands");
       await page.mouse.up();
-      await page.getByText("Familiar mix · Your favorites", { exact: true }).waitFor();
+      await page.getByText("Familiar mix · Styles you love", { exact: true }).waitFor();
       const saved = await commands();
       assert.equal(saved.length, beforeDrag + 1, "release commits once");
       assert.equal(saved.at(-1).payload.familiarity_ratio, .8);
