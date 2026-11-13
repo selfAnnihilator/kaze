@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { List, useDynamicRowHeight, useListRef, type RowComponentProps } from "react-window";
 import { Mic2, RefreshCw, Radio } from "lucide-react";
 import { executeQuery } from "../../services/api";
 import { LyricLine, TrackLyricsData } from "../../types";
@@ -41,6 +42,131 @@ function parseLrc(lrcText: string): LyricLine[] {
   return result;
 }
 
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+
+const LINE_COLOR_PAST = "rgba(255, 255, 255, 0.45)";
+const LINE_COLOR_FUTURE = "rgba(255, 255, 255, 0.3)";
+const LINE_COLOR_HOVER = "rgba(255, 255, 255, 0.85)";
+
+/** Index of the last line with `timeSecs <= time`, or -1 before the first line. */
+function findActiveLine(lines: LyricLine[], time: number): number {
+  let lo = 0;
+  let hi = lines.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (lines[mid].timeSecs <= time) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found;
+}
+
+interface SyncedRowProps {
+  lines: LyricLine[];
+  activeLineIndex: number;
+  isFullScreen: boolean;
+  onLineClick: (timeSecs: number) => void;
+}
+
+// Row 0 and the last row are spacers so the first and last lines can centre.
+function SyncedLyricRow({
+  index,
+  style,
+  ariaAttributes,
+  lines,
+  activeLineIndex,
+  isFullScreen,
+  onLineClick,
+}: RowComponentProps<SyncedRowProps>) {
+  if (index === 0 || index === lines.length + 1) {
+    // No aria-hidden: List skips aria-hidden children when measuring heights.
+    return <div {...ariaAttributes} role="presentation" style={{ ...style, height: "38vh" }} />;
+  }
+  const lineIndex = index - 1;
+  const line = lines[lineIndex];
+  const isActive = lineIndex === activeLineIndex;
+  const restColor = isActive ? "#e8d8c9" : lineIndex < activeLineIndex ? LINE_COLOR_PAST : LINE_COLOR_FUTURE;
+
+  return (
+    <div
+      {...ariaAttributes}
+      style={{
+        ...style,
+        padding: isFullScreen ? "10px 8vw" : "10px 24px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        onClick={() => onLineClick(line.timeSecs)}
+        onMouseEnter={(e) => {
+          if (!isActive) e.currentTarget.style.color = LINE_COLOR_HOVER;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = restColor;
+        }}
+        style={{
+          fontSize: isFullScreen ? "2.2rem" : "1.55rem",
+          fontWeight: 700,
+          lineHeight: 1.45,
+          cursor: "pointer",
+          color: restColor,
+          transform: isActive ? "scale(1.04)" : "none",
+          transformOrigin: "center center",
+          transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          textAlign: "center",
+          textShadow: isActive ? "0 2px 14px rgba(0,0,0,0.6)" : "none",
+          userSelect: "none",
+          maxWidth: "960px",
+          margin: "0 auto",
+        }}
+      >
+        {line.text || "♪"}
+      </div>
+    </div>
+  );
+}
+
+interface PlainRowProps {
+  lines: string[];
+  isFullScreen: boolean;
+}
+
+function PlainLyricRow({ index, style, ariaAttributes, lines, isFullScreen }: RowComponentProps<PlainRowProps>) {
+  // Edge padding lives on the first/last rows: List positions rows absolutely,
+  // so padding on the scroll container would not offset them.
+  const edge = isFullScreen ? "8vh" : "32px";
+  return (
+    <div
+      {...ariaAttributes}
+      style={{
+        ...style,
+        paddingTop: index === 0 ? edge : "7px",
+        paddingBottom: index === lines.length - 1 ? edge : "7px",
+        paddingInline: isFullScreen ? "8vw" : "32px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        style={{
+          fontSize: isFullScreen ? "1.8rem" : "1.3rem",
+          fontWeight: 600,
+          lineHeight: 1.6,
+          color: "rgba(255, 255, 255, 0.75)",
+          textAlign: "center",
+          maxWidth: "960px",
+          margin: "0 auto",
+        }}
+      >
+        {lines[index] || "\u00a0"}
+      </div>
+    </div>
+  );
+}
+
 export const LyricsView: React.FC<LyricsViewProps> = ({
   trackId,
   artist,
@@ -58,9 +184,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
   const [isManualScroll, setIsManualScroll] = useState(false);
   const [isOutOfSync, setIsOutOfSync] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const scrollTimeoutRef = useRef<any>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
@@ -116,78 +240,79 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
     return [];
   }, [lyricsData?.syncedLyrics]);
 
-  // Determine active lyric line index (advancing by +0.18s to eliminate the 0.1-0.2s audio delay)
-  const activeLineIndex = useMemo(() => {
-    if (parsedLines.length === 0) return -1;
-    const effectiveTime = effectiveCurrentTime + 0.18;
-    let activeIdx = -1;
-    for (let i = 0; i < parsedLines.length; i++) {
-      if (effectiveTime >= parsedLines[i].timeSecs) {
-        activeIdx = i;
-      } else {
-        break;
-      }
-    }
-    return activeIdx;
-  }, [parsedLines, effectiveCurrentTime]);
+  // Active line = last line whose timestamp has passed (advanced by +0.18s to
+  // cover the audio output delay). Binary search: lines are sorted by time.
+  const activeLineIndex = useMemo(
+    () => findActiveLine(parsedLines, effectiveCurrentTime + 0.18),
+    [parsedLines, effectiveCurrentTime],
+  );
 
-  // Auto-scroll active line to vertical center of container
+  const listRef = useListRef(null);
+  const rowHeightKey = `${trackId ?? `${artist}-${title}`}-${isFullScreen ? "fs" : "inline"}`;
+  const syncedRowHeight = useDynamicRowHeight({ defaultRowHeight: 64, key: rowHeightKey });
+  const plainRowHeight = useDynamicRowHeight({ defaultRowHeight: 56, key: rowHeightKey });
+
+  const scrollToActive = useCallback((index: number) => {
+    // +1 skips the leading spacer row.
+    listRef.current?.scrollToRow({ index: index + 1, align: "center", behavior: "smooth" });
+  }, [listRef]);
+
+  // Auto-scroll the active line to the vertical centre of the list
   useEffect(() => {
     if (isManualScroll || activeLineIndex < 0) return;
-    const lineEl = lineRefs.current[activeLineIndex];
-    const containerEl = containerRef.current;
-    if (lineEl && containerEl) {
-      const targetScroll =
-        lineEl.offsetTop - containerEl.clientHeight / 2 + lineEl.clientHeight / 2;
-      containerEl.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: "smooth",
-      });
-      setIsOutOfSync(false);
-    }
-  }, [activeLineIndex, isManualScroll]);
+    scrollToActive(activeLineIndex);
+    setIsOutOfSync(false);
+  }, [activeLineIndex, isManualScroll, scrollToActive]);
 
-  // Handle manual scroll detection
-  const handleScroll = () => {
-    if (!containerRef.current || activeLineIndex < 0) return;
-    const lineEl = lineRefs.current[activeLineIndex];
-    if (lineEl) {
-      const targetScroll =
-        lineEl.offsetTop - containerRef.current.clientHeight / 2 + lineEl.clientHeight / 2;
-      const diff = Math.abs(containerRef.current.scrollTop - targetScroll);
-      if (diff > 50) {
-        setIsManualScroll(true);
-        setIsOutOfSync(true);
-      } else {
-        setIsManualScroll(false);
-        setIsOutOfSync(false);
-      }
-    }
-
+  // A user-initiated scroll (wheel, touch, keyboard, scrollbar drag) pauses
+  // live tracking; it resumes after 10s of inactivity or via the sync button.
+  const handleUserScroll = useCallback(() => {
+    setIsManualScroll(true);
+    setIsOutOfSync(true);
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
-      // Re-enable live tracking after user stops interacting
       setIsManualScroll(false);
       setIsOutOfSync(false);
     }, 10000);
-  };
+  }, []);
 
-  const handleSyncClick = () => {
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    // Only the scrollbar targets the scroll container itself; clicks on a
+    // line are seeks, not manual scrolls.
+    if (e.target === e.currentTarget) handleUserScroll();
+  }, [handleUserScroll]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLElement>) => {
+    if (SCROLL_KEYS.has(e.key)) handleUserScroll();
+  }, [handleUserScroll]);
+
+  const handleLineClick = useCallback((timeSecs: number) => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     setIsManualScroll(false);
     setIsOutOfSync(false);
-    if (activeLineIndex >= 0) {
-      const lineEl = lineRefs.current[activeLineIndex];
-      const containerEl = containerRef.current;
-      if (lineEl && containerEl) {
-        const targetScroll =
-          lineEl.offsetTop - containerEl.clientHeight / 2 + lineEl.clientHeight / 2;
-        containerEl.scrollTo({
-          top: Math.max(0, targetScroll),
-          behavior: "smooth",
-        });
-      }
-    }
+    onSeek(timeSecs);
+  }, [onSeek]);
+
+  const handleSyncClick = () => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    setIsManualScroll(false);
+    setIsOutOfSync(false);
+    if (activeLineIndex >= 0) scrollToActive(activeLineIndex);
   };
+
+  const syncedRowProps = useMemo<SyncedRowProps>(
+    () => ({ lines: parsedLines, activeLineIndex, isFullScreen, onLineClick: handleLineClick }),
+    [parsedLines, activeLineIndex, isFullScreen, handleLineClick],
+  );
+
+  const plainLines = useMemo(
+    () => lyricsData?.plainLyrics?.split(/\r?\n/) ?? [],
+    [lyricsData?.plainLyrics],
+  );
+  const plainRowProps = useMemo<PlainRowProps>(
+    () => ({ lines: plainLines, isFullScreen }),
+    [plainLines, isFullScreen],
+  );
 
   return (
     <div
@@ -238,110 +363,33 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
           </p>
         </div>
       ) : parsedLines.length > 0 ? (
-        // Synced Lyrics Mode - Centered
-        <div
-          ref={containerRef}
-          onScroll={handleScroll}
+        // Synced Lyrics Mode - Centered, virtualized
+        <List<SyncedRowProps>
+          listRef={listRef}
           className="custom-scrollbar"
-          style={{
-            width: "100%",
-            height: "100%",
-            overflowY: "auto",
-            paddingTop: "38vh",
-            paddingBottom: "38vh",
-            paddingLeft: isFullScreen ? "8vw" : "24px",
-            paddingRight: isFullScreen ? "8vw" : "24px",
-            scrollBehavior: "smooth",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-            gap: "20px",
-          }}
-        >
-          {parsedLines.map((line, idx) => {
-            const isActive = idx === activeLineIndex;
-            const isPast = idx < activeLineIndex;
-
-            return (
-              <div
-                key={idx}
-                ref={(el) => {
-                  lineRefs.current[idx] = el;
-                }}
-                onClick={() => {
-                  setIsManualScroll(false);
-                  setIsOutOfSync(false);
-                  onSeek(line.timeSecs);
-                }}
-                style={{
-                  fontSize: isFullScreen ? "2.2rem" : "1.55rem",
-                  fontWeight: 700,
-                  lineHeight: 1.45,
-                  cursor: "pointer",
-                  transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-                  color: isActive
-                    ? "#e8d8c9"
-                    : isPast
-                    ? "rgba(255, 255, 255, 0.45)"
-                    : "rgba(255, 255, 255, 0.3)",
-                  transform: isActive ? "scale(1.04)" : "none",
-                  transformOrigin: "center center",
-                  textAlign: "center",
-                  filter: isActive ? "drop-shadow(0 2px 14px rgba(0,0,0,0.6))" : "none",
-                  userSelect: "none",
-                  maxWidth: "960px",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive)
-                    e.currentTarget.style.color = isPast
-                      ? "rgba(255, 255, 255, 0.45)"
-                      : "rgba(255, 255, 255, 0.3)";
-                }}
-              >
-                {line.text || "♪"}
-              </div>
-            );
-          })}
-        </div>
+          rowCount={parsedLines.length + 2}
+          rowHeight={syncedRowHeight}
+          rowComponent={SyncedLyricRow}
+          rowProps={syncedRowProps}
+          overscanCount={6}
+          tabIndex={0}
+          onWheel={handleUserScroll}
+          onTouchMove={handleUserScroll}
+          onPointerDown={handlePointerDown}
+          onKeyDown={handleKeyDown}
+          style={{ width: "100%", height: "100%", outline: "none" }}
+        />
       ) : (
-        // Plain Lyrics Fallback - Centered
-        <div
-          ref={containerRef}
+        // Plain Lyrics Fallback - Centered, virtualized
+        <List<PlainRowProps>
           className="custom-scrollbar"
-          style={{
-            width: "100%",
-            height: "100%",
-            overflowY: "auto",
-            padding: isFullScreen ? "8vh 8vw" : "32px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-            gap: "14px",
-          }}
-        >
-          {lyricsData?.plainLyrics?.split(/\r?\n/).map((line, idx) => (
-            <div
-              key={idx}
-              style={{
-                fontSize: isFullScreen ? "1.8rem" : "1.3rem",
-                fontWeight: 600,
-                lineHeight: 1.6,
-                color: "rgba(255, 255, 255, 0.75)",
-                textAlign: "center",
-                maxWidth: "960px",
-                width: "100%",
-              }}
-            >
-              {line || " "}
-            </div>
-          ))}
-        </div>
+          rowCount={plainLines.length}
+          rowHeight={plainRowHeight}
+          rowComponent={PlainLyricRow}
+          rowProps={plainRowProps}
+          overscanCount={6}
+          style={{ width: "100%", height: "100%" }}
+        />
       )}
 
       {/* Floating Sync Button - Only appears when lyrics and playing song are out of sync */}
