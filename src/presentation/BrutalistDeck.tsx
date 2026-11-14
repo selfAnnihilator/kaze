@@ -26,7 +26,7 @@ import {
   Wind,
 } from "lucide-react";
 import type { NowPlayingBarProps } from "../components/NowPlayingBar";
-import { NowPlayingProgressBar } from "../components/NowPlayingBar";
+import { NowPlayingProgressBar } from "../components/NowPlayingProgressBar";
 import type { Track, UserProfile } from "../types";
 import type { ViewType } from "../viewTypes";
 import type { QueueEntry } from "./queuePresentation";

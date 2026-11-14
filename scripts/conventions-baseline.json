@@ -125,10 +125,6 @@
       "lines": 52,
       "smells": 1
     },
-    "src/components/NowPlayingBar.tsx": {
-      "lines": 525,
-      "smells": 0
-    },
     "src/components/OnboardingModal.tsx": {
       "lines": 140,
       "smells": 1
