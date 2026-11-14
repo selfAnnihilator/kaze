@@ -464,3 +464,50 @@ async fn unknown_duration_repeat_one_creates_one_completion_per_session() {
     assert_ne!(completions[0], completions[1]);
     processor.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn position_is_saved_apart_from_the_queue_and_old_snapshots_still_restore() {
+    let dir = tempfile::tempdir().unwrap();
+    let (first, _) = open(&dir).await;
+    seed(&first).await;
+    first.shutdown().await.unwrap();
+    let pool = init_db_pool(&dir.path().join("app.db")).await.unwrap();
+    let position: String = sqlx::query_scalar(
+        "SELECT value FROM application_settings WHERE key='playback_position_v1'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let mut position: serde_json::Value = serde_json::from_str(&position).unwrap();
+    assert_eq!(position["position_secs"], 42.25);
+
+    let save = |value: String| {
+        sqlx::query("UPDATE application_settings SET value=? WHERE key='playback_position_v1'")
+            .bind(value)
+            .execute(&pool)
+    };
+    // A position for another entry is ignored: the snapshot's applies.
+    let queue_id = position["queue_id"].clone();
+    position["queue_id"] = "someone-else".into();
+    position["position_secs"] = 77.0.into();
+    save(position.to_string()).await.unwrap();
+    let (second, _) = open(&dir).await;
+    assert_eq!(state(&second).await["position_secs"], 42.25);
+    second.shutdown().await.unwrap();
+
+    // A newer position for the same entry wins over the snapshot's.
+    position["queue_id"] = queue_id;
+    save(position.to_string()).await.unwrap();
+    let (third, _) = open(&dir).await;
+    assert_eq!(state(&third).await["position_secs"], 77.0);
+    third.shutdown().await.unwrap();
+
+    // Snapshots from versions without the position key restore as before.
+    sqlx::query("DELETE FROM application_settings WHERE key='playback_position_v1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (fourth, _) = open(&dir).await;
+    assert_eq!(state(&fourth).await["current_track_id"], "one");
+    fourth.shutdown().await.unwrap();
+}

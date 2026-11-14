@@ -25,11 +25,27 @@ impl PlaybackService {
     }
 
     /// Background task monitoring playback position and track completion.
+    /// It ticks at 4 Hz only while something plays; otherwise it parks until
+    /// the next domain event, so an idle or paused player costs no CPU.
     pub(super) async fn run_playback_monitor_loop(&self) {
         let mut interval = tokio::time::interval(Duration::from_millis(250));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut last_checkpoint = tokio::time::Instant::now();
+        let mut wake = self.event_bus.subscribe();
+        let mut idle_ticks = 0u32;
 
         loop {
+            if idle_ticks >= PARK_AFTER_IDLE_TICKS {
+                idle_ticks = 0;
+                if let Err(error) = self.save_playback_bookmark().await {
+                    tracing::warn!(%error, "Could not checkpoint playback bookmark");
+                }
+                if !park(&mut wake).await {
+                    // Heartbeat only: check once, then park again.
+                    idle_ticks = PARK_AFTER_IDLE_TICKS - 1;
+                }
+                interval.reset();
+            }
             interval.tick().await;
             let operation = self.flow_operation.lock().await;
             if self
@@ -67,6 +83,11 @@ impl PlaybackService {
             };
 
             let duration = *self.current_duration_secs.read().await;
+            idle_ticks = if session_queue_id.is_some() && !is_paused {
+                0
+            } else {
+                idle_ticks + 1
+            };
 
             if !is_paused && !is_finished && session_queue_id.is_some() {
 
@@ -121,4 +142,17 @@ impl PlaybackService {
             }
         }
     }
+}
+
+/// Idle ticks before the monitor parks. Staying awake briefly after a wake-up
+/// covers state that changes just after its event is published.
+const PARK_AFTER_IDLE_TICKS: u32 = 8;
+
+/// Waits for the next domain event (play, resume, seek, queue change...) and
+/// returns whether one arrived. The backlog is dropped first so old events
+/// don't wake it. A slow heartbeat bounds the wait in case a transition
+/// publishes nothing.
+async fn park(wake: &mut tokio::sync::broadcast::Receiver<Event>) -> bool {
+    *wake = wake.resubscribe();
+    tokio::time::timeout(Duration::from_secs(5), wake.recv()).await.is_ok()
 }

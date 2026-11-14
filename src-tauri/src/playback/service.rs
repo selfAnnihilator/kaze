@@ -8,7 +8,7 @@ use crate::database::repositories::TrackRepository;
 use crate::database::repositories::{SettingsRepository, SqliteSettingsRepository};
 use crate::playback::backend::AudioBackend;
 use crate::playback::queue::PlaybackQueue;
-use crate::playback::session::{RestoredTrack, SavedPlayback, SETTING_KEY};
+use crate::playback::session::{RestoredTrack, SavedPlayback, SavedPosition, POSITION_KEY, SETTING_KEY};
 use crate::playback::stream::StreamPlaybackManager;
 use crate::recommendations::{FlowExplanation, FlowSessionState, FlowTrackItem};
 use rand::seq::SliceRandom;
@@ -90,6 +90,7 @@ pub struct PlaybackService {
     restore_ready: OnceCell<()>,
     restored_track: RwLock<Option<RestoredTrack>>,
     last_saved_bookmark: Mutex<Option<String>>,
+    last_saved_position: Mutex<Option<String>>,
     preresolution_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     monitor_task: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     session_task: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -133,6 +134,7 @@ impl PlaybackService {
             restore_ready: OnceCell::new(),
             restored_track: RwLock::new(None),
             last_saved_bookmark: Mutex::new(None),
+            last_saved_position: Mutex::new(None),
             preresolution_handle: Arc::new(Mutex::new(None)),
             monitor_task: std::sync::Mutex::new(None),
             session_task: std::sync::Mutex::new(None),

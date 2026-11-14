@@ -1,6 +1,7 @@
 use crate::core::sync::MutexExt;
 use crate::core::error::{AppError, AppResult};
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use crate::playback::output::{Activity, OutputDevice};
+use rodio::{Decoder, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -31,7 +32,7 @@ pub trait AudioBackend: Send + Sync {
 
 /// Concrete audio backend powered by rodio and cpal.
 pub struct RodioAudioBackend {
-    stream_handle: Option<OutputStreamHandle>,
+    output: Option<OutputDevice>,
     sink: Option<Sink>,
     current_path: Option<PathBuf>,
     volume: f32,
@@ -39,16 +40,11 @@ pub struct RodioAudioBackend {
 }
 
 impl RodioAudioBackend {
-    /// Creates the backend, opening the default output device if one exists.
-    /// Without a device the backend still constructs; `load_and_play_source`
-    /// retries the device so playback recovers once one is plugged in.
+    /// Creates the backend. The output device opens on first playback, so an
+    /// app that never plays never holds the device.
     pub fn new() -> Self {
-        let stream_handle = Self::open_output_stream();
-        if stream_handle.is_none() {
-            warn!("No audio output device at startup; will retry on next playback.");
-        }
         Self {
-            stream_handle,
+            output: None,
             sink: None,
             current_path: None,
             volume: 0.8,
@@ -56,17 +52,21 @@ impl RodioAudioBackend {
         }
     }
 
-    fn open_output_stream() -> Option<OutputStreamHandle> {
-        match OutputStream::try_default() {
-            Ok((stream, handle)) => {
-                // Keep the audio output stream active for the process lifetime
-                std::mem::forget(stream);
-                Some(handle)
-            }
-            Err(err) => {
-                warn!("Audio device initialization failed: {}", err);
-                None
-            }
+    /// The open device, reopening it if it failed or was never opened.
+    fn output(&mut self) -> Option<&OutputDevice> {
+        if self.output.as_ref().is_some_and(OutputDevice::has_failed) {
+            warn!("Audio output device failed; reopening");
+            self.output = None;
+        }
+        if self.output.is_none() {
+            self.output = OutputDevice::open();
+        }
+        self.output.as_ref()
+    }
+
+    fn set_activity(&self, activity: Activity) {
+        if let Some(output) = &self.output {
+            output.set_activity(activity);
         }
     }
 }
@@ -79,37 +79,20 @@ impl Default for RodioAudioBackend {
 
 impl AudioBackend for RodioAudioBackend {
     fn load_and_play_source(&mut self, source: crate::playback::decoder::PlayerSource, file_path: Option<&Path>) -> AppResult<()> {
-        if self.stream_handle.is_none() {
-            self.stream_handle = Self::open_output_stream();
-            if self.stream_handle.is_some() {
-                info!("Audio output device became available");
-            }
-        }
-        if let Some(ref handle) = self.stream_handle {
-            let sink = match Sink::try_new(handle) {
-                Ok(sink) => sink,
-                Err(e) => {
-                    // The device may have gone away; reopen it on the next attempt.
-                    self.stream_handle = None;
-                    return Err(AppError::Playback(format!(
-                        "Failed to initialize audio sink: {}",
-                        e
-                    )));
-                }
-            };
-            sink.set_volume(self.volume);
-            sink.append(source);
-            sink.play();
+        let Some(output) = self.output() else {
+            return Err(AppError::Playback("Audio output device unavailable".into()));
+        };
+        let sink = output.new_sink();
+        sink.set_volume(self.volume);
+        sink.append(source);
+        sink.play();
 
-            self.sink = Some(sink);
-            self.current_path = file_path.map(|p| p.to_path_buf());
-            self.is_paused = false;
+        self.sink = Some(sink);
+        self.current_path = file_path.map(|p| p.to_path_buf());
+        self.is_paused = false;
 
-            info!(path = ?file_path, "Rodio playback started");
-            Ok(())
-        } else {
-            Err(AppError::Playback("Audio output device unavailable".into()))
-        }
+        info!(path = ?file_path, "Rodio playback started");
+        Ok(())
     }
 
     fn load_and_play(&mut self, file_path: &Path) -> AppResult<()> {
@@ -145,11 +128,13 @@ impl AudioBackend for RodioAudioBackend {
             self.is_paused = true;
             debug!("Playback paused");
         }
+        self.set_activity(Activity::Idle);
         Ok(())
     }
 
     fn resume(&mut self) -> AppResult<()> {
         if let Some(ref sink) = self.sink {
+            self.set_activity(Activity::Playing);
             sink.play();
             self.is_paused = false;
             debug!("Playback resumed");
@@ -163,6 +148,7 @@ impl AudioBackend for RodioAudioBackend {
         }
         self.current_path = None;
         self.is_paused = false;
+        self.set_activity(Activity::Idle);
         debug!("Playback stopped");
         Ok(())
     }
@@ -198,10 +184,12 @@ impl AudioBackend for RodioAudioBackend {
     }
 
     fn is_finished(&self) -> bool {
-        self.sink
-            .as_ref()
-            .map(|s| s.empty())
-            .unwrap_or(true)
+        let finished = self.sink.as_ref().map(|s| s.empty()).unwrap_or(true);
+        if finished {
+            // The queue ran out: nothing feeds the device any more.
+            self.set_activity(Activity::Idle);
+        }
+        finished
     }
 }
 

@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod output;
 pub mod decoder;
 pub mod progressive;
 pub mod queue;

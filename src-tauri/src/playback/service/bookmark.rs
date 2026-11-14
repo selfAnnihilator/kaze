@@ -16,14 +16,17 @@ impl PlaybackService {
         let Some(pool) = &self.pool else {
             return Ok(());
         };
-        let Some(value) = SqliteSettingsRepository::new(pool.clone())
-            .get_setting(SETTING_KEY)
-            .await?
-        else {
+        let settings = SqliteSettingsRepository::new(pool.clone());
+        let Some(value) = settings.get_setting(SETTING_KEY).await? else {
             return Ok(());
         };
         let mut saved: SavedPlayback = serde_json::from_str(&value)
             .map_err(|_| AppError::Validation("Invalid saved playback bookmark".into()))?;
+        if let Some(position) = settings.get_setting(POSITION_KEY).await? {
+            if let Ok(position) = serde_json::from_str::<SavedPosition>(&position) {
+                position.apply_to(&mut saved);
+            }
+        }
         if !saved.valid() {
             return Err(AppError::Validation(
                 "Invalid saved playback bookmark".into(),
@@ -57,7 +60,6 @@ impl PlaybackService {
             });
         }
         *self.queue.write().await = saved.queue;
-        *self.last_saved_bookmark.lock().await = Some(value);
         Ok(())
     }
 
@@ -72,7 +74,7 @@ impl PlaybackService {
             return Ok(());
         };
         let state = self.get_playback_state().await;
-        let saved = SavedPlayback {
+        let mut saved = SavedPlayback {
             version: 1,
             queue: self.queue.read().await.clone(),
             has_current_track: state.current_track_id.is_some(),
@@ -83,15 +85,28 @@ impl PlaybackService {
         if !saved.valid() {
             return Ok(());
         }
-        let value = serde_json::to_string(&saved).map_err(|e| AppError::Internal(e.to_string()))?;
+        let settings = SqliteSettingsRepository::new(pool.clone());
+        let position = saved.queue.current().map(|item| SavedPosition {
+            queue_id: item.queue_id.clone(),
+            position_secs: saved.position_secs,
+            duration_secs: saved.duration_secs,
+        });
+        // The snapshot without its position: unchanged while only time passes.
+        let full = serde_json::to_string(&saved).map_err(|e| AppError::Internal(e.to_string()))?;
+        (saved.position_secs, saved.duration_secs) = (0.0, 0.0);
+        let shape = serde_json::to_string(&saved).map_err(|e| AppError::Internal(e.to_string()))?;
         let mut previous = self.last_saved_bookmark.lock().await;
-        if previous.as_ref() == Some(&value) {
-            return Ok(());
+        if previous.as_ref() != Some(&shape) {
+            settings.set_setting(SETTING_KEY, &full).await?;
+            *previous = Some(shape);
         }
-        SqliteSettingsRepository::new(pool.clone())
-            .set_setting(SETTING_KEY, &value)
-            .await?;
-        *previous = Some(value);
+        drop(previous);
+        let position = serde_json::to_string(&position).map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut previous = self.last_saved_position.lock().await;
+        if previous.as_ref() != Some(&position) {
+            settings.set_setting(POSITION_KEY, &position).await?;
+            *previous = Some(position);
+        }
         Ok(())
     }
 }
