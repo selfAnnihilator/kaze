@@ -61,11 +61,11 @@ test("download controls follow only Kaze's own downloads; local songs have none"
   for (const file of [
     "src/components/views/OnlineSearchResultsSection.tsx", "src/components/views/searchResults/AllResultsTab.tsx", "src/components/views/searchResults/SongsTab.tsx",
     "src/components/views/DiscoveryView.tsx", "src/components/views/discovery/DiscoveryTrackCard.tsx",
-    "src/components/views/CollectionDetailView.tsx",
+    "src/components/views/CollectionDetailView.tsx", "src/components/views/collection/CollectionTracks.tsx",
   ])
     assert.doesNotMatch(read(file), /downloaded=\{!!\w+\.local_copy\}|downloaded=\{!!track\.is_downloaded\}/, file);
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && \(kind !== false \|\| kazeDownload\) && <DownloadButton/);
-  assert.match(read("src/components/views/CollectionDetailView.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
+  assert.match(read("src/components/views/collection/CollectionTracks.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
   assert.match(read("src/components/views/discovery/DiscoveryTrackCard.tsx"), /!isLocalTrack && <DownloadButton/);
 });
 
