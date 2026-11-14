@@ -190,13 +190,15 @@ try {
   await page.getByTitle("Show Lyrics", {exact:true}).click();
   const lyrics = page.locator(".main-content .custom-scrollbar");
   await lyrics.waitFor();
-  await lyrics.evaluate(el => {el.style.scrollBehavior="auto";el.scrollTop=600;});
+  // Manual scroll is detected from user input (wheel/touch/keys), not scrollTop.
+  await lyrics.first().hover();
+  await page.mouse.wheel(0, 600);
   await wait(250);
   const lyricTimers = await page.evaluate(()=>window.__kazePerf.snapshot().tasks.timers);
   await nav("Home");await wait(350);
   report.lyricsTimers = {mounted:lyricTimers,afterLeaving:await page.evaluate(()=>window.__kazePerf.snapshot().tasks.timers)};
   await page.evaluate(() =>
-    window.__kazeFixture.emit({ event: "ScanCompleted", payload: {} }),
+    window.__kazeFixture.emit({ event: "LibraryScanCompleted", payload: {} }),
   );
   await page
     .getByTitle("Dismiss notification", { exact: true })
