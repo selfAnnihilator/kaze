@@ -51,6 +51,9 @@ pub enum Command {
         start_track_id: Option<String>,
         #[serde(default)]
         shuffle: bool,
+        /// With no `track_ids`: "local", "downloads" or absent (every local song).
+        #[serde(default)]
+        scope: Option<String>,
     },
     /// Shuffle (or restore order of) the remaining tracks of the active Downloads
     /// list. The current song is unaffected; no-op when another source is playing.

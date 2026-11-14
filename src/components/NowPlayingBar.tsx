@@ -1,3 +1,4 @@
+import { isOnlineTrack } from "../trackKind";
 import { DownloadButton } from "./DownloadButton";
 import { NotInterestedButton } from "./NotInterestedButton";
 import React, { useState } from "react";
@@ -164,10 +165,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
     onToggleFullscreen,
     onInspectWhyTrack,
   }) => {
-    const isOnline =
-      !!currentTrack &&
-      (currentTrack.format === "online" ||
-        currentTrack.file_path?.startsWith("online://"));
+    const isOnline = isOnlineTrack(currentTrack) === true;
     const activeTitle = currentTrack?.title || "No Track Selected";
     const activeArtist =
       currentTrack?.artist_name?.trim() ||

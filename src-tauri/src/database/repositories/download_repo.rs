@@ -23,6 +23,15 @@ pub trait DownloadRepository: Send + Sync {
     ) -> AppResult<()>;
     async fn fail_interrupted_task(&self, id: &str, message: &str) -> AppResult<bool>;
     async fn delete_task(&self, id: &str) -> AppResult<()>;
+    /// Points a moved download at its new file in one transaction, keeping the
+    /// library row (and so its id, history, likes and playlists) intact.
+    async fn relocate(
+        &self,
+        id: &str,
+        new_destination: &str,
+        old_track_path: &str,
+        new_track_path: &str,
+    ) -> AppResult<()>;
 }
 
 #[derive(Clone)]
@@ -166,6 +175,48 @@ impl DownloadRepository for SqliteDownloadRepository {
         let result = sqlx::query("UPDATE download_tasks SET status='FAILED',error_message=? WHERE id=? AND status IN ('DOWNLOADING','QUEUED')")
             .bind(message).bind(id).execute(&self.pool).await?;
         Ok(result.rows_affected() > 0)
+    }
+
+    async fn relocate(
+        &self,
+        id: &str,
+        new_destination: &str,
+        old_track_path: &str,
+        new_track_path: &str,
+    ) -> AppResult<()> {
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("UPDATE download_tasks SET destination_path = ? WHERE id = ?")
+            .bind(new_destination)
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query(
+            "UPDATE track_source_metadata SET metadata_json = json_set(metadata_json, '$.file_path', ?) \
+             WHERE json_valid(metadata_json) AND track_id IN (SELECT id FROM tracks WHERE file_path = ?)",
+        )
+        .bind(new_track_path)
+        .bind(old_track_path)
+        .execute(&mut *tx)
+        .await?;
+        let old_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tracks WHERE file_path = ?)")
+            .bind(old_track_path)
+            .fetch_one(&mut *tx)
+            .await?;
+        if old_exists && old_track_path != new_track_path {
+            // A scan may have already indexed the new path; the original row
+            // carries the song's history, so it wins.
+            sqlx::query("DELETE FROM tracks WHERE file_path = ?")
+                .bind(new_track_path)
+                .execute(&mut *tx)
+                .await?;
+            sqlx::query("UPDATE tracks SET file_path = ?, updated_at = strftime('%s','now') WHERE file_path = ?")
+                .bind(new_track_path)
+                .bind(old_track_path)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     async fn delete_task(&self, id: &str) -> AppResult<()> {

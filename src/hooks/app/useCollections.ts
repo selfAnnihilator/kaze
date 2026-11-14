@@ -1,3 +1,4 @@
+import { isOnlineTrack } from "../../trackKind";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { dispatchCommand, executeQuery } from "../../services/api";
@@ -80,11 +81,7 @@ export function useCollections({
           });
           const plTracks: Track[] = (res.data as any) || [];
           const items: CollectionTrackItem[] = plTracks.map((t) => {
-            const isOnline =
-              t.format === "online" ||
-              t.file_path?.startsWith("online://") ||
-              t.id.startsWith("itunes:") ||
-              t.id.startsWith("online:");
+            const isOnline = !!isOnlineTrack(t);
             return {
               id: t.id,
               title: t.title,

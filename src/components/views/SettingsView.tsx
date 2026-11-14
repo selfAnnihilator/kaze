@@ -17,6 +17,7 @@ import {
   LogOut,
   RefreshCw,
   Trash2,
+  Download,
 } from "lucide-react";
 import type {
   AppSettings,
@@ -418,6 +419,18 @@ export const SettingsView = memo(function SettingsView({
                 <ArrowRight size={16} />
               </span>
             </button>
+            {/* Kaze's own folder: downloads live here, separate from your music folders. */}
+            <div className="settings-section-link" role="group" aria-label="Download folder">
+              <span className="settings-section-icon" aria-hidden="true">
+                <Download size={22} />
+              </span>
+              <span>
+                <strong>Download folder</strong>
+                <span title={settings?.downloads?.resolved_dir}>
+                  {settings?.downloads?.resolved_dir || "~/Music/Kaze"}
+                </span>
+              </span>
+            </div>
             <button
               type="button"
               className="settings-section-link"

@@ -675,6 +675,7 @@ async fn sia_artist_edition_keeps_artwork_and_download_on_the_verified_release()
         format: "m4a".into(),
         slots_free: true,
         speed_bps: 0,
+        tags: None,
     };
     let transfer = downloader
         .start_download(&selected, directory.path())

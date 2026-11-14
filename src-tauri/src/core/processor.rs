@@ -12,6 +12,7 @@ use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::core::query::{Query, QueryResponse};
 use crate::database::models::PlaylistRecord;
+use crate::database::repositories::LibraryScope;
 use crate::database::repositories::{
     PlaylistRepository, SettingsRepository, SqliteDownloadRepository, SqliteHistoryRepository,
     SqlitePlaylistRepository, SqliteSettingsRepository, SqliteStatsRepository,
@@ -194,7 +195,8 @@ impl CoreProcessor {
         });
         let download_dir = config.downloads.download_dir.clone().unwrap_or_else(|| {
             directories::UserDirs::new()
-                .and_then(|u| u.audio_dir().map(|p| p.join("Downloads")))
+                // Kaze owns this folder; the user's own folders stay read-only.
+                .and_then(|u| u.audio_dir().map(|p| p.join("Kaze")))
                 .unwrap_or_else(|| config.cache_dir.join("downloads"))
         });
 
@@ -863,9 +865,10 @@ impl CoreProcessor {
                 self.playback_service.set_archive_shuffle(enabled).await;
                 Ok(CommandResponse::Ok)
             }
-            Command::PlayTrackList { track_ids, start_track_id, shuffle } => {
+            Command::PlayTrackList { track_ids, start_track_id, shuffle, scope } => {
+                let scope = LibraryScope::parse(scope.as_deref(), self.download_service.download_dir());
                 self.playback_service
-                    .play_track_list(track_ids, start_track_id, shuffle)
+                    .play_track_list(track_ids, start_track_id, shuffle, &scope)
                     .await?;
                 Ok(CommandResponse::Ok)
             }
@@ -2419,6 +2422,12 @@ impl CoreProcessor {
                     val["metadata"][key] =
                         serde_json::json!(self.gap_enrichment.enabled(key, default).await);
                 }
+                // Canonical, so it matches the stored track paths exactly.
+                let dir = self.download_service.download_dir();
+                val["downloads"]["resolved_dir"] = serde_json::json!(dir
+                    .canonicalize()
+                    .unwrap_or_else(|_| dir.to_path_buf())
+                    .to_string_lossy());
                 Ok(QueryResponse::Settings(val))
             }
             Query::GetLibraryOverview => {
@@ -2434,13 +2443,15 @@ impl CoreProcessor {
                         .unwrap_or_default(),
                 ))
             }
-            Query::GetLibraryTracksPage { offset, limit } => {
+            Query::GetLibraryTracksPage { offset, limit, scope } => {
                 let user = self.current_user_id().await;
-                let (items, total) = self.library_service.track_repo().library_page(&user, offset, limit.clamp(1, 200)).await?;
+                let scope = LibraryScope::parse(scope.as_deref(), self.download_service.download_dir());
+                let (items, total) = self.library_service.track_repo().library_page_scoped(&user, offset, limit.clamp(1, 200), &scope).await?;
                 Ok(QueryResponse::LibraryTracksPage(serde_json::json!({"items":items,"total":total})))
             }
-            Query::GetLibraryAlbumsPage { offset, limit } => {
-                let (items, total) = self.library_service.album_repo().library_page(offset, limit.clamp(1, 100)).await?;
+            Query::GetLibraryAlbumsPage { offset, limit, scope } => {
+                let scope = LibraryScope::parse(scope.as_deref(), self.download_service.download_dir());
+                let (items, total) = self.library_service.album_repo().library_page_scoped(offset, limit.clamp(1, 100), &scope).await?;
                 Ok(QueryResponse::LibraryAlbumsPage(serde_json::json!({"items":items,"total":total})))
             }
             Query::GetTracks {
@@ -2865,8 +2876,13 @@ impl CoreProcessor {
                             .and_then(|id| sources.get(id))
                             .cloned()
                             .unwrap_or_default();
+                        let file_present = task
+                            .destination_path
+                            .as_deref()
+                            .is_some_and(|path| std::path::Path::new(path).is_file());
                         let mut value = serde_json::to_value(task).ok()?;
                         value["track_ids"] = serde_json::json!(ids);
+                        value["file_present"] = serde_json::json!(file_present);
                         Some(value)
                     })
                     .collect();

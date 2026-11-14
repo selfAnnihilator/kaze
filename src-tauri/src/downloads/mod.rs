@@ -9,4 +9,6 @@ pub use traits::*;
 pub use types::*;
 
 mod jiosaavn;
+mod tags;
+pub use tags::{read_source_id, write_tags};
 pub use jiosaavn::JioSaavnDownloadProvider;

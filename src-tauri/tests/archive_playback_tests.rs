@@ -60,6 +60,7 @@ async fn play_all_follows_library_order_and_stops_at_end() {
         track_ids: None,
         start_track_id: None,
         shuffle: false,
+        scope: None,
     })
     .await
     .unwrap();
@@ -87,6 +88,7 @@ async fn start_track_and_shuffle_keep_the_same_set() {
         track_ids: Some(ids.clone()),
         start_track_id: Some(ids[1].clone()),
         shuffle: false,
+        scope: None,
     })
     .await
     .unwrap();
@@ -98,6 +100,7 @@ async fn start_track_and_shuffle_keep_the_same_set() {
         track_ids: None,
         start_track_id: Some(ids[2].clone()),
         shuffle: true,
+        scope: None,
     })
     .await
     .unwrap();
@@ -131,7 +134,7 @@ async fn archive_shuffle_only_touches_upcoming_and_can_be_undone() {
         ids.push(repo.save_scanned_track(meta(&name, &format!("/m/{name}.wav"))).await.unwrap());
     }
     processor
-        .dispatch_command(Command::PlayTrackList { track_ids: None, start_track_id: None, shuffle: false })
+        .dispatch_command(Command::PlayTrackList { track_ids: None, start_track_id: None, shuffle: false, scope: None })
         .await
         .unwrap();
     assert_eq!(state(&processor).await["source"].as_str(), Some("archive"));

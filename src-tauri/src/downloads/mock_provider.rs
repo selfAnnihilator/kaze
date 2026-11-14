@@ -87,6 +87,7 @@ impl DownloadProvider for MockDownloadProvider {
                 format: "flac".to_string(),
                 slots_free: true,
                 speed_bps: 2_500_000,
+                tags: None,
             },
             DownloadSearchResult {
                 id: format!("mock_res_2_{}", query),
@@ -99,6 +100,7 @@ impl DownloadProvider for MockDownloadProvider {
                 format: "mp3".to_string(),
                 slots_free: false,
                 speed_bps: 1_200_000,
+                tags: None,
             },
         ];
 

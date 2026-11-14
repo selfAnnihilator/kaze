@@ -432,7 +432,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                           }}
                         >
                           {onSearchDirect ? (
-                            <DownloadButton key={tr.track_id} trackId={tr.track_id} title={tr.title} />
+                            <DownloadButton key={tr.track_id} trackId={tr.track_id} sourceId={tr.track_id?.startsWith("jiosaavn:") ? tr.track_id.slice(9) : undefined} title={tr.title} />
                           ) : (
                             <button
                               className="btn btn-secondary"

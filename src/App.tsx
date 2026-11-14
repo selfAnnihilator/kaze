@@ -1,3 +1,4 @@
+import { isOnlineTrack } from "./trackKind";
 import { ownBackendSubscription } from "./services/backendSubscription";
 import { PlaybackNotice } from "./components/PlaybackNotice";
 import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
@@ -43,7 +44,8 @@ import { attachLocalSearchMatches } from "./localTrackMatch";
 import { PromptModal } from "./components/modals/PromptModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useAuth } from "./hooks/app/useAuth";
-import { useLibrary, useLibraryPlayback } from "./hooks/app/useLibrary";
+import { useLibrary, useLibraryPlayback, type ListScope } from "./hooks/app/useLibrary";
+import { useLibraryPage } from "./hooks/useLibraryPage";
 import { usePlaylists } from "./hooks/app/usePlaylists";
 import { useWishlist } from "./hooks/app/useWishlist";
 import { useDownloads } from "./hooks/app/useDownloads";
@@ -326,7 +328,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       const res = await executeQuery({ query: "GetPlaybackState" });
       // Source/catalog work can delay this response beyond a newer transport
       // event. Never reinstate the old song or its buffering/paused state.
-      if (account !== libraryAccountRef.current || revision !== playbackStateRevision.current || queryId !== playbackStateQueryId.current) return;
+      if (account !== libraryAccountRef.current || queryId !== playbackStateQueryId.current) return;
+      if (revision !== playbackStateRevision.current) {
+        // A newer transport event won: keep its play/pause/buffering state, but
+        // still resolve a placeholder for the same song, or it stays pending
+        // (greyed-out controls) until the next manual refresh.
+        const resolved: Track | undefined = res.data?.current_track;
+        if (resolved) {
+          setPlaybackState((prev) =>
+            prev.current_track?.pending && prev.current_track.id === resolved.id
+              ? { ...prev, current_track: resolved }
+              : prev);
+        }
+        return;
+      }
       if (res.data) {
         playbackProgress.update(
           res.data.position_secs ?? 0,
@@ -484,12 +499,17 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                   title: event.payload?.title || "Unknown Track",
                   artist_name: event.payload?.artist || "Unknown Artist",
                   duration_secs: event.payload?.duration_secs || 0,
-                  format: "online",
+                  format: "",
                   has_cover_art: 0,
+                  // Unknown until the backend answers: never guess local vs online.
+                  pending: true,
                 });
           setPlaybackState((prev) => ({
             ...prev,
-            current_track: track,
+            // Keep an already-resolved copy of this song instead of a placeholder.
+            current_track: track.pending && prev.current_track?.id === trackId && !prev.current_track?.pending
+              ? prev.current_track
+              : track,
             is_playing: true,
             is_paused: false,
             is_buffering: false,
@@ -498,6 +518,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               event.payload?.duration_secs ||
               0,
           }));
+          // The event only names the song, and the library list is paged, so load
+          // the authoritative (presented) track rather than trusting a guess.
+          if (!found) void fetchPlaybackState();
           break;
         }
 
@@ -513,7 +536,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             ...prev,
             current_track:
               found ||
-              (trackId
+              (trackId && prev.current_track?.id === trackId && !prev.current_track?.pending
+                ? prev.current_track
+                : trackId
                 ? {
                     id: trackId,
                     file_path: "",
@@ -529,8 +554,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       (prev.current_track?.id === trackId
                         ? prev.current_track?.duration_secs
                         : undefined) || 0,
-                    format: "online",
+                    format: "",
                     has_cover_art: 0,
+                    pending: true,
                   }
                 : prev.current_track),
             is_buffering: true,
@@ -698,6 +724,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         case "LibraryScanCompleted":
           clearCoverArtCache();
           setIsScanning(false);
+          fetchDownloads();
           addAppNotification(
             "info",
             "Library Scan Complete",
@@ -720,6 +747,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
         case "DownloadQueued":
           fetchDownloads();
+          break;
+
+        // Files in Kaze's folder were added, removed or renamed (watched live).
+        case "DownloadsChanged":
+          fetchDownloads();
+          fetchTracks();
           break;
 
         case "DownloadProgress":
@@ -916,8 +949,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // --- Actions & Commands ---
 
+  // Local Library and Downloads each play as an ordered list; this records which one started.
+  const [activeListScope, setActiveListScope] = useState<ListScope | null>(null);
   const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle,
-  } = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading });
+  } = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope: "local", activeListScope, setActiveListScope });
+  const kazeDownloadsPlayback = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope: "downloads", activeListScope, setActiveListScope });
+  // Songs Kaze downloaded (its own folder), refreshed whenever a download finishes,
+  // is removed or a file in the folder changes.
+  const downloadsPage = useLibraryPage<Track>("GetLibraryTracksPage", 200, currentUser?.id || "default", destination.view, "downloads");
+  const savedDownloadsKey = useMemo(
+    () => downloads.filter((task) => task.status === "COMPLETED").map((task) => `${task.id}:${task.destination_path}`).join("|"),
+    [downloads],
+  );
+  const refreshDownloadsPage = downloadsPage.refresh;
+  useEffect(() => { void refreshDownloadsPage(); }, [savedDownloadsKey, refreshDownloadsPage]);
 
   const dismissRecommendationNotice = useCallback((notice: RecommendationNoticeValue) => {
     setRecommendationNotice(previous => previous === notice ? null : previous);
@@ -969,11 +1014,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           });
           const plTracks: Track[] = (res.data as any) || [];
           const items: CollectionTrackItem[] = plTracks.map((t) => {
-            const isOnline =
-              t.format === "online" ||
-              t.file_path?.startsWith("online://") ||
-              t.id.startsWith("itunes:") ||
-              t.id.startsWith("online:");
+            const isOnline = !!isOnlineTrack(t);
             return {
               id: t.id,
               title: t.title,
@@ -1587,14 +1628,16 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const isArchiveSurface =
     !isLyricsActive &&
     (isArchiveLiked ||
-      (!activeCollection && ["library", "albums", "playlists"].includes(currentView)));
+      (!activeCollection && ["library", "downloads", "albums", "playlists"].includes(currentView)));
   const archiveCount = isArchiveLiked
     ? activeCollection?.tracks?.length ?? likedSongs?.track_count ?? 0
     : currentView === "albums"
       ? albumPage.total
       : currentView === "playlists"
         ? regularPlaylistIds.size
-        : libraryScoped ? tracks.length : trackPage.total;
+        : currentView === "downloads"
+          ? downloadsPage.total
+          : libraryScoped ? tracks.length : trackPage.total;
 
   const handleDeckFlow = useCallback(() => {
     if (homeOverview?.flow_session?.is_active) void handleToggleFlowPlayback();
@@ -1649,7 +1692,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
               </span>
               <span className="interface-route">
                 {!isLyricsActive && (isArchiveLiked ? "Library" : activeCollection?.title ||
-                  (currentView === "discovery" ? "Discover" : ["library", "albums", "playlists"].includes(currentView) ? "Library" : currentView === "stats" ? "Profile" : currentView.replace(/_/g, " ")))}
+                  (currentView === "discovery" ? "Discover" : ["library", "downloads", "albums", "playlists"].includes(currentView) ? "Library" : currentView === "stats" ? "Profile" : currentView.replace(/_/g, " ")))}
               </span>
             {/* Persistent Global Top Search Bar (hidden on stats/profile view, lyrics active, or offline discovery) */}
             {(!activeCollection && currentView === "discovery" && !isOnline) ||
@@ -1667,7 +1710,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             )}
               {interfacePreference.style === "spatial" && <SpatialUtilities onNavigate={handleSelectView} unread={unreadNotificationsCount} />}
             </div>
-            {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albumPage.total} tracks={libraryScoped ? tracks.length : trackPage.total} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
+            {interfacePreference.style === "spatial" && !activeCollection && !isLyricsActive && ["library", "downloads", "albums", "playlists"].includes(currentView) && <SpatialLibraryHeader view={currentView} albums={albumPage.total} tracks={currentView === "downloads" ? downloadsPage.total : libraryScoped ? tracks.length : trackPage.total} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
             {interfacePreference.style === "brutalist" && isArchiveSurface && <BrutalistLibraryHeader view={currentView} count={archiveCount} likedSelected={isArchiveLiked} onNavigate={handleSelectView} onLiked={likedSongs ? handleHomeLiked : undefined} />}
 
@@ -1972,6 +2015,41 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                       onStartDownload={handleStartDownload}
                       onCancelDownload={handleCancelDownload}
                       onRefreshDownloads={fetchDownloads}
+                      folder={settings.downloads?.resolved_dir}
+                      songs={
+                        <LibraryView
+                          tracks={downloadsPage.items}
+                          total={downloadsPage.total}
+                          onEndReached={downloadsPage.next}
+                          loading={downloadsPage.loading}
+                          pagingError={downloadsPage.error}
+                          onRetry={downloadsPage.retry}
+                          currentTrackId={playbackState.current_track?.id}
+                          isPlaying={playbackState.is_playing}
+                          queuedTrackIds={queuedTrackIds}
+                          onPlayTrack={kazeDownloadsPlayback.handleLibraryRowPlay}
+                          onPlayAll={kazeDownloadsPlayback.handleLibraryPlayAll}
+                          listState={kazeDownloadsPlayback.downloadsListActive ? (playbackState.is_playing ? "playing" : "paused") : "idle"}
+                          shuffleEnabled={kazeDownloadsPlayback.libraryShuffle}
+                          onToggleShuffle={kazeDownloadsPlayback.handleLibraryToggleShuffle}
+                          loadingTrackId={loadingTrackId}
+                          onEnqueueTrack={handleEnqueueTrack}
+                          onLikeTrack={handleLike}
+                          onRemoveFeedback={handleRemoveFeedback}
+                          trackPlaylistMap={regularTrackPlaylistMap}
+                          likedTrackIds={likedTrackIds}
+                          emptyTitle="No downloaded songs yet"
+                          emptyHint="Use the download button on any online song. It is saved to Kaze's folder and appears here."
+                          onOpenAddToPlaylistModal={(t) =>
+                            handleOpenAddToPlaylistModal({
+                              id: t.id,
+                              title: t.title,
+                              artist: t.artist_name,
+                              album: t.album_title,
+                            })
+                          }
+                        />
+                      }
                     />
                   )}
                   {currentView === "wishlist" && (

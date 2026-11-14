@@ -4,12 +4,16 @@ import { readFileSync } from "node:fs";
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
-test("tracks tab is renamed Downloads and archive heading is unchanged", () => {
+test("Library has separate Local and Downloads tabs in both layouts; archive heading unchanged", () => {
   const nav = read("src/presentation/BrutalistNavigation.tsx");
-  assert.match(nav, /\["library", "Downloads"\]/);
+  assert.match(nav, /\["library", "Local"\]/);
+  assert.match(nav, /\["downloads", "Downloads"\]/);
   assert.match(nav, /\["albums", "Library"\]/);
   assert.match(nav, /ARCHIVE\./);
-  assert.match(read("src/presentation/SpatialUtilities.tsx"), /\["library", "Downloads"\]/);
+  assert.match(nav, /"library", "downloads", "playlists"/, "the Downloads tab stays in the Library chapter");
+  const spatial = read("src/presentation/SpatialUtilities.tsx");
+  assert.match(spatial, /\["library", "Local"\]/);
+  assert.match(spatial, /\["downloads", "Downloads"\]/);
 });
 
 test("library tracks view has no indexed/loaded text and offers play all + shuffle", () => {
@@ -39,11 +43,36 @@ test("Play all toggles pause/resume and shuffle is a per-section toggle", () => 
   const app = read("src/hooks/app/useLibrary.ts");
   // Section-local shuffle state: never derived from the queue-wide is_shuffled flag.
   assert.match(app, /const \[libraryShuffle, setLibraryShuffle\] = useState<boolean>\(/);
-  // Persisted across restarts under a section-specific key.
-  assert.match(app, /localStorage\.getItem\(DOWNLOADS_SHUFFLE_KEY\) === "1"/);
-  assert.match(app, /localStorage\.setItem\(DOWNLOADS_SHUFFLE_KEY/);
+  // Persisted across restarts under a section-specific key; Local keeps its original key.
+  assert.match(app, /scope === "local" \? DOWNLOADS_SHUFFLE_KEY : "kaze\.kazeDownloads\.shuffle"/);
+  assert.match(app, /localStorage\.getItem\(shuffleKey\) === "1"/);
+  assert.match(app, /localStorage\.setItem\(shuffleKey/);
   assert.match(app, /command: "SetArchiveShuffle"/);
   assert.match(app, /playbackState\.source === "archive"/);
+  // Each section only reports its own list as active, and plays only its own songs.
+  assert.match(app, /\(activeListScope \?\? "local"\) === scope/);
+  assert.match(app, /shuffle: libraryShuffle,\n\s+scope,/);
   assert.match(read("src/hooks/useScopedTracks.ts"), /online:\/\//);
   assert.match(view, /key=\{searchQuery\}/);
+});
+
+test("download controls follow only Kaze's own downloads; local songs have none", () => {
+  // No fuzzy local matching feeds download state anywhere.
+  for (const file of ["src/components/views/OnlineSearchResultsSection.tsx", "src/components/views/DiscoveryView.tsx", "src/components/views/CollectionDetailView.tsx"])
+    assert.doesNotMatch(read(file), /downloaded=\{!!\w+\.local_copy\}|downloaded=\{!!track\.is_downloaded\}/, file);
+  assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && kind !== false && <DownloadButton/);
+  assert.match(read("src/components/views/CollectionDetailView.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
+  assert.match(read("src/components/views/DiscoveryView.tsx"), /!isLocalTrack && <DownloadButton/);
+});
+
+test("Local and Downloads lists request their own section from the backend", () => {
+  const library = read("src/hooks/app/useLibrary.ts");
+  assert.match(library, /useLibraryPage<Track>\("GetLibraryTracksPage", 200, [^\n]*"local"\)/);
+  assert.match(library, /useLibraryPage<Album>\("GetLibraryAlbumsPage", 100, [^\n]*"local"\)/);
+  assert.match(read("src/App.tsx"), /useLibraryPage<Track>\("GetLibraryTracksPage", 200, [^\n]*"downloads"\)/);
+  assert.match(read("src/hooks/useLibraryPage.ts"), /\.\.\.\(scope \? \{ scope \} : \{\}\)/);
+  // Local search/album rows also leave out Kaze's folder.
+  assert.match(read("src/hooks/useScopedTracks.ts"), /!inDownloadsFolder\(t, downloadsDir\)/);
+  // The folder watcher's event refreshes everything live.
+  assert.match(read("src/App.tsx"), /case "DownloadsChanged":/);
 });

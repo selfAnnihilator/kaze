@@ -141,6 +141,8 @@ pub fn run() {
                 }
                 processor.initialize_close_behavior().await.expect("Failed to load window close setting");
                 processor.playback_service().initialize_saved_playback().await;
+                // Only the real app watches the Kaze folder; tests never touch ~/Music.
+                processor.download_service().start_watching();
 
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();

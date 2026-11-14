@@ -53,6 +53,7 @@ keyring = "3"
 
 # Metadata & Filesystem Scanning
 lofty = "0.22"
+notify = { version = "8.2", default-features = false }
 
 # Audio Playback
 rodio = { version = "0.20", default-features = false, features = ["symphonia-all"] }

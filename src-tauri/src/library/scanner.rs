@@ -21,6 +21,60 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
 ];
 
 /// Checks if a given file has a supported audio extension.
+/// Parts of a download filename stem shaped `Artist - Title (sourceId)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DownloadStem {
+    pub artist: String,
+    pub title: String,
+    pub source_id: String,
+}
+
+/// Parses the `Artist - Title (sourceId)` stem Kaze gives downloaded files.
+pub fn parse_download_stem(stem: &str) -> Option<DownloadStem> {
+    let (rest, source_id) = stem.strip_suffix(')')?.rsplit_once(" (")?;
+    let valid_id = (4..=32).contains(&source_id.len())
+        && source_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if !valid_id {
+        return None;
+    }
+    let (artist, title) = rest.split_once(" - ")?;
+    let (artist, title) = (artist.trim(), title.trim());
+    if artist.is_empty() || title.is_empty() {
+        return None;
+    }
+    Some(DownloadStem {
+        artist: artist.to_string(),
+        title: title.to_string(),
+        source_id: source_id.to_string(),
+    })
+}
+
+#[cfg(test)]
+mod download_stem_tests {
+    use super::*;
+
+    #[test]
+    fn parses_download_names_and_rejects_others() {
+        assert_eq!(
+            parse_download_stem("Katy Perry - Harleys In Hawaii (8N_6I8Gn)"),
+            Some(DownloadStem {
+                artist: "Katy Perry".into(),
+                title: "Harleys In Hawaii".into(),
+                source_id: "8N_6I8Gn".into(),
+            })
+        );
+        assert_eq!(
+            parse_download_stem("A - Song (Live) (abc12345)").unwrap().title,
+            "Song (Live)"
+        );
+        assert!(parse_download_stem("EminemMusic - Till I Collapse").is_none());
+        assert!(parse_download_stem("Song (Live Version)").is_none());
+        assert!(parse_download_stem("No artist (abc12345)").is_none());
+    }
+}
+
 pub fn is_supported_audio_format(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
@@ -338,19 +392,23 @@ impl LibraryScanner {
 
         let primary_tag = tagged_file.primary_tag().or_else(|| tagged_file.first_tag());
 
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Unknown Title");
+        // Untagged Kaze downloads are named "Artist - Title (sourceId)".
+        let named = parse_download_stem(stem);
+
         let title = primary_tag
             .and_then(|t| t.title().as_deref().map(str::to_string))
             .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| {
-                path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("Unknown Title")
-                    .to_string()
-            });
+            .or_else(|| named.as_ref().map(|n| n.title.clone()))
+            .unwrap_or_else(|| stem.to_string());
 
         let artist = primary_tag
             .and_then(|t| t.artist().as_deref().map(str::to_string))
-            .filter(|s| !s.trim().is_empty());
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| named.as_ref().map(|n| n.artist.clone()));
 
         let album = primary_tag
             .and_then(|t| t.album().as_deref().map(str::to_string))

@@ -1,3 +1,4 @@
+import { isOnlineTrack } from "../trackKind";
 import { DownloadButton } from "../components/DownloadButton";
 import { NotInterestedButton } from "../components/NotInterestedButton";
 import { memo } from "react";
@@ -51,8 +52,9 @@ export const BrutalistDeck = memo(function BrutalistDeck(
   const { playbackState: state, currentTrack: track } = p;
   const liked = track?.manual_like === 1 || p.isOnlineLiked;
   const artist = track?.artist_name?.trim() || (track ? "Unknown Artist" : "Select a track to start playback");
-  const online =
-    track?.format === "online" || track?.file_path?.startsWith("online://");
+  // undefined while the playing track is still resolving: show neither state.
+  const kind = isOnlineTrack(track);
+  const online = kind === true;
   const toggleLike = () => {
     if (!track) return;
     if (online && p.onLikeOnline)
@@ -209,7 +211,8 @@ export const BrutalistDeck = memo(function BrutalistDeck(
           </div>
           <div className="press-track-tools">
             {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
-            {track && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} downloaded={!online} compact />}
+            {/* Local songs have nothing to download; a resolving track shows a neutral control. */}
+            {track && kind !== false && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} pending={kind === undefined} compact />}
             {track && p.onOpenAddToPlaylist && (
               <button
                 className="press-icon"

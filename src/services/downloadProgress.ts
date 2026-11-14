@@ -83,3 +83,16 @@ export function useSongDownload(trackId: string, sourceId?: string) {
   const read = useCallback(() => downloadProgress.task(trackId, sourceId), [trackId, sourceId]);
   return useSyncExternalStore(useCallback((listener: () => void) => { taskListeners.add(listener); return () => { taskListeners.delete(listener); }; }, []), read, read);
 }
+
+/** A completed download only counts while its file is still on disk. */
+export const isSavedDownload = (task: DownloadTask | undefined) =>
+  task?.status === "COMPLETED" && task.file_present !== false;
+
+/**
+ * The single "is this song downloaded" rule for every view: a local copy, or a
+ * completed download whose file still exists. Updates live as transfers finish.
+ */
+export function useSongDownloaded(trackId: string, sourceId?: string, localCopy = false): boolean {
+  const task = useSongDownload(trackId, sourceId);
+  return localCopy || isSavedDownload(task);
+}

@@ -9,7 +9,7 @@ export const BrutalistNavigation = memo(function BrutalistNavigation({
   view: ViewType;
   onNavigate: (view: ViewType) => void;
 }) {
-  const selected = ["albums", "library", "playlists", "smart_mixes"].includes(
+  const selected = ["albums", "library", "downloads", "playlists", "smart_mixes"].includes(
     view,
   )
     ? "albums"
@@ -113,7 +113,9 @@ export const BrutalistLibraryHeader = memo(function BrutalistLibraryHeader({
         {(
           [
             ["albums", "Albums"],
-            ["library", "Downloads"],
+            // Your own music folders; Kaze's downloads have their own tab.
+            ["library", "Local"],
+            ["downloads", "Downloads"],
             ["playlists", "Playlists"],
           ] as const
         ).map(([id, label]) => (

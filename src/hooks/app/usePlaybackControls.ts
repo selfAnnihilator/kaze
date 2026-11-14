@@ -1,3 +1,4 @@
+import { isOnlineTrack } from "../../trackKind";
 import { useCallback, useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { dispatchCommand, executeQuery } from "../../services/api";
@@ -245,11 +246,7 @@ export function usePlaybackControls({
           (trackId) => !playlistTrackIds.has(trackId),
         );
         const first = plTracks[0];
-        const isOnline =
-          first.format === "online" ||
-          first.file_path?.startsWith("online://") ||
-          first.id.startsWith("itunes:") ||
-          first.id.startsWith("online:");
+        const isOnline = !!isOnlineTrack(first);
 
         if (isOnline) {
           if (!first.id.startsWith("jiosaavn:") && typeof navigator !== "undefined" && !navigator.onLine) {
@@ -309,11 +306,7 @@ export function usePlaybackControls({
           });
           for (let i = 1; i < plTracks.length; i++) {
             const nextTrack = plTracks[i];
-            const nextIsOnline =
-              nextTrack.format === "online" ||
-              nextTrack.file_path?.startsWith("online://") ||
-              nextTrack.id.startsWith("itunes:") ||
-              nextTrack.id.startsWith("online:");
+            const nextIsOnline = !!isOnlineTrack(nextTrack);
             if (nextIsOnline) {
               await dispatchCommand({
                 command: "EnqueueOnlineTrack",

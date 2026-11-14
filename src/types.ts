@@ -3,6 +3,8 @@ export interface OnlinePlaybackSource { provider: "jiosaavn"; track_id: string; 
 // --- Domain Models ---
 
 export interface Track {
+  /** Placeholder shown while the backend's real track details load. */
+  pending?: boolean;
   playback_source?: OnlinePlaybackSource;
   id: string;
   file_path: string;
@@ -99,7 +101,9 @@ export interface DownloadTask {
   destination_path?: string;
   file_size?: number;
   bytes_downloaded: number;
-  status: "QUEUED" | "DOWNLOADING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  status: "QUEUED" | "DOWNLOADING" | "COMPLETED" | "FAILED" | "CANCELLED" | "MISSING";
+  /** Whether the saved file is still on disk (from GetDownloads). */
+  file_present?: boolean;
   error_message?: string;
   wishlist_id?: string;
   created_at: number;
@@ -167,6 +171,8 @@ export interface AppSettings {
   };
   downloads: {
     download_dir?: string;
+    /** Kaze's own download folder (canonical path), e.g. ~/Music/Kaze. */
+    resolved_dir?: string;
     auto_import: boolean;
     max_concurrent_downloads: number;
   };
@@ -212,7 +218,7 @@ export type Command =
   | { command: "SetMetadataPreference"; payload: { key: string; enabled: boolean } }
   | { command: "PlayTrack"; payload: { track_id: string; source?: string } }
   | { command: "SetArchiveShuffle"; payload: { enabled: boolean } }
-  | { command: "PlayTrackList"; payload: { track_ids: string[] | null; start_track_id?: string | null; shuffle: boolean } }
+  | { command: "PlayTrackList"; payload: { track_ids: string[] | null; start_track_id?: string | null; shuffle: boolean; scope?: "local" | "downloads" } }
   | { command: "PlayQueueIndex"; payload: { index: number } }
   | { command: "Pause" }
   | { command: "Resume" }
@@ -335,7 +341,7 @@ export type Query =
       };
     }
   | { query: "GetArtists"; payload: { offset: number; limit: number } }
-  | { query: "GetLibraryTracksPage" | "GetLibraryAlbumsPage"; payload: { offset: number; limit: number } }
+  | { query: "GetLibraryTracksPage" | "GetLibraryAlbumsPage"; payload: { offset: number; limit: number; scope?: "local" | "downloads" } }
   | { query: "GetAlbums"; payload: { offset: number; limit: number } }
   | { query: "GetAlbumDetails"; payload: { album_id: string } }
   | { query: "GetPlaylists" }

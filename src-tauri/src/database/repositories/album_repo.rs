@@ -20,6 +20,8 @@ pub struct AlbumSummary {
 pub trait AlbumRepository: Send + Sync {
     async fn list_albums(&self, offset: u32, limit: u32) -> AppResult<Vec<AlbumSummary>>;
     async fn library_page(&self, offset: u32, limit: u32) -> AppResult<(Vec<AlbumSummary>, i64)>;
+    /// Albums with at least one song in this section (Local Library or downloads).
+    async fn library_page_scoped(&self, offset: u32, limit: u32, scope: &super::LibraryScope) -> AppResult<(Vec<AlbumSummary>, i64)>;
     async fn find_by_id(&self, album_id: &str) -> AppResult<Option<AlbumRecord>>;
     async fn tracks_scoped(&self, album_id: &str, user_id: &str) -> AppResult<Vec<TrackDetail>>;
 }
@@ -69,8 +71,14 @@ impl AlbumRepository for SqliteAlbumRepository {
     }
 
     async fn library_page(&self, offset: u32, limit: u32) -> AppResult<(Vec<AlbumSummary>, i64)> {
+        self.library_page_scoped(offset, limit, &super::LibraryScope::All).await
+    }
+
+    async fn library_page_scoped(&self, offset: u32, limit: u32, scope: &super::LibraryScope) -> AppResult<(Vec<AlbumSummary>, i64)> {
+        let condition = scope.condition("t.file_path");
+        let extra = condition.as_ref().map(|(sql, ..)| format!(" AND {sql}")).unwrap_or_default();
         let mut tx = self.pool.begin().await?;
-        let sql = "
+        let sql = format!("
             SELECT al.id, al.title, a.name as artist_name, al.release_year,
                    al.cover_art_path, COUNT(t.id) as track_count,
                    (
@@ -84,20 +92,29 @@ impl AlbumRepository for SqliteAlbumRepository {
                    ) as first_track_id
             FROM albums al
             LEFT JOIN artists a ON al.artist_id = a.id
-            JOIN tracks t ON t.album_id = al.id AND t.file_path NOT LIKE 'online://%'
+            JOIN tracks t ON t.album_id = al.id AND t.file_path NOT LIKE 'online://%'{extra}
             GROUP BY al.id
             ORDER BY al.title ASC, al.id ASC
             LIMIT ? OFFSET ?
-        ";
+        ");
 
-        let records = sqlx::query_as::<_, AlbumSummary>(sql)
+        let mut query = sqlx::query_as::<_, AlbumSummary>(&sql);
+        if let Some((_, len, prefix)) = &condition {
+            query = query.bind(*len).bind(prefix.clone());
+        }
+        let records = query
             .bind(limit)
             .bind(offset)
             .fetch_all(&mut *tx)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM albums al WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.album_id=al.id AND t.file_path NOT LIKE 'online://%')").fetch_one(&mut *tx).await?;
+        let count_sql = format!("SELECT COUNT(*) FROM albums al WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.album_id=al.id AND t.file_path NOT LIKE 'online://%'{extra})");
+        let mut count = sqlx::query_scalar::<_, i64>(&count_sql);
+        if let Some((_, len, prefix)) = &condition {
+            count = count.bind(*len).bind(prefix.clone());
+        }
+        let total = count.fetch_one(&mut *tx).await?;
         tx.commit().await?;
         Ok((records, total))
     }

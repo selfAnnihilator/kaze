@@ -31,11 +31,11 @@ export const SpatialNavigation = memo(function SpatialNavigation({
   const button = ([view, label, Icon]: (typeof primary)[number]) => (
     <button
       key={view}
-      className={`nav-button${currentView === view || (view === "albums" && ["library", "playlists", "smart_mixes"].includes(currentView)) ? " active" : ""}`}
+      className={`nav-button${currentView === view || (view === "albums" && ["library", "downloads", "playlists", "smart_mixes"].includes(currentView)) ? " active" : ""}`}
       aria-current={
         currentView === view ||
         (view === "albums" &&
-          ["library", "playlists", "smart_mixes"].includes(currentView))
+          ["library", "downloads", "playlists", "smart_mixes"].includes(currentView))
           ? "page"
           : undefined
       }

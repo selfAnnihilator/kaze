@@ -94,6 +94,7 @@ impl DownloadProvider for JioSaavnDownloadProvider {
                 format: "m4a".into(),
                 slots_free: true,
                 speed_bps: 0,
+                tags: None,
             })
             .collect())
     }
@@ -124,6 +125,7 @@ impl DownloadProvider for JioSaavnDownloadProvider {
             ));
         }
         let partial = directory.join(format!(".{task_id}.part"));
+        let tags = result.tags.clone();
         let task_key = task_id.clone();
         let tasks = self.transfers.clone();
         let client = self.client.clone();
@@ -209,6 +211,14 @@ impl DownloadProvider for JioSaavnDownloadProvider {
                     .await
                     .map_err(|e| AppError::Io(e.to_string()))?;
                 drop(file);
+                if let Some(tags) = tags {
+                    let path = partial.clone();
+                    match tokio::task::spawn_blocking(move || super::write_tags(&path, &tags)).await {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => tracing::warn!(%error, "Could not tag downloaded song"),
+                        Err(error) => tracing::warn!(%error, "Tagging task failed"),
+                    }
+                }
                 // Create the final name without overwriting a concurrently saved file.
                 tokio::fs::hard_link(&partial, &destination)
                     .await

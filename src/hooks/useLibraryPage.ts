@@ -7,6 +7,8 @@ export function useLibraryPage<T extends { id: string }>(
   size: number,
   identity: string,
   navigation: string,
+  /** "local" (your folders) or "downloads" (Kaze folder); omitted = everything. */
+  scope?: "local" | "downloads",
 ) {
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
@@ -24,7 +26,7 @@ export function useLibraryPage<T extends { id: string }>(
     const task = (async () => {
       if (generation !== state.current.generation) return;
       try {
-        const response = await executeQuery({ query, payload: { offset, limit: size } });
+        const response = await executeQuery({ query, payload: { offset, limit: size, ...(scope ? { scope } : {}) } });
         if (generation !== state.current.generation) return;
         const page = response.data as { items: T[]; total: number };
         if (!Array.isArray(page?.items) || !Number.isFinite(page.total)) throw Error("Invalid library response");
@@ -43,7 +45,7 @@ export function useLibraryPage<T extends { id: string }>(
       }
     })();
     return task;
-  }, [query, size]);
+  }, [query, size, scope]);
   const refresh = useCallback(() => load(true), [load]);
   const next = useCallback(() => { void load(); }, [load]);
   const retry = useCallback(() => { state.current.failed = false; void load(state.current.offset === 0); }, [load]);

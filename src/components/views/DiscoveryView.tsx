@@ -27,6 +27,7 @@ import {
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask,
 } from "../../types";
 import { executeQuery } from "../../services/api";
+import { useSongDownloaded } from "../../services/downloadProgress";
 import { CollectionData } from "./CollectionDetailView";
 import { OnlineSearchResultsSection } from "./OnlineSearchResultsSection";
 import { splitDiscoveryRecommendations } from "../../forYouRecommendations";
@@ -70,15 +71,11 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
   const playlistIds = (trackId && trackPlaylistMap?.[trackId]) || [];
   const isInPlaylist = playlistIds.length > 0;
 
-  const hasRealLocalMatch =
-    rec.match_status === "EXACT_MATCH" &&
-    !!rec.matched_local_track_id &&
-    !rec.matched_local_track_id.startsWith("itunes:") &&
-    !rec.matched_local_track_id.startsWith("online:");
-
-  const isDownloaded =
-    (rec.provider === "library" && !rec.external_track_id.startsWith("itunes:") && !rec.external_track_id.startsWith("online:")) ||
-    hasRealLocalMatch;
+  // A song from your own library folders: nothing to download.
+  const isLocalTrack =
+    rec.provider === "library" && !rec.external_track_id.startsWith("itunes:") && !rec.external_track_id.startsWith("online:");
+  // Only Kaze's own downloads count, matched by exact recording; badge and button share the rule live.
+  const isDownloaded = useSongDownloaded(rec.external_track_id, rec.playback_source?.track_id) && !isLocalTrack;
 
 
   const handleCardClick = () => {
@@ -324,7 +321,7 @@ const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           borderTop: "1px solid rgba(255, 255, 255, 0.05)",
         }}
       >
-        <DownloadButton key={rec.external_track_id} downloaded={isDownloaded} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} />
+        {!isLocalTrack && <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} />}
 
         <div
           style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}

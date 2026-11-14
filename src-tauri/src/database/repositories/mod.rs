@@ -9,6 +9,7 @@ pub mod stats_repo;
 pub mod track_repo;
 pub mod wishlist_repo;
 pub mod download_repo;
+pub mod library_scope;
 pub mod user_repo;
 
 pub use album_repo::*;
@@ -22,4 +23,5 @@ pub use stats_repo::*;
 pub use track_repo::*;
 pub use wishlist_repo::*;
 pub use download_repo::*;
+pub use library_scope::LibraryScope;
 pub use user_repo::*;

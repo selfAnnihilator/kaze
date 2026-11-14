@@ -9,7 +9,7 @@ use crate::database::repositories::{
 use crate::library::scanner::{LibraryScanner, ScanSummary};
 use directories::UserDirs;
 use sqlx::SqlitePool;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::info;
 
@@ -168,6 +168,27 @@ impl LibraryService {
         }
 
         Ok(results)
+    }
+
+    /// Imports (or refreshes) one audio file without rescanning whole folders.
+    pub async fn import_file(&self, path: &Path) -> AppResult<String> {
+        let canonical = path
+            .canonicalize()
+            .map_err(|e| AppError::Io(format!("{}: {e}", path.display())))?;
+        let meta = std::fs::metadata(&canonical).map_err(|e| AppError::Io(e.to_string()))?;
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        let size = meta.len() as i64;
+        let scanned = tokio::task::spawn_blocking(move || {
+            LibraryScanner::extract_metadata(&canonical, size, modified)
+        })
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))??;
+        self.track_repo.save_scanned_track(scanned).await
     }
 
     /// Cancels any active scan.

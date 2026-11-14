@@ -65,6 +65,7 @@ async fn test_download_provider_search_and_availability() -> AppResult<()> {
             format: "flac".to_string(),
             slots_free: true,
             speed_bps: 5_000_000,
+            tags: None,
         }])
         .await;
 
@@ -268,7 +269,10 @@ async fn test_download_service_cancel_flow() -> AppResult<()> {
 #[tokio::test]
 async fn test_core_processor_download_commands_and_queries() -> AppResult<()> {
     let pool = setup_test_db().await;
-    let config = AppConfig::default_with_dirs();
+    let mut config = AppConfig::default_with_dirs();
+    // Never scan the user's real download folder from a test.
+    let downloads = tempdir().unwrap();
+    config.downloads.download_dir = Some(downloads.path().into());
     let backend = Box::new(MockAudioBackend::new());
     let mock_provider: Arc<dyn music_player_backend::downloads::DownloadProvider> =
         Arc::new(MockDownloadProvider::new());
@@ -443,4 +447,111 @@ async fn download_directory_write_failure_creates_no_phantom_transfer() {
     let results = service.search("Audit unwritable").await.unwrap();
     assert!(service.start_download(&results[0].id, None).await.is_err());
     assert!(service.list_downloads(None, 100).await.unwrap().is_empty());
+}
+
+fn jiosaavn_track(source: &str) -> music_player_backend::providers::ExternalTrackMetadata {
+    serde_json::from_value(serde_json::json!({
+        "provider":"jiosaavn","provider_track_id":source,"title":"Song","artist_name":"Artist","album_title":"Single"
+    }))
+    .unwrap()
+}
+
+#[tokio::test]
+async fn completed_download_with_deleted_file_becomes_missing_and_can_download_again() -> AppResult<()> {
+    let pool = setup_test_db().await;
+    let directory = tempdir().unwrap();
+    let service = recovery_service(pool.clone(), directory.path().into());
+    let task = service.download_track(&jiosaavn_track("gone1234")).await?;
+    let repo = SqliteDownloadRepository::new(pool.clone());
+    repo.update_status(&task.id, "COMPLETED", None, None, Some(1)).await?;
+    std::fs::remove_file(task.destination_path.as_deref().unwrap()).unwrap();
+
+    let rows = service.list_downloads(None, 100).await?;
+    let row = rows.iter().find(|r| r.id == task.id).unwrap();
+    assert_eq!(row.status, "MISSING", "a vanished file must not stay downloaded");
+
+    let again = service.download_track(&jiosaavn_track("gone1234")).await?;
+    assert_ne!(again.id, task.id);
+    assert_eq!(again.status, "DOWNLOADING");
+    service.cancel_download(&again.id).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn existing_files_without_records_are_adopted_instead_of_erroring() -> AppResult<()> {
+    let pool = setup_test_db().await;
+    let directory = tempdir().unwrap();
+    // Left over from a profile reset: on disk, unknown to the database.
+    let orphan = directory.path().join("Katy Perry - Harleys In Hawaii (8N_6I8Gn).m4a");
+    std::fs::write(&orphan, b"audio").unwrap();
+    let service = recovery_service(pool.clone(), directory.path().into());
+
+    let rows = service.list_downloads(None, 100).await?;
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].status, "COMPLETED");
+    assert_eq!(rows[0].source_track_id.as_deref(), Some("8N_6I8Gn"));
+    assert_eq!(rows[0].title, "Harleys In Hawaii");
+    assert_eq!(rows[0].artist, "Katy Perry");
+
+    let clicked = service.download_track(&jiosaavn_track("8N_6I8Gn")).await?;
+    assert_eq!(clicked.id, rows[0].id, "clicking reuses the adopted file");
+
+    // A file that appears after startup is adopted on click, not re-fetched.
+    std::fs::write(directory.path().join("Artist - Song (late5678).m4a"), b"audio").unwrap();
+    let late = service.download_track(&jiosaavn_track("late5678")).await?;
+    assert_eq!(late.status, "COMPLETED");
+    assert!(late.provider_task_id.is_none(), "no network transfer was started");
+    assert_eq!(service.list_downloads(None, 100).await?.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn downloaded_m4a_gets_title_and_artist_tags() {
+    use lofty::file::TaggedFileExt;
+    use lofty::tag::Accessor;
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("song.m4a");
+    std::fs::copy(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/seek-tone.m4a"),
+        &path,
+    )
+    .unwrap();
+    music_player_backend::downloads::write_tags(
+        &path,
+        &music_player_backend::downloads::DownloadTags {
+            title: "Harleys In Hawaii".into(),
+            artist: "Katy Perry".into(),
+            album: Some("Smile".into()),
+            year: Some(2020),
+            source_id: Some("8N_6I8Gn".into()),
+        },
+    )
+    .unwrap();
+    let file = lofty::read_from_path(&path).unwrap();
+    let tag = file.primary_tag().unwrap();
+    assert_eq!(tag.title().as_deref(), Some("Harleys In Hawaii"));
+    assert_eq!(tag.artist().as_deref(), Some("Katy Perry"));
+    assert_eq!(
+        music_player_backend::downloads::read_source_id(&path).as_deref(),
+        Some("8N_6I8Gn"),
+        "the recording id survives inside the file"
+    );
+    let scanned = music_player_backend::library::LibraryScanner::extract_metadata(&path, 0, 0).unwrap();
+    assert_eq!(scanned.title, "Harleys In Hawaii");
+}
+
+#[tokio::test]
+async fn untagged_download_name_is_parsed_by_the_scanner() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("Ed Sheeran - Shape of You (icJam_5l).m4a");
+    std::fs::copy(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/seek-tone.m4a"),
+        &path,
+    )
+    .unwrap();
+    let scanned = music_player_backend::library::LibraryScanner::extract_metadata(&path, 0, 0).unwrap();
+    if scanned.title_is_fallback {
+        assert_eq!(scanned.title, "Shape of You");
+        assert_eq!(scanned.artist.as_deref(), Some("Ed Sheeran"));
+    }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import { dispatchCommand, executeQuery } from "../../services/api";
 import { downloadProgress } from "../../services/downloadProgress";
@@ -25,6 +25,24 @@ export function useDownloads({ libraryAccountRef }: { libraryAccountRef: Mutable
       console.error("Failed to fetch downloads:", err);
     }
   }, []);
+
+  // GetDownloads reconciles records with the disk, so returning to the window
+  // picks up files deleted or restored outside the app. No polling.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      if (document.hidden) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => void fetchDownloads(), 250);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [fetchDownloads]);
 
   const handleSearchDownloads = useCallback(async (
     artist: string,

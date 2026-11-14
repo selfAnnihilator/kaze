@@ -172,6 +172,8 @@ pub enum Event {
         task_id: String,
         error: String,
     },
+    /// Files in the Kaze download folder changed (added, removed or renamed).
+    DownloadsChanged,
 
     // --- Auth & Session Lifecycle ---
     SessionChanged {

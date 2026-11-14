@@ -25,9 +25,14 @@ interface LibraryViewProps {
   onEnqueueTrack: (trackId: string) => void;
   onLikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
-  onRescan: () => void;
-  onSearch: (query: string) => void;
+  /** Omitted for the Downloads list (Kaze watches its folder; no rescan needed). */
+  onRescan?: () => void;
+  /** Omitted for the Downloads list. */
+  onSearch?: (query: string) => void;
   searchQuery?: string;
+  /** Empty-state text, e.g. for the Downloads list. */
+  emptyTitle?: string;
+  emptyHint?: string;
   trackPlaylistMap?: Record<string, string[]>;
   likedTrackIds?: Set<string>;
   onOpenAddToPlaylistModal?: (track: Track) => void;
@@ -269,6 +274,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
     onRescan,
     onSearch,
     searchQuery = "",
+    emptyTitle = "No tracks found in library",
+    emptyHint = "Add music files to your configured folder and click Rescan.",
     trackPlaylistMap,
     likedTrackIds,
     onOpenAddToPlaylistModal,
@@ -291,7 +298,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
         clearTimeout(debounceTimerRef.current);
       }
       debounceTimerRef.current = setTimeout(() => {
-        onSearch(val);
+        onSearch?.(val);
       }, 200);
     };
 
@@ -337,7 +344,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
           </div>
 
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <div
+            {onSearch && <div
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -364,15 +371,15 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                   width: "100%",
                 }}
               />
-            </div>
+            </div>}
 
-            <button
+            {onRescan && <button
               className="btn btn-secondary"
               onClick={onRescan}
               title="Rescan library for new files"
             >
               <RotateCw size={16} />
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -386,10 +393,10 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
             }}
           >
             <p style={{ fontSize: "1.1rem", marginBottom: "8px" }}>
-              No tracks found in library
+              {emptyTitle}
             </p>
             <p style={{ fontSize: "0.88rem" }}>
-              Add music files to your configured folder and click Rescan.
+              {emptyHint}
             </p>
           </div>
         ) : (

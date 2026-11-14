@@ -35,8 +35,19 @@ pub enum Query {
         sort_by: Option<String>,
         ascending: bool,
     },
-    GetLibraryTracksPage { offset: u32, limit: u32 },
-    GetLibraryAlbumsPage { offset: u32, limit: u32 },
+    /// `scope`: "local" (your folders), "downloads" (Kaze folder) or absent (all).
+    GetLibraryTracksPage {
+        offset: u32,
+        limit: u32,
+        #[serde(default)]
+        scope: Option<String>,
+    },
+    GetLibraryAlbumsPage {
+        offset: u32,
+        limit: u32,
+        #[serde(default)]
+        scope: Option<String>,
+    },
     GetTrackById {
         track_id: String,
     },

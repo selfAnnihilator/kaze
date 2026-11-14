@@ -1113,17 +1113,28 @@ impl PlaybackService {
         track_ids: Option<Vec<String>>,
         start_track_id: Option<String>,
         shuffle: bool,
+        scope: &crate::database::repositories::LibraryScope,
     ) -> AppResult<()> {
         self.interrupt_preparation();
         let ids: Vec<String> = match track_ids {
             Some(ids) => ids,
             None => match &self.pool {
-                Some(pool) => sqlx::query_scalar(
-                    "SELECT id FROM tracks WHERE file_path NOT LIKE 'online://%' ORDER BY title ASC, id ASC",
-                )
-                .fetch_all(pool)
-                .await
-                .map_err(|e| AppError::Database(e.to_string()))?,
+                Some(pool) => {
+                    // Same order and section as the list on screen.
+                    let condition = scope.condition("file_path");
+                    let sql = format!(
+                        "SELECT id FROM tracks WHERE file_path NOT LIKE 'online://%'{} ORDER BY title ASC, id ASC",
+                        condition.as_ref().map(|(sql, ..)| format!(" AND {sql}")).unwrap_or_default()
+                    );
+                    let mut query = sqlx::query_scalar(&sql);
+                    if let Some((_, len, prefix)) = &condition {
+                        query = query.bind(*len).bind(prefix.clone());
+                    }
+                    query
+                        .fetch_all(pool)
+                        .await
+                        .map_err(|e| AppError::Database(e.to_string()))?
+                }
                 None => Vec::new(),
             },
         };

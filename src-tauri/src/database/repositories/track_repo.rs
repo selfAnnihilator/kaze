@@ -66,6 +66,8 @@ pub trait TrackRepository: Send + Sync {
     async fn delete_by_path(&self, file_path: &str) -> AppResult<()>;
     async fn list_tracks(&self, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
     async fn library_page(&self, user_id: &str, offset: u32, limit: u32) -> AppResult<(Vec<TrackDetail>, i64)>;
+    /// A page of one section (Local Library or Kaze downloads).
+    async fn library_page_scoped(&self, user_id: &str, offset: u32, limit: u32, scope: &super::LibraryScope) -> AppResult<(Vec<TrackDetail>, i64)>;
     async fn list_tracks_scoped(&self, user_id: Option<&str>, offset: u32, limit: u32, sort_by: Option<&str>, ascending: bool) -> AppResult<Vec<TrackDetail>>;
     async fn search_tracks(&self, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
     async fn search_tracks_scoped(&self, user_id: Option<&str>, query: &str, limit: u32) -> AppResult<Vec<TrackDetail>>;
@@ -447,8 +449,14 @@ impl TrackRepository for SqliteTrackRepository {
     }
 
     async fn library_page(&self, user_id: &str, offset: u32, limit: u32) -> AppResult<(Vec<TrackDetail>, i64)> {
+        self.library_page_scoped(user_id, offset, limit, &super::LibraryScope::All).await
+    }
+
+    async fn library_page_scoped(&self, user_id: &str, offset: u32, limit: u32, scope: &super::LibraryScope) -> AppResult<(Vec<TrackDetail>, i64)> {
+        let condition = scope.condition("t.file_path");
+        let extra = condition.as_ref().map(|(sql, ..)| format!(" AND {sql}")).unwrap_or_default();
         let mut tx = self.pool.begin().await?;
-        let sql =
+        let sql = format!(
             "SELECT t.id, t.file_path, t.file_size, t.modified_timestamp, t.title,
                     a.name as artist_name, al.title as album_title, g.name as genre_name,
                     t.track_number, t.disc_number, t.year, t.duration_secs, t.bitrate,
@@ -461,18 +469,26 @@ impl TrackRepository for SqliteTrackRepository {
              LEFT JOIN genres g ON t.genre_id = g.id
              LEFT JOIN track_statistics ts ON t.id = ts.track_id AND ts.user_id = ?
              LEFT JOIN external_tracks ext ON t.id = ext.id
-             WHERE t.file_path NOT LIKE 'online://%'
-             ORDER BY t.title ASC, t.id ASC LIMIT ? OFFSET ?";
+             WHERE t.file_path NOT LIKE 'online://%'{extra}
+             ORDER BY t.title ASC, t.id ASC LIMIT ? OFFSET ?");
 
-        let records = sqlx::query_as::<_, TrackDetail>(sql)
-            .bind(user_id)
+        let mut query = sqlx::query_as::<_, TrackDetail>(&sql).bind(user_id);
+        if let Some((_, len, prefix)) = &condition {
+            query = query.bind(*len).bind(prefix.clone());
+        }
+        let records = query
             .bind(limit)
             .bind(offset)
             .fetch_all(&mut *tx)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM tracks WHERE file_path NOT LIKE 'online://%'").fetch_one(&mut *tx).await?;
+        let count_sql = format!("SELECT COUNT(*) FROM tracks t WHERE t.file_path NOT LIKE 'online://%'{extra}");
+        let mut count = sqlx::query_scalar::<_, i64>(&count_sql);
+        if let Some((_, len, prefix)) = &condition {
+            count = count.bind(*len).bind(prefix.clone());
+        }
+        let total = count.fetch_one(&mut *tx).await?;
         tx.commit().await?;
         Ok((records, total))
     }

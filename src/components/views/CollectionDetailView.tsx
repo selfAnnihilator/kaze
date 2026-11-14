@@ -929,7 +929,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <DownloadButton key={track.id} downloaded={!!track.is_downloaded} sourceId={track.rawRecommendation?.playback_source?.track_id || track.rawLocalTrack?.playback_source?.track_id} trackId={track.id} title={track.title} compact />
+                    {/* Local songs have nothing to download; online songs show only Kaze's own download state. */}
+                    {!track.rawLocalTrack && <DownloadButton key={track.id} sourceId={track.rawRecommendation?.playback_source?.track_id} trackId={track.id} title={track.title} compact />}
 
                     <button
                       type="button"

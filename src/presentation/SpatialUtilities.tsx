@@ -144,7 +144,9 @@ export const SpatialLibraryHeader = memo(function SpatialLibraryHeader({
         {(
           [
             ["albums", "Albums"],
-            ["library", "Downloads"],
+            // Your own music folders; Kaze's downloads have their own tab.
+            ["library", "Local"],
+            ["downloads", "Downloads"],
             ["playlists", "Playlists"],
           ] as const
         ).map(([id, title]) => (

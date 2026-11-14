@@ -326,6 +326,35 @@ impl OnlineCatalog {
             .collect())
     }
 
+    /// Online ids whose exact recording has a completed download still on disk.
+    async fn downloaded(
+        &self,
+        linked: &HashMap<String, ExternalTrackMetadata>,
+    ) -> AppResult<HashSet<String>> {
+        let sources: Vec<&str> = linked.values().map(|t| t.provider_track_id.as_str()).collect();
+        if sources.is_empty() {
+            return Ok(HashSet::new());
+        }
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT source_track_id, destination_path FROM download_tasks \
+             WHERE provider='jiosaavn' AND status='COMPLETED' AND destination_path IS NOT NULL \
+             AND source_track_id IN (SELECT value FROM json_each(?))",
+        )
+        .bind(json!(sources).to_string())
+        .fetch_all(&self.pool)
+        .await?;
+        let saved: HashSet<String> = rows
+            .into_iter()
+            .filter(|(_, path)| std::path::Path::new(path).is_file())
+            .map(|(source, _)| source)
+            .collect();
+        Ok(linked
+            .iter()
+            .filter(|(_, t)| saved.contains(&t.provider_track_id))
+            .map(|(id, _)| id.clone())
+            .collect())
+    }
+
     /// Apply the same source snapshot to every track-bearing IPC payload.
     pub async fn present(self: &Arc<Self>, mut value: Value) -> AppResult<Value> {
         let mut descriptors = HashMap::new();
@@ -390,6 +419,7 @@ impl OnlineCatalog {
         .collect();
         let linked = self.prepare_ids(online.iter().cloned().collect()).await;
         owned.extend(self.local_copies(&linked, &owned).await?);
+        owned.extend(self.downloaded(&linked).await?);
         apply(&mut value, &online, &linked, &owned);
         self.notify_changes();
         Ok(value)

@@ -9,6 +9,8 @@ pub enum DownloadStatus {
     Completed,
     Failed,
     Cancelled,
+    /// Recorded as completed, but the file was moved or deleted.
+    Missing,
 }
 
 impl DownloadStatus {
@@ -19,6 +21,7 @@ impl DownloadStatus {
             DownloadStatus::Completed => "COMPLETED",
             DownloadStatus::Failed => "FAILED",
             DownloadStatus::Cancelled => "CANCELLED",
+            DownloadStatus::Missing => "MISSING",
         }
     }
 
@@ -29,6 +32,7 @@ impl DownloadStatus {
             "COMPLETED" => DownloadStatus::Completed,
             "FAILED" => DownloadStatus::Failed,
             "CANCELLED" => DownloadStatus::Cancelled,
+            "MISSING" => DownloadStatus::Missing,
             _ => DownloadStatus::Queued,
         }
     }
@@ -47,6 +51,21 @@ pub struct DownloadSearchResult {
     pub format: String,
     pub slots_free: bool,
     pub speed_bps: u64,
+    /// Display metadata embedded into the saved file as tags.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<DownloadTags>,
+}
+
+/// Tags written into a finished download so the library shows clean metadata.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DownloadTags {
+    pub title: String,
+    pub artist: String,
+    pub album: Option<String>,
+    pub year: Option<u32>,
+    /// JioSaavn recording id, stored inside the file so renames keep the link.
+    #[serde(default)]
+    pub source_id: Option<String>,
 }
 
 /// Progress metrics for an active download.
