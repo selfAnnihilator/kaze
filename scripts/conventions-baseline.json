@@ -74,7 +74,7 @@
       "smells": 2
     },
     "src-tauri/src/providers/jiosaavn.rs": {
-      "lines": 661,
+      "lines": 473,
       "smells": 1
     },
     "src-tauri/src/providers/online_catalog.rs": {
