@@ -79,8 +79,31 @@ The trait delegates in `stats_repo` also repeat signatures with 6–7 parameters
 
 | # | File | Rule | Metric | Fix |
 |---|---|---|---|---|
-| 1 | `src-tauri/migrations/20261112*.sql` | Compatibility | no ADR | still open (baseline #1) |
-| 2 | `docs/DOWNLOADS.md`, `docs/adr/` | Docs | outdated | still open (baseline #2) |
-| 3 | `flow/candidates.rs::generate_candidates` (555), `coordinator/for_you.rs::get_discovery_recommendations` (530) | ≤ 500 lines | single functions | logic refactor: split the scoring stages into functions |
-| 4 | `App.tsx` | Hub wiring only | 1135 lines, complexity 356 | next: toolbar/header JSX, playback handlers |
+| 1 | `src-tauri/migrations/20261112*.sql` | Compatibility | no ADR | **closed** `8ec63e0`: ADR 0031, tolerate newer profiles + backup before migrating |
+| 2 | `docs/DOWNLOADS.md`, `docs/adr/` | Docs | outdated | **closed** `f3fa1ab`: rewritten for Kaze-owned downloads, ADR 0032, old doc archived |
+| 3 | `flow/candidates.rs::generate_candidates` (555), `coordinator/for_you.rs::get_discovery_recommendations` (530) | ≤ 500 lines | single functions | **closed** `9c0a565`, `24b5ee7`: staged pipelines (45 and 35 lines), snapshot test `35dab39` unchanged |
+| 4 | `App.tsx` | Hub wiring only | 1135 lines, complexity 356 | **closed** `4df92a6`: 553 lines, complexity 87 |
 | 5 | `playback/stream.rs` (960, 10 smells), `cloud/sync_manager.rs` (866), `useCollections.ts` (680), `SettingsView.tsx` (675), others 500–720 | ≤ 500 lines | ratchet | split when next touched |
+
+## Follow-up (same day): backlog items #1–#4 closed
+
+| Item | Before | After |
+|---|---|---|
+| Migrations | 2.0.5 panics on a newer profile; no decision recorded | `set_ignore_missing(true)`; `VACUUM INTO <db>.bak-before-<version>` before pending migrations; ADR 0031 (additive only); 3 tests in `migration_guard_tests.rs` |
+| Downloads docs | Soulseek flow | `docs/DOWNLOADS.md` matches the code; ADR 0032; old text in `docs/archive/` |
+| `generate_candidates` | one 555-line function | `flow/candidates/{inputs,rows,scoring,ordering}.rs`, all files qlty-clean |
+| `get_discovery_recommendations` | one 529-line function | `coordinator/for_you/{inputs,scoring,rotation}.rs`, all files qlty-clean |
+| `App.tsx` | 1135 lines, complexity 356 | 553 lines, complexity 87; 7 new hooks/components, all qlty-clean |
+
+The safety net is `tests/scoring_snapshot_tests.rs`, written before the scoring refactors. It froze the Flow scores and the For You order and rotation, and stayed identical through both splits.
+
+The one intended behaviour change is that a For You candidate with a NaN affinity is now treated as not relevant.
+
+Checks at `4df92a6`:
+- `cargo clippy --all-targets`: clean.
+- `cargo test`: 372 passed, 14 ignored.
+- `npm test`: 80/80.
+- `tsc`, `npm run build` and the native `custom-protocol` build: clean.
+- `npm run audit:conventions -- --all`: no failures.
+
+Item #5 is still the ratchet backlog.
