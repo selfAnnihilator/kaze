@@ -383,14 +383,16 @@ async fn manual_for_you_refresh_rotates_relevant_songs_without_changing_taste() 
         .await
         .unwrap());
     assert_eq!(other, initial, "manual refresh choices are account scoped");
-    assert_eq!(
-        engine
-            .compute_taste_profile("default")
-            .await
-            .unwrap()
-            .artist_affinity("Favorite Artist"),
-        before,
-        "refresh is not listening or feedback"
+    // Affinity decays with time, so compare with a tolerance: a refresh must not act
+    // like a listen or feedback, which would move it far more than the decay does.
+    let after = engine
+        .compute_taste_profile("default")
+        .await
+        .unwrap()
+        .artist_affinity("Favorite Artist");
+    assert!(
+        (after - before).abs() <= 1e-4 * before.abs().max(1.0),
+        "refresh is not listening or feedback ({before} -> {after})"
     );
     assert!(
         !next.contains(&"fresh-9".into()),
