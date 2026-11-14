@@ -65,10 +65,6 @@
       "lines": 281,
       "smells": 1
     },
-    "src-tauri/src/mpris/service.rs": {
-      "lines": 1130,
-      "smells": 1
-    },
     "src-tauri/src/playback/decoder.rs": {
       "lines": 324,
       "smells": 1
@@ -447,6 +443,10 @@
     },
     "src-tauri/src/recommendations/mixes/online_tracks.rs": {
       "lines": 205,
+      "smells": 1
+    },
+    "src-tauri/src/mpris/service/metadata.rs": {
+      "lines": 127,
       "smells": 1
     }
   }
