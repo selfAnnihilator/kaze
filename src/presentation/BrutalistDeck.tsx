@@ -18,7 +18,6 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  Sparkles,
   Volume2,
   VolumeX,
   ArrowUpRight,
@@ -210,16 +209,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
           </div>
           <div className="press-track-tools">
             {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
-            {p.onInspectWhyTrack && (
-              <button
-                className="press-icon"
-                title="Why this track?"
-                aria-label="Why this track?"
-                onClick={p.onInspectWhyTrack}
-              >
-                <Sparkles size={18} />
-              </button>
-            )}
+            {track && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} downloaded={!online} compact />}
             {track && p.onOpenAddToPlaylist && (
               <button
                 className="press-icon"
@@ -246,7 +236,6 @@ export const BrutalistDeck = memo(function BrutalistDeck(
                 )}
               </button>
             )}
-            {online && track && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} compact />}
             {p.onToggleLyrics && (
               <button
                 className="press-icon"
