@@ -17,10 +17,6 @@
       "lines": 151,
       "smells": 2
     },
-    "src-tauri/src/cloud/sync_manager.rs": {
-      "lines": 866,
-      "smells": 2
-    },
     "src-tauri/src/database/repositories/playlist_repo.rs": {
       "lines": 556,
       "smells": 0
@@ -444,6 +440,14 @@
     "src-tauri/src/playback/stream/progressive.rs": {
       "lines": 140,
       "smells": 3
+    },
+    "src-tauri/src/cloud/sync_manager/incoming.rs": {
+      "lines": 291,
+      "smells": 1
+    },
+    "src-tauri/src/cloud/sync_manager/outgoing.rs": {
+      "lines": 331,
+      "smells": 1
     }
   }
 }
