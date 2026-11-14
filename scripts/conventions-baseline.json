@@ -78,7 +78,7 @@
       "smells": 1
     },
     "src-tauri/src/providers/online_catalog.rs": {
-      "lines": 510,
+      "lines": 431,
       "smells": 2
     },
     "src-tauri/src/recommendations/clusters.rs": {
