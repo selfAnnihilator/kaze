@@ -341,7 +341,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         </button>
                       )}
 
-                      <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} compact />
+                      <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} downloaded={!!rec.local_copy} compact />
                           <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
 
                       <div
@@ -740,7 +740,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               <Plus size={16} />
                             </button>
                           )}
-                          <DownloadButton key={topResult.external_track_id} trackId={topResult.external_track_id} sourceId={topResult.playback_source?.track_id} title={topResult.title} compact />
+                          <DownloadButton key={topResult.external_track_id} trackId={topResult.external_track_id} sourceId={topResult.playback_source?.track_id} title={topResult.title} downloaded={!!topResult.local_copy} compact />
                           <NotInterestedButton trackId={topResult.external_track_id} title={topResult.title} />
                         </div>
 

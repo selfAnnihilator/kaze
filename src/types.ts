@@ -133,6 +133,8 @@ export interface DiscoveryRecommendation {
   genre?: string;
   match_status: "EXACT_MATCH" | "LIKELY_MATCH" | "POSSIBLE_MATCH" | "NOT_FOUND";
   matched_local_track_id?: string;
+  /** Library already holds this recording locally. */
+  local_copy?: boolean;
   recommendation_reason: string;
   in_wishlist: boolean;
 }
@@ -183,6 +185,8 @@ export interface JioSaavnImportedTrack {
   in_library: boolean;
   match_status: string;
   matched_local_track_id?: string;
+  /** Library already holds this recording locally. */
+  local_copy?: boolean;
 }
 
 export interface JioSaavnPlaylistImport {

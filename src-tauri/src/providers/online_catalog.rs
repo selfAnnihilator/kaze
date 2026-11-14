@@ -1,6 +1,7 @@
 //! Bind online catalog rows before presentation. Playback only follows the saved ID.
 use crate::recommendations::mixes::OnlineTrackInput;
 use crate::core::sync::RwLockExt;
+use crate::discovery::matcher::{FuzzyTrackMatcher, MatchStatus};
 use super::{jiosaavn::JioSaavnProvider, strict_match::normalized, ExternalTrackMetadata};
 use crate::{
     core::{AppError, AppResult},
@@ -282,6 +283,49 @@ impl OnlineCatalog {
         linked
     }
 
+    /// Online ids whose recording already sits in the local library (same title,
+    /// artist and length), even when discovery never recorded the match.
+    async fn local_copies(
+        &self,
+        linked: &HashMap<String, ExternalTrackMetadata>,
+        known: &HashSet<String>,
+    ) -> AppResult<HashSet<String>> {
+        let titles: HashMap<&str, String> = linked
+            .iter()
+            .filter(|(id, _)| !known.contains(*id))
+            .map(|(id, track)| (id.as_str(), track.title.trim().to_lowercase()))
+            .collect();
+        if titles.is_empty() {
+            return Ok(HashSet::new());
+        }
+        let rows: Vec<(String, String, String, Option<String>, f64)> = sqlx::query_as(
+            "SELECT j.key, t.id, t.title, a.name, COALESCE(t.duration_secs, 0) \
+             FROM json_each(?) j JOIN tracks t ON t.normalized_title=j.value \
+             LEFT JOIN artists a ON a.id=t.artist_id WHERE t.file_path NOT LIKE 'online://%'",
+        )
+        .bind(json!(titles).to_string())
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter(|(id, local_id, title, artist, duration)| {
+                let track = &linked[id];
+                FuzzyTrackMatcher::compare(
+                    &track.title,
+                    &track.artist_name,
+                    track.duration_secs,
+                    local_id,
+                    title,
+                    artist.as_deref().unwrap_or_default(),
+                    *duration,
+                )
+                .status
+                    == MatchStatus::ExactMatch
+            })
+            .map(|(id, ..)| id)
+            .collect())
+    }
+
     /// Apply the same source snapshot to every track-bearing IPC payload.
     pub async fn present(self: &Arc<Self>, mut value: Value) -> AppResult<Value> {
         let mut descriptors = HashMap::new();
@@ -332,8 +376,21 @@ impl OnlineCatalog {
             }
             online.insert(id.clone());
         }
+        // Read before preparing: binding may clear a stale local match.
+        let ids = json!(online.iter().collect::<Vec<_>>()).to_string();
+        let mut owned: HashSet<String> = sqlx::query_scalar(
+            "SELECT e.id FROM external_tracks e JOIN tracks t ON t.id=e.matched_local_track_id \
+             WHERE e.id IN (SELECT value FROM json_each(?)) AND e.match_status='EXACT_MATCH' \
+             AND t.file_path NOT LIKE 'online://%'",
+        )
+        .bind(ids)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .collect();
         let linked = self.prepare_ids(online.iter().cloned().collect()).await;
-        apply(&mut value, &online, &linked);
+        owned.extend(self.local_copies(&linked, &owned).await?);
+        apply(&mut value, &online, &linked, &owned);
         self.notify_changes();
         Ok(value)
     }
@@ -376,6 +433,7 @@ fn apply(
     value: &mut Value,
     online: &HashSet<String>,
     linked: &HashMap<String, ExternalTrackMetadata>,
+    owned: &HashSet<String>,
 ) -> bool {
     if let Some(id) = identity(value).map(str::to_string) {
         if online.contains(&id) {
@@ -395,6 +453,7 @@ fn apply(
                     ("provider_id", json!(track.provider_track_id)),
                     ("preview_url", Value::Null),
                     ("matched_local_track_id", Value::Null),
+                    ("local_copy", json!(owned.contains(&id))),
                     (
                         "playback_source",
                         json!({"provider":"jiosaavn","track_id":track.provider_track_id}),
@@ -406,10 +465,10 @@ fn apply(
         }
     }
     match value {
-        Value::Array(items) => items.retain_mut(|item| apply(item, online, linked)),
+        Value::Array(items) => items.retain_mut(|item| apply(item, online, linked, owned)),
         Value::Object(fields) => {
             for child in fields.values_mut() {
-                if !apply(child, online, linked) {
+                if !apply(child, online, linked, owned) {
                     *child = Value::Null;
                 }
             }
