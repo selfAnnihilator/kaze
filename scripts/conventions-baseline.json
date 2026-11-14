@@ -50,7 +50,7 @@
       "smells": 2
     },
     "src-tauri/src/history/service.rs": {
-      "lines": 568,
+      "lines": 437,
       "smells": 3
     },
     "src-tauri/src/library/scanner.rs": {
