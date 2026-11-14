@@ -49,6 +49,7 @@ Mark each item ✅ / ❌ / n/a, with evidence (file:line, command output).
 **Limits**
 - [ ] `audit:conventions` passes. Legacy files shrank or stayed the same.
 - [ ] No new duplicated blocks.
+- [ ] No hardcoded colors, fonts, sizes, spacing, radii, layers or durations; new values are tokens in `src/styles/tokens.css`.
 
 **Compatibility and safety**
 - [ ] New IPC fields are optional with defaults; existing commands are unchanged.

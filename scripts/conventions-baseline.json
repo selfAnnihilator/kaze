@@ -127,7 +127,8 @@
     },
     "src/components/OnboardingModal.tsx": {
       "lines": 140,
-      "smells": 1
+      "smells": 1,
+      "literals": 33
     },
     "src/components/RecommendationNotice.tsx": {
       "lines": 48,
@@ -139,39 +140,48 @@
     },
     "src/components/UpdateBanner.tsx": {
       "lines": 99,
-      "smells": 1
+      "smells": 1,
+      "literals": 14
     },
     "src/components/modals/AddToPlaylistModal.tsx": {
       "lines": 468,
-      "smells": 3
+      "smells": 3,
+      "literals": 87
     },
     "src/components/modals/AuthModal.tsx": {
       "lines": 409,
-      "smells": 2
+      "smells": 2,
+      "literals": 101
     },
     "src/components/views/CollectionDetailView.tsx": {
       "lines": 161,
-      "smells": 2
+      "smells": 2,
+      "literals": 3
     },
     "src/components/views/ImportPlaylistModal.tsx": {
       "lines": 487,
-      "smells": 2
+      "smells": 2,
+      "literals": 54
     },
     "src/components/views/LibraryView.tsx": {
-      "lines": 486,
-      "smells": 1
+      "lines": 488,
+      "smells": 1,
+      "literals": 32
     },
     "src/components/views/LyricsView.tsx": {
       "lines": 430,
-      "smells": 2
+      "smells": 2,
+      "literals": 31
     },
     "src/components/views/NotificationsView.tsx": {
       "lines": 351,
-      "smells": 2
+      "smells": 2,
+      "literals": 59
     },
     "src/components/views/OnlineSearchResultsSection.tsx": {
       "lines": 408,
-      "smells": 3
+      "smells": 3,
+      "literals": 34
     },
     "src/components/views/PlaylistsView.tsx": {
       "lines": 302,
@@ -183,7 +193,8 @@
     },
     "src/components/views/StatsView.tsx": {
       "lines": 226,
-      "smells": 2
+      "smells": 2,
+      "literals": 9
     },
     "src/downloadMatch.ts": {
       "lines": 73,
@@ -203,7 +214,8 @@
     },
     "src/hooks/app/useCollections.ts": {
       "lines": 408,
-      "smells": 3
+      "smells": 3,
+      "literals": 3
     },
     "src/hooks/app/useDiscoveryFeeds.ts": {
       "lines": 88,
@@ -238,7 +250,7 @@
       "smells": 2
     },
     "src/hooks/useScopedTracks.ts": {
-      "lines": 45,
+      "lines": 51,
       "smells": 1
     },
     "src/localTrackMatch.ts": {
@@ -287,7 +299,8 @@
     },
     "src/presentation/WindowedStrip.tsx": {
       "lines": 164,
-      "smells": 1
+      "smells": 1,
+      "literals": 1
     },
     "src/presentation/useHorizontalDrag.ts": {
       "lines": 82,
@@ -355,35 +368,43 @@
     },
     "src/components/views/stats/ProfileCard.tsx": {
       "lines": 311,
-      "smells": 1
+      "smells": 1,
+      "literals": 74
     },
     "src/components/views/stats/TopSongsArtists.tsx": {
       "lines": 195,
-      "smells": 1
+      "smells": 1,
+      "literals": 47
     },
     "src/components/views/discovery/DiscoveryTrackCard.tsx": {
       "lines": 356,
-      "smells": 1
+      "smells": 1,
+      "literals": 54
     },
     "src/components/views/playlists/CustomPlaylistsSection.tsx": {
       "lines": 382,
-      "smells": 1
+      "smells": 1,
+      "literals": 56
     },
     "src/components/views/playlists/PlaylistDetailsModal.tsx": {
       "lines": 292,
-      "smells": 1
+      "smells": 1,
+      "literals": 19
     },
     "src/components/views/playlists/SmartMixesSection.tsx": {
       "lines": 253,
-      "smells": 1
+      "smells": 1,
+      "literals": 38
     },
     "src/components/views/collection/CollectionHero.tsx": {
       "lines": 148,
-      "smells": 1
+      "smells": 1,
+      "literals": 43
     },
     "src/components/views/collection/CollectionTracks.tsx": {
       "lines": 451,
-      "smells": 4
+      "smells": 4,
+      "literals": 56
     },
     "src-tauri/src/recommendations/flow/home.rs": {
       "lines": 235,
@@ -448,6 +469,236 @@
     "src/components/views/settings/StorageSettings.tsx": {
       "lines": 119,
       "smells": 1
+    },
+    "src/App.css": {
+      "lines": 108,
+      "smells": 0,
+      "literals": 39
+    },
+    "src/components/NowPlayingBar.tsx": {
+      "lines": 453,
+      "smells": 0,
+      "literals": 17
+    },
+    "src/components/TrackExplanation.tsx": {
+      "lines": 16,
+      "smells": 0,
+      "literals": 5
+    },
+    "src/components/layout/GlobalTopSearchBar.tsx": {
+      "lines": 142,
+      "smells": 0,
+      "literals": 17
+    },
+    "src/components/modals/ConfirmModal.tsx": {
+      "lines": 57,
+      "smells": 0,
+      "literals": 15
+    },
+    "src/components/modals/PromptModal.tsx": {
+      "lines": 87,
+      "smells": 0,
+      "literals": 19
+    },
+    "src/components/modals/WhyTrackModal.tsx": {
+      "lines": 133,
+      "smells": 0,
+      "literals": 31
+    },
+    "src/components/notifications/ToastContainer.tsx": {
+      "lines": 150,
+      "smells": 0,
+      "literals": 27
+    },
+    "src/components/views/AlbumsView.tsx": {
+      "lines": 270,
+      "smells": 0,
+      "literals": 13
+    },
+    "src/components/views/DiscoveryView.tsx": {
+      "lines": 464,
+      "smells": 0,
+      "literals": 12
+    },
+    "src/components/views/HomeView.tsx": {
+      "lines": 200,
+      "smells": 0,
+      "literals": 29
+    },
+    "src/components/views/collection/CollectionToolbar.tsx": {
+      "lines": 279,
+      "smells": 0,
+      "literals": 44
+    },
+    "src/components/views/discovery/ChartCard.tsx": {
+      "lines": 161,
+      "smells": 0,
+      "literals": 35
+    },
+    "src/components/views/discovery/ChartsShelf.tsx": {
+      "lines": 31,
+      "smells": 0,
+      "literals": 1
+    },
+    "src/components/views/discovery/ForYouShelf.tsx": {
+      "lines": 34,
+      "smells": 0,
+      "literals": 1
+    },
+    "src/components/views/discovery/MixCard.tsx": {
+      "lines": 141,
+      "smells": 0,
+      "literals": 23
+    },
+    "src/components/views/discovery/MixesShelf.tsx": {
+      "lines": 31,
+      "smells": 0,
+      "literals": 1
+    },
+    "src/components/views/discovery/OfflineDiscovery.tsx": {
+      "lines": 93,
+      "smells": 0,
+      "literals": 23
+    },
+    "src/components/views/discovery/ShelfHeader.tsx": {
+      "lines": 54,
+      "smells": 0,
+      "literals": 7
+    },
+    "src/components/views/discovery/TrendingShelf.tsx": {
+      "lines": 65,
+      "smells": 0,
+      "literals": 7
+    },
+    "src/components/views/playlists/CreatePlaylistModal.tsx": {
+      "lines": 77,
+      "smells": 0,
+      "literals": 5
+    },
+    "src/components/views/playlists/DeletePlaylistModal.tsx": {
+      "lines": 115,
+      "smells": 0,
+      "literals": 20
+    },
+    "src/components/views/playlists/PlaylistsHeader.tsx": {
+      "lines": 77,
+      "smells": 0,
+      "literals": 8
+    },
+    "src/components/views/playlists/RenamePlaylistModal.tsx": {
+      "lines": 114,
+      "smells": 0,
+      "literals": 14
+    },
+    "src/components/views/searchResults/AlbumsTab.tsx": {
+      "lines": 77,
+      "smells": 0,
+      "literals": 12
+    },
+    "src/components/views/searchResults/AllResultsTab.tsx": {
+      "lines": 234,
+      "smells": 0,
+      "literals": 42
+    },
+    "src/components/views/searchResults/ArtistsTab.tsx": {
+      "lines": 90,
+      "smells": 0,
+      "literals": 11
+    },
+    "src/components/views/searchResults/CoverOrDisc.tsx": {
+      "lines": 16,
+      "smells": 0,
+      "literals": 1
+    },
+    "src/components/views/searchResults/PlaylistsTab.tsx": {
+      "lines": 65,
+      "smells": 0,
+      "literals": 11
+    },
+    "src/components/views/searchResults/SearchResultsHeader.tsx": {
+      "lines": 157,
+      "smells": 0,
+      "literals": 62
+    },
+    "src/components/views/searchResults/SongsTab.tsx": {
+      "lines": 46,
+      "smells": 0,
+      "literals": 6
+    },
+    "src/components/views/stats/ArchivedTopLists.tsx": {
+      "lines": 109,
+      "smells": 0,
+      "literals": 37
+    },
+    "src/components/views/stats/ArchivedYearHero.tsx": {
+      "lines": 100,
+      "smells": 0,
+      "literals": 29
+    },
+    "src/components/views/stats/DailyWeeklyStats.tsx": {
+      "lines": 189,
+      "smells": 0,
+      "literals": 59
+    },
+    "src/components/views/stats/MonthlyStats.tsx": {
+      "lines": 312,
+      "smells": 0,
+      "literals": 83
+    },
+    "src/components/views/stats/RankedListCard.tsx": {
+      "lines": 125,
+      "smells": 0,
+      "literals": 34
+    },
+    "src/components/views/stats/StatsHeader.tsx": {
+      "lines": 129,
+      "smells": 0,
+      "literals": 43
+    },
+    "src/components/views/stats/TopDays.tsx": {
+      "lines": 151,
+      "smells": 0,
+      "literals": 40
+    },
+    "src/index.css": {
+      "lines": 760,
+      "smells": 0,
+      "literals": 170
+    },
+    "src/kaze-theme.css": {
+      "lines": 77,
+      "smells": 0,
+      "literals": 63
+    },
+    "src/presentation/brutalist.css": {
+      "lines": 3929,
+      "smells": 0,
+      "literals": 742
+    },
+    "src/presentation/familiarity-dial.css": {
+      "lines": 87,
+      "smells": 0,
+      "literals": 10
+    },
+    "src/presentation/interfaces.css": {
+      "lines": 1408,
+      "smells": 0,
+      "literals": 213
+    },
+    "src/presentation/responsive.css": {
+      "lines": 151,
+      "smells": 0,
+      "literals": 31
+    },
+    "src/presentation/spatial-preview.css": {
+      "lines": 1724,
+      "smells": 0,
+      "literals": 358
+    },
+    "src/presentation/spatial.css": {
+      "lines": 886,
+      "smells": 0,
+      "literals": 148
     }
   }
 }

@@ -88,9 +88,30 @@ A single function over 500 lines (`flow/candidates.rs`, `coordinator/for_you.rs`
 - Only animate `transform` and `opacity`.
 - Debounce search input by 150–250 ms.
 
-## 6. Change hygiene
+## 6. Design tokens
+
+Shared styling values are never hardcoded. They live in **one file**,
+[`src/styles/tokens.css`](../src/styles/tokens.css) ([ADR 0033](adr/0033-design-tokens.md)), so one edit changes them everywhere.
+
+| Category | Tokens | Example |
+|---|---|---|
+| Knobs | `--font-scale`, `--space-scale`, `--radius-scale`, `--motion-scale` | `--font-scale: 1.1` enlarges all text |
+| Colors | `--bg-*`, `--text-*`, `--accent*`, `--border*`, `--danger`; tints `--accent-a20`, `--overlay-8` (white), `--shade-40` (black); one-offs `--palette-*` | `color: var(--text-main)` |
+| Fonts | `--font-sans`, `--font-heading`, `--font-mono`, `--font-press`; `--weight-regular` … `--weight-black` | `font: var(--weight-bold) var(--fs-12) var(--font-mono)` |
+| Font sizes | `--fs-8` … `--fs-48` | `fontSize: "var(--fs-13)"` |
+| Spacing | `--space-2` … `--space-80` (padding, margin, gap) | `padding: var(--space-8) var(--space-12)` |
+| Corners | `--radius-2` … `--radius-24`, `--radius-pill`, `--ui-radius` (per interface) | `border-radius: var(--radius-8)` |
+| Motion | `--duration-instant` … `--duration-loop-slow`, `--ui-motion` | `transition: opacity var(--duration-fast)` |
+| Layers | `--z-raised` … `--z-toast` (z-index 10 and up) | `zIndex: "var(--z-modal)"` |
+
+- **Use a token, in CSS and inline styles alike** (TSX uses the same `"var(--token)"` strings). Pick the nearest step. A size that is truly one-off uses a unit multiple, such as `calc(188 * var(--space-unit))`, so it still follows the knobs.
+- **Adding a token:** add it to `tokens.css` only, with a semantic name where one fits (`--danger`, not `--red`). A theme-specific value goes in that interface's block. Never define a theme token in another file.
+- **Allowed without a token:** `0`; `1px` hairlines; `%`, `em`, `vw`/`vh`/`fr`; keywords (`inherit`, `currentColor`, `transparent`, `none`, `auto`); z-index below 10 (local stacking); geometry used by one component, as a local custom property on its root (`--strip-item-width`, `--library-actions-width`); and `design-exploration/`.
+- **Enforced:** `npm run audit:conventions` counts hardcoded colors, font families, sizes, weights, spacing, radii, layers and durations in `src/**/*.{css,ts,tsx}`. A new file must have none. Legacy files may only shrink (the `literals` field in the baseline). `tests/designTokens.test.mjs` fails on a `var(--name)` that is never defined.
+
+## 7. Change hygiene
 
 - One feature or fix per commit, with a conventional commit message (`feat(scope): …`, `fix(…)`, `refactor(…)`, `test(…)`, `docs(…)`). A refactor never changes behaviour and is committed separately.
 - Update the domain doc (`docs/<DOMAIN>.md`) when behaviour changes, and add an ADR in `docs/adr/` for each architectural or compatibility decision.
-- Before committing: `npm run audit:conventions`, `cargo clippy --all-targets`, `cargo test`, `npm test`, `npx tsc --noEmit -p .`.
+- Before committing: `npm run audit:conventions` (sizes, complexity and style tokens), `cargo clippy --all-targets`, `cargo test`, `npm test`, `npx tsc --noEmit -p .`.
 - Run the wiki knowledge checkpoint (see AGENTS.md).

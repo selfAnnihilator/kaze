@@ -16,6 +16,7 @@ function repo() {
   mkdirSync(join(dir, "scripts"));
   mkdirSync(join(dir, "src-tauri/migrations"), { recursive: true });
   copyFileSync(script, join(dir, "scripts/audit-conventions.mjs"));
+  copyFileSync(join(process.cwd(), "scripts/style-literals.mjs"), join(dir, "scripts/style-literals.mjs"));
   writeFileSync(join(dir, "src/legacy.ts"), "x\n".repeat(700));
   writeFileSync(join(dir, "scripts/conventions-baseline.json"), JSON.stringify({ maxLines: 500, legacy: { "src/legacy.ts": { lines: 701, smells: 0 } } }));
   git("add", "-A");
@@ -47,5 +48,41 @@ test("an oversized new file, a growing legacy file and a new migration fail", ()
     assert.match(out.stdout, /src\/legacy\.ts.*grew to 801 lines/);
     assert.match(out.stdout, /new migration/);
     assert.match(out.stdout, /3 convention failure/);
+  } finally { r.cleanup(); }
+});
+
+test("new hardcoded style values fail; tokens, hairlines and local stacking pass", () => {
+  const r = repo();
+  try {
+    writeFileSync(join(r.dir, "src/clean.css"), ".a { color: var(--text-main); padding: var(--space-2) 1px; margin: 0; z-index: 2; --w: 155px; }\n");
+    writeFileSync(join(r.dir, "src/Clean.tsx"), "export const s = { color: \"var(--accent)\", padding: 0, zIndex: 3 };\n");
+    let out = r.run();
+    assert.equal(out.status, 0, out.stdout);
+    writeFileSync(join(r.dir, "src/dirty.css"), ".a { color: #fff; padding: 8px 12px; font-size: 13px; z-index: 100; transition: opacity .2s; }\n");
+    writeFileSync(join(r.dir, "src/Dirty.tsx"), "export const s = { color: \"rgba(0,0,0,.4)\", fontSize: 13, borderRadius: \"8px\" };\n");
+    out = r.run();
+    assert.equal(out.status, 1);
+    assert.match(out.stdout, /src\/dirty\.css.*6 hardcoded style values/);
+    assert.match(out.stdout, /src\/Dirty\.tsx.*3 hardcoded style values/);
+  } finally { r.cleanup(); }
+});
+
+test("a legacy file's style literals may shrink but not grow", () => {
+  const r = repo();
+  try {
+    writeFileSync(join(r.dir, "src/old.css"), ".a { color: #fff; padding: 8px; }\n");
+    writeFileSync(join(r.dir, "scripts/conventions-baseline.json"), JSON.stringify({ maxLines: 500, legacy: {
+      "src/legacy.ts": { lines: 701, smells: 0 }, "src/old.css": { lines: 2, smells: 0, literals: 2 } } }));
+    execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "baseline"], { cwd: r.dir });
+    execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"], { cwd: r.dir });
+    execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "old"], { cwd: r.dir });
+    writeFileSync(join(r.dir, "src/old.css"), ".a { color: var(--text-main); padding: 8px; }\n");
+    let out = r.run();
+    assert.equal(out.status, 0, out.stdout);
+    assert.match(out.stdout, /legacy, improved/);
+    writeFileSync(join(r.dir, "src/old.css"), ".a { color: #fff; padding: 8px; margin: 4px; }\n");
+    out = r.run();
+    assert.equal(out.status, 1);
+    assert.match(out.stdout, /3 hardcoded style values \(legacy limit 2\)/);
   } finally { r.cleanup(); }
 });

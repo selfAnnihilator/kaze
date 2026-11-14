@@ -1,6 +1,6 @@
 /*
  * Kaze design tokens: the one place every shared styling value is defined.
- * Components use var(--token) only; see docs/CONVENTIONS.md section 7.
+ * Components use var(--token) only; see docs/CONVENTIONS.md section 6.
  * Order matters: interface themes override the base, in cascade order.
  */
 
@@ -11,6 +11,121 @@
   src: url("/fonts/inter.woff2") format("woff2");
   font-weight: 100 900;
   font-display: swap;
+}
+
+/* Global knobs: change one value to retune the whole app. */
+:root {
+  --font-scale: 1;
+  --space-scale: 1;
+  --radius-scale: 1;
+  --motion-scale: 1;
+}
+
+/* Scales. Step names are their size at scale 1; one-off values use a unit multiple,
+   e.g. calc(188 * var(--space-unit)). */
+:root {
+  /* Type */
+  --fs-unit: calc(1px * var(--font-scale));
+  --fs-8: calc(8 * var(--fs-unit));
+  --fs-9: calc(9 * var(--fs-unit));
+  --fs-10: calc(10 * var(--fs-unit));
+  --fs-11: calc(11 * var(--fs-unit));
+  --fs-12: calc(12 * var(--fs-unit));
+  --fs-13: calc(13 * var(--fs-unit));
+  --fs-14: calc(14 * var(--fs-unit));
+  --fs-15: calc(15 * var(--fs-unit));
+  --fs-16: calc(16 * var(--fs-unit));
+  --fs-18: calc(18 * var(--fs-unit));
+  --fs-20: calc(20 * var(--fs-unit));
+  --fs-22: calc(22 * var(--fs-unit));
+  --fs-24: calc(24 * var(--fs-unit));
+  --fs-28: calc(28 * var(--fs-unit));
+  --fs-32: calc(32 * var(--fs-unit));
+  --fs-36: calc(36 * var(--fs-unit));
+  --fs-40: calc(40 * var(--fs-unit));
+  --fs-48: calc(48 * var(--fs-unit));
+  --font-mono: "Courier New", monospace;
+  --font-press: "Kaze Press", Arial, sans-serif;
+  --font-jp: "Noto Sans JP", serif;
+  --weight-regular: 400;
+  --weight-book: 450;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-demibold: 650;
+  --weight-bold: 700;
+  --weight-heavy: 750;
+  --weight-extrabold: 800;
+  --weight-ultra: 850;
+  --weight-black: 900;
+
+  /* Spacing (padding, margin, gap) */
+  --space-unit: calc(1px * var(--space-scale));
+  --space-2: calc(2 * var(--space-unit));
+  --space-4: calc(4 * var(--space-unit));
+  --space-6: calc(6 * var(--space-unit));
+  --space-8: calc(8 * var(--space-unit));
+  --space-10: calc(10 * var(--space-unit));
+  --space-12: calc(12 * var(--space-unit));
+  --space-14: calc(14 * var(--space-unit));
+  --space-16: calc(16 * var(--space-unit));
+  --space-18: calc(18 * var(--space-unit));
+  --space-20: calc(20 * var(--space-unit));
+  --space-22: calc(22 * var(--space-unit));
+  --space-24: calc(24 * var(--space-unit));
+  --space-28: calc(28 * var(--space-unit));
+  --space-30: calc(30 * var(--space-unit));
+  --space-32: calc(32 * var(--space-unit));
+  --space-36: calc(36 * var(--space-unit));
+  --space-40: calc(40 * var(--space-unit));
+  --space-44: calc(44 * var(--space-unit));
+  --space-48: calc(48 * var(--space-unit));
+  --space-56: calc(56 * var(--space-unit));
+  --space-60: calc(60 * var(--space-unit));
+  --space-64: calc(64 * var(--space-unit));
+  --space-72: calc(72 * var(--space-unit));
+  --space-80: calc(80 * var(--space-unit));
+
+  /* Corners */
+  --radius-unit: calc(1px * var(--radius-scale));
+  --radius-2: calc(2 * var(--radius-unit));
+  --radius-4: calc(4 * var(--radius-unit));
+  --radius-6: calc(6 * var(--radius-unit));
+  --radius-8: calc(8 * var(--radius-unit));
+  --radius-10: calc(10 * var(--radius-unit));
+  --radius-12: calc(12 * var(--radius-unit));
+  --radius-14: calc(14 * var(--radius-unit));
+  --radius-16: calc(16 * var(--radius-unit));
+  --radius-20: calc(20 * var(--radius-unit));
+  --radius-24: calc(24 * var(--radius-unit));
+  --radius-pill: 9999px;
+
+  /* Motion */
+  --duration-unit: calc(1ms * var(--motion-scale));
+  --duration-instant: calc(100 * var(--duration-unit));
+  --duration-fast: calc(150 * var(--duration-unit));
+  --duration-quick: calc(180 * var(--duration-unit));
+  --duration-base: calc(200 * var(--duration-unit));
+  --duration-moderate: calc(250 * var(--duration-unit));
+  --duration-slow: calc(400 * var(--duration-unit));
+  --duration-slower: calc(600 * var(--duration-unit));
+  --duration-long: calc(1000 * var(--duration-unit));
+  --duration-loop: calc(2000 * var(--duration-unit));
+  --duration-loop-slow: calc(3000 * var(--duration-unit));
+
+  /* Stacking layers, lowest first (local stacking below 10 stays in components). */
+  --z-raised: 10;
+  --z-toolbar: 12;
+  --z-sticky: 15;
+  --z-dropdown: 20;
+  --z-menu: 30;
+  --z-player: 50;
+  --z-overlay: 100;
+  --z-modal: 1000;
+  --z-notice: 2000;
+  --z-dialog: 9999;
+  --z-grain: 9999;
+  --z-alert: 10000;
+  --z-toast: 99999;
 }
 
 /* Base theme (before an interface is chosen, e.g. the startup screen). */
