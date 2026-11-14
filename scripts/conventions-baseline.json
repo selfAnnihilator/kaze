@@ -1,0 +1,361 @@
+{
+  "maxLines": 500,
+  "legacy": {
+    "src-tauri/src/app.rs": {
+      "lines": 276,
+      "smells": 1
+    },
+    "src-tauri/src/audio_features.rs": {
+      "lines": 440,
+      "smells": 1
+    },
+    "src-tauri/src/cloud/client.rs": {
+      "lines": 384,
+      "smells": 2
+    },
+    "src-tauri/src/cloud/credentials.rs": {
+      "lines": 151,
+      "smells": 2
+    },
+    "src-tauri/src/cloud/sync_manager.rs": {
+      "lines": 866,
+      "smells": 2
+    },
+    "src-tauri/src/core/processor.rs": {
+      "lines": 3704,
+      "smells": 12
+    },
+    "src-tauri/src/database/repositories/playlist_repo.rs": {
+      "lines": 556,
+      "smells": 0
+    },
+    "src-tauri/src/database/repositories/stats_repo.rs": {
+      "lines": 1172,
+      "smells": 2
+    },
+    "src-tauri/src/database/repositories/track_repo.rs": {
+      "lines": 609,
+      "smells": 8
+    },
+    "src-tauri/src/database/repositories/user_repo.rs": {
+      "lines": 329,
+      "smells": 1
+    },
+    "src-tauri/src/discovery/coordinator.rs": {
+      "lines": 1246,
+      "smells": 6
+    },
+    "src-tauri/src/discovery/matcher.rs": {
+      "lines": 384,
+      "smells": 4
+    },
+    "src-tauri/src/downloads/jiosaavn.rs": {
+      "lines": 273,
+      "smells": 2
+    },
+    "src-tauri/src/downloads/service.rs": {
+      "lines": 575,
+      "smells": 2
+    },
+    "src-tauri/src/history/service.rs": {
+      "lines": 600,
+      "smells": 3
+    },
+    "src-tauri/src/library/scanner.rs": {
+      "lines": 452,
+      "smells": 1
+    },
+    "src-tauri/src/mpris/mod.rs": {
+      "lines": 281,
+      "smells": 1
+    },
+    "src-tauri/src/mpris/service.rs": {
+      "lines": 1130,
+      "smells": 1
+    },
+    "src-tauri/src/playback/decoder.rs": {
+      "lines": 324,
+      "smells": 1
+    },
+    "src-tauri/src/playback/progressive.rs": {
+      "lines": 277,
+      "smells": 1
+    },
+    "src-tauri/src/playback/queue.rs": {
+      "lines": 633,
+      "smells": 0
+    },
+    "src-tauri/src/playback/service.rs": {
+      "lines": 2335,
+      "smells": 5
+    },
+    "src-tauri/src/playback/stream.rs": {
+      "lines": 960,
+      "smells": 10
+    },
+    "src-tauri/src/providers/enrichment.rs": {
+      "lines": 436,
+      "smells": 2
+    },
+    "src-tauri/src/providers/jiosaavn.rs": {
+      "lines": 704,
+      "smells": 1
+    },
+    "src-tauri/src/providers/online_catalog.rs": {
+      "lines": 510,
+      "smells": 2
+    },
+    "src-tauri/src/recommendations/clusters.rs": {
+      "lines": 224,
+      "smells": 2
+    },
+    "src-tauri/src/recommendations/cooccurrence.rs": {
+      "lines": 225,
+      "smells": 3
+    },
+    "src-tauri/src/recommendations/diversity.rs": {
+      "lines": 331,
+      "smells": 1
+    },
+    "src-tauri/src/recommendations/entity_feedback.rs": {
+      "lines": 200,
+      "smells": 1
+    },
+    "src-tauri/src/recommendations/flow.rs": {
+      "lines": 1307,
+      "smells": 6
+    },
+    "src-tauri/src/recommendations/mixes.rs": {
+      "lines": 1221,
+      "smells": 4
+    },
+    "src-tauri/src/recommendations/scoring.rs": {
+      "lines": 277,
+      "smells": 1
+    },
+    "src-tauri/src/recommendations/signals.rs": {
+      "lines": 499,
+      "smells": 1
+    },
+    "src-tauri/src/recommendations/taste.rs": {
+      "lines": 621,
+      "smells": 1
+    },
+    "src-tauri/src/tray.rs": {
+      "lines": 191,
+      "smells": 2
+    },
+    "src/App.tsx": {
+      "lines": 2420,
+      "smells": 8
+    },
+    "src/components/MusicTaste.tsx": {
+      "lines": 85,
+      "smells": 4
+    },
+    "src/components/NotInterestedButton.tsx": {
+      "lines": 52,
+      "smells": 1
+    },
+    "src/components/NowPlayingBar.tsx": {
+      "lines": 525,
+      "smells": 0
+    },
+    "src/components/OnboardingModal.tsx": {
+      "lines": 140,
+      "smells": 1
+    },
+    "src/components/RecommendationNotice.tsx": {
+      "lines": 48,
+      "smells": 1
+    },
+    "src/components/StartupSettings.tsx": {
+      "lines": 72,
+      "smells": 1
+    },
+    "src/components/UpdateBanner.tsx": {
+      "lines": 99,
+      "smells": 1
+    },
+    "src/components/modals/AddToPlaylistModal.tsx": {
+      "lines": 468,
+      "smells": 3
+    },
+    "src/components/modals/AuthModal.tsx": {
+      "lines": 409,
+      "smells": 2
+    },
+    "src/components/views/CollectionDetailView.tsx": {
+      "lines": 1042,
+      "smells": 5
+    },
+    "src/components/views/DiscoveryView.tsx": {
+      "lines": 1630,
+      "smells": 2
+    },
+    "src/components/views/DownloadsView.tsx": {
+      "lines": 61,
+      "smells": 1
+    },
+    "src/components/views/ImportPlaylistModal.tsx": {
+      "lines": 487,
+      "smells": 2
+    },
+    "src/components/views/LibraryView.tsx": {
+      "lines": 486,
+      "smells": 1
+    },
+    "src/components/views/LyricsView.tsx": {
+      "lines": 430,
+      "smells": 2
+    },
+    "src/components/views/NotificationsView.tsx": {
+      "lines": 351,
+      "smells": 2
+    },
+    "src/components/views/OnlineSearchResultsSection.tsx": {
+      "lines": 1078,
+      "smells": 3
+    },
+    "src/components/views/PlaylistsView.tsx": {
+      "lines": 1539,
+      "smells": 2
+    },
+    "src/components/views/SettingsView.tsx": {
+      "lines": 675,
+      "smells": 4
+    },
+    "src/components/views/StatsView.tsx": {
+      "lines": 1786,
+      "smells": 5
+    },
+    "src/downloadMatch.ts": {
+      "lines": 73,
+      "smells": 1
+    },
+    "src/flowExplanation.ts": {
+      "lines": 48,
+      "smells": 1
+    },
+    "src/forYouRecommendations.ts": {
+      "lines": 74,
+      "smells": 1
+    },
+    "src/hooks/app/useAuth.ts": {
+      "lines": 111,
+      "smells": 2
+    },
+    "src/hooks/app/useCollections.ts": {
+      "lines": 680,
+      "smells": 4
+    },
+    "src/hooks/app/useDiscoveryFeeds.ts": {
+      "lines": 88,
+      "smells": 1
+    },
+    "src/hooks/app/useFlow.ts": {
+      "lines": 190,
+      "smells": 1
+    },
+    "src/hooks/app/useLibrary.ts": {
+      "lines": 186,
+      "smells": 1
+    },
+    "src/hooks/app/usePlaybackControls.ts": {
+      "lines": 356,
+      "smells": 2
+    },
+    "src/hooks/app/usePlaylists.ts": {
+      "lines": 354,
+      "smells": 2
+    },
+    "src/hooks/app/useQueue.ts": {
+      "lines": 138,
+      "smells": 1
+    },
+    "src/hooks/app/useWindowShortcuts.ts": {
+      "lines": 140,
+      "smells": 3
+    },
+    "src/hooks/useLibraryPage.ts": {
+      "lines": 76,
+      "smells": 2
+    },
+    "src/hooks/useScopedTracks.ts": {
+      "lines": 45,
+      "smells": 1
+    },
+    "src/localTrackMatch.ts": {
+      "lines": 73,
+      "smells": 1
+    },
+    "src/presentation/BrutalistDeck.tsx": {
+      "lines": 375,
+      "smells": 1
+    },
+    "src/presentation/BrutalistHome.tsx": {
+      "lines": 412,
+      "smells": 2
+    },
+    "src/presentation/DiscoveryChapters.tsx": {
+      "lines": 436,
+      "smells": 3
+    },
+    "src/presentation/FamiliarityBar.tsx": {
+      "lines": 138,
+      "smells": 3
+    },
+    "src/presentation/FamiliarityDial.tsx": {
+      "lines": 167,
+      "smells": 3
+    },
+    "src/presentation/PlaybackStage.tsx": {
+      "lines": 114,
+      "smells": 1
+    },
+    "src/presentation/SpatialHome.tsx": {
+      "lines": 516,
+      "smells": 1
+    },
+    "src/presentation/SpatialNavigation.tsx": {
+      "lines": 138,
+      "smells": 1
+    },
+    "src/presentation/SpatialUtilities.tsx": {
+      "lines": 174,
+      "smells": 1
+    },
+    "src/presentation/WindowedGallery.tsx": {
+      "lines": 82,
+      "smells": 1
+    },
+    "src/presentation/WindowedStrip.tsx": {
+      "lines": 164,
+      "smells": 1
+    },
+    "src/presentation/useHorizontalDrag.ts": {
+      "lines": 82,
+      "smells": 2
+    },
+    "src/presentation/useVisualActivity.ts": {
+      "lines": 72,
+      "smells": 1
+    },
+    "src/recommendationFeedback.ts": {
+      "lines": 16,
+      "smells": 1
+    },
+    "src/services/api.ts": {
+      "lines": 123,
+      "smells": 1
+    },
+    "src/services/coverArt.ts": {
+      "lines": 132,
+      "smells": 2
+    },
+    "src/types.ts": {
+      "lines": 628,
+      "smells": 0
+    }
+  }
+}

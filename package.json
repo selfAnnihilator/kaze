@@ -10,7 +10,8 @@
     "test": "node --test tests/",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "audit:conventions": "node scripts/audit-conventions.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "~2.12.3",

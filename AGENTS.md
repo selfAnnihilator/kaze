@@ -1,5 +1,10 @@
 # Kaze Developer & AI Agent Guidelines
 
+## Project Conventions (Mandatory)
+- Follow [docs/CONVENTIONS.md](docs/CONVENTIONS.md). In short: each feature goes in its own module, and hubs (`App.tsx`, the processor, `types.ts`) only wire it in. Files have at most 500 lines, and new or changed functions get no qlty smells. New IPC fields are optional. No new SQL migration without a compatibility ADR. Every feature has tests that never touch the real profile.
+- Before committing, run `npm run audit:conventions` (it must pass). Legacy files in `scripts/conventions-baseline.json` may only shrink.
+- Audit changes with [docs/CONVENTIONS_AUDIT.md](docs/CONVENTIONS_AUDIT.md) and store reports in `docs/audits/`.
+
 ## Critical Performance Guardrails (Non-Negotiable)
 
 During Phase 18, a major performance audit and optimization pass reduced renderer private RAM by 61 MB (-18.6%), total private RAM by 84 MB (-16.1%), and eliminated UI jitter and playback re-renders. 
