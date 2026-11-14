@@ -317,10 +317,6 @@
       "lines": 132,
       "smells": 2
     },
-    "src/types.ts": {
-      "lines": 628,
-      "smells": 0
-    },
     "src-tauri/src/core/processor/account.rs": {
       "lines": 404,
       "smells": 2
