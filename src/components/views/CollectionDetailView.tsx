@@ -711,9 +711,11 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
         >
           {/* Table Header */}
           <div
+            className="collection-track-header"
             style={{
               display: "grid",
-              gridTemplateColumns: "48px 1fr 1fr 70px 150px",
+              gridTemplateColumns: "48px 1fr 1fr 64px 184px",
+              columnGap: "12px",
               padding: "12px 18px",
               borderBottom: "1px solid var(--border)",
               fontSize: "0.78rem",
@@ -765,7 +767,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                   style={{
                     height: "100%",
                     display: "grid",
-                    gridTemplateColumns: "48px 1fr 1fr 70px 150px",
+                    gridTemplateColumns: "48px 1fr 1fr 64px 184px",
+                    columnGap: "12px",
                     padding: "10px 18px",
                     alignItems: "center",
                     fontSize: "0.88rem",

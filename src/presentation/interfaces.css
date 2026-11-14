@@ -635,8 +635,10 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   font-size: 44px !important;
   letter-spacing: -0.055em;
 }
+.kaze-interface .collection-track-header,
 .kaze-interface .collection-track-row {
-  grid-template-columns: 42px minmax(120px, 1fr) minmax(90px, 1fr) 54px 150px !important;
+  grid-template-columns: 42px minmax(120px, 1fr) minmax(90px, 1fr) 54px 184px !important;
+  column-gap: 12px;
 }
 /* Now: current in focus; past and future recede. */
 .playback-stage {
@@ -1159,12 +1161,14 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   .kaze-interface .collection-view > .collection-hero h1 {
     font-size: 32px !important;
   }
+  .kaze-interface .collection-track-header,
   .kaze-interface .collection-track-row {
     padding: 8px !important;
     grid-template-columns: 24px minmax(100px, 1fr) minmax(
         60px,
         0.7fr
-      ) 44px 144px !important;
+      ) 44px 176px !important;
+    column-gap: 8px;
   }
 }
 @media (max-height: 700px) {
