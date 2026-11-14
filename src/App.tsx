@@ -24,7 +24,6 @@ import {
   DiscoveryRecommendation,
   PlaybackState,
   AppSettings,
-  OnboardingStatus,
   JioSaavnPlaylistImport,
   AppNotification,
   HomeOverview, FlowExplanation,
@@ -53,12 +52,13 @@ import { attachLocalSearchMatches } from "./localTrackMatch";
 import { AddToPlaylistModalTrack } from "./components/modals/AddToPlaylistModal";
 import { PromptModal } from "./components/modals/PromptModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
+import { useAuth } from "./hooks/app/useAuth";
 import {
   CollectionDetailView,
   CollectionData,
   CollectionTrackItem,
 } from "./components/views/CollectionDetailView";
-import { StatsOverview, UserProfile, type EntityFeedbackRow } from "./types";
+import { StatsOverview, type EntityFeedbackRow } from "./types";
 import { X, Sparkles } from "lucide-react";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
@@ -171,15 +171,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [playlistModalTrack, setPlaylistModalTrack] = useState<AddToPlaylistModalTrack | null>(null);
   const [trackPlaylistMap, setTrackPlaylistMap] = useState<Record<string, string[]>>({});
 
-  // Onboarding
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // User Authentication & Profile
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [userHydrated, setUserHydrated] = useState(false);
-  const currentUserIdRef = useRef("default");
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Session identity & onboarding
+  const {
+    onboardingStatus, showOnboarding, setShowOnboarding,
+    currentUser, setCurrentUser, userHydrated, currentUserIdRef, libraryAccountRef, userQueryRevision,
+    isAuthModalOpen, setIsAuthModalOpen, afterAuthRef,
+    fetchOnboardingStatus, fetchCurrentUser, handleLogin, handleSignUp, handleLogout,
+  } = useAuth({ resetNavigation });
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
 
   // Playback
@@ -260,8 +258,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
       }));
   }, [updateDestination],
   );
-  const libraryAccountRef = useRef(currentUser?.id || "default");
-  libraryAccountRef.current = currentUser?.id || "default";
   const destinationRef = useRef(destination);
   destinationRef.current = destination;
   useEffect(() => { setGlobalSearchQuery(destination.searchQuery); }, [destination.searchQuery]);
@@ -365,22 +361,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // --- Fetch Data Handlers ---
 
-  const fetchOnboardingStatus = useCallback(async () => {
-    try {
-      const res = await executeQuery({ query: "GetOnboardingStatus" });
-      const status: OnboardingStatus = {
-        completed: res.data?.completed ?? res.completed ?? false,
-        default_music_dir: res.data?.default_music_dir ?? res.default_music_dir ?? "",
-        configured_folders: res.data?.configured_folders ?? res.configured_folders ?? [],
-      };
-      setOnboardingStatus(status);
-      if (!status.completed) {
-        setShowOnboarding(true);
-      }
-    } catch (err) {
-      console.error("Failed to check onboarding status:", err);
-    }
-  }, []);
 
   const fetchPlaybackState = useCallback(async () => {
     const account = libraryAccountRef.current;
@@ -610,77 +590,11 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
-  const userQueryRevision = useRef(0);
-  const fetchCurrentUser = useCallback(async () => {
-    const revision = ++userQueryRevision.current;
-    try {
-      const res = await executeQuery({ query: "GetCurrentUser" });
-      if (revision !== userQueryRevision.current) return;
-      const nextAccount = res.data?.id || "default";
-      if (nextAccount !== libraryAccountRef.current) resetNavigation();
-      if (res && res.data) {
-        setCurrentUser(res.data);
-      } else {
-        setCurrentUser(null);
-      }
-    } catch (err) {
-      console.error("Failed to fetch current user:", err);
-    } finally { setUserHydrated(true); }
-  }, []);
-
-  const handleLogin = async (
-    username: string,
-    password: string,
-  ): Promise<UserProfile | null> => {
-    const res = await dispatchCommand({
-      command: "Login",
-      payload: { username, password },
-    });
-    if (res && res.status === "UserProfile" && res.data) {
-      ++userQueryRevision.current;
-      libraryAccountRef.current = res.data.id;
-      setCurrentUser(res.data);
-      addAppNotification(
-        "success",
-        "Logged In",
-        `Welcome back, ${res.data.username}!`,
-      );
-      await fetchTracks();
-      await fetchPlaylists();
-      await fetchDiscovery(true);
-      return res.data;
-    }
-    return null;
-  };
-
-  const handleSignUp = async (
-    username: string,
-    password: string,
-  ): Promise<UserProfile | null> => {
-    const res = await dispatchCommand({
-      command: "SignUp",
-      payload: { username, password },
-    });
-    if (res && res.status === "UserProfile" && res.data) {
-      ++userQueryRevision.current;
-      libraryAccountRef.current = res.data.id;
-      setCurrentUser(res.data);
-      addAppNotification(
-        "success",
-        "Account Created",
-        `Welcome to Kaze, ${res.data.username}!`,
-      );
-      await fetchTracks();
-      await fetchPlaylists();
-      await fetchDiscovery(true);
-      return res.data;
-    }
-    return null;
-  };
-
-  const handleLogout = async (scope: "device" | "all") => {
-    await dispatchCommand({ command: scope === "all" ? "LogoutAll" : "Logout" });
-    window.location.reload();
+  afterAuthRef.current = async (title, message) => {
+    addAppNotification("success", title, message);
+    await fetchTracks();
+    await fetchPlaylists();
+    await fetchDiscovery(true);
   };
 
   const fetchStatsOverview = useCallback(
