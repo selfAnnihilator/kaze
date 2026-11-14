@@ -230,6 +230,7 @@ async fn spawn_mock_auth_worker() -> (String, tokio::task::JoinHandle<()>) {
 
 #[tokio::test]
 async fn test_user_signup_login_and_claim_data() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let (mock_url, _server_handle) = spawn_mock_auth_worker().await;
 
     let pool = create_in_memory_pool().await.expect("create db pool");
@@ -357,6 +358,7 @@ async fn test_user_signup_login_and_claim_data() {
 
 #[tokio::test]
 async fn test_unreachable_cloud_worker_does_not_create_local_password_authority() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let pool = create_in_memory_pool().await.expect("create db pool");
     let config = AppConfig::default_with_dirs();
     let backend = Box::new(MockAudioBackend::new());
@@ -382,6 +384,7 @@ async fn test_unreachable_cloud_worker_does_not_create_local_password_authority(
 
 #[tokio::test]
 async fn test_stats_overview_and_top_days() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let pool = create_in_memory_pool().await.expect("create db pool");
     let config = AppConfig::default_with_dirs();
     let backend = Box::new(MockAudioBackend::new());
@@ -513,6 +516,7 @@ fn test_query_serde_deserialization() {
 
 #[tokio::test]
 async fn test_session_management_lifecycle_and_hybrid_expiry() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let (mock_url, _server_handle) = spawn_mock_auth_worker().await;
     let pool = create_in_memory_pool().await.expect("create db pool");
     // This auth-only fixture has no catalog: keep starter preparation local.
@@ -644,6 +648,7 @@ async fn test_session_management_lifecycle_and_hybrid_expiry() {
 
 #[tokio::test]
 async fn test_cloudinary_avatar_metadata_persistence_and_profile() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::database::repositories::user_repo::{SqliteUserRepository, UserRepository};
 
     let pool = create_in_memory_pool().await.expect("in memory pool");
@@ -724,6 +729,7 @@ async fn setup_test_track_for_playback(processor: &CoreProcessor, title: &str) -
 
 #[tokio::test]
 async fn test_authenticated_playback_writes_account_user_id() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::core::event::Event;
     use music_player_backend::database::repositories::UserProfile;
     use std::time::Duration;
@@ -808,6 +814,7 @@ async fn test_authenticated_playback_writes_account_user_id() {
 
 #[tokio::test]
 async fn test_guest_playback_remains_guest_default() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::core::event::Event;
     use std::time::Duration;
 
@@ -868,6 +875,7 @@ async fn test_guest_playback_remains_guest_default() {
 
 #[tokio::test]
 async fn test_user_switch_during_active_session_retains_session_owner() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::core::event::Event;
     use music_player_backend::database::repositories::UserProfile;
     use std::time::Duration;
@@ -961,6 +969,7 @@ async fn test_user_switch_during_active_session_retains_session_owner() {
 
 #[tokio::test]
 async fn test_legacy_user_stats_migration_and_stats_overview() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let test_db_path = temp_dir.path().join("test_migration.db");
 
@@ -1158,6 +1167,7 @@ async fn test_legacy_user_stats_migration_and_stats_overview() {
 #[tokio::test]
 #[ignore = "manual production migration with stale fixture totals; never run against live user data in the test suite"]
 async fn run_migration_on_live_database() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     let live_db_path = std::path::Path::new("/home/abhi/.local/share/music-player/music_player.db");
     assert!(live_db_path.exists(), "Live database must exist");
 
@@ -1304,6 +1314,7 @@ async fn run_migration_on_live_database() {
 
 #[tokio::test]
 async fn test_stats_lifetime_and_all_time_rankings_architecture() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::config::RankingWeightsConfig;
     use music_player_backend::database::repositories::stats_repo::{SqliteStatsRepository, StatsRepository};
 
@@ -1480,6 +1491,7 @@ async fn test_stats_lifetime_and_all_time_rankings_architecture() {
 
 #[tokio::test]
 async fn test_daily_aggregate_recording() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::config::RankingWeightsConfig;
     use music_player_backend::database::repositories::stats_repo::{SqliteStatsRepository, StatsRepository};
 
@@ -1591,6 +1603,7 @@ async fn test_daily_aggregate_recording() {
 
 #[tokio::test]
 async fn test_multi_device_daily_sync() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::cloud::{CloudDailyStat, SyncManager, SyncPayload};
     use music_player_backend::config::RankingWeightsConfig;
     use music_player_backend::database::repositories::stats_repo::{SqliteStatsRepository, StatsRepository};
@@ -1762,6 +1775,7 @@ async fn test_multi_device_daily_sync() {
 
 #[tokio::test]
 async fn test_daily_user_stats_backfill() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::database::repositories::stats_repo::{SqliteStatsRepository, StatsRepository};
 
     let pool = create_in_memory_pool().await.expect("DB pool");
@@ -1889,6 +1903,7 @@ async fn test_daily_user_stats_backfill() {
 
 #[tokio::test]
 async fn test_phase22_correctness_suite() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     use music_player_backend::core::event::Event;
     use music_player_backend::database::repositories::UserProfile;
     use std::time::Duration;

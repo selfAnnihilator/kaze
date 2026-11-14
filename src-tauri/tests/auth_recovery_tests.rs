@@ -3,6 +3,7 @@ use music_player_backend::{cloud::{AuthSessionState, CloudSessionMetadata, Sessi
 #[tokio::test]
 #[ignore = "requires explicit disposable XDG data and an unavailable private credential bus"]
 async fn expired_sessions_clear_local_identity_and_synthetic_token_offline() {
+    music_player_backend::cloud::credentials::use_isolated_store();
     assert_eq!(std::env::var("KAZE_PRIVATE_AUTH_TEST").as_deref(), Ok("1"));
     let data = std::env::var("XDG_DATA_HOME").unwrap();
     assert!(std::path::Path::new(&data).starts_with(std::env::temp_dir()));
