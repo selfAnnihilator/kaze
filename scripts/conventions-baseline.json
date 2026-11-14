@@ -17,10 +17,6 @@
       "lines": 151,
       "smells": 2
     },
-    "src-tauri/src/database/repositories/playlist_repo.rs": {
-      "lines": 556,
-      "smells": 0
-    },
     "src-tauri/src/database/repositories/stats_repo.rs": {
       "lines": 387,
       "smells": 2
