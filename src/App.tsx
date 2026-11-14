@@ -15,9 +15,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, useSyncExtern
 import {
   Track,
   Playlist,
-  WishlistItem,
-  DownloadTask,
-  DownloadSearchResult,
   DiscoveryRecommendation,
   PlaybackState,
   AppSettings,
@@ -43,13 +40,14 @@ import { SettingsView } from "./components/views/SettingsView";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
-import { filterAndRankDownloadResults } from "./downloadMatch";
 import { attachLocalSearchMatches } from "./localTrackMatch";
 import { PromptModal } from "./components/modals/PromptModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useAuth } from "./hooks/app/useAuth";
 import { useLibrary, useLibraryPlayback } from "./hooks/app/useLibrary";
 import { usePlaylists } from "./hooks/app/usePlaylists";
+import { useWishlist } from "./hooks/app/useWishlist";
+import { useDownloads } from "./hooks/app/useDownloads";
 import {
   CollectionDetailView,
   CollectionData,
@@ -201,8 +199,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchTracks, fetchAlbums, fetchSettings, handleAddFolder, handleRemoveFolder, handleRescanLibrary,
   } = useLibrary({ userId: currentUser?.id || "default", destination, initialSettings, fetchOnboardingStatus });
   const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
-  const [downloads, setDownloads] = useState<DownloadTask[]>([]);
   const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([],
   );
   const [worldTrending, setWorldTrending] = useState<DiscoveryRecommendation[]>([],
@@ -380,35 +376,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     playlistRequest, membershipRequest, playlists, setPlaylists, playingPlaylistId, setPlayingPlaylistId, trackPlaylistMap, setTrackPlaylistMap, isPlaylistModalOpen, setIsPlaylistModalOpen, playlistModalTrack, setPlaylistModalTrack, fetchPlaylists, handleRefreshPlaylists, fetchTrackPlaylistMemberships, handleRenamePlaylist, handleDeletePlaylist, handleCreatePlaylist, handleToggleTrackInPlaylist, handleOpenAddToPlaylistModal, handleFetchPlaylistTracks, handleInspectJioSaavnPlaylist, handleSaveImportedPlaylist, handleSaveCollectionToPlaylists,
   } = usePlaylists({ libraryAccountRef, currentUser, setIsAuthModalOpen, activeCollection, setActiveCollection, addAppNotification, requestPrompt });
 
-  const wishlistRequest = useRef(0);
-  const fetchWishlist = useCallback(async () => {
-    const account = libraryAccountRef.current, request = ++wishlistRequest.current;
-    try {
-      const res = await executeQuery({ query: "GetWishlist" });
-      if (account === libraryAccountRef.current && request === wishlistRequest.current && Array.isArray(res.data)) {
-        setWishlist(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch wishlist:", err);
-    }
-  }, []);
-
-  const downloadsRequest = useRef(0);
-  const fetchDownloads = useCallback(async () => {
-    const account = libraryAccountRef.current, request = ++downloadsRequest.current;
-    try {
-      const res = await executeQuery({
-        query: "GetDownloads",
-        payload: { limit: 10000 },
-      });
-      if (account === libraryAccountRef.current && request === downloadsRequest.current && Array.isArray(res.data)) {
-        downloadProgress.replace(res.data);
-        setDownloads(res.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch downloads:", err);
-    }
-  }, []);
+  const {
+    wishlist, setWishlist, fetchWishlist, handleAddMissingToWishlist, handleAddToWishlist, handleUpdateWishlistStatus,
+  } = useWishlist({ libraryAccountRef });
+  const {
+    downloads, setDownloads, fetchDownloads, handleSearchDownloads, handleStartDownload, handleCancelDownload,
+  } = useDownloads({ libraryAccountRef });
 
   const homeRequestRef = useRef(0);
   const steeringRevisionRef = useRef(0);
@@ -2542,44 +2515,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchPlaybackState,
   ]);
 
-  const handleAddMissingToWishlist = async (missingTracks: any[]) => {
-    await dispatchCommand({
-      command: "AddMissingToWishlist",
-      payload: { tracks: missingTracks },
-    });
-    fetchWishlist();
-  };
-
-  // Wishlist
-  const handleAddToWishlist = async (
-    title: string,
-    artist: string,
-    album?: string,
-  ) => {
-    await dispatchCommand({
-      command: "AddToWishlist",
-      payload: { title, artist, album },
-    });
-    fetchWishlist();
-  };
-
-  // Downloads
-  const handleSearchDownloads = async (
-    artist: string,
-    title: string,
-    album?: string,
-  ): Promise<DownloadSearchResult[]> => {
-    const res = await dispatchCommand({
-      command: "SearchDownloads",
-      payload: { artist, title, album },
-    });
-    const results = (res as any)?.data || (res as any)?.results;
-    if (Array.isArray(results)) {
-      return filterAndRankDownloadResults(results, artist, title);
-    }
-    return [];
-  };
-
   // Metadata-only legacy wishlist entries open explicit search, never select a recording silently.
   const handleInitiateDirectDownloadSearch = (artist: string, title: string) => {
     navigate({ ...viewDestination("discovery"), searchQuery: `${title} ${artist}`, searchResults: [] });
@@ -2913,30 +2848,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     () => navigate(viewDestination("now_playing")),
     [navigate],
   );
-  const handleStartDownload = async (
-    search_result_id: string,
-    wishlist_id?: string,
-  ) => {
-    await dispatchCommand({
-      command: "StartDownload",
-      payload: { search_result_id, wishlist_id },
-    });
-    await fetchDownloads();
-  };
-  const handleCancelDownload = async (task_id: string) => {
-    await dispatchCommand({ command: "CancelDownload", payload: { task_id } });
-    await fetchDownloads();
-  };
-  const handleUpdateWishlistStatus = async (
-    wishlist_id: string,
-    status: "want" | "ignore" | "already_own" | "downloaded",
-  ) => {
-    await dispatchCommand({
-      command: "UpdateWishlistStatus",
-      payload: { wishlist_id, status },
-    });
-    await fetchWishlist();
-  };
 
   const likedSongs = playlists.find(playlist => playlist.name === "Liked Songs" && !playlist.is_smart_mix);
   const handleHomeLiked = useCallback(() => { if (likedSongs) handleSelectSidebarPlaylist(likedSongs); }, [likedSongs, handleSelectSidebarPlaylist]);
