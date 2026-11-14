@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { executeQuery } from "./services/api";
 import { StartupScreen } from "./components/StartupScreen";
 import type { AppSettings } from "./types";
+import "./styles/tokens.css";
 import "./index.css";
 import "./kaze-theme.css";
 

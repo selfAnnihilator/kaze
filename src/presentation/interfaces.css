@@ -44,45 +44,7 @@
   height: 0;
 }
 :root[data-interface] {
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-heading: Inter, system-ui, sans-serif;
-  --ui-radius: 12px;
-  --ui-space: 28px;
-  --ui-motion: 190ms;
-  --bg-main: oklch(17% 0.009 58);
-  --bg-sidebar: oklch(15% 0.007 58);
-  --bg-card: oklch(21% 0.012 58);
-  --bg-card-hover: oklch(26% 0.014 58);
-  --bg-player: oklch(19% 0.009 58);
-  --text-main: oklch(93% 0.022 70);
-  --text-muted: oklch(76% 0.018 70);
-  --text-dim: oklch(68% 0.014 70);
-  --accent: oklch(76% 0.155 52);
-  --accent-light: oklch(83% 0.12 58);
-  --accent-hover: oklch(81% 0.15 52);
-  --accent-secondary: oklch(78% 0.09 290);
-  --border: oklch(32% 0.012 58);
-  --border-light: oklch(43% 0.016 58);
   color: var(--text-main);
-}
-:root[data-interface="brutalist"] {
-  --ui-radius: 0px;
-  --ui-space: 22px;
-  --ui-motion: 120ms;
-  --bg-main: oklch(14% 0.004 55);
-  --bg-sidebar: oklch(14% 0.004 55);
-  --bg-card: oklch(19% 0.004 55);
-  --bg-card-hover: oklch(25% 0.004 55);
-  --bg-player: oklch(17% 0.004 55);
-  --text-main: oklch(95% 0.012 75);
-  --text-muted: oklch(77% 0.008 75);
-  --text-dim: oklch(68% 0.006 75);
-  --accent: oklch(74% 0.155 30);
-  --accent-light: oklch(82% 0.11 30);
-  --accent-hover: oklch(79% 0.15 30);
-  --accent-secondary: oklch(79% 0.12 30);
-  --border: oklch(33% 0.004 55);
-  --border-light: oklch(48% 0.004 55);
 }
 .kaze-interface {
   background: var(--bg-main);

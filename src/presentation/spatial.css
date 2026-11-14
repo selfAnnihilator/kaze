@@ -1,16 +1,6 @@
 /* The accepted Spatial shell, applied only to the production presentation.
    The rail, fixed discovery panes and transport share one viewport height budget. */
 :root[data-interface="spatial"] {
-  --bg-main: oklch(18.2% 0.006 65);
-  --bg-sidebar: var(--bg-main);
-  --bg-card: oklch(23% 0.009 65);
-  --bg-player: var(--bg-card);
-  --bg-card-hover: oklch(27% 0.009 65);
-  --text-main: oklch(94% 0.014 75);
-  --text-muted: oklch(72% 0.015 75);
-  --text-dim: oklch(64% 0.014 75);
-  --border: oklch(35% 0.012 65);
-  --ui-radius: 6px;
   color-scheme: dark;
 }
 :root[data-interface="spatial"] .kaze-interface {

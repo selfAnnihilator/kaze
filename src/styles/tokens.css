@@ -1,0 +1,132 @@
+/*
+ * Kaze design tokens: the one place every shared styling value is defined.
+ * Components use var(--token) only; see docs/CONVENTIONS.md section 7.
+ * Order matters: interface themes override the base, in cascade order.
+ */
+
+/* Fonts */
+@font-face { font-family: Inter; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face {
+  font-family: Kaze Press;
+  src: url("/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* Base theme (before an interface is chosen, e.g. the startup screen). */
+:root {
+  --bg-main: #1a1714;
+  --bg-sidebar: #1a1714;
+  --bg-card: #2a211b;
+  --bg-card-hover: #352920;
+  --bg-player: #171513;
+  --accent: #f3701e;
+  --accent-hover: #ff873e;
+  --accent-light: #ff9b60;
+  --accent-secondary: #8b7cf6;
+  --accent-slate: #4b607f;
+  --text-main: #e8d8c9;
+  --text-muted: #b6aa9d;
+  --text-dim: #948779;
+  --border: #e8d8c917;
+  --border-light: #4b607f7a;
+  --font-sans: Inter, sans-serif;
+  --font-heading: Inter, sans-serif;
+  --success: var(--accent-secondary);
+  --warning: #f3701e;
+  --danger: #ef4444;
+}
+
+/* Startup screen palette, per interface style. */
+.app-startup {
+  --startup-ink: oklch(90% 0.014 65);
+  --startup-substrate: oklch(17% 0.004 65);
+}
+.app-startup[data-startup-style="spatial"] {
+  --startup-substrate: oklch(17% 0.009 58);
+}
+.app-startup[data-startup-style="brutalist"] {
+  --startup-substrate: oklch(14% 0.004 55);
+  --startup-ink: oklch(95% 0.012 75);
+  --startup-accent: oklch(74% 0.155 30);
+}
+
+/* Interface themes. */
+:root[data-interface] {
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-heading: Inter, system-ui, sans-serif;
+  --ui-radius: 12px;
+  --ui-space: 28px;
+  --ui-motion: 190ms;
+  --bg-main: oklch(17% 0.009 58);
+  --bg-sidebar: oklch(15% 0.007 58);
+  --bg-card: oklch(21% 0.012 58);
+  --bg-card-hover: oklch(26% 0.014 58);
+  --bg-player: oklch(19% 0.009 58);
+  --text-main: oklch(93% 0.022 70);
+  --text-muted: oklch(76% 0.018 70);
+  --text-dim: oklch(68% 0.014 70);
+  --accent: oklch(76% 0.155 52);
+  --accent-light: oklch(83% 0.12 58);
+  --accent-hover: oklch(81% 0.15 52);
+  --accent-secondary: oklch(78% 0.09 290);
+  --border: oklch(32% 0.012 58);
+  --border-light: oklch(43% 0.016 58);
+}
+:root[data-interface="brutalist"] {
+  --ui-radius: 0px;
+  --ui-space: 22px;
+  --ui-motion: 120ms;
+  --bg-main: oklch(14% 0.004 55);
+  --bg-sidebar: oklch(14% 0.004 55);
+  --bg-card: oklch(19% 0.004 55);
+  --bg-card-hover: oklch(25% 0.004 55);
+  --bg-player: oklch(17% 0.004 55);
+  --text-main: oklch(95% 0.012 75);
+  --text-muted: oklch(77% 0.008 75);
+  --text-dim: oklch(68% 0.006 75);
+  --accent: oklch(74% 0.155 30);
+  --accent-light: oklch(82% 0.11 30);
+  --accent-hover: oklch(79% 0.15 30);
+  --accent-secondary: oklch(79% 0.12 30);
+  --border: oklch(33% 0.004 55);
+  --border-light: oklch(48% 0.004 55);
+}
+:root[data-interface="spatial"] {
+  --bg-main: oklch(18.2% 0.006 65);
+  --bg-sidebar: var(--bg-main);
+  --bg-card: oklch(23% 0.009 65);
+  --bg-player: var(--bg-card);
+  --bg-card-hover: oklch(27% 0.009 65);
+  --text-main: oklch(94% 0.014 75);
+  --text-muted: oklch(72% 0.015 75);
+  --text-dim: oklch(64% 0.014 75);
+  --border: oklch(35% 0.012 65);
+  --ui-radius: 6px;
+}
+
+/* Brutalist "press" palette and its mapping onto the semantic tokens. */
+.kaze-interface[data-interface="brutalist"] {
+  --press-paper: oklch(14.5% 0.002 270);
+  --press-ink: oklch(92% 0.008 90);
+  --press-muted: oklch(69% 0.005 90);
+  --press-red: oklch(69% 0.19 26);
+  --press-wash: oklch(22% 0.003 270);
+  --press-line: oklch(44% 0.003 270);
+  --press-shadow: oklch(9% 0.001 270);
+  --press-rule: 2px solid var(--press-line);
+}
+.kaze-interface[data-interface="brutalist"] {
+  --bg-main: var(--press-paper);
+  --bg-card: var(--press-wash);
+  --bg-card-hover: var(--press-wash);
+  --text-main: var(--press-ink);
+  --text-muted: var(--press-muted);
+  --text-dim: var(--press-muted);
+  --accent: var(--press-red);
+  --accent-light: var(--press-red);
+  --accent-secondary: var(--press-red);
+  --border: var(--press-line);
+  --bg-player: var(--press-paper);
+  --bg-sidebar: var(--press-paper);
+}

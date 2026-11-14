@@ -1,25 +1,5 @@
 /* Kaze / test: charcoal, burnt orange, slate, and violet. */
-@font-face { font-family: Inter; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 
-:root {
-  --bg-main: #1a1714;
-  --bg-sidebar: #1a1714;
-  --bg-card: #2a211b;
-  --bg-card-hover: #352920;
-  --bg-player: #171513;
-  --accent: #f3701e;
-  --accent-hover: #ff873e;
-  --accent-light: #ff9b60;
-  --accent-secondary: #8b7cf6;
-  --accent-slate: #4b607f;
-  --text-main: #e8d8c9;
-  --text-muted: #b6aa9d;
-  --text-dim: #948779;
-  --border: #e8d8c917;
-  --border-light: #4b607f7a;
-  --font-sans: Inter, sans-serif;
-  --font-heading: Inter, sans-serif;
-}
 body { background: #12100f; }
 h1, h2, h3, .view-title { font-family: var(--font-heading); font-weight: 650 !important; letter-spacing: -.015em; }
 button { font-weight: 450; }

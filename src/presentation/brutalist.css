@@ -1,19 +1,5 @@
 /* Independent production composition, matched to the approved Brutalist study. */
-@font-face {
-  font-family: Kaze Press;
-  src: url("/fonts/inter.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-}
 .kaze-interface[data-interface="brutalist"] {
-  --press-paper: oklch(14.5% 0.002 270);
-  --press-ink: oklch(92% 0.008 90);
-  --press-muted: oklch(69% 0.005 90);
-  --press-red: oklch(69% 0.19 26);
-  --press-wash: oklch(22% 0.003 270);
-  --press-line: oklch(44% 0.003 270);
-  --press-shadow: oklch(9% 0.001 270);
-  --press-rule: 2px solid var(--press-line);
   color-scheme: dark;
   scrollbar-color: var(--press-line) var(--press-paper);
   display: grid;
@@ -1768,20 +1754,6 @@
 }
 
 /* Real application regions. No Spatial shell or view composition participates. */
-.kaze-interface[data-interface="brutalist"] {
-  --bg-main: var(--press-paper);
-  --bg-card: var(--press-wash);
-  --bg-card-hover: var(--press-wash);
-  --text-main: var(--press-ink);
-  --text-muted: var(--press-muted);
-  --text-dim: var(--press-muted);
-  --accent: var(--press-red);
-  --accent-light: var(--press-red);
-  --accent-secondary: var(--press-red);
-  --border: var(--press-line);
-  --bg-player: var(--press-paper);
-  --bg-sidebar: var(--press-paper);
-}
 .kaze-interface[data-interface="brutalist"] .app-body {
   grid-column: 1;
   grid-row: 2;
