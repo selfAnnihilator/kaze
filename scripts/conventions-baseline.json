@@ -30,7 +30,7 @@
       "smells": 2
     },
     "src-tauri/src/database/repositories/track_repo.rs": {
-      "lines": 609,
+      "lines": 587,
       "smells": 8
     },
     "src-tauri/src/database/repositories/user_repo.rs": {
@@ -54,7 +54,7 @@
       "smells": 2
     },
     "src-tauri/src/history/service.rs": {
-      "lines": 600,
+      "lines": 568,
       "smells": 3
     },
     "src-tauri/src/library/scanner.rs": {
@@ -73,10 +73,6 @@
       "lines": 277,
       "smells": 1
     },
-    "src-tauri/src/playback/queue.rs": {
-      "lines": 633,
-      "smells": 0
-    },
     "src-tauri/src/playback/stream.rs": {
       "lines": 960,
       "smells": 10
@@ -86,7 +82,7 @@
       "smells": 2
     },
     "src-tauri/src/providers/jiosaavn.rs": {
-      "lines": 704,
+      "lines": 661,
       "smells": 1
     },
     "src-tauri/src/providers/online_catalog.rs": {
@@ -179,10 +175,6 @@
     },
     "src/components/views/DiscoveryView.tsx": {
       "lines": 535,
-      "smells": 1
-    },
-    "src/components/views/DownloadsView.tsx": {
-      "lines": 61,
       "smells": 1
     },
     "src/components/views/ImportPlaylistModal.tsx": {
