@@ -37,13 +37,21 @@ export function useVisualActivity(main: RefObject<HTMLElement | null>) {
     };
     add(app);
     const changes = new MutationObserver((records) => {
+      // Virtual lists insert rows on every scroll step; the sweep below only
+      // matters when something left the tree or changed class.
+      let stale = false;
       for (const record of records) {
-        if (record.type === "attributes") track(record.target as Element);
-        else
+        if (record.type === "attributes") {
+          track(record.target as Element);
+          stale = true;
+        } else {
           record.addedNodes.forEach((node) => {
             if (node instanceof Element) add(node);
           });
+          stale ||= record.removedNodes.length > 0;
+        }
       }
+      if (!stale) return;
       for (const target of targets) {
         if (!app.contains(target) || !target.matches(animated)) {
           observer.unobserve(target);

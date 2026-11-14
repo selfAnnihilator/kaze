@@ -3,7 +3,7 @@ import { List, useDynamicRowHeight, useListRef, type RowComponentProps } from "r
 import { Mic2, RefreshCw, Radio } from "lucide-react";
 import { executeQuery } from "../../services/api";
 import { LyricLine, TrackLyricsData } from "../../types";
-import { usePlaybackProgress } from "../../services/playbackProgress";
+import { usePlaybackSelector } from "../../services/playbackProgress";
 
 interface LyricsViewProps {
   trackId?: string;
@@ -176,8 +176,6 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
   onSeek,
   isFullScreen = false,
 }) => {
-  const liveProgress = usePlaybackProgress(durationSecs);
-  const effectiveCurrentTime = currentTime !== undefined ? currentTime : liveProgress.position;
   const [lyricsData, setLyricsData] = useState<TrackLyricsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,10 +240,13 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
 
   // Active line = last line whose timestamp has passed (advanced by +0.18s to
   // cover the audio output delay). Binary search: lines are sorted by time.
-  const activeLineIndex = useMemo(
-    () => findActiveLine(parsedLines, effectiveCurrentTime + 0.18),
-    [parsedLines, effectiveCurrentTime],
+  // Live playback re-renders only when the line changes, not on every tick.
+  const selectActiveLine = useCallback(
+    (position: number) => findActiveLine(parsedLines, position + 0.18),
+    [parsedLines],
   );
+  const liveActiveLine = usePlaybackSelector(selectActiveLine);
+  const activeLineIndex = currentTime !== undefined ? selectActiveLine(currentTime) : liveActiveLine;
 
   const listRef = useListRef(null);
   const rowHeightKey = `${trackId ?? `${artist}-${title}`}-${isFullScreen ? "fs" : "inline"}`;

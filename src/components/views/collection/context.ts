@@ -25,13 +25,11 @@ export interface CollectionDetailViewContext {
   handleRenamePlaylist: () => Promise<void>;
   handleDeletePlaylist: () => Promise<void>;
   setSearchQuery: Dispatch<SetStateAction<string>>;
-  hoveredRowId: string | null;
   currentPlayingTrackId: string | null | undefined;
   loadingTrackId: string | null;
   likedTrackIds: Set<string> | undefined;
   queuedTrackIds: Set<string> | undefined;
   visibleTrackEntries: { track: CollectionTrackItem; originalIndex: number; rowKey: string; }[];
-  setHoveredRowId: Dispatch<SetStateAction<string | null>>;
   onPlayTrack: (track: CollectionTrackItem) => void;
   formatDuration: (secs: number) => string;
   onEnqueueTrack: ((track: CollectionTrackItem) => void) | undefined;

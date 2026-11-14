@@ -11,6 +11,8 @@ import type {
 
 /** Everything the main view area reads from App, passed as one object. */
 export interface AppViewsContext {
+  /** The full-screen player covers the views. */
+  isFullscreen?: boolean;
   isLyricsActive: boolean;
   activePlayingTrackId: string | undefined;
   activePlayingArtist: string;

@@ -300,6 +300,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
   }, [homeOverview?.flow_session?.is_active, handleToggleFlowPlayback, handleStartFlow, flowSteering]);
   // Playlist, mix, chart and Flow origins can be reopened from the player.
   const openableOrigin = playingOrigin && ["playlist", "mix", "chart", "flow"].includes(playingOrigin.type) ? playingOrigin : null;
+  const toggleLyrics = useCallback(() => setIsLyricsActive((prev) => !prev), [setIsLyricsActive]);
+  const toggleFullscreen = useCallback(() => handleToggleFullscreen(), [handleToggleFullscreen]);
+  const closeFullscreen = useCallback(() => handleToggleFullscreen(false), [handleToggleFullscreen]);
   // Props both players share (the bar/deck and the full-screen view).
   const playerProps = {
     playbackState,
@@ -323,7 +326,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     onOpenAddToPlaylist: handleOpenAddToPlaylistModal,
     originName: openableOrigin?.name,
     isLyricsActive,
-    onToggleLyrics: () => setIsLyricsActive((prev) => !prev),
+    onToggleLyrics: toggleLyrics,
   };
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
@@ -360,7 +363,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
             <ViewMemoryProvider>
             <Suspense fallback={null}>
               <AppViews c={{
-                isLyricsActive, activePlayingTrackId, activePlayingArtist, activePlayingTitle, activePlayingDuration,
+                isLyricsActive, isFullscreen, activePlayingTrackId, activePlayingArtist, activePlayingTitle, activePlayingDuration,
                 handleUnifiedSeek, activeCollection, isArchiveLiked, isLoadingCollectionTracks, loadingTrackId, navigateBack,
                 navigate, destination, handlePlayCollectionTrack, handlePlayAllCollection, handleShuffleCollection,
                 handleAddToWishlist, handleSaveCollectionToPlaylists, playbackState, isPlayingThisCollection,
@@ -410,7 +413,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
               : undefined
           }
           isFullscreen={isFullscreen}
-          onToggleFullscreen={() => handleToggleFullscreen()}
+          onToggleFullscreen={toggleFullscreen}
         />
 
         {/* Full Screen Player View (matching user uploaded images) */}
@@ -427,7 +430,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
                   ? handleInspectWhyCurrentTrack
                   : undefined
               }
-              onToggleFullscreen={() => handleToggleFullscreen(false)}
+              onToggleFullscreen={closeFullscreen}
               onOpenOrigin={openableOrigin ? () => { handleToggleFullscreen(false); handleOpenPlayingOrigin(); } : undefined}
             />
           )}

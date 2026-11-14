@@ -6,12 +6,6 @@
 
 /* Fonts */
 @font-face { font-family: Inter; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
-@font-face {
-  font-family: Kaze Press;
-  src: url("/fonts/inter.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-}
 
 /* Global knobs: change one value to retune the whole app. */
 :root {
@@ -51,7 +45,8 @@
   --fs-90: calc(90 * var(--fs-unit));
   --fs-112: calc(112 * var(--fs-unit));
   --font-mono: "Courier New", monospace;
-  --font-press: "Kaze Press", Arial, sans-serif;
+  /* Same file as Inter; one face means one decoded font. */
+  --font-press: Inter, Arial, sans-serif;
   --font-jp: "Noto Sans JP", serif;
   --weight-regular: 400;
   --weight-book: 450;

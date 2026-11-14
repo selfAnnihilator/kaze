@@ -63,3 +63,30 @@ export function usePlaybackProgress(_fallbackDuration = 0) {
 
   return progress;
 }
+
+/**
+ * A value derived from the position, re-rendering only when it changes (for
+ * example the active lyric line, which changes every few seconds rather than
+ * on every 4 Hz tick). `select` must be stable (useCallback).
+ */
+export function usePlaybackSelector<T>(select: (position: number, duration: number) => T): T {
+  const [value, setValue] = useState(() =>
+    select(playbackProgress.getPosition(), playbackProgress.getDuration()),
+  );
+  useEffect(() => {
+    const update = (position: number, duration: number) => {
+      if (document.hidden) return;
+      const next = select(position, duration);
+      setValue((current) => (Object.is(current, next) ? current : next));
+    };
+    const unsubscribe = playbackProgress.subscribe(update);
+    const restore = () =>
+      update(playbackProgress.getPosition(), playbackProgress.getDuration());
+    document.addEventListener("visibilitychange", restore);
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", restore);
+    };
+  }, [select]);
+  return value;
+}

@@ -149,7 +149,6 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             rowHeight={72}
             label="Collection tracks"
             renderItem={(track, idx) => {
-              const isHovered = c.hoveredRowId === track.id;
               const isPlayingThis =
                 c.isPlaying &&
                 (c.currentPlayingTrackId === track.id ||
@@ -170,8 +169,6 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                 <div
                   className="collection-track-row"
                   key={c.visibleTrackEntries[idx].rowKey}
-                  onMouseEnter={() => c.setHoveredRowId(track.id)}
-                  onMouseLeave={() => c.setHoveredRowId(null)}
                   onClick={() => c.onPlayTrack(track)}
                   style={{
                     height: "100%",
@@ -185,12 +182,11 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       isPlayingThis || isLoadingThis
                         ? "var(--accent-secondary)"
                         : "var(--text-main)",
+                    // Hover is CSS (.collection-track-row:hover in App.css).
                     backgroundColor:
                       isPlayingThis || isLoadingThis
                         ? "var(--accent-secondary-a8)"
-                        : isHovered
-                          ? "var(--overlay-5)"
-                          : "transparent",
+                        : undefined,
                     borderBottom: "1px solid var(--overlay-3)",
                     cursor: "pointer",
                     transition: "background-color var(--duration-fast) ease",
@@ -214,11 +210,10 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         aria-label="Loading song"
                       />
                     ) : isPlayingThis ? (
-                      isHovered ? (
-                        <Pause size={15} fill="var(--accent-secondary)" />
-                      ) : (
+                      <>
+                        <Pause className="hover-show" size={15} fill="var(--accent-secondary)" />
                         <div
-                          className="discovery-eq-container"
+                          className="discovery-eq-container hover-hide"
                           style={{ height: "13px" }}
                         >
                           <div
@@ -243,11 +238,12 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                             }}
                           />
                         </div>
-                      )
-                    ) : isHovered ? (
-                      <Play size={15} fill="var(--text-main)" />
+                      </>
                     ) : (
-                      idx + 1
+                      <>
+                        <Play className="hover-show" size={15} fill="var(--text-main)" />
+                        <span className="hover-hide">{idx + 1}</span>
+                      </>
                     )}
                   </div>
 

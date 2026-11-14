@@ -73,6 +73,13 @@
 .online-search-top-result { min-height: 0; overflow-y: auto; }
 .online-search-songs h3 { margin: 0 0 var(--space-14); font-size: var(--fs-20); }
 .online-search-song { min-height: 64px; box-sizing: border-box; }
+/* Row hover is pure CSS, so hovering never re-renders a list. */
+.collection-track-row:hover, .online-search-song:hover { background-color: var(--overlay-5); }
+.online-search-overlay { display: none; }
+.online-search-song:hover .online-search-overlay, .online-search-overlay.is-active { display: flex; }
+.hover-show { display: none; }
+.collection-track-row:hover .hover-show { display: inline; }
+.collection-track-row:hover .hover-hide { display: none; }
 @container (max-width: 760px) {
   .online-search-overview { grid-template-columns: minmax(0, 1fr); }
   .online-search-top-result { display: none; }

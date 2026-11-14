@@ -54,7 +54,6 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   onSelectArtist,
 }) => {
   const [activeTab, setActiveTab] = useState<SearchCategoryTab>("all");
-  const [hoveredTrackId, setHoveredTrackId] = useState<string | null>(null);
 
   const formatDuration = (secs?: number) => {
     if (!secs || secs <= 0) return "--:--";
@@ -173,7 +172,6 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                 renderItem={(rec) => {
                   const isPlaying = isTrackPlaying(rec);
                   const isLoading = isTrackLoading(rec);
-                  const isHovered = hoveredTrackId === rec.external_track_id;
                   const trackId =
                     rec.matched_local_track_id || rec.external_track_id;
                   const inPlaylist =
@@ -194,10 +192,6 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           event.preventDefault(); handleTogglePlay(rec);
                         }
                       }}
-                      onMouseEnter={() =>
-                        setHoveredTrackId(rec.external_track_id)
-                      }
-                      onMouseLeave={() => setHoveredTrackId(null)}
                       onClick={() => handleTogglePlay(rec)}
                       style={{
                         display: "flex",
@@ -205,12 +199,11 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         gap: "var(--space-12)",
                         padding: "var(--space-8) var(--space-12)",
                         borderRadius: "var(--radius-8)",
+                        // Hover is CSS (.online-search-song:hover in App.css).
                         backgroundColor:
                           isPlaying || isLoading
                             ? "var(--accent-secondary-a10)"
-                            : isHovered
-                              ? "var(--overlay-5)"
-                              : "transparent",
+                            : undefined,
                         cursor: "pointer",
 
                       }}
@@ -228,30 +221,28 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       >
                         <CoverOrDisc src={rec.cover_art_url} alt={rec.title} iconSize={18} />
 
-                        {(isHovered || isPlaying || isLoading) && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              backgroundColor: "var(--shade-55)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            {isLoading ? (
-                              <RefreshCw size={16} className="spin-animation" />
-                            ) : isPlaying ? (
-                              <Pause
-                                size={16}
-                                fill="var(--accent-secondary)"
-                                color="var(--accent-secondary)"
-                              />
-                            ) : (
-                              <Play size={16} fill="var(--text-main)" color="var(--text-main)" />
-                            )}
-                          </div>
-                        )}
+                        <div
+                          className={`online-search-overlay${isPlaying || isLoading ? " is-active" : ""}`}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            backgroundColor: "var(--shade-55)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {isLoading ? (
+                            <RefreshCw size={16} className="spin-animation" />
+                          ) : isPlaying ? (
+                            <Pause
+                              size={16}
+                              fill="var(--accent-secondary)"
+                              color="var(--accent-secondary)"
+                            />
+                          ) : (
+                            <Play size={16} fill="var(--text-main)" color="var(--text-main)" />
+                          )}
+                        </div>
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>

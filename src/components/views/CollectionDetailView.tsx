@@ -63,7 +63,6 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   queuedTrackIds,
   onEnqueueTrack,
 }) => {
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredQuery = useDebouncedValue(searchQuery);
@@ -130,8 +129,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     withinArchive, collection, isLoadingTracks, rawTracks, bgGradient, onBack, searchQuery, tracks,
     totalDurationSecs, formatTotalDuration, interfaceStyle, heroImage1, onPlayAll, isPlaying,
     onShuffleAll, isShuffled, isInCollection, onSaveToPlaylists, isLikedSongs, handleRenamePlaylist,
-    handleDeletePlaylist, setSearchQuery, hoveredRowId, currentPlayingTrackId, loadingTrackId,
-    likedTrackIds, queuedTrackIds, visibleTrackEntries, setHoveredRowId, onPlayTrack, formatDuration,
+    handleDeletePlaylist, setSearchQuery, currentPlayingTrackId, loadingTrackId,
+    likedTrackIds, queuedTrackIds, visibleTrackEntries, onPlayTrack, formatDuration,
     onEnqueueTrack, onToggleLike, trackPlaylistMap, userPlaylistIds, onAddToPlaylist, onAddToWishlist,
   };
   return (
