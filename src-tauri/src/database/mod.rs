@@ -1,3 +1,4 @@
+pub mod migration_guard;
 pub mod models;
 pub mod repositories;
 
@@ -34,7 +35,9 @@ pub async fn init_db_pool<P: AsRef<Path>>(db_path: P) -> AppResult<SqlitePool> {
         .map_err(|e| AppError::Database(format!("Failed to connect to SQLite: {}", e)))?;
 
     info!("Running pending database migrations, including playlist uniqueness");
-    sqlx::migrate!("./migrations")
+    let migrator = migration_guard::migrator();
+    migration_guard::backup_before_migrate(&pool, path, &migrator).await?;
+    migrator
         .run(&pool)
         .await
         .map_err(|e| AppError::Database(format!("Migration failed: {}", e)))?;
@@ -70,7 +73,7 @@ pub async fn create_in_memory_pool() -> AppResult<SqlitePool> {
         .await
         .map_err(|e| AppError::Database(format!("Failed to create in-memory database: {}", e)))?;
 
-    sqlx::migrate!("./migrations")
+    migration_guard::migrator()
         .run(&pool)
         .await
         .map_err(|e| AppError::Database(format!("In-memory migration failed: {}", e)))?;

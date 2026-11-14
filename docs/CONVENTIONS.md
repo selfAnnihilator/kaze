@@ -68,7 +68,7 @@ A single function over 500 lines (`flow/candidates.rs`, `coordinator/for_you.rs`
 ## 3. Interfaces and compatibility
 
 - New IPC fields (`Command` / `Query` / events) are optional with `#[serde(default)]`, so older frontends and saved state keep working. Add new commands; don't change existing ones.
-- **No new SQL migration** without a recorded compatibility decision (an ADR). Older Kaze versions refuse to start on a database that has migrations they don't know. `src-tauri/tests/download_folder_tests.rs` guards the migration count.
+- **Migrations are additive only** ([ADR 0031](adr/0031-additive-migrations-and-downgrade.md)): `CREATE … IF NOT EXISTS` and `ADD COLUMN`; never drop, rename or repurpose. Kaze ignores migrations from newer versions and backs up the profile before migrating. Every new migration still gets a line in ADR 0031's migration log, and the count in `src-tauri/tests/download_folder_tests.rs` must be updated; `audit:conventions` flags it so that this is deliberate.
 - Keep the schema stable. Derive values from data you already have (for example, the Local/Downloads split comes from path prefixes).
 - Files Kaze didn't create are never deleted or moved. Only files in the Kaze download folder are.
 

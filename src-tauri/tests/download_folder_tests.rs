@@ -254,7 +254,7 @@ fn no_new_migrations_without_a_compatibility_decision() {
         .unwrap()
         .filter(|e| e.as_ref().is_ok_and(|e| e.path().extension().is_some_and(|x| x == "sql")))
         .count();
-    assert_eq!(count, 32, "a new migration makes older Kaze versions fail to start");
+    assert_eq!(count, 32, "a new migration must be additive and logged in docs/adr/0031 (older Kaze versions can only open additive changes)");
 }
 
 async fn scalar(pool: &sqlx::SqlitePool, sql: &str, bind: &str) -> i64 {
