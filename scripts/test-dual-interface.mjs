@@ -34,7 +34,7 @@ const nav = async (name) => {
   if (await direct.count()) return direct.click();
   if (["Albums", "Downloaded Tracks", "Playlists"].includes(name)) {
     await page.locator(".sidebar, .press-header, .press-account-navigation").getByRole("button", { name: "Library", exact: true }).click();
-    return page.getByRole("tab", { name: name === "Downloaded Tracks" ? "Tracks" : name, exact: true }).click();
+    return page.getByRole("tab", { name: name === "Downloaded Tracks" ? "Local" : name, exact: true }).click();
   }
   await page.getByRole("button", { name: "Library and more", exact: true }).click();
   await page.getByRole("menuitem", { name, exact: true }).click();
@@ -415,7 +415,8 @@ try {
       async () => {
         if (name === "Spatial") {
           await nav("Downloads");
-          await page.getByRole("heading", { name: "Downloads", exact: true }).waitFor();
+          // Downloads is the Local list for Kaze's own folder (no separate heading).
+          await page.locator('.main-content[data-view="downloads"] .library-view').waitFor();
           await nav("Wishlist");
           await page.getByRole("heading", { name: /Wishlist/ }).waitFor();
           await nav("Notifications");
