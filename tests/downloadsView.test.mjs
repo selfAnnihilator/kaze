@@ -74,7 +74,7 @@ test("Local and Downloads lists request their own section from the backend", () 
   // Local search/album rows also leave out Kaze's folder.
   assert.match(read("src/hooks/useScopedTracks.ts"), /!inDownloadsFolder\(t, downloadsDir\)/);
   // The folder watcher's event refreshes everything live.
-  assert.match(read("src/App.tsx"), /case "DownloadsChanged":/);
+  assert.match(read("src/hooks/app/backendEvents/libraryEvents.ts"), /case "DownloadsChanged":/);
 });
 
 test("downloaded songs can be removed from the deck, the bar and the Downloads list", () => {
@@ -85,5 +85,5 @@ test("downloaded songs can be removed from the deck, the bar and the Downloads l
   assert.match(read("src/components/views/LibraryView.tsx"), /downloadControls && <DownloadButton/);
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /kind !== false \|\| kazeDownload/);
   assert.match(read("src/components/NowPlayingBar.tsx"), /isOnline \|\| isKazeDownload/);
-  assert.match(app, /case "DownloadsChanged":[\s\S]{0,200}fetchTrackPlaylistMemberships\(\)/);
+  assert.match(read("src/hooks/app/backendEvents/libraryEvents.ts"), /case "DownloadsChanged":[\s\S]{0,200}fetchTrackPlaylistMemberships\(\)/);
 });

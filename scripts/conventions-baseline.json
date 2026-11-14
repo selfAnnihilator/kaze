@@ -142,8 +142,8 @@
       "smells": 2
     },
     "src/App.tsx": {
-      "lines": 2420,
-      "smells": 8
+      "lines": 1650,
+      "smells": 4
     },
     "src/components/MusicTaste.tsx": {
       "lines": 85,
@@ -372,6 +372,18 @@
     "src-tauri/src/core/processor/sessions.rs": {
       "lines": 215,
       "smells": 2
+    },
+    "src/hooks/app/backendEvents/accountEvents.ts": {
+      "lines": 116,
+      "smells": 1
+    },
+    "src/hooks/app/backendEvents/playbackEvents.ts": {
+      "lines": 256,
+      "smells": 1
+    },
+    "src/hooks/app/useLikes.ts": {
+      "lines": 314,
+      "smells": 6
     }
   }
 }
