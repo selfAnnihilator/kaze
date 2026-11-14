@@ -91,6 +91,9 @@ def main():
     parser.add_argument("--soak-seconds", type=int, default=0)
     parser.add_argument("--memory-diagnostic", action="store_true")
     parser.add_argument("--soak-only", action="store_true")
+    # Also measure a player left paused long enough for idle work to stop
+    # (the audio device sleeps after 60 s).
+    parser.add_argument("--long-pause", action="store_true")
     args = parser.parse_args()
     assert os.environ.get("KAZE_PRIVATE_PERF_TEST") == "1", (
         "Use a private D-Bus session and explicit opt-in"
@@ -159,7 +162,7 @@ def main():
             }
             click(labels[view])
             if view in ["library", "albums"]:
-                click("Tracks" if view == "library" else "Albums")
+                click("Local" if view == "library" else "Albums")
             tray.wait_for(
                 lambda: browser.evaluate(
                     "document.querySelector('.main-content').dataset.view"
@@ -627,6 +630,9 @@ Object.defineProperty = function(target,key,descriptor) {
             browser.command("Pause")
             tray.wait_for(lambda: watcher.status() == "Paused", "actual pause")
             period("final_paused")
+            if args.long_pause:
+                time.sleep(70)
+                period("paused_after_70s", 30)
             report["passed"] = True
             save()
             print("PASS native performance scenarios", flush=True)

@@ -95,6 +95,37 @@ Measured on Linux (x86_64, 16GB RAM) running release builds (`target/release/kaz
 
 ---
 
+### Batch 8: Idle work, hidden window, artwork and WebKit (2026-11-14)
+
+Measured with `scripts/profile-frontend-native.py` (controlled catalogue, disposable profile,
+release builds) on `3187f1b` (before) and the optimized build, alternating, two runs each, plus
+one `--long-pause` run each. Memory is private + swap per process, so swapping cannot fake a
+saving. Raw results: `docs/performance/2026-11-idle/`.
+
+| Scenario | Before | After | Change |
+| :--- | :---: | :---: | :--- |
+| CPU, paused for 70 s | 0.6% | **0.0%** | Audio device sleeps, monitor parks |
+| CPU, playing while hidden in the tray | 1.13% | **0.68%** | **−40%** |
+| Renderer CPU, hidden in the tray | 0.33% | **0.04%** | **−90%** (no ticks to a hidden window) |
+| Rust process memory (all scenarios) | 156–166 MB | **138–153 MB** | **−7 to −20 MB** |
+| Swap held by Kaze | 24 MB | **7 MB** | −17 MB |
+| CPU idle / playing (visible) | 1.0–1.2% / 3.8% | 0.6–1.0% / 3.6–4.0% | within noise |
+| Renderer memory | 134–233 MB | 136–230 MB | within noise (±10 MB) |
+| React commits (Albums / Brutalist library) | 43 / 262 | 39 / 261 | unchanged |
+| Screenshots (20 views × 2 interfaces) | — | — | pixel-identical |
+
+What changed: the output device pauses after 60 s idle (`playback/output.rs`); the 4 Hz
+monitor parks while nothing plays; the bookmark rewrites the queue only when it changes;
+position ticks are withheld from a hidden window (`playback/hidden_ticks.rs`); MPRIS ignores
+ticks; release logs at `info`; local covers are served resized over `kaze-art:` (ADR 0034);
+WebKit media/WebGL/page cache are off (`webview_tuning.rs`); 4 async workers; one shared HTTP
+client; the decoder reuses its buffer; lyrics re-render per line; list hover is CSS.
+
+The controlled catalogue has no large embedded covers, so the artwork saving (a 1400px cover
+was decoded to about 8 MB even in a 48px row) does not show in these numbers; it applies to
+real libraries. Not done, on purpose: loading only the active interface's CSS (cascade-order
+risk) and `contain: paint` on the player bar (it would clip popovers).
+
 ## 3. Performance Guidelines for Future UI & Styling Work
 
 Because upcoming phases include frontend styling and theme refinements, developers and agents **must** adhere to the following rules to preserve these performance gains:
@@ -114,7 +145,10 @@ Because upcoming phases include frontend styling and theme refinements, develope
    - All text searches and filter inputs must be debounced by 150–250ms.
 6. **Keep Component Props Stable**:
    - Pass memoized callbacks (`useCallback`) and memoized objects (`useMemo`) to list items and child views to allow `React.memo` bailouts.
-7. **Maintain Disk Cache Bounds & Speculative Safety**:
+7. **Keep Idle Truly Idle**:
+   - Periodic work must stop when nothing plays or the window is hidden; wake on events, not timers.
+   - Never send covers or other large binary data through IPC as base64; use the `kaze-art:` protocol.
+8. **Maintain Disk Cache Bounds & Speculative Safety**:
    - Remote audio cache must strictly respect the 1 GiB limit and 900 MiB eviction target.
    - Speculative background pre-resolution must only resolve audio source URLs; it must never prefetch audio bytes or mutate active playback.
    - All network streaming to disk must use chunk-by-chunk I/O (`reqwest::Response::chunk()`) to avoid multi-megabyte heap spikes.

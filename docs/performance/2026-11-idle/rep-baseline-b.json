@@ -1,0 +1,1977 @@
+{
+  "target": "native WebKitGTK",
+  "catalogue": "controlled 1036 tracks / 130 albums; actual Rust audio",
+  "measurements": {
+    "initial": {
+      "commits": 12,
+      "renders": {
+        "anonymous": 89,
+        "_u": 6,
+        "$i": 6,
+        "Dd": 6,
+        "oc": 6,
+        "Fr": 27,
+        "Be": 6,
+        "Dr": 12,
+        "$c": 12,
+        "Gc": 12,
+        "ic": 4,
+        "lc": 4,
+        "B": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 2,
+      "mutations": {
+        ".home-view": 41,
+        "other": 6
+      },
+      "ipc": {
+        "GetSettings": 1,
+        "GetLibraryTracksPage": 8,
+        "GetLibraryAlbumsPage": 4,
+        "GetOnboardingStatus": 1,
+        "GetPlaybackState": 2,
+        "GetRecommendationFeedback": 4,
+        "GetPlaylists": 3,
+        "GetTrackPlaylistMemberships": 3,
+        "GetWishlist": 3,
+        "GetDownloads": 3,
+        "GetDiscoveryRecommendations": 3,
+        "GetCachedWorldTrending": 3,
+        "GetHomeOverview": 4,
+        "GetCurrentUser": 2,
+        "GetWorldTrending": 3,
+        "plugin:event|listen": 2,
+        "GetRecommendationSetup": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 602,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 1815136,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 0.68,
+          "private_kib": 134316,
+          "swap_kib": 24872,
+          "rss_kib": 222496
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 0.91,
+          "private_kib": 143920,
+          "swap_kib": 0,
+          "rss_kib": 215488
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65892
+        }
+      }
+    },
+    "spatial_idle": {
+      "commits": 0,
+      "renders": {},
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 602,
+      "images": 10,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 0.7,
+          "private_kib": 134412,
+          "swap_kib": 24872,
+          "rss_kib": 222656
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 0.94,
+          "private_kib": 137348,
+          "swap_kib": 0,
+          "rss_kib": 208916
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65892
+        }
+      },
+      "cpu_percent_one_core": 1.0,
+      "renderer_cpu_percent": 0.6
+    },
+    "spatial_home_playing": {
+      "commits": 20,
+      "renders": {
+        "anonymous": 20
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {
+        ".progress-container": 105
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 614,
+      "images": 13,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 0.83,
+          "private_kib": 134928,
+          "swap_kib": 24872,
+          "rss_kib": 223172
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 1.1,
+          "private_kib": 142020,
+          "swap_kib": 0,
+          "rss_kib": 213588
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      },
+      "cpu_percent_one_core": 3.8,
+      "renderer_cpu_percent": 2.0
+    },
+    "spatial_home_frames": {
+      "commits": 10,
+      "renders": {
+        "anonymous": 10
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {
+        ".progress-container": 53
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 614,
+      "images": 13,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 2895136,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 0.93,
+          "private_kib": 138232,
+          "swap_kib": 24872,
+          "rss_kib": 226412
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 1.18,
+          "private_kib": 141212,
+          "swap_kib": 0,
+          "rss_kib": 212780
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      },
+      "frames": {
+        "frames": 191,
+        "p95": 14,
+        "max": 15,
+        "over32": 0
+      }
+    },
+    "spatial_discovery": {
+      "commits": 21,
+      "renders": {
+        "anonymous": 47,
+        "_u": 1,
+        "$i": 1,
+        "ic": 1,
+        "lc": 1,
+        "B": 1,
+        "oc": 1,
+        "Dd": 1,
+        "Ft": 2,
+        "Ht": 2,
+        "ee": 2,
+        "Le": 4,
+        "td": 3,
+        "ad": 20,
+        "he": 20,
+        "Et": 20,
+        "Ao": 8,
+        "Mo": 8
+      },
+      "layouts": 0,
+      "resizeDeliveries": 1,
+      "raf": 0,
+      "timer": 1,
+      "mutations": {
+        ".progress-container": 79,
+        ".sidebar": 4,
+        ".interface-toolbar": 2,
+        ".home-view": 1,
+        "other": 9,
+        ".discovery-chapters": 21
+      },
+      "ipc": {
+        "GetCharts": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "discovery",
+      "visibility": "visible",
+      "dom": 485,
+      "images": 9,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 9,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 2,
+        "window:offline:false": 2,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 3
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        }
+      ],
+      "effects": [],
+      "artworkPixels": 2539936,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 1.09,
+          "private_kib": 138464,
+          "swap_kib": 24872,
+          "rss_kib": 226644
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 1.36,
+          "private_kib": 153808,
+          "swap_kib": 0,
+          "rss_kib": 225376
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      }
+    },
+    "discovery_chapters": {
+      "commits": 42,
+      "renders": {
+        "anonymous": 134,
+        "Bt": 4,
+        "ee": 16,
+        "Gt": 4,
+        "Le": 24,
+        "td": 16,
+        "ad": 64,
+        "he": 72,
+        "Yt": 8,
+        "Kt": 4,
+        "qt": 8,
+        "Ht": 4,
+        "Et": 56,
+        "Ao": 32,
+        "Mo": 32
+      },
+      "layouts": 0,
+      "resizeDeliveries": 8,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".discovery-chapters": 448,
+        ".progress-container": 53,
+        "other": 8
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "discovery",
+      "visibility": "visible",
+      "dom": 485,
+      "images": 9,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 9,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 2,
+        "window:offline:false": 2,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 3
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "running",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        }
+      ],
+      "effects": [],
+      "artworkPixels": 2539936,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 1.45,
+          "private_kib": 142140,
+          "swap_kib": 24872,
+          "rss_kib": 226648
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 1.87,
+          "private_kib": 166720,
+          "swap_kib": 0,
+          "rss_kib": 238288
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      },
+      "frames": {
+        "frames": 203,
+        "p95": 14,
+        "max": 26,
+        "over32": 0
+      }
+    },
+    "discovery_horizontal": {
+      "commits": 17,
+      "renders": {
+        "anonymous": 22,
+        "td": 6,
+        "ad": 4,
+        "he": 4,
+        "Et": 4,
+        "Ao": 4,
+        "Mo": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {
+        ".discovery-chapters": 13,
+        ".progress-container": 52
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "discovery",
+      "visibility": "visible",
+      "dom": 559,
+      "images": 11,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 11,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 2,
+        "window:offline:false": 2,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 3
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        },
+        {
+          "name": "interface-equalizer",
+          "state": "paused",
+          "target": "discovery-eq-bar",
+          "offscreen": false
+        }
+      ],
+      "effects": [],
+      "artworkPixels": 3615136,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 1.92,
+          "private_kib": 138588,
+          "swap_kib": 24872,
+          "rss_kib": 226832
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 2.36,
+          "private_kib": 166108,
+          "swap_kib": 0,
+          "rss_kib": 237740
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24984,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      },
+      "frames": {
+        "frames": 197,
+        "p95": 14,
+        "max": 15,
+        "over32": 0
+      }
+    },
+    "spatial_track_changes": {
+      "commits": 32,
+      "renders": {
+        "_u": 24,
+        "$i": 24,
+        "Dd": 24,
+        "anonymous": 110,
+        "ic": 24,
+        "lc": 24,
+        "B": 24,
+        "oc": 24
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 242,
+        "other": 264,
+        ".progress-container": 66
+      },
+      "ipc": {
+        "PlayTrack": 16,
+        "GetFlowSession": 16
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "now_playing",
+      "visibility": "visible",
+      "dom": 213,
+      "images": 4,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 1145536,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.45,
+          "private_kib": 139136,
+          "swap_kib": 24872,
+          "rss_kib": 227316
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 3.98,
+          "private_kib": 170164,
+          "swap_kib": 0,
+          "rss_kib": 241860
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24920,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      },
+      "frames": {
+        "frames": 205,
+        "p95": 15,
+        "max": 17,
+        "over32": 0
+      }
+    },
+    "spatial_albums": {
+      "commits": 42,
+      "renders": {
+        "_u": 27,
+        "$i": 27,
+        "Dd": 27,
+        "anonymous": 146,
+        "ic": 27,
+        "lc": 27,
+        "B": 27,
+        "oc": 27,
+        "Da": 1,
+        "Fa": 3,
+        "Be": 3,
+        "Dr": 7,
+        "$c": 14
+      },
+      "layouts": 0,
+      "resizeDeliveries": 2,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 243,
+        "other": 330,
+        ".progress-container": 81,
+        ".sidebar": 2,
+        ".interface-toolbar": 1
+      },
+      "ipc": {
+        "PlayTrack": 17,
+        "GetFlowSession": 17
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "albums",
+      "visibility": "visible",
+      "dom": 449,
+      "images": 22,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 1
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 7524736,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.47,
+          "private_kib": 139332,
+          "swap_kib": 24872,
+          "rss_kib": 227512
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 4.11,
+          "private_kib": 177704,
+          "swap_kib": 0,
+          "rss_kib": 249400
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24920,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      }
+    },
+    "before_theme_cycles": {
+      "commits": 46,
+      "renders": {
+        "_u": 28,
+        "$i": 28,
+        "Dd": 28,
+        "anonymous": 157,
+        "ic": 28,
+        "lc": 28,
+        "B": 28,
+        "oc": 28,
+        "Da": 1,
+        "Fa": 3,
+        "Be": 3,
+        "Dr": 7,
+        "$c": 14
+      },
+      "layouts": 0,
+      "resizeDeliveries": 2,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 243,
+        "other": 359,
+        ".progress-container": 86,
+        ".sidebar": 6,
+        ".interface-toolbar": 2
+      },
+      "ipc": {
+        "PlayTrack": 17,
+        "GetFlowSession": 17,
+        "get_autostart": 1,
+        "GetSettings": 1,
+        "GetEntityFeedback": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "settings",
+      "visibility": "visible",
+      "dom": 287,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.48,
+          "private_kib": 139232,
+          "swap_kib": 24872,
+          "rss_kib": 227412
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 4.14,
+          "private_kib": 178132,
+          "swap_kib": 0,
+          "rss_kib": 249828
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24920,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      }
+    },
+    "after_theme_cycles": {
+      "commits": 109,
+      "renders": {
+        "_u": 88,
+        "$i": 88,
+        "Dd": 88,
+        "anonymous": 440,
+        "ic": 88,
+        "lc": 88,
+        "B": 88,
+        "oc": 88,
+        "Da": 1,
+        "Fa": 3,
+        "Be": 3,
+        "Dr": 7,
+        "$c": 14
+      },
+      "layouts": 0,
+      "resizeDeliveries": 12,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 243,
+        "other": 849,
+        ".progress-container": 102,
+        ".sidebar": 16,
+        ".interface-toolbar": 122
+      },
+      "ipc": {
+        "PlayTrack": 17,
+        "GetFlowSession": 17,
+        "get_autostart": 1,
+        "GetSettings": 1,
+        "GetEntityFeedback": 1,
+        "SetInterfaceStyle": 20
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "settings",
+      "visibility": "visible",
+      "dom": 287,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.64,
+          "private_kib": 142888,
+          "swap_kib": 24872,
+          "rss_kib": 227396
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 4.82,
+          "private_kib": 259188,
+          "swap_kib": 0,
+          "rss_kib": 332116
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24924,
+          "swap_kib": 0,
+          "rss_kib": 66024
+        }
+      }
+    },
+    "after_navigation_cycles": {
+      "commits": 246,
+      "renders": {
+        "_u": 143,
+        "$i": 143,
+        "Dd": 143,
+        "anonymous": 1177,
+        "ic": 143,
+        "lc": 143,
+        "B": 143,
+        "oc": 143,
+        "Da": 25,
+        "Fa": 21,
+        "Be": 33,
+        "Dr": 115,
+        "$c": 122,
+        "Fr": 54,
+        "Gc": 24,
+        "Ft": 12,
+        "Ht": 12,
+        "ee": 12,
+        "Le": 24,
+        "td": 24,
+        "ad": 144,
+        "he": 144,
+        "Et": 144,
+        "Ao": 60,
+        "Mo": 60,
+        "Zc": 228
+      },
+      "layouts": 18,
+      "resizeDeliveries": 42,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 243,
+        "other": 1950,
+        ".progress-container": 202,
+        ".sidebar": 92,
+        ".interface-toolbar": 141,
+        ".home-view": 114,
+        ".discovery-chapters": 186
+      },
+      "ipc": {
+        "PlayTrack": 17,
+        "GetFlowSession": 17,
+        "get_autostart": 2,
+        "GetSettings": 2,
+        "GetEntityFeedback": 2,
+        "SetInterfaceStyle": 20,
+        "GetCharts": 6,
+        "GetAlbumDetails": 6,
+        "GetLibraryTracksPage": 12
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "settings",
+      "visibility": "visible",
+      "dom": 287,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.89,
+          "private_kib": 139100,
+          "swap_kib": 24872,
+          "rss_kib": 227408
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 6.25,
+          "private_kib": 231216,
+          "swap_kib": 0,
+          "rss_kib": 304208
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24856,
+          "swap_kib": 0,
+          "rss_kib": 65956
+        }
+      }
+    },
+    "brutalist_library": {
+      "commits": 260,
+      "renders": {
+        "_u": 148,
+        "$i": 148,
+        "Dd": 148,
+        "anonymous": 1218,
+        "ic": 148,
+        "lc": 148,
+        "B": 148,
+        "oc": 148,
+        "Da": 29,
+        "Fa": 21,
+        "Be": 33,
+        "Dr": 119,
+        "$c": 122,
+        "Fr": 54,
+        "Gc": 24,
+        "Ft": 12,
+        "Ht": 12,
+        "ee": 12,
+        "Le": 24,
+        "td": 26,
+        "ad": 161,
+        "he": 144,
+        "Et": 144,
+        "Ao": 60,
+        "Mo": 60,
+        "Zc": 246
+      },
+      "layouts": 20,
+      "resizeDeliveries": 45,
+      "raf": 0,
+      "timer": 16,
+      "mutations": {
+        ".playback-stage": 243,
+        "other": 2066,
+        ".progress-container": 202,
+        ".sidebar": 92,
+        ".interface-toolbar": 148,
+        ".home-view": 114,
+        ".discovery-chapters": 186
+      },
+      "ipc": {
+        "PlayTrack": 17,
+        "GetFlowSession": 17,
+        "get_autostart": 2,
+        "GetSettings": 2,
+        "GetEntityFeedback": 2,
+        "SetInterfaceStyle": 21,
+        "GetCharts": 6,
+        "GetAlbumDetails": 6,
+        "GetLibraryTracksPage": 12
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "library",
+      "visibility": "visible",
+      "dom": 694,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1,
+        "window:resize:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 2,
+          "targets": 3
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 720000,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 2.93,
+          "private_kib": 139116,
+          "swap_kib": 24872,
+          "rss_kib": 227364
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 6.37,
+          "private_kib": 230880,
+          "swap_kib": 0,
+          "rss_kib": 303876
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      }
+    },
+    "brutalist_library_scroll": {
+      "commits": 110,
+      "renders": {
+        "Dr": 100,
+        "Zc": 84,
+        "anonymous": 10
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 100,
+      "mutations": {
+        "other": 2818
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "library",
+      "visibility": "visible",
+      "dom": 926,
+      "images": 2,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1,
+        "window:resize:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 2,
+          "targets": 3
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 720000,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 3.41,
+          "private_kib": 139124,
+          "swap_kib": 24872,
+          "rss_kib": 227372
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 7.22,
+          "private_kib": 228396,
+          "swap_kib": 0,
+          "rss_kib": 301392
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      },
+      "frames": {
+        "frames": 358,
+        "p95": 14,
+        "max": 15,
+        "over32": 0
+      }
+    },
+    "brutalist_home_playing": {
+      "commits": 20,
+      "renders": {
+        "anonymous": 20
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {
+        "other": 105
+      },
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 658,
+      "images": 18,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 1,
+          "targets": 2
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 3.53,
+          "private_kib": 139116,
+          "swap_kib": 24872,
+          "rss_kib": 227364
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 7.37,
+          "private_kib": 224776,
+          "swap_kib": 0,
+          "rss_kib": 298092
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      },
+      "cpu_percent_one_core": 3.8,
+      "renderer_cpu_percent": 1.8
+    },
+    "hidden_one_minute": {
+      "commits": 0,
+      "renders": {},
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "hidden",
+      "dom": 612,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 4.05,
+          "private_kib": 138856,
+          "swap_kib": 24872,
+          "rss_kib": 223496
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 7.73,
+          "private_kib": 222324,
+          "swap_kib": 0,
+          "rss_kib": 295640
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      },
+      "cpu_percent_one_core": 1.12,
+      "renderer_cpu_percent": 0.32
+    },
+    "restored": {
+      "commits": 4,
+      "renders": {
+        "anonymous": 4
+      },
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 1,
+      "mutations": {
+        ".progress-container": 22
+      },
+      "ipc": {
+        "GetPlaybackState": 1,
+        "GetDownloads": 1
+      },
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 612,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "animations": [],
+      "effects": [],
+      "artworkPixels": 4695136,
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 4.1,
+          "private_kib": 138988,
+          "swap_kib": 24872,
+          "rss_kib": 227236
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 7.87,
+          "private_kib": 211220,
+          "swap_kib": 0,
+          "rss_kib": 284536
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      }
+    },
+    "final_paused": {
+      "commits": 0,
+      "renders": {},
+      "layouts": 0,
+      "resizeDeliveries": 0,
+      "raf": 0,
+      "timer": 0,
+      "mutations": {},
+      "ipc": {},
+      "trustedInput": [
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    Opening Kaze\u2026KAZE\n  \n\n"
+        },
+        {
+          "type": "keydown",
+          "key": "Super",
+          "text": "\n    HomeDiscover MusicLibraryQueueSettingsMProfil"
+        }
+      ],
+      "route": "home",
+      "visibility": "visible",
+      "dom": 609,
+      "images": 14,
+      "hiddenChapterImages": 0,
+      "listeners": {
+        "document:click:true": 2,
+        "document:keydown:true": 2,
+        "document:wheel:true": 1,
+        "document:mousedown:false": 1,
+        "document:contextmenu:false": 1,
+        "document:selectionchange:false": 1,
+        "document:visibilitychange:false": 3,
+        "window:kaze-empty-playback:false": 1,
+        "window:keydown:false": 2,
+        "document:pointerdown:true": 2,
+        "document:focusout:true": 1,
+        "document:pointermove:true": 1,
+        "document:pointerup:true": 1,
+        "document:pointercancel:true": 1,
+        "document:lostpointercapture:true": 1,
+        "document:dragstart:true": 1,
+        "window:blur:false": 1,
+        "window:online:false": 1,
+        "window:offline:false": 1,
+        "window:keydown:true": 1,
+        "document:fullscreenchange:false": 1,
+        "window:focus:false": 1
+      },
+      "observers": {
+        "ResizeObserver": {
+          "instances": 0,
+          "targets": 0
+        },
+        "IntersectionObserver": {
+          "instances": 1,
+          "targets": 0
+        }
+      },
+      "tasks": {
+        "raf": 0,
+        "timers": 0,
+        "intervals": 0
+      },
+      "processes": {
+        "2413190": {
+          "name": "kaze-baseline",
+          "cpu": 4.22,
+          "private_kib": 138976,
+          "swap_kib": 24872,
+          "rss_kib": 227224
+        },
+        "2413223": {
+          "name": "WebKitWebProces",
+          "cpu": 7.94,
+          "private_kib": 214048,
+          "swap_kib": 0,
+          "rss_kib": 287364
+        },
+        "2413221": {
+          "name": "WebKitNetworkPr",
+          "cpu": 0.03,
+          "private_kib": 24860,
+          "swap_kib": 0,
+          "rss_kib": 65960
+        }
+      },
+      "cpu_percent_one_core": 3.2,
+      "renderer_cpu_percent": 1.0
+    }
+  },
+  "theme_switch_ms": [
+    70.02567799645476,
+    22.272873000474647,
+    30.614769988460466,
+    24.482901993906125,
+    29.756306001218036,
+    22.569009015569463,
+    27.51537799485959,
+    20.27360099600628,
+    28.58495299005881,
+    19.796587992459536,
+    26.24602901050821,
+    19.520226982422173,
+    30.150456994306296,
+    18.885158002376556,
+    28.728417004458606,
+    22.891114000231028,
+    26.920471020275727,
+    23.566996009321883,
+    31.967004004400223,
+    20.78059400082566
+  ],
+  "restore_ms": 1035.2725650009234,
+  "passed": true
+}
