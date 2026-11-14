@@ -23,7 +23,9 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
   assert.match(view, /onPlayAll/);
   assert.match(view, /onToggleShuffle/);
   // Header and rows share one grid template with a column gap (no overlap).
-  assert.equal((view.match(/LIBRARY_GRID_COLUMNS/g) ?? []).length >= 3, true);
+  assert.equal((view.match(/gridTemplateColumns: libraryGridColumns\(downloadControls\)/g) ?? []).length, 2);
+  // The actions column is wider when the download button adds a fourth icon.
+  assert.match(view, /downloadControls \? 164 : 120/);
   assert.match(view, /columnGap: "12px"/);
 });
 

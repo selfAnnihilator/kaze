@@ -48,8 +48,9 @@ const formatSeconds = (secs: number) => {
 };
 
 const ROW_HEIGHT = 48;
-const LIBRARY_GRID_COLUMNS =
-  "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 84px 70px 120px";
+const LIBRARY_GRID_BASE = "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 84px 70px";
+/** The actions column fits three icons, or four with the download button. */
+const libraryGridColumns = (downloadControls?: boolean) => `${LIBRARY_GRID_BASE} ${downloadControls ? 164 : 120}px`;
 
 type LibraryRowProps = {
   tracks: Track[];
@@ -99,7 +100,7 @@ const LibraryRow = ({
       style={{
         ...style,
         display: "grid",
-        gridTemplateColumns: LIBRARY_GRID_COLUMNS,
+        gridTemplateColumns: libraryGridColumns(downloadControls),
         columnGap: "12px",
         alignItems: "center",
         padding: "0 14px",
@@ -425,7 +426,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               className="library-list-header"
               style={{
                 display: "grid",
-                gridTemplateColumns: LIBRARY_GRID_COLUMNS,
+                gridTemplateColumns: libraryGridColumns(downloadControls),
                 columnGap: "12px",
                 padding: "10px 14px",
                 color: "var(--text-dim)",
