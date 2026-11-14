@@ -95,11 +95,13 @@ test("one rule decides local vs online, and pending tracks are unknown", () => {
 });
 test("a pending now-playing song is always resolved, even when a newer playback event won the race", async () => {
   const { readFile } = await import("node:fs/promises");
-  const app = await readFile(join(process.cwd(), "src/App.tsx"), "utf8");
+  const app = await readFile(join(process.cwd(), "src/hooks/app/usePlaybackState.ts"), "utf8");
   const fetcher = app.slice(app.indexOf("const fetchPlaybackState = useCallback"), app.indexOf("}, []);", app.indexOf("const fetchPlaybackState = useCallback")));
   const staleBranch = fetcher.slice(fetcher.indexOf("if (revision !== playbackStateRevision.current)"));
   assert.ok(staleBranch.length < fetcher.length, "stale results get their own branch, not a bare return");
-  assert.match(staleBranch.slice(0, 600), /prev\.current_track\?\.pending && prev\.current_track\.id === resolved\.id/);
+  assert.match(staleBranch.slice(0, 600), /setPlaybackState\(\(prev\) => resolvePending\(prev, resolved\)\)/);
+  const resolver = app.slice(app.indexOf("function resolvePending"), app.indexOf("\n}\n", app.indexOf("function resolvePending")));
+  assert.match(resolver, /prev\.current_track\?\.pending && prev\.current_track\.id === resolved\.id/);
 });
 test("a downloaded ✓ is clickable and offers removal", () => {
   controls.downloadProgress.replace([{ ...song, id: "t-done", source_track_id: "done-1", track_ids: ["local-row"], status: "COMPLETED", file_present: true }]);

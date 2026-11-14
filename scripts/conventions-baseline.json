@@ -134,8 +134,8 @@
       "smells": 2
     },
     "src/App.tsx": {
-      "lines": 1135,
-      "smells": 4
+      "lines": 553,
+      "smells": 2
     },
     "src/components/MusicTaste.tsx": {
       "lines": 85,
