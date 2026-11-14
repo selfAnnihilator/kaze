@@ -4,7 +4,9 @@
 //   npm run audit:conventions                      changes since HEAD (incl. uncommitted)
 //   npm run audit:conventions -- --base prod       changes since a ref
 //   npm run audit:conventions -- --all             every source file (legacy report)
-//   npm run audit:conventions -- --write-baseline  re-record the legacy ratchet
+//   npm run audit:conventions -- --write-baseline  re-record the whole legacy ratchet (first setup only)
+//   npm run audit:conventions -- --record <files>  after splitting legacy code: record the files it
+//                                                  moved into, and drop entries of deleted files
 //
 // Rules (exit 1 on any failure):
 //   - a source file over MAX_LINES fails unless it is a recorded legacy file that did not grow;
@@ -88,6 +90,24 @@ function writeBaseline() {
   console.log(`Recorded ${Object.keys(legacy).length} legacy files in ${BASELINE}.`);
 }
 
+/** Re-records only the given files (legacy code moved by a split) and forgets deleted files. */
+function recordFiles(paths) {
+  const data = JSON.parse(readFileSync(BASELINE, "utf8"));
+  const files = paths.filter(isSource).filter((p) => existsSync(p));
+  const { counts, available } = smellCounts(files);
+  if (!available) throw new Error("qlty is required to record files");
+  for (const file of files) {
+    const lines = lineCount(file);
+    if (lines > MAX_LINES || counts[file] > 0) data.legacy[file] = { lines, smells: counts[file] };
+    else delete data.legacy[file];
+    console.log(`${file}: ${data.legacy[file] ? `${lines} lines, ${counts[file]} smells` : "clean, not legacy"}`);
+  }
+  for (const file of Object.keys(data.legacy)) {
+    if (!existsSync(file)) { delete data.legacy[file]; console.log(`${file}: removed (file no longer exists)`); }
+  }
+  writeFileSync(BASELINE, JSON.stringify(data, null, 2) + "\n");
+}
+
 function audit() {
   const baseline = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, "utf8")).legacy : {};
   const files = flag("--all") ? allFiles() : changedFiles();
@@ -128,4 +148,5 @@ function audit() {
 }
 
 if (flag("--write-baseline")) writeBaseline();
+else if (flag("--record")) recordFiles(args.filter((a) => !a.startsWith("--")));
 else audit();

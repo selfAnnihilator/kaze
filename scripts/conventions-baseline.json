@@ -21,10 +21,6 @@
       "lines": 866,
       "smells": 2
     },
-    "src-tauri/src/core/processor.rs": {
-      "lines": 3704,
-      "smells": 12
-    },
     "src-tauri/src/database/repositories/playlist_repo.rs": {
       "lines": 556,
       "smells": 0
@@ -356,6 +352,26 @@
     "src/types.ts": {
       "lines": 628,
       "smells": 0
+    },
+    "src-tauri/src/core/processor/account.rs": {
+      "lines": 404,
+      "smells": 2
+    },
+    "src-tauri/src/core/processor/collections.rs": {
+      "lines": 439,
+      "smells": 4
+    },
+    "src-tauri/src/core/processor/construction.rs": {
+      "lines": 443,
+      "smells": 1
+    },
+    "src-tauri/src/core/processor/playback.rs": {
+      "lines": 432,
+      "smells": 6
+    },
+    "src-tauri/src/core/processor/sessions.rs": {
+      "lines": 215,
+      "smells": 2
     }
   }
 }

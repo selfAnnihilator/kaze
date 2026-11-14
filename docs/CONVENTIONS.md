@@ -9,12 +9,13 @@ go down. Check a change with `npm run audit:conventions` and the checklist in
 ## 1. One feature, one module
 
 A new feature gets its **own file(s)**. Shared hubs only *wire* it in, with a few lines each:
-`src/App.tsx`, `src-tauri/src/core/processor.rs` (and its handler files), `src/types.ts`,
+`src/App.tsx`, `src-tauri/src/core/processor/` (`mod.rs` and `routing.rs`), `src/types.ts`,
 `core/command.rs`, `core/query.rs` and `core/event.rs`.
 
 **Backend (Rust)**
 - Put a domain feature in `src-tauri/src/<domain>/<feature>.rs`.
 - Add behaviour to a large service as a **child module** `src-tauri/src/<domain>/<service>/<feature>.rs`. It starts with `use super::*;` and keeps its own `impl <Service>` block, so it can use the service's private fields. Make methods shared between child modules `pub(super)`. Example: `downloads/service/folder.rs` and `downloads/service/removal.rs`.
+- **New IPC command or query**: add the variant to `core/command.rs` / `core/query.rs`, assign it a domain in `core/processor/routing.rs` (the match is exhaustive, so the compiler asks), and handle it in `core/processor/<domain>.rs` (`playback`, `library`, `collections`, `downloads`, `account`, `sessions`, `profile`, `cloud`, `recommendations`, `feedback`, `discovery`, `stats`, `settings`). A new domain gets a new file. Shared processor helpers sit next to their domain; construction and lifecycle live in `construction.rs` and `lifecycle.rs`.
 - Database access lives in a repository (`database/repositories/<name>_repo.rs`), and SQL stays there.
 - Shaping data for the UI gets its own module, for example `downloads/rows.rs`, not code inline in the processor.
 
@@ -34,7 +35,7 @@ A new feature gets its **own file(s)**. Shared hubs only *wire* it in, with a fe
 - A **file** has at most **500 lines**.
 - A **function** has at most about 60 lines and **at most 5 parameters**. Use an options object when it needs more (`useLibraryPage(query, { size, identity, navigation, scope })`).
 - **No qlty smell** on new or changed functions: no high complexity, many returns or deep nesting (`qlty smells`). Split long decision chains into a pure function or lookup tables (for example `LABELS` in `DownloadButton.tsx`).
-- **Legacy files** listed in `scripts/conventions-baseline.json` are allowed above these limits, but they **may only shrink**. The audit fails if one grows in lines or smells. After you split a legacy file, run `npm run audit:conventions -- --write-baseline` to lower its recorded limit. Never raise a limit by hand.
+- **Legacy files** listed in `scripts/conventions-baseline.json` are allowed above these limits, but they **may only shrink**. The audit fails if one grows in lines or smells. After you split a legacy file, record the files the legacy code moved into with `npm run audit:conventions -- --record <files>`. This also drops entries for deleted files. Use it only for moved legacy code, never for new feature code. Never raise a limit by hand.
 - No duplicated blocks (qlty duplication). Extract a shared helper or component instead.
 
 ## 3. Interfaces and compatibility
