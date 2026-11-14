@@ -210,7 +210,7 @@
       "smells": 3
     },
     "src/components/views/PlaylistsView.tsx": {
-      "lines": 1539,
+      "lines": 302,
       "smells": 2
     },
     "src/components/views/SettingsView.tsx": {
@@ -403,6 +403,18 @@
     },
     "src/components/views/discovery/DiscoveryTrackCard.tsx": {
       "lines": 356,
+      "smells": 1
+    },
+    "src/components/views/playlists/CustomPlaylistsSection.tsx": {
+      "lines": 382,
+      "smells": 1
+    },
+    "src/components/views/playlists/PlaylistDetailsModal.tsx": {
+      "lines": 292,
+      "smells": 1
+    },
+    "src/components/views/playlists/SmartMixesSection.tsx": {
+      "lines": 253,
       "smells": 1
     }
   }
