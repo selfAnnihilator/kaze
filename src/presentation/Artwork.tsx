@@ -2,6 +2,17 @@ import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStor
 import { Disc3 } from "lucide-react";
 import { loadCoverArt, subscribeCoverArt, coverArtGeneration, sizedCoverUrl } from "../services/coverArt";
 
+type Resolved = { id: string; src: string; generation: number } | null;
+
+/** The image to show: the given source, or this track's current resolved cover, sized to the frame. */
+function artworkUrl({ src, trackId, resolved, generation, width }: {
+  src?: string | null; trackId?: string; resolved: Resolved; generation: number; width: number;
+}) {
+  const current = resolved?.id === trackId && resolved?.generation === generation ? resolved?.src : undefined;
+  const loaded = src || current;
+  return loaded ? sizedCoverUrl(loaded, width || 256) : undefined;
+}
+
 export const Artwork = memo(function Artwork({
   src,
   trackId,
@@ -14,16 +25,16 @@ export const Artwork = memo(function Artwork({
   className?: string;
 }) {
   const artGeneration = useSyncExternalStore(subscribeCoverArt, coverArtGeneration, coverArtGeneration);
-  const [resolved, setResolved] = useState<{ id: string; src: string; generation: number } | null>(
-    null,
-  );
+  const [resolved, setResolved] = useState<Resolved>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const frame = useRef<HTMLDivElement>(null);
-  // Measured once: the frame's size is fixed by CSS, and local covers are
-  // resized to it so a 48px row never decodes a full-size image.
-  const [width, setWidth] = useState(0);
+  // The frame's size is fixed by CSS; local covers are resized to it so a
+  // 48px row never decodes a full-size image. A ref, not state: covers
+  // arrive asynchronously, after the frame has been measured, so this costs
+  // no extra render.
+  const width = useRef(0);
   useLayoutEffect(() => {
-    setWidth(frame.current?.clientWidth || 256);
+    width.current = frame.current?.clientWidth || 0;
   }, []);
   useEffect(() => {
     if (
@@ -40,9 +51,7 @@ export const Artwork = memo(function Artwork({
       controller.abort();
     };
   }, [src, trackId, artGeneration]);
-  const loaded =
-    src || (resolved && resolved.id === trackId && resolved.generation === artGeneration ? resolved.src : undefined);
-  const url = loaded && width ? sizedCoverUrl(loaded, width) : undefined;
+  const url = artworkUrl({ src, trackId, resolved, generation: artGeneration, width: width.current });
   const hasImage = !!url && failed !== url;
   return (
     <div
