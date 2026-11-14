@@ -3,9 +3,7 @@ import { memo } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Check,
   Info,
-  ListPlus,
   Pause,
   Play,
   RefreshCw,
@@ -17,15 +15,8 @@ import { FamiliarityDial } from "./FamiliarityDial";
 import { WindowedList } from "./WindowedList";
 import { presentFlowExplanation } from "../flowExplanation";
 import { isCurrentPlaybackTrack } from "../localTrackMatch";
+import { SpatialMusicActions, SpatialMusicRow, type MusicItem, type SpatialMusicItemProps } from "./SpatialMusicRow";
 
-type MusicItem = {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  cover?: string;
-  explanation?: FlowExplanation | null;
-};
 type Props = {
   overview: HomeOverview | null;
   currentTrack?: Track | null;
@@ -100,65 +91,18 @@ export const SpatialHome = memo(function SpatialHome(props: Props) {
         )?.id;
   const momentPlayId = moment?.first_track_id || momentTrack;
   const momentLoading = !!momentPlayId && props.loadingTrackId === momentPlayId;
-  const actions = (item: MusicItem, source: string) => (
-    <div className="spatial-music-actions">
-      {item.explanation && (
-        <button
-          className="player-icon-btn"
-          title="Why this track?"
-          aria-label="Why this track?"
-          onClick={() => onExplain(item)}
-        >
-          <Info size={15} />
-        </button>
-      )}
-      <NotInterestedButton trackId={item.id} title={item.title} />
-      {onEnqueueTrack && (
-        <button
-          className="player-icon-btn"
-          title={
-            props.queuedTrackIds?.has(item.id)
-              ? "Already in queue"
-              : "Add to queue"
-          }
-          onClick={() => onEnqueueTrack(item.id)}
-        >
-          {props.queuedTrackIds?.has(item.id) ? (
-            <Check size={15} />
-          ) : (
-            <ListPlus size={15} />
-          )}
-        </button>
-      )}
-      <button
-        className="player-icon-btn"
-        aria-label={label(item)}
-        disabled={props.loadingTrackId === item.id}
-        onClick={() => play(item, source)}
-      >
-        {props.loadingTrackId === item.id ? (
-          <RefreshCw size={15} className="spin-animation" />
-        ) : item.id === currentTrack?.id && isPlaying ? (
-          <Pause size={15} />
-        ) : (
-          <Play size={15} />
-        )}
-      </button>
-    </div>
-  );
-  const row = (item: MusicItem, source: string) => (
-    <div className="spatial-music-row">
-      <Artwork src={item.cover} trackId={item.id} />
-      <button
-        className="spatial-music-title"
-        onClick={() => play(item, source)}
-      >
-        <strong>{item.title}</strong>
-        <span>{item.artist}</span>
-      </button>
-      {actions(item, source)}
-    </div>
-  );
+  const itemProps = (item: MusicItem, source: string): SpatialMusicItemProps => ({
+    item,
+    label: label(item),
+    playing: item.id === currentTrack?.id && isPlaying,
+    loading: props.loadingTrackId === item.id,
+    queued: !!props.queuedTrackIds?.has(item.id),
+    onPlay: () => play(item, source),
+    onExplain,
+    onEnqueueTrack,
+  });
+  const actions = (item: MusicItem, source: string) => <SpatialMusicActions {...itemProps(item, source)} />;
+  const row = (item: MusicItem, source: string) => <SpatialMusicRow {...itemProps(item, source)} />;
   return (
     <div className="home-view spatial-home">
       <header className="spatial-home-heading">

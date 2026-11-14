@@ -270,7 +270,7 @@
       "smells": 1
     },
     "src/presentation/SpatialHome.tsx": {
-      "lines": 516,
+      "lines": 460,
       "smells": 1
     },
     "src/presentation/SpatialNavigation.tsx": {
