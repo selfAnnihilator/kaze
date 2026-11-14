@@ -218,8 +218,8 @@
       "smells": 4
     },
     "src/components/views/StatsView.tsx": {
-      "lines": 1786,
-      "smells": 5
+      "lines": 226,
+      "smells": 2
     },
     "src/downloadMatch.ts": {
       "lines": 73,
@@ -392,6 +392,14 @@
     "src-tauri/src/playback/service/play.rs": {
       "lines": 413,
       "smells": 2
+    },
+    "src/components/views/stats/ProfileCard.tsx": {
+      "lines": 311,
+      "smells": 1
+    },
+    "src/components/views/stats/TopSongsArtists.tsx": {
+      "lines": 195,
+      "smells": 1
     }
   }
 }

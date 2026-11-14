@@ -1,0 +1,38 @@
+import type { DailyListeningPoint } from "../../../types";
+import type { Dispatch } from "react";
+import type { RefObject } from "react";
+import type { SetStateAction } from "react";
+import type { StatsOverview } from "../../../types";
+import type { UserProfile } from "../../../types";
+export interface StatsViewContext {
+  avatarContainerRef: RefObject<HTMLDivElement | null>;
+  currentUser: UserProfile | null;
+  onOpenAuthModal: (() => void) | undefined;
+  setShowAvatarMenu: Dispatch<SetStateAction<boolean>>;
+  handlePickAvatar: () => Promise<void>;
+  isUploadingAvatar: boolean;
+  showAvatarMenu: boolean;
+  handleRemoveAvatar: () => Promise<void>;
+  formatDate: (timestampSecs: number) => string;
+  avatarError: string | null;
+  viewingYear: number;
+  stats: StatsOverview | null;
+  selectedYear: number | undefined;
+  currentYear: number;
+  setSelectedYear: Dispatch<SetStateAction<number | undefined>>;
+  loadStats: (manual?: boolean) => Promise<void>;
+  isLoading: boolean;
+  isRefreshing: boolean;
+  formatSeconds: (totalSecs: number) => string;
+  activeMonthName: string;
+  activeMonthNum: number;
+  setSelectedMonth: Dispatch<SetStateAction<number | undefined>>;
+  hoveredDay: DailyListeningPoint | null;
+  monthlyGraph: DailyListeningPoint[];
+  daysWithMusic: number;
+  dailyAvgSecs: number;
+  maxGraphSeconds: number;
+  setHoveredDay: Dispatch<SetStateAction<DailyListeningPoint | null>>;
+  onPlayTrack: ((trackId: string) => void) | undefined;
+  isPastYear: boolean;
+}

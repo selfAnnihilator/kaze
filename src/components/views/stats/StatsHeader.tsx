@@ -1,0 +1,128 @@
+import { Archive, RotateCw } from "lucide-react";
+import type { StatsViewContext } from "./context";
+
+export function StatsHeader({ c }: { c: StatsViewContext }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+        gap: "20px",
+        marginBottom: "32px",
+      }}
+    >
+      <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "8px",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              margin: 0,
+              letterSpacing: "-0.5px",
+            }}
+          >
+            Listening Stats
+          </h1>
+          <span
+            style={{
+              background: "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(243, 112, 30, 0.2))",
+              border: "1px solid rgba(243, 112, 30, 0.4)",
+              color: "var(--accent-light)",
+              padding: "2px 10px",
+              borderRadius: "9999px",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
+            {c.viewingYear}
+          </span>
+        </div>
+
+        <div
+          style={{
+            fontSize: "13px",
+            color: "rgba(255, 255, 255, 0.6)",
+          }}
+        >
+          Overview of your listening activity, trends, and top records
+        </div>
+      </div>
+
+      {/* Header Right: Year Selector Tabs & Manual Refresh */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        {c.stats && c.stats.available_years && c.stats.available_years.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              background: "rgba(255, 255, 255, 0.05)",
+              padding: "4px",
+              borderRadius: "12px",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            {c.stats.available_years.map((year) => {
+              const isActive = (c.selectedYear ?? c.currentYear) === year;
+              return (
+                <button
+                  key={year}
+                  onClick={() => c.setSelectedYear(year === c.currentYear ? undefined : year)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: isActive
+                      ? "linear-gradient(135deg, var(--accent), #866760)"
+                      : "transparent",
+                    color: isActive ? "#e8d8c9" : "rgba(255, 255, 255, 0.6)",
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "transform 0.15s ease, opacity 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {year < c.currentYear && <Archive size={14} />}
+                  <span>{year === c.currentYear ? `${year} (Current)` : year}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          onClick={() => c.loadStats(true)}
+          disabled={c.isLoading || c.isRefreshing}
+          style={{
+            padding: "7px 14px",
+            borderRadius: "10px",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            background: "rgba(255, 255, 255, 0.06)",
+            color: "#e8d8c9",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            transition: "transform 0.15s ease, opacity 0.15s ease",
+          }}
+          title="Refresh listening stats"
+        >
+          <RotateCw size={14} className={c.isRefreshing ? "spin-animation" : ""} />
+        </button>
+      </div>
+    </div>
+  );
+}
