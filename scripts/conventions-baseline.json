@@ -114,7 +114,7 @@
       "smells": 1
     },
     "src-tauri/src/recommendations/taste.rs": {
-      "lines": 621,
+      "lines": 488,
       "smells": 1
     },
     "src-tauri/src/tray.rs": {

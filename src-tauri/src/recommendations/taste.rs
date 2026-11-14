@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use std::collections::HashMap;
 
+mod curves;
+mod rows;
+
+pub(crate) use curves::saturate;
+use curves::*;
+
 /// Represents the user's computed musical affinities across artists, genres, and eras.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TasteProfile {
@@ -65,99 +71,11 @@ impl TasteProfile {
     }
 }
 
-/// Saturation constants: raw evidence needed to reach ~63% affinity.
-const ARTIST_K: f64 = 3.0;
-const GENRE_K: f64 = 4.0;
-const STYLE_K: f64 = 4.0;
-const PLAYLIST_TRACK_BONUS: f64 = 0.5;
-
-/// Absolute, confidence-aware curve: a couple of listens stay modest, broad
-/// sustained engagement approaches 1.0. Negative evidence maps to 0.
-pub(crate) fn saturate(raw: f64, k: f64) -> f64 {
-    if raw <= 0.0 {
-        0.0
-    } else {
-        (1.0 - (-raw / k).exp()).clamp(0.0, 1.0)
-    }
-}
-
-/// Per-song contribution to the artist: log-damped when positive, so replays
-/// matter less than variety; skips stay linear. One song alone can never
-/// carry an artist past ~0.5 affinity, however often it is replayed.
-const MAX_TRACK_ARTIST_RAW: f64 = 2.0;
-fn damp_track(net: f64) -> f64 {
-    if net > 0.0 {
-        net.ln_1p().min(MAX_TRACK_ARTIST_RAW)
-    } else {
-        net
-    }
-}
-
-/// Adds shared-library priors only to keys that already carry positive
-/// user-specific evidence (listening, likes, playlists).
-fn amplify_known(
-    short: &mut HashMap<String, f64>,
-    long: &mut HashMap<String, f64>,
-    priors: HashMap<String, f64>,
-) {
-    for (key, prior) in priors {
-        let known = short.get(&key).is_some_and(|v| *v > 0.0)
-            || long.get(&key).is_some_and(|v| *v > 0.0);
-        if known {
-            *short.entry(key.clone()).or_default() += prior;
-            *long.entry(key).or_default() += prior;
-        }
-    }
-}
-
-/// Small, log-saturating prior for owned / saved songs.
-fn library_prior(count: f64) -> f64 {
-    (0.6 * count.ln_1p()).min(1.5)
-}
-
-fn decade_of(year: Option<i64>) -> Option<String> {
-    year.filter(|year| *year > 1900 && *year <= 2030)
-        .map(|year| format!("{}0s", year / 10))
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntityAffinity {
     pub id_or_name: String,
     pub display_name: String,
     pub affinity: f64,
-}
-
-#[derive(Debug, FromRow)]
-#[allow(dead_code)]
-struct HistorySessionRow {
-    track_id: String,
-    artist_id: Option<String>,
-    artist_name: Option<String>,
-    genre_name: Option<String>,
-    year: Option<i64>,
-    started_at: i64,
-    duration_secs: f64,
-    seconds_listened: f64,
-    skipped: i64,
-}
-
-#[derive(Debug, FromRow)]
-#[allow(dead_code)]
-struct FeedbackRow {
-    track_id: String,
-    artist_id: Option<String>,
-    artist_name: Option<String>,
-    genre_name: Option<String>,
-    manual_like: i64,
-}
-
-#[derive(Debug, FromRow)]
-struct PriorRow {
-    track_id: String,
-    artist_id: Option<String>,
-    artist_name: Option<String>,
-    genre_name: Option<String>,
-    from_playlist: i64,
 }
 
 pub struct TasteProfileEngine {
@@ -182,42 +100,10 @@ impl TasteProfileEngine {
         let short_term_cutoff = now - (14 * 86400); // 14 days
 
         // Query listening history joined with track, artist, and genre for this specific user
-        let rows = sqlx::query_as::<_, HistorySessionRow>(
-            "SELECT h.track_id, t.artist_id, a.name as artist_name, COALESCE(g.name, e.genre) as genre_name,
-                    t.year, h.started_at, COALESCE(t.duration_secs,0) as duration_secs, h.seconds_listened, h.skipped
-             FROM playback_history h
-             JOIN tracks t ON t.id = h.track_id
-             LEFT JOIN artists a ON a.id = t.artist_id
-             LEFT JOIN genres g ON g.id = t.genre_id
-             LEFT JOIN external_tracks e ON e.id = t.id
-             WHERE h.user_id = ?
-             ORDER BY h.started_at ASC"
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let rows = rows::history(&self.pool, user_id).await?;
 
         // Query user explicit feedback (likes / dislikes) from track_statistics for this specific user
-        let feedback_rows = sqlx::query_as::<_, FeedbackRow>(
-            "SELECT ts.track_id, t.artist_id, a.name as artist_name, COALESCE(g.name, e.genre) as genre_name, ts.manual_like
-             FROM track_statistics ts
-             JOIN tracks t ON t.id = ts.track_id
-             LEFT JOIN artists a ON a.id = t.artist_id
-             LEFT JOIN genres g ON g.id = t.genre_id
-             LEFT JOIN external_tracks e ON e.id = t.id
-             WHERE ts.user_id = ?
-             UNION
-             SELECT t.id,t.artist_id,a.name,COALESCE(g.name,e.genre),1
-             FROM playlist_tracks pt JOIN playlists p ON p.id=pt.playlist_id JOIN tracks t ON t.id=pt.track_id
-             LEFT JOIN artists a ON a.id=t.artist_id LEFT JOIN genres g ON g.id=t.genre_id LEFT JOIN external_tracks e ON e.id=t.id
-             WHERE p.user_id=? AND p.name='Liked Songs' AND p.is_smart_mix=0
-               AND NOT EXISTS(SELECT 1 FROM track_statistics ts WHERE ts.track_id=t.id AND ts.user_id=p.user_id AND ts.manual_like!=0)"
-        )
-        .bind(user_id).bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let feedback_rows = rows::feedback(&self.pool, user_id).await?;
 
         // Listening is aggregated per (artist, song) first. An artist's raw score
         // is the sum of log-damped per-song scores, so replaying one song grows
@@ -390,26 +276,7 @@ impl TasteProfileEngine {
         let mut artist_owned_count: HashMap<String, f64> = HashMap::new();
         let mut genre_playlist_count: HashMap<String, f64> = HashMap::new();
         let mut language_playlist_count: HashMap<String, f64> = HashMap::new();
-        let library_rows = sqlx::query_as::<_, PriorRow>(
-            "SELECT t.id as track_id, t.artist_id, a.name as artist_name, g.name as genre_name, 0 as from_playlist
-             FROM tracks t
-             LEFT JOIN artists a ON a.id = t.artist_id
-             LEFT JOIN genres g ON g.id = t.genre_id
-             WHERE t.format != 'online' AND t.file_path NOT LIKE 'online://%'
-             UNION ALL
-             SELECT DISTINCT t.id, t.artist_id, a.name, COALESCE(g.name, e.genre), 1
-             FROM playlist_tracks pt
-             JOIN playlists p ON p.id = pt.playlist_id
-             JOIN tracks t ON t.id = pt.track_id
-             LEFT JOIN artists a ON a.id = t.artist_id
-             LEFT JOIN genres g ON g.id = t.genre_id
-             LEFT JOIN external_tracks e ON e.id = t.id
-             WHERE p.user_id = ? AND p.is_smart_mix = 0 AND p.name != 'Liked Songs'",
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let library_rows = rows::priors(&self.pool, user_id).await?;
         let mut playlist_seen = std::collections::HashSet::new();
         for row in &library_rows {
             if row.from_playlist != 0 && !playlist_seen.insert(row.track_id.clone()) {
