@@ -242,7 +242,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = React.memo(
             </p>
           </div>
         </div>
-        <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
+        <PagingFeedback loading={loading && albums.length === 0} error={pagingError} onRetry={onRetry} />
         {!albums.length && !loading && !pagingError ? (
           <p className="interface-empty">
             Your record shelf is waiting. Add a music folder in Settings and

@@ -1298,7 +1298,11 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   grid-template-columns: 30px minmax(150px, 2fr) minmax(95px, 1fr) minmax(
       95px,
       1fr
-    ) 50px 56px 110px !important;
+    ) 50px 56px var(--library-actions-width, 110px) !important;
+}
+/* Downloads rows add the download ✓: four action icons need a wider column. */
+.kaze-interface .library-view[data-download-controls] {
+  --library-actions-width: 156px;
 }
 @media (max-width: 1100px) {
   .kaze-interface .library-view .track-row,
@@ -1306,7 +1310,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     grid-template-columns: 26px minmax(140px, 2fr) minmax(
         85px,
         1fr
-      ) 0 44px 48px 106px !important;
+      ) 0 44px 48px var(--library-actions-width, 106px) !important;
     padding-left: 6px !important;
     padding-right: 6px !important;
     font-size: 12px !important;

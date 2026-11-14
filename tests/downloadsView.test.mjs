@@ -24,8 +24,15 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
   assert.match(view, /onToggleShuffle/);
   // Header and rows share one grid template with a column gap (no overlap).
   assert.equal((view.match(/gridTemplateColumns: libraryGridColumns\(downloadControls\)/g) ?? []).length, 2);
-  // The actions column is wider when the download button adds a fourth icon.
-  assert.match(view, /downloadControls \? 164 : 120/);
+  // The actions column is wider when the download button adds a fourth icon:
+  // the interface CSS (which overrides inline grids) reads one variable.
+  assert.match(view, /data-download-controls=\{downloadControls \? "true" : undefined\}/);
+  const css = read("src/presentation/interfaces.css");
+  assert.equal((css.match(/56px var\(--library-actions-width, 110px\) !important/g) ?? []).length, 1);
+  assert.match(css, /48px var\(--library-actions-width, 106px\) !important/);
+  assert.match(css, /\.library-view\[data-download-controls\] \{\s*--library-actions-width: 156px;/);
+  // Refreshing with rows on screen shows no "Loading music…" line (no jump).
+  assert.match(view, /<PagingFeedback loading=\{loading && tracks\.length === 0\}/);
   assert.match(view, /columnGap: "12px"/);
 });
 

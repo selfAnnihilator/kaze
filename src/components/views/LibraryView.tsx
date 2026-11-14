@@ -49,8 +49,8 @@ const formatSeconds = (secs: number) => {
 
 const ROW_HEIGHT = 48;
 const LIBRARY_GRID_BASE = "48px minmax(180px, 2fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) 84px 70px";
-/** The actions column fits three icons, or four with the download button. */
-const libraryGridColumns = (downloadControls?: boolean) => `${LIBRARY_GRID_BASE} ${downloadControls ? 164 : 120}px`;
+/** The actions column width comes from `--library-actions-width` (wider with the download button; see interfaces.css). */
+const libraryGridColumns = (downloadControls?: boolean) => `${LIBRARY_GRID_BASE} var(--library-actions-width, ${downloadControls ? 156 : 120}px)`;
 
 type LibraryRowProps = {
   tracks: Track[];
@@ -318,7 +318,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
 
     return (
       <div
-        className="library-view" aria-busy={loading}
+        className="library-view" aria-busy={loading} data-download-controls={downloadControls ? "true" : undefined}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -391,7 +391,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
           </div>
         </div>
 
-        <PagingFeedback loading={loading} error={pagingError} onRetry={onRetry} />
+        {/* Background refreshes keep the rows on screen: no loading line, no jump. */}
+        <PagingFeedback loading={loading && tracks.length === 0} error={pagingError} onRetry={onRetry} />
         {tracks.length === 0 && !loading && !pagingError ? (
           <div
             style={{
