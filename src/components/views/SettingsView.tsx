@@ -5,7 +5,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type FormEvent,
 } from "react";
 import {
   ArrowLeft,
@@ -13,27 +12,23 @@ import {
   Check,
   Database,
   Folder,
-  FolderPlus,
   LogOut,
-  RefreshCw,
-  Trash2,
   Download,
 } from "lucide-react";
 import type {
   AppSettings,
-  RemoteAudioCacheStats,
   UserProfile,
 } from "../../types";
-import { dispatchCommand, executeQuery } from "../../services/api";
+import { dispatchCommand } from "../../services/api";
 import type { InterfaceStyle } from "../../presentation/InterfaceContext";
-import { WindowedList } from "../../presentation/WindowedList";
 import { useViewMemory } from "../../presentation/ViewMemory";
 import { MetadataSettings } from "../MetadataSettings";
 import { EntityFeedbackSettings } from "../EntityFeedbackSettings";
 import { StartupSettings } from "../StartupSettings";
+import { FolderSettings, type MusicFolder } from "./settings/FolderSettings";
+import { StorageSettings } from "./settings/StorageSettings";
 
 type Section = "main" | "folders" | "system" | "taste";
-type MusicFolder = { id: string; path: string; track_count?: number };
 interface SettingsViewProps {
   onRecommendationSetupSaved?: () => void;
   interfaceStyle: InterfaceStyle;
@@ -51,24 +46,6 @@ interface SettingsViewProps {
   onOpenAuthModal: () => void;
   isScanning?: boolean;
 }
-function cacheSnapshot(response: unknown): RemoteAudioCacheStats {
-  const raw = response as {
-    data?: RemoteAudioCacheStats;
-    total_size_bytes?: number;
-  } | null;
-  const value = (raw?.data || raw) as RemoteAudioCacheStats | null;
-  if (
-    !value ||
-    typeof value.total_size_bytes !== "number" ||
-    typeof value.file_count !== "number"
-  )
-    throw new Error("Cache information unavailable");
-  return value;
-}
-const size = (bytes: number) =>
-  bytes >= 1024 ** 3
-    ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
-    : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 
 export const SettingsView = memo(function SettingsView({
   onRecommendationSetupSaved,
@@ -91,20 +68,12 @@ export const SettingsView = memo(function SettingsView({
     section: "main" as Section,
   }));
   const [section, setSection] = useState<Section>(memory.section);
-  const [newFolderPath, setNewFolderPath] = useState("");
-  const [folderBusy, setFolderBusy] = useState<string | null>(null);
-  const [folderError, setFolderError] = useState<string | null>(null);
   const [closeBehavior, setCloseBehavior] = useState(
     settings?.close_button_behavior ?? "minimize_to_tray",
   );
   const [savingClose, setSavingClose] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
   const closeRequest = useRef(false);
-  const [cache, setCache] = useState<RemoteAudioCacheStats | null>(null);
-  const [cacheLoading, setCacheLoading] = useState(false);
-  const [cacheError, setCacheError] = useState<string | null>(null);
-  const [cacheMessage, setCacheMessage] = useState<string | null>(null);
-  const [clearingCache, setClearingCache] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutChoiceOpen, setLogoutChoiceOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -146,30 +115,6 @@ export const SettingsView = memo(function SettingsView({
     focusSection.current = true;
     setSection(next);
   };
-  useEffect(() => {
-    if (section !== "system") return;
-    let cancelled = false;
-    setCacheLoading(true);
-    setCache(null);
-    setCacheError(null);
-    executeQuery({ query: "GetRemoteAudioCacheStats" })
-      .then((response) => {
-        const value = cacheSnapshot(response);
-        if (!cancelled) setCache(value);
-      })
-      .catch(() => {
-        if (!cancelled)
-          setCacheError(
-            "Couldn't load storage usage. Reopen this section to try again.",
-          );
-      })
-      .finally(() => {
-        if (!cancelled) setCacheLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [section]);
 
   const saveCloseBehavior = async (
     behavior: "minimize_to_tray" | "quit_app",
@@ -198,59 +143,6 @@ export const SettingsView = memo(function SettingsView({
       setSavingClose(false);
     }
   };
-  const folderAction = async (
-    key: string,
-    action: () => Promise<void>,
-    message: string,
-  ) => {
-    if (folderBusy) return;
-    setFolderBusy(key);
-    setFolderError(null);
-    try {
-      await action();
-    } catch {
-      setFolderError(message);
-    } finally {
-      setFolderBusy(null);
-    }
-  };
-  const addFolder = (event: FormEvent) => {
-    event.preventDefault();
-    if (!newFolderPath.trim()) return;
-    void folderAction(
-      "add",
-      async () => {
-        await onAddFolder(newFolderPath.trim());
-        setNewFolderPath("");
-      },
-      "Couldn't add this folder. Check the path and try again.",
-    );
-  };
-  const clearCache = async () => {
-    if (clearingCache) return;
-    setClearingCache(true);
-    setCacheError(null);
-    setCacheMessage(null);
-    try {
-      await dispatchCommand({ command: "ClearRemoteAudioCache" });
-      setCacheMessage("Temporary audio cleared. Tracks in use stay available.");
-      try {
-        setCache(
-          cacheSnapshot(
-            await executeQuery({ query: "GetRemoteAudioCacheStats" }),
-          ),
-        );
-      } catch {
-        setCacheError(
-          "Cache cleared, but usage couldn't refresh. Reopen this section to check it.",
-        );
-      }
-    } catch {
-      setCacheError("Couldn't clear temporary audio. Please try again.");
-    } finally {
-      setClearingCache(false);
-    }
-  };
   const logOut = async (scope: "device" | "all") => {
     if (logoutRequest.current) return;
     logoutRequest.current = true;
@@ -270,30 +162,6 @@ export const SettingsView = memo(function SettingsView({
       setLoggingOut(false);
     }
   };
-  const folderRow = (folder: MusicFolder) => (
-    <div className="settings-folder">
-      <Folder size={20} aria-hidden="true" />
-      <div>
-        <strong title={folder.path}>{folder.path}</strong>
-        <span>{folder.track_count ?? 0} tracks</span>
-      </div>
-      <button
-        className="settings-icon-action"
-        type="button"
-        aria-label={`Remove folder ${folder.path}`}
-        disabled={!!folderBusy}
-        onClick={() =>
-          void folderAction(
-            folder.id,
-            () => onRemoveFolder(folder.id),
-            "Couldn't remove this folder. Please try again.",
-          )
-        }
-      >
-        <Trash2 size={17} />
-      </button>
-    </div>
-  );
   const title =
     section === "main"
       ? "Settings"
@@ -559,116 +427,17 @@ export const SettingsView = memo(function SettingsView({
           </section>
         </div>
       ) : section === "taste" ? (<MusicTaste userId={currentUser?.id || "default"} key={currentUser?.id || "default"} onSaved={() => { onRecommendationSetupSaved?.(); openSection("main"); }} />) : section === "folders" ? (
-        <section
-          className="settings-detail"
-          aria-label="Music Folders settings"
-        >
-          <div className="settings-detail-intro">
-            <p>Choose where Kaze finds your music.</p>
-            <button
-              type="button"
-              className="settings-action"
-              disabled={isScanning || !!folderBusy}
-              onClick={() =>
-                void folderAction(
-                  "scan",
-                  onRescanLibrary,
-                  "Couldn't scan your library. Please try again.",
-                )
-              }
-            >
-              <RefreshCw
-                size={16}
-                className={isScanning ? "spin-animation" : undefined}
-              />
-              {isScanning ? "Scanning…" : "Rescan Library"}
-            </button>
-          </div>
-          {configuredFolders.length > 50 ? (
-            <WindowedList
-              items={configuredFolders}
-              rowHeight={88}
-              label="Music folders"
-              renderItem={folderRow}
-            />
-          ) : (
-            <div className="settings-folder-list">
-              {configuredFolders.length ? (
-                configuredFolders.map((folder) => (
-                  <div key={folder.id}>{folderRow(folder)}</div>
-                ))
-              ) : (
-                <p className="settings-hint">
-                  Add a folder to start your library.
-                </p>
-              )}
-            </div>
-          )}
-          <form onSubmit={addFolder} className="settings-folder-form">
-            <label htmlFor="settings-folder-path">Folder path</label>
-            <input
-              id="settings-folder-path"
-              value={newFolderPath}
-              onChange={(event) => setNewFolderPath(event.target.value)}
-              placeholder="/path/to/your/music"
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              className="settings-action settings-action--primary"
-              disabled={!!folderBusy || !newFolderPath.trim()}
-            >
-              <FolderPlus size={17} />
-              {folderBusy === "add" ? "Adding…" : "Add Folder"}
-            </button>
-          </form>
-          {folderError && <p role="alert">{folderError}</p>}
-        </section>
+        <FolderSettings
+          configuredFolders={configuredFolders}
+          isScanning={isScanning}
+          onAddFolder={onAddFolder}
+          onRemoveFolder={onRemoveFolder}
+          onRescanLibrary={onRescanLibrary}
+        />
       ) : (
-        <section
-          className="settings-detail"
-          aria-label="System & Storage settings"
-        >
-          <div className="settings-storage-summary">
-            <span className="settings-eyebrow">TEMPORARY AUDIO</span>
-            <strong>
-              {cacheLoading
-                ? "Loading…"
-                : cache
-                  ? size(cache.total_size_bytes)
-                  : "Unavailable"}
-            </strong>
-            {cache && (
-              <p>
-                {cache.file_count} cached{" "}
-                {cache.file_count === 1 ? "track" : "tracks"}
-                {cache.max_size_bytes > 0
-                  ? ` · ${size(cache.max_size_bytes)} limit`
-                  : ""}
-              </p>
-            )}
-          </div>
-          <div className="settings-storage-action">
-            <div>
-              <h2>Clear temporary audio</h2>
-              <p>
-                Free up space. Your music files and playlists stay in place.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="settings-action"
-              disabled={clearingCache || cacheLoading}
-              onClick={() => void clearCache()}
-            >
-              <Trash2 size={16} />
-              {clearingCache ? "Clearing…" : "Clear Cache"}
-            </button>
-          </div>
-          {cacheMessage && <p role="status">{cacheMessage}</p>}
-          {cacheError && <p role="alert">{cacheError}</p>}
-        </section>
+        <StorageSettings />
       )}
+
     </div>
   );
 });

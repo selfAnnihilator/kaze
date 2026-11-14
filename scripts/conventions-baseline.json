@@ -186,8 +186,8 @@
       "smells": 2
     },
     "src/components/views/SettingsView.tsx": {
-      "lines": 675,
-      "smells": 4
+      "lines": 444,
+      "smells": 2
     },
     "src/components/views/StatsView.tsx": {
       "lines": 226,
@@ -451,6 +451,10 @@
     },
     "src/hooks/app/usePlayDiscoveredCollection.ts": {
       "lines": 189,
+      "smells": 1
+    },
+    "src/components/views/settings/StorageSettings.tsx": {
+      "lines": 119,
       "smells": 1
     }
   }
