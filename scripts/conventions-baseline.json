@@ -46,8 +46,8 @@
       "smells": 2
     },
     "src-tauri/src/downloads/service.rs": {
-      "lines": 575,
-      "smells": 2
+      "lines": 374,
+      "smells": 1
     },
     "src-tauri/src/history/service.rs": {
       "lines": 437,
@@ -447,6 +447,10 @@
     },
     "src-tauri/src/cloud/sync_manager/outgoing.rs": {
       "lines": 331,
+      "smells": 1
+    },
+    "src-tauri/src/downloads/service/transfers.rs": {
+      "lines": 205,
       "smells": 1
     }
   }
