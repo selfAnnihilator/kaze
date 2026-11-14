@@ -182,8 +182,8 @@
       "smells": 5
     },
     "src/components/views/DiscoveryView.tsx": {
-      "lines": 1630,
-      "smells": 2
+      "lines": 535,
+      "smells": 1
     },
     "src/components/views/DownloadsView.tsx": {
       "lines": 61,
@@ -399,6 +399,10 @@
     },
     "src/components/views/stats/TopSongsArtists.tsx": {
       "lines": 195,
+      "smells": 1
+    },
+    "src/components/views/discovery/DiscoveryTrackCard.tsx": {
+      "lines": 356,
       "smells": 1
     }
   }

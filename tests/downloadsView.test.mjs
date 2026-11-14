@@ -62,7 +62,7 @@ test("download controls follow only Kaze's own downloads; local songs have none"
     assert.doesNotMatch(read(file), /downloaded=\{!!\w+\.local_copy\}|downloaded=\{!!track\.is_downloaded\}/, file);
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && \(kind !== false \|\| kazeDownload\) && <DownloadButton/);
   assert.match(read("src/components/views/CollectionDetailView.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
-  assert.match(read("src/components/views/DiscoveryView.tsx"), /!isLocalTrack && <DownloadButton/);
+  assert.match(read("src/components/views/discovery/DiscoveryTrackCard.tsx"), /!isLocalTrack && <DownloadButton/);
 });
 
 test("Local and Downloads lists request their own section from the backend", () => {
