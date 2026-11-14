@@ -457,7 +457,7 @@ fn jiosaavn_track(source: &str) -> music_player_backend::providers::ExternalTrac
 }
 
 #[tokio::test]
-async fn completed_download_with_deleted_file_becomes_missing_and_can_download_again() -> AppResult<()> {
+async fn completed_download_with_deleted_file_leaves_downloads_and_can_download_again() -> AppResult<()> {
     let pool = setup_test_db().await;
     let directory = tempdir().unwrap();
     let service = recovery_service(pool.clone(), directory.path().into());
@@ -467,8 +467,7 @@ async fn completed_download_with_deleted_file_becomes_missing_and_can_download_a
     std::fs::remove_file(task.destination_path.as_deref().unwrap()).unwrap();
 
     let rows = service.list_downloads(None, 100).await?;
-    let row = rows.iter().find(|r| r.id == task.id).unwrap();
-    assert_eq!(row.status, "MISSING", "a vanished file must not stay downloaded");
+    assert!(rows.iter().all(|r| r.id != task.id), "a deleted file simply leaves Downloads");
 
     let again = service.download_track(&jiosaavn_track("gone1234")).await?;
     assert_ne!(again.id, task.id);

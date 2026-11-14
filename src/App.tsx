@@ -147,7 +147,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     wishlist, setWishlist, fetchWishlist, handleAddMissingToWishlist, handleAddToWishlist, handleUpdateWishlistStatus,
   } = useWishlist({ libraryAccountRef });
   const {
-    downloads, setDownloads, fetchDownloads, handleSearchDownloads, handleStartDownload, handleCancelDownload,
+    downloads, setDownloads, fetchDownloads,
   } = useDownloads({ libraryAccountRef });
 
   const {
@@ -235,7 +235,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   // Local Library and Kaze Downloads: each plays as its own ordered list.
   const { localPlayback, downloadsPlayback: kazeDownloadsPlayback, downloadsPage, downloadsListState } = useDownloadsSection({
     playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads,
-    userId: currentUser?.id || "default", navigation: destination.view,
+    userId: currentUser?.id || "default", navigation: destination.view, query: destination.libraryQuery, downloadsDir: settings.downloads?.resolved_dir,
   });
   const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle } = localPlayback;
 
@@ -391,8 +391,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                 refreshPersonalRecommendations, handlePlayOnlineTrack, handleStopTrack, handlePlayDiscoveredCollection,
                 downloads, globalSearchQuery, setGlobalSearchQuery, currentSearchResults, setGlobalSearchResults,
                 isGlobalSearching, handleGlobalOnlineSearch, handleGlobalClearSearch, interfacePreference, queueEntries,
-                handlePlayQueueIndex, handleDequeueTrack, handleClearQueue, handleSearchDownloads, handleStartDownload,
-                handleCancelDownload, fetchDownloads, settings, downloadsPage, kazeDownloadsPlayback, downloadsListState,
+                handlePlayQueueIndex, handleDequeueTrack, handleClearQueue,
+                fetchDownloads, settings, downloadsPage, kazeDownloadsPlayback, downloadsListState,
                 wishlist, handleUpdateWishlistStatus, notifications, clearAllNotifications, deleteNotification,
                 markAllNotificationsAsRead, markNotificationAsRead, fetchStatsOverview, statsRefreshTrigger, setCurrentUser,
                 handleTasteSaved, handleLogout, onboardingStatus, handleAddFolder, handleRemoveFolder, fetchSettings,

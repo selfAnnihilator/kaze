@@ -78,6 +78,12 @@ impl DownloadService {
                 Err(e) => return Err(AppError::Io(format!("Couldn't delete {path}: {e}"))),
             }
         }
+        self.forget(task).await
+    }
+
+    /// Drops a download whose file is gone: its library row is handed to the
+    /// online song, then the record is deleted.
+    pub(super) async fn forget(&self, task: &DownloadTaskRecord) -> AppResult<Option<(String, String)>> {
         let released = self.release(task).await?;
         self.repo.delete_task(&task.id).await?;
         Ok(released)

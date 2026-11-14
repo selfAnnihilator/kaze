@@ -7,7 +7,7 @@ import { BrutalistPoster } from "../../../presentation/BrutalistPoster";
 import { PlaybackStage } from "../../../presentation/PlaybackStage";
 import { QueueView } from "../../../presentation/QueueView";
 import { viewDestination } from "../../../navigationHistory";
-import { DiscoveryView, DownloadsView, NotificationsView, StatsView, WishlistView } from "./lazyViews";
+import { DiscoveryView, NotificationsView, StatsView, WishlistView } from "./lazyViews";
 
 /** Discovery, playback, downloads, profile and settings views, by route. */
 export const OTHER_VIEWS: Partial<Record<ViewType, (c: AppViewsContext) => ReactNode>> = {
@@ -96,49 +96,43 @@ export const OTHER_VIEWS: Partial<Record<ViewType, (c: AppViewsContext) => React
           onClear={c.handleClearQueue}
         />
       ),
+  // Same list as Local, for the songs Kaze saved in its own folder.
   downloads: (c) =>
     (
-        <DownloadsView
-          downloads={c.downloads}
-          onSearchDownloads={c.handleSearchDownloads}
-          onStartDownload={c.handleStartDownload}
-          onCancelDownload={c.handleCancelDownload}
-          onRefreshDownloads={c.fetchDownloads}
-          folder={c.settings.downloads?.resolved_dir}
-          songs={
-            <LibraryView
-              tracks={c.downloadsPage.items}
-              total={c.downloadsPage.total}
-              onEndReached={c.downloadsPage.next}
-              loading={c.downloadsPage.loading}
-              pagingError={c.downloadsPage.error}
-              onRetry={c.downloadsPage.retry}
-              currentTrackId={c.playbackState.current_track?.id}
-              isPlaying={c.playbackState.is_playing}
-              queuedTrackIds={c.queuedTrackIds}
-              onPlayTrack={c.kazeDownloadsPlayback.handleLibraryRowPlay}
-              onPlayAll={c.kazeDownloadsPlayback.handleLibraryPlayAll}
-              listState={c.downloadsListState}
-              shuffleEnabled={c.kazeDownloadsPlayback.libraryShuffle}
-              onToggleShuffle={c.kazeDownloadsPlayback.handleLibraryToggleShuffle}
-              loadingTrackId={c.loadingTrackId}
-              onEnqueueTrack={c.handleEnqueueTrack}
-              onLikeTrack={c.handleLike}
-              onRemoveFeedback={c.handleRemoveFeedback}
-              trackPlaylistMap={c.regularTrackPlaylistMap}
-              likedTrackIds={c.likedTrackIds}
-              downloadControls
-              emptyTitle="No downloaded songs yet"
-              emptyHint="Use the download button on any online song. It is saved to Kaze's folder and appears here."
-              onOpenAddToPlaylistModal={(t) =>
-                c.handleOpenAddToPlaylistModal({
-                  id: t.id,
-                  title: t.title,
-                  artist: t.artist_name,
-                  album: t.album_title,
-                })
-              }
-            />
+        <LibraryView
+          tracks={c.downloadsPage.items}
+          total={c.downloadsPage.total}
+          onEndReached={c.downloadsPage.next}
+          loading={c.downloadsPage.loading}
+          pagingError={c.downloadsPage.error}
+          onRetry={c.downloadsPage.retry}
+          currentTrackId={c.playbackState.current_track?.id}
+          isPlaying={c.playbackState.is_playing}
+          queuedTrackIds={c.queuedTrackIds}
+          onPlayTrack={c.kazeDownloadsPlayback.handleLibraryRowPlay}
+          onPlayAll={c.kazeDownloadsPlayback.handleLibraryPlayAll}
+          listState={c.downloadsListState}
+          shuffleEnabled={c.kazeDownloadsPlayback.libraryShuffle}
+          onToggleShuffle={c.kazeDownloadsPlayback.handleLibraryToggleShuffle}
+          loadingTrackId={c.loadingTrackId}
+          onEnqueueTrack={c.handleEnqueueTrack}
+          onLikeTrack={c.handleLike}
+          onRemoveFeedback={c.handleRemoveFeedback}
+          onRescan={() => void c.fetchDownloads()}
+          onSearch={c.handleSearchLibrary}
+          searchQuery={c.destination.libraryQuery}
+          trackPlaylistMap={c.regularTrackPlaylistMap}
+          likedTrackIds={c.likedTrackIds}
+          downloadControls
+          emptyTitle="No downloaded songs yet"
+          emptyHint="Use the download button on any online song. It is saved to Kaze's folder and appears here."
+          onOpenAddToPlaylistModal={(t) =>
+            c.handleOpenAddToPlaylistModal({
+              id: t.id,
+              title: t.title,
+              artist: t.artist_name,
+              album: t.album_title,
+            })
           }
         />
       ),

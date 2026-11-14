@@ -237,7 +237,7 @@ async fn deleting_a_file_in_the_kaze_folder_updates_everything_at_once() -> AppR
     })
     .await;
     assert!(changed.is_ok(), "the UI is told without any refresh or polling");
-    assert_eq!(f.repo.get_task_by_id(&task.id).await?.unwrap().status, "MISSING");
+    assert!(f.repo.get_task_by_id(&task.id).await?.is_none(), "a deleted file leaves no record");
     assert!(
         f.library.track_repo().find_by_path(&canon).await?.is_none(),
         "the deleted song leaves the Downloads list"
@@ -371,12 +371,26 @@ async fn a_download_deleted_outside_kaze_keeps_its_likes_on_the_online_song() ->
     std::fs::remove_file(&file).unwrap();
     f.service.sync_folder().await?;
 
-    assert_eq!(f.repo.get_task_by_id(&task.id).await?.unwrap().status, "MISSING");
+    assert!(f.repo.get_task_by_id(&task.id).await?.is_none(), "a deleted file leaves no record");
     let online = "jiosaavn:gone1234";
     assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playlist_tracks WHERE track_id = ?", online).await, 1);
     assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playback_history WHERE track_id = ?", online).await, 1);
-    // Removing it now (file already gone) just clears the record.
-    f.service.remove_download(online, None).await?;
-    assert!(f.repo.get_task_by_id(&task.id).await?.is_none());
+    Ok(())
+}
+
+#[tokio::test]
+async fn records_an_older_kaze_marked_missing_are_cleared() -> AppResult<()> {
+    let root = tempdir().unwrap();
+    let kaze = root.path().join("Kaze");
+    std::fs::create_dir_all(&kaze).unwrap();
+    let pool = pool().await;
+    let f = service(&pool, &kaze);
+    let mut gone = completed("t-gone", "gone5678", &kaze.join("Artist - Song (gone5678).m4a"));
+    gone.status = "MISSING".into();
+    f.repo.create_task(&gone).await?;
+
+    f.service.sync_folder().await?;
+
+    assert!(f.repo.get_task_by_id("t-gone").await?.is_none(), "no 'File moved or deleted' entries remain");
     Ok(())
 }

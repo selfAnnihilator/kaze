@@ -98,27 +98,18 @@ impl DownloadService {
         Ok(())
     }
 
-    /// Completed records must point at a real file: mark vanished files MISSING
-    /// (dropping their stale library row) and restore ones that came back.
+    /// Completed records must point at a real file. A file deleted outside Kaze
+    /// simply leaves Downloads: its record goes and the song's likes, playlists
+    /// and history move to its online version. Records an older Kaze marked
+    /// MISSING are cleared the same way; a file that comes back is re-adopted.
     pub(super) async fn reconcile_files(&self) -> AppResult<()> {
         for status in ["COMPLETED", "MISSING"] {
             for task in self.repo.list_tasks(Some(status), 10000).await? {
-                let Some(path) = task.destination_path.as_deref() else { continue };
-                let present = Path::new(path).is_file();
-                if status == "COMPLETED" && !present {
-                    self.repo
-                        .update_status(&task.id, "MISSING", None, Some(MISSING_MESSAGE), task.completed_at)
-                        .await?;
-                    // Keep the song's likes, playlists and history on its online version.
-                    if let Err(error) = self.release(&task).await {
-                        warn!(%error, task_id = %task.id, "Could not release a missing download");
-                    }
-                    info!(task_id = %task.id, file = %path, "Downloaded file is missing");
-                } else if status == "MISSING" && present {
-                    self.repo
-                        .update_status(&task.id, "COMPLETED", None, None, task.completed_at)
-                        .await?;
+                if status == "COMPLETED" && file_exists(task.destination_path.as_deref()) {
+                    continue;
                 }
+                self.forget(&task).await?;
+                info!(task_id = %task.id, "Downloaded file is gone; removed it from Downloads");
             }
         }
         Ok(())

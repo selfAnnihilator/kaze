@@ -20,7 +20,6 @@ mod removal;
 
 use folder::{canonical_file, file_exists, in_folder, is_download_file, source_of};
 
-const MISSING_MESSAGE: &str = "File was moved or deleted. Download it again.";
 
 /// Everything needed to finish a transfer, shared by the service and its pollers.
 #[derive(Clone)]

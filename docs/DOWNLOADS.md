@@ -8,10 +8,11 @@ Kaze can save an online (JioSaavn) song for offline playback. Downloads are **Ka
 |---|---|
 | Starting | The download button on an online song calls `startDownload` (`services/downloadActions.ts`). The backend resolves the stream, writes `.<task>.part` in the Kaze folder, tags it (title, artist, album, cover, source id) and renames it into place. The task becomes `COMPLETED` with its `destination_path`. |
 | Folder | `<system Music folder>/Kaze`, for example `~/Music/Kaze`. `config.downloads.download_dir` overrides it. Settings shows the resolved path (`downloads.resolved_dir`). At startup, Kaze moves its own older downloads into the folder (`relocate_into_folder`). Library rows keep their ids, so history, likes and playlists stay attached. |
-| Live state | A `notify` watcher on the folder (500 ms debounce; dot-files such as `.part` and `.moving` are ignored) runs `sync_folder`: it adopts tagged files with no record, marks records whose file is gone, and emits `DownloadsChanged`. The frontend re-fetches downloads, the library pages and playlist memberships. |
+| Live state | A `notify` watcher on the folder (500 ms debounce; dot-files such as `.part` and `.moving` are ignored) runs `sync_folder`: it adopts tagged files with no record, removes records whose file is gone, and emits `DownloadsChanged`. The frontend re-fetches downloads, the library pages and playlist memberships. |
 | ✓ state | Exact ids only. `GetDownloads` rows (`downloads/rows.rs`) carry every id that shows the song: online aliases and the saved file's library row. The UI never guesses by title or artist. |
-| Local vs Downloads | Derived from paths, with no schema change. `LibraryScope::{Local, Downloads}` (`database/repositories/library_scope.rs`) filters by the Kaze folder prefix. The Library shows only the user's own folders; the Downloads view lists Kaze's songs. |
+| Local vs Downloads | Derived from paths, with no schema change. `LibraryScope::{Local, Downloads}` (`database/repositories/library_scope.rs`) filters by the Kaze folder prefix. The Local tab shows only the user's own folders. The Downloads tab is the same list view (`LibraryView`, with search, Play all, shuffle and rescan), but shows only Kaze's songs. There is no transfers table: progress shows on each song's download button. |
 | Removing | Clicking a downloaded ✓ opens a Yes/No popup (`services/confirmDialog.ts`, `ConfirmModal`). On Yes, `RemoveDownload` runs. `ensure_owned_files` refuses any file outside the Kaze folder. `release_to_online` then moves likes, playlist entries, history and statistics from the local row to the online song, deletes the local row and the file, and replaces queued copies with the online song. The song keeps working as a stream. |
+| Deleted outside Kaze | If a downloaded file is deleted in a file manager, its entry simply disappears. `reconcile_files` hands the library row to the online song (`forget` = `release_to_online`, then the record is deleted), so likes, playlists and history are kept. Older `MISSING` records are cleared the same way. If the file comes back, it is adopted again. |
 | Never | Kaze never moves or deletes files it didn't create, and never downloads without a user action. |
 
 ## Modules
@@ -26,11 +27,11 @@ Kaze can save an online (JioSaavn) song for offline playback. Downloads are **Ka
 | SQL (`relocate`, `release_to_online`) | `src-tauri/src/database/repositories/download_repo.rs` |
 | Processor commands (`StartDownload`, `CancelDownload`, `RemoveDownload`, `GetDownloads`) | `src-tauri/src/core/processor/downloads.rs` |
 | Frontend actions and state | `src/services/downloadActions.ts`, `src/services/downloadProgress.ts`, `src/hooks/useDownloadAction.ts` (`describeDownload`) |
-| UI | `src/components/DownloadButton.tsx`, `src/components/views/DownloadsView.tsx`, `src/hooks/app/useDownloadsSection.ts` |
+| UI | `src/components/DownloadButton.tsx`, the `downloads` route in `src/components/layout/appViews/otherViews.tsx`, `src/hooks/app/useDownloadsSection.ts`, `src/downloadsFolder.ts` |
 
 ## Data
 
-The `download_tasks` table: id, provider, title, artist, album, filename, `destination_path`, sizes, `status` (`QUEUED`, `DOWNLOADING`, `COMPLETED`, `FAILED`, `CANCELLED`, `MISSING`) and timestamps. The online source id is stored on the task and in the file's tags, which is how adoption works after a reinstall. No migration was added for any of the behaviour above (see [ADR 0031](adr/0031-additive-migrations-and-downgrade.md)).
+The `download_tasks` table: id, provider, title, artist, album, filename, `destination_path`, sizes, `status` (`QUEUED`, `DOWNLOADING`, `COMPLETED`, `FAILED`, `CANCELLED`; `MISSING` is legacy and is cleared on sync) and timestamps. The online source id is stored on the task and in the file's tags, which is how adoption works after a reinstall. No migration was added for any of the behaviour above (see [ADR 0031](adr/0031-additive-migrations-and-downgrade.md)).
 
 ## Tests
 

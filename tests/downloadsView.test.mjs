@@ -75,8 +75,9 @@ test("Local and Downloads lists request their own section from the backend", () 
   assert.match(library, /useLibraryPage<Album>\("GetLibraryAlbumsPage", \{ size: 100, [^\n]*scope: "local" \}\)/);
   assert.match(read("src/hooks/app/useDownloadsSection.ts"), /useLibraryPage<Track>\("GetLibraryTracksPage", \{ size: 200, [^\n]*scope: "downloads" \}\)/);
   assert.match(read("src/hooks/useLibraryPage.ts"), /\.\.\.\(scope \? \{ scope \} : \{\}\)/);
-  // Local search/album rows also leave out Kaze's folder.
-  assert.match(read("src/hooks/useScopedTracks.ts"), /!inDownloadsFolder\(t, downloadsDir\)/);
+  // Search/album rows: Local leaves out Kaze's folder, Downloads keeps only it.
+  assert.match(read("src/hooks/useScopedTracks.ts"), /\.filter\(\(t: Track\) => inSection\(t, downloadsDir, section\)\)/);
+  assert.match(read("src/hooks/app/useDownloadsSection.ts"), /useScopedTracks\(\{ account: userId, query, active: searching, downloadsDir, section: "downloads" \}\)/);
   // The folder watcher's event refreshes everything live.
   assert.match(read("src/hooks/app/backendEvents/libraryEvents.ts"), /case "DownloadsChanged":/);
 });
@@ -90,4 +91,24 @@ test("downloaded songs can be removed from the deck, the bar and the Downloads l
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /kind !== false \|\| kazeDownload/);
   assert.match(read("src/components/NowPlayingBar.tsx"), /isOnline \|\| isKazeDownload/);
   assert.match(read("src/hooks/app/backendEvents/libraryEvents.ts"), /case "DownloadsChanged":[\s\S]{0,200}fetchTrackPlaylistMemberships\(\)/);
+});
+
+test("a search splits songs between Local and Downloads by Kaze's folder", async () => {
+  const { inSection } = await import("../src/downloadsFolder.ts");
+  const dir = "/home/u/Music/Kaze/";
+  const kaze = { file_path: "/home/u/Music/Kaze/Artist - Song (abc).m4a" };
+  const mine = { file_path: "/home/u/Music/Kaze Old/Song.flac" };
+  assert.equal(inSection(kaze, dir, "downloads"), true);
+  assert.equal(inSection(kaze, dir, "local"), false);
+  assert.equal(inSection(mine, dir, "local"), true, "a sibling folder with the same prefix stays Local");
+  assert.equal(inSection(mine, dir, "downloads"), false);
+});
+
+test("the Downloads tab is the Local list for Kaze's songs, with no transfers table or search form", () => {
+  const views = read("src/components/layout/appViews/otherViews.tsx");
+  const route = views.slice(views.indexOf("  downloads: (c) =>"), views.indexOf("  wishlist: (c) =>"));
+  assert.match(route, /^\s+<LibraryView/m);
+  for (const prop of ["onSearch={c.handleSearchLibrary}", "searchQuery={c.destination.libraryQuery}", "onRescan=", "onPlayAll={c.kazeDownloadsPlayback.handleLibraryPlayAll}"])
+    assert.ok(route.includes(prop), prop);
+  assert.doesNotMatch(views, /DownloadsView|Transfers|Find a song to download/);
 });

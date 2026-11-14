@@ -22,7 +22,7 @@ export function useLibrary({ userId, destination, initialSettings, fetchOnboardi
   // The Library section is your own folders; Kaze's downloads have their own section.
   const trackPage = useLibraryPage<Track>("GetLibraryTracksPage", { size: 200, identity: userId, navigation: `${destination.view}:${destination.libraryAlbumId || ""}:${destination.libraryQuery || ""}`, scope: "local" });
   const albumPage = useLibraryPage<Album>("GetLibraryAlbumsPage", { size: 100, identity: userId, navigation: destination.view, scope: "local" });
-  const scoped = useScopedTracks(userId, destination.libraryAlbumId, destination.libraryQuery, destination.view === "library" && !destination.collection && !destination.lyrics, settings.downloads?.resolved_dir);
+  const scoped = useScopedTracks({ account: userId, album: destination.libraryAlbumId, query: destination.libraryQuery, active: destination.view === "library" && !destination.collection && !destination.lyrics, downloadsDir: settings.downloads?.resolved_dir });
   const scopedRefreshRef = useRef(scoped.refresh);
   scopedRefreshRef.current = scoped.refresh;
   const libraryScoped = Boolean(destination.libraryAlbumId || destination.libraryQuery);

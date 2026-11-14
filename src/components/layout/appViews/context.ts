@@ -5,7 +5,7 @@ import type { InterfaceStyle } from "../../../presentation/InterfaceContext";
 import type { PlaybackArtworkTrack, QueueEntry } from "../../../presentation/queuePresentation";
 import type { ViewType } from "../../../viewTypes";
 import type {
-  Album, AppNotification, AppSettings, DiscoveryRecommendation, DownloadSearchResult, DownloadTask, HomeOverview,
+  Album, AppNotification, AppSettings, DiscoveryRecommendation, DownloadTask, HomeOverview,
   JioSaavnPlaylistImport, OnboardingStatus, PlaybackState, Playlist, StatsOverview, Track, UserProfile, WishlistItem,
 } from "../../../types";
 
@@ -110,9 +110,6 @@ export interface AppViewsContext {
   handlePlayQueueIndex: (index: number) => void;
   handleDequeueTrack: (track_id: string) => void;
   handleClearQueue: () => void;
-  handleSearchDownloads: (artist: string, title: string, album?: string | undefined) => Promise<DownloadSearchResult[]>;
-  handleStartDownload: (search_result_id: string, wishlist_id?: string | undefined) => Promise<void>;
-  handleCancelDownload: (task_id: string) => Promise<void>;
   fetchDownloads: () => Promise<void>;
   settings: AppSettings;
   downloadsPage: { items: Track[]; setItems: Dispatch<SetStateAction<Track[]>>; total: number; loading: boolean; error: string | null; refresh: () => Promise<void> | undefined; next: () => void; retry: () => void; };
