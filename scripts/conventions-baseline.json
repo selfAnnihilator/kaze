@@ -118,8 +118,8 @@
       "smells": 3
     },
     "src-tauri/src/recommendations/mixes.rs": {
-      "lines": 1221,
-      "smells": 4
+      "lines": 194,
+      "smells": 3
     },
     "src-tauri/src/recommendations/scoring.rs": {
       "lines": 277,
@@ -444,6 +444,10 @@
     "src-tauri/src/discovery/coordinator/starters.rs": {
       "lines": 313,
       "smells": 3
+    },
+    "src-tauri/src/recommendations/mixes/online_tracks.rs": {
+      "lines": 205,
+      "smells": 1
     }
   }
 }
