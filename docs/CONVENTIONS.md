@@ -38,6 +38,33 @@ A new feature gets its **own file(s)**. Shared hubs only *wire* it in, with a fe
 - **Legacy files** listed in `scripts/conventions-baseline.json` are allowed above these limits, but they **may only shrink**. The audit fails if one grows in lines or smells. After you split a legacy file, record the files the legacy code moved into with `npm run audit:conventions -- --record <files>`. This also drops entries for deleted files. Use it only for moved legacy code, never for new feature code. Never raise a limit by hand.
 - No duplicated blocks (qlty duplication). Extract a shared helper or component instead.
 
+### Splitting an oversized file
+
+Use these patterns. Each split is a separate `refactor(…)` commit that changes no behaviour.
+
+**React view:**
+- Move each section into `src/components/views/<view>/<Section>.tsx`.
+- Sections read one typed `<View>Context` object (`<view>/context.ts`). The view builds it once, right before its `return`.
+  Examples: `stats/`, `discovery/`, `playlists/`, `searchResults/`, `collection/`, `layout/appViews/`.
+- Narrowing does not carry over into a section's callbacks:
+  - copy the value into a local `const` (`const topResult = c.topResult;`);
+  - or return `null` early (as `PlaylistDetailsModal` does);
+  - or call with `?.` inside a guard that already exists.
+- Move module-level subcomponents (cards, rows) into their own files.
+- A route switch becomes a renderer table, with a fragment keyed by the route. This keeps the remount-on-change behaviour.
+- Source-text tests (`tests/*.test.mjs`) must follow code that moves. Point them at the new file, or read the whole section folder.
+
+**Rust:**
+- Move method groups into child modules `<module>/<group>.rs`, each with `use super::*;` and its own `impl`. Methods shared between modules become `pub(super)`.
+- Move public types to `<module>/types.rs`, then `pub use types::*;` so existing paths keep working.
+- Moved code is one module deeper. A `super::x` path becomes `super::super::x`.
+- Inline tests become `<module>/tests.rs`, declared with `#[cfg(test)] mod tests;`. Their paths don't change.
+- A trait impl can't be split across files. Keep thin trait methods that call inherent `<name>_query` methods in child modules (`stats_repo/`).
+  - Never give the inherent method the trait method's name: callers outside the module would resolve to it and fail the privacy check.
+- zbus `#[interface]` methods may be `pub(super)`. Code that calls them must sit in the same module or a child module (`mpris/service/player.rs`).
+
+A single function over 500 lines (`flow/candidates.rs`, `coordinator/for_you.rs`) stays in the ratchet until its logic is refactored. Moving it to another file is not enough.
+
 ## 3. Interfaces and compatibility
 
 - New IPC fields (`Command` / `Query` / events) are optional with `#[serde(default)]`, so older frontends and saved state keep working. Add new commands; don't change existing ones.
