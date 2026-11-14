@@ -48,7 +48,7 @@ try {
   assert.deepEqual(await page.evaluate(()=>window.__kazeFixture.musicTaste.genres),['Rock']);
   await page.reload();await page.locator('.home-flow').waitFor();await page.waitForTimeout(120);
   assert.equal(await dialog.count(),0,'saved setup is not shown again');
-  await nav('Settings');await page.getByRole('button',{name:/Music taste.*Manage/}).click();
+  await nav('Settings');await page.getByRole('button',{name:/^Music taste/}).click();
   const search=page.getByRole('textbox',{name:'Find an artist'});await search.fill('Nujabes');
   await page.locator('[aria-label="Artist suggestions"]').getByRole('button',{name:'Nujabes',exact:true}).click();
   await page.getByRole('button',{name:'Save music taste',exact:true}).click();

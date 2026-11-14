@@ -14,6 +14,7 @@ import {
   Folder,
   LogOut,
   Download,
+  Heart,
 } from "lucide-react";
 import type {
   AppSettings,
@@ -264,7 +265,17 @@ export const SettingsView = memo(function SettingsView({
           >
             <h2 id="settings-library-heading">Library &amp; storage</h2>
             <button type="button" className="settings-section-link" onClick={() => openSection("taste")}>
-              <span><strong>Music taste</strong><span>Choose your favorite artists and genres</span></span><span className="settings-open-label">Manage <ArrowRight size={16} /></span>
+              <span className="settings-section-icon" aria-hidden="true">
+                <Heart size={22} />
+              </span>
+              <span>
+                <strong>Music taste</strong>
+                <span>Choose your favorite artists and genres</span>
+              </span>
+              <span className="settings-open-label" aria-hidden="true">
+                Manage
+                <ArrowRight size={16} />
+              </span>
             </button>
             <button
               type="button"
