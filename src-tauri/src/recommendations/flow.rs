@@ -12,6 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 mod candidates;
+use candidates::CandidateRequest;
 mod home;
 mod explain;
 mod types;
@@ -132,16 +133,16 @@ impl FlowEngine {
         recent_artists: &[String],
         session: Option<&SessionSteer>,
     ) -> AppResult<Vec<FlowTrackItem>> {
-        self.generate_candidates(
+        self.generate_candidates(CandidateRequest {
             user_id,
             familiarity_ratio,
             limit,
             exclude_track_ids,
             recent_artists,
-            false,
+            include_online: false,
             session,
-            None,
-        )
+            transitions: None,
+        })
         .await
     }
 
@@ -176,16 +177,16 @@ impl FlowEngine {
         recent_artists: &[String],
         session: Option<&SessionSteer>,
     ) -> AppResult<Vec<FlowTrackItem>> {
-        self.generate_candidates(
+        self.generate_candidates(CandidateRequest {
             user_id,
             familiarity_ratio,
             limit,
             exclude_track_ids,
             recent_artists,
-            true,
+            include_online: true,
             session,
-            None,
-        )
+            transitions: None,
+        })
         .await
     }
 
@@ -203,16 +204,16 @@ impl FlowEngine {
         session: Option<&SessionSteer>,
         seed_track_id: Option<&str>,
     ) -> AppResult<Vec<FlowTrackItem>> {
-        self.generate_candidates(
+        self.generate_candidates(CandidateRequest {
             user_id,
             familiarity_ratio,
             limit,
             exclude_track_ids,
             recent_artists,
-            true,
+            include_online: true,
             session,
-            Some(seed_track_id),
-        )
+            transitions: Some(seed_track_id),
+        })
         .await
     }
 
