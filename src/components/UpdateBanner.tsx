@@ -58,7 +58,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
         padding: "8px 16px",
         background: "var(--palette-gray-850-a95)",
         borderBottom: "1px solid var(--overlay-8)",
-        fontSize: "13px",
+        fontSize: "var(--fs-13)",
         color: "var(--overlay-85)",
         fontFamily: "inherit",
       }}
@@ -85,7 +85,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
           border: "none",
           color: "var(--overlay-40)",
           cursor: "pointer",
-          fontSize: "16px",
+          fontSize: "var(--fs-16)",
           lineHeight: 1,
           padding: "0 4px",
         }}

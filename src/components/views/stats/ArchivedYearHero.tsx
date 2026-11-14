@@ -24,8 +24,8 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
             alignItems: "center",
             gap: "8px",
             color: "var(--text-main)",
-            fontSize: "13px",
-            fontWeight: 700,
+            fontSize: "var(--fs-13)",
+            fontWeight: "var(--weight-bold)",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
             marginBottom: "6px",
@@ -36,8 +36,8 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         </div>
         <h2
           style={{
-            fontSize: "36px",
-            fontWeight: 800,
+            fontSize: "var(--fs-36)",
+            fontWeight: "var(--weight-extrabold)",
             margin: "0 0 8px 0",
             letterSpacing: "-0.5px",
           }}
@@ -48,7 +48,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
           style={{
             margin: 0,
             color: "var(--overlay-60)",
-            fontSize: "14px",
+            fontSize: "var(--fs-14)",
           }}
         >
           Daily listening totals for {c.viewingYear}, with your all-time music rankings.
@@ -66,9 +66,9 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
       >
         <div
           style={{
-            fontSize: "12px",
+            fontSize: "var(--fs-12)",
             color: "var(--overlay-50)",
-            fontWeight: 600,
+            fontWeight: "var(--weight-semibold)",
             textTransform: "uppercase",
             marginBottom: "4px",
           }}
@@ -77,8 +77,8 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         </div>
         <div
           style={{
-            fontSize: "32px",
-            fontWeight: 800,
+            fontSize: "var(--fs-32)",
+            fontWeight: "var(--weight-extrabold)",
             color: "var(--accent-light)",
           }}
         >
@@ -86,7 +86,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         </div>
         <div
           style={{
-            fontSize: "11px",
+            fontSize: "var(--fs-11)",
             color: "var(--overlay-40)",
             marginTop: "4px",
           }}

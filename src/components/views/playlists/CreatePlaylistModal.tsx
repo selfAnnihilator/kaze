@@ -15,7 +15,7 @@ export function CreatePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 marginBottom: "16px",
               }}
             >
-              <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+              <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)" }}>
                 Create New Playlist
               </h3>
               <button

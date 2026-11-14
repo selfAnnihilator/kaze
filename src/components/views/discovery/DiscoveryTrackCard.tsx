@@ -162,7 +162,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
             </div>
-            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.4px",
+            <span style={{ fontSize: "var(--fs-10)", fontWeight: "var(--weight-bold)", color: "var(--text-main)", letterSpacing: "0.4px",
               }}>
               PLAYING
             </span>
@@ -241,8 +241,8 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       <div className="discovery-card-title"
         style={{
           marginTop: "10px",
-          fontWeight: 700,
-          fontSize: "0.88rem",
+          fontWeight: "var(--weight-bold)",
+          fontSize: "var(--fs-14)",
           color: isPlaying ? "var(--accent-secondary)" : "var(--text-main)",
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -258,8 +258,8 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       <div
         style={{
           marginTop: "3px",
-          fontWeight: 400,
-          fontSize: "0.78rem",
+          fontWeight: "var(--weight-regular)",
+          fontSize: "var(--fs-12)",
           color: "var(--text-muted)",
           whiteSpace: "nowrap",
           overflow: "hidden",

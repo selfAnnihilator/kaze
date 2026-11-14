@@ -54,8 +54,8 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
             />
             <h3
               style={{
-                fontSize: "1.1rem",
-                fontWeight: 700,
+                fontSize: "var(--fs-18)",
+                fontWeight: "var(--weight-bold)",
                 margin: 0,
                 color: "var(--text-main, var(--text-main))",
               }}
@@ -80,8 +80,8 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
         <div style={{ marginBottom: "12px" }}>
           <div
             style={{
-              fontSize: "0.95rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-15)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--text-main, var(--text-main))",
             }}
           >
@@ -89,7 +89,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           </div>
           <div
             style={{
-              fontSize: "0.82rem",
+              fontSize: "var(--fs-13)",
               color: "var(--text-dim, var(--text-dim))",
             }}
           >
@@ -103,7 +103,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
             borderRadius: "8px",
             backgroundColor: "var(--accent-a8)",
             border: "1px solid var(--accent-a20)",
-            fontSize: "0.88rem",
+            fontSize: "var(--fs-14)",
             color: "var(--accent-light, var(--accent-light))",
             lineHeight: 1.45,
           }}
@@ -121,7 +121,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           <button
             className="btn btn-secondary"
             onClick={() => onClose()}
-            style={{ fontSize: "0.85rem", padding: "6px 16px" }}
+            style={{ fontSize: "var(--fs-14)", padding: "6px 16px" }}
           >
             Got it
           </button>

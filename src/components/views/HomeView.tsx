@@ -122,8 +122,8 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                   <h4
                     style={{
                       margin: 0,
-                      fontSize: "1.1rem",
-                      fontWeight: 700,
+                      fontSize: "var(--fs-18)",
+                      fontWeight: "var(--weight-bold)",
                       color: "var(--text-main)",
                     }}
                   >
@@ -147,15 +147,15 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
               <div style={{ marginBottom: "12px" }}>
                 <div
                   style={{
-                    fontWeight: 650,
-                    fontSize: "0.95rem",
+                    fontWeight: "var(--weight-demibold)",
+                    fontSize: "var(--fs-15)",
                     color: "var(--text-main)",
                   }}
                 >
                   {whyModalTrack.title}
                 </div>
                 <div
-                  style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}
+                  style={{ fontSize: "var(--fs-14)", color: "var(--text-muted)" }}
                 >
                   {whyModalTrack.artist}
                 </div>
@@ -167,7 +167,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                   border: "1px solid var(--border)",
                   borderRadius: "8px",
                   padding: "12px 14px",
-                  fontSize: "0.88rem",
+                  fontSize: "var(--fs-14)",
                   color: "var(--accent-light, var(--accent-light))",
                   lineHeight: 1.45,
                 }}

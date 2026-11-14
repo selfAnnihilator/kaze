@@ -44,13 +44,13 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
             <Music size={18} />
           </div>
           <div>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+            <h2 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: 0 }}>
               Top 10 Songs
             </h2>
             <p
               style={{
                 margin: 0,
-                fontSize: "12px",
+                fontSize: "var(--fs-12)",
                 color: "var(--overlay-40)",
               }}
             >
@@ -65,7 +65,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
               padding: "36px 0",
               textAlign: "center",
               color: "var(--overlay-40)",
-              fontSize: "13px",
+              fontSize: "var(--fs-13)",
             }}
           >
             No songs listened to yet. Play some music to see your top songs!
@@ -93,8 +93,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                   <span
                     style={{
                       width: "28px",
-                      fontSize: "15px",
-                      fontWeight: 800,
+                      fontSize: "var(--fs-15)",
+                      fontWeight: "var(--weight-extrabold)",
                       color: rankColor,
                       textAlign: "center",
                       flexShrink: 0,
@@ -106,8 +106,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                   <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
                     <div
                       style={{
-                        fontSize: "14px",
-                        fontWeight: 600,
+                        fontSize: "var(--fs-14)",
+                        fontWeight: "var(--weight-semibold)",
                         color: "var(--text-main)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -118,7 +118,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     </div>
                     <div
                       style={{
-                        fontSize: "12px",
+                        fontSize: "var(--fs-12)",
                         color: "var(--overlay-50)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -130,10 +130,10 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                   </div>
 
                   <div style={{ textAlign: "right", marginRight: "12px" }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)" }}>
+                    <div style={{ fontSize: "var(--fs-13)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
                       {c.formatSeconds(song.total_seconds)}
                     </div>
-                    <div style={{ fontSize: "11px", color: "var(--overlay-40)" }}>
+                    <div style={{ fontSize: "var(--fs-11)", color: "var(--overlay-40)" }}>
                       {song.play_count} {song.play_count === 1 ? "play" : "plays"}
                     </div>
                   </div>

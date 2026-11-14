@@ -47,8 +47,8 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
           </div>
           <h2
             style={{
-              fontSize: "1.25rem",
-              fontWeight: 700,
+              fontSize: "var(--fs-20)",
+              fontWeight: "var(--weight-bold)",
               color: "var(--text-main)",
               margin: 0,
             }}
@@ -57,7 +57,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
           </h2>
           <p
             style={{
-              fontSize: "0.92rem",
+              fontSize: "var(--fs-15)",
               color: "var(--text-muted)",
               margin: 0,
               maxWidth: "420px",
@@ -74,12 +74,12 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
               style={{
                 marginTop: "12px",
                 padding: "9px 20px",
-                fontSize: "0.88rem",
+                fontSize: "var(--fs-14)",
                 borderRadius: "10px",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                fontWeight: 600,
+                fontWeight: "var(--weight-semibold)",
               }}
             >
               <Music size={16} />

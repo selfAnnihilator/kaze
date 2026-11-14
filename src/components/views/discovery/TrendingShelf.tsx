@@ -30,8 +30,8 @@ export function TrendingShelf({ c }: { c: DiscoveryViewContext }) {
           />
           <p
             style={{
-              fontSize: "1.05rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-16)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--text-main)",
               marginBottom: "4px",
             }}
@@ -40,7 +40,7 @@ export function TrendingShelf({ c }: { c: DiscoveryViewContext }) {
           </p>
           <p
             style={{
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-14)",
               color: "var(--text-muted)",
               maxWidth: "480px",
               margin: "0 auto",

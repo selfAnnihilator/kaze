@@ -103,11 +103,11 @@
     padding-block: 12px;
   }
   .kaze-interface[data-interface="brutalist"] .press-discover .press-view-heading h1 {
-    font-size: 36px;
+    font-size: var(--fs-36);
     margin-top: 8px;
   }
   .kaze-interface[data-interface="brutalist"] .press-discover .press-big-index {
-    font-size: 64px;
+    font-size: var(--fs-64);
   }
   .kaze-interface[data-interface="brutalist"] .press-bin-heading {
     padding-block: 10px;
@@ -139,8 +139,8 @@
 .music-taste { min-width: 0; }
 .music-taste > p { line-height: 1.5; color: var(--text-muted); margin-block: 14px; }
 .music-taste fieldset { border: 0; padding: 0; margin-block: 20px; min-width: 0; }
-.music-taste legend { margin-bottom: 12px; font-weight: 600; }
-.music-taste legend span { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.music-taste legend { margin-bottom: 12px; font-weight: var(--weight-semibold); }
+.music-taste legend span { margin-left: 8px; font-size: var(--fs-12); font-weight: var(--weight-regular); color: var(--text-muted); }
 .music-taste label { display: block; margin-bottom: 8px; }
 .music-taste input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); }
 .taste-choices, .taste-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

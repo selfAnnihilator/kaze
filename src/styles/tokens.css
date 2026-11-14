@@ -44,6 +44,12 @@
   --fs-36: calc(36 * var(--fs-unit));
   --fs-40: calc(40 * var(--fs-unit));
   --fs-48: calc(48 * var(--fs-unit));
+  --fs-56: calc(56 * var(--fs-unit));
+  --fs-64: calc(64 * var(--fs-unit));
+  --fs-72: calc(72 * var(--fs-unit));
+  --fs-80: calc(80 * var(--fs-unit));
+  --fs-90: calc(90 * var(--fs-unit));
+  --fs-112: calc(112 * var(--fs-unit));
   --font-mono: "Courier New", monospace;
   --font-press: "Kaze Press", Arial, sans-serif;
   --font-jp: "Noto Sans JP", serif;

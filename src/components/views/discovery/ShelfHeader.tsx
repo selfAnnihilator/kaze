@@ -35,12 +35,12 @@ export function ShelfHeader({ icon, title, subtitle, onScroll, arrowGap = "6px",
       <div>
         <h2
           id={headingId}
-          style={{ fontSize: "1.18rem", fontWeight: 700, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}
+          style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}
         >
           {icon}
           <span>{title}</span>
         </h2>
-        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>{subtitle}</p>
+        <p style={{ fontSize: "var(--fs-13)", color: "var(--text-muted)", marginTop: "2px" }}>{subtitle}</p>
       </div>
       {showArrows && (
         <div style={{ display: "flex", alignItems: "center", gap: arrowGap }}>

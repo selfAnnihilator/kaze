@@ -179,7 +179,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                   style={{
                     padding: "8px 10px",
                     color: "var(--text-dim)",
-                    fontSize: "0.78rem",
+                    fontSize: "var(--fs-12)",
                   }}
                 >
                   Default playlist
@@ -245,7 +245,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               border: "1px solid var(--border)",
               backgroundColor: "var(--overlay-5)",
               color: "var(--text-main)",
-              fontSize: "0.82rem",
+              fontSize: "var(--fs-13)",
               outline: "none",
               width: "220px",
               transition: "transform 0.2s ease, opacity 0.2s ease",

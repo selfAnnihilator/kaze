@@ -18,8 +18,8 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               <div className="online-search-top-result">
                 <h3
                   style={{
-                    fontSize: "1.2rem",
-                    fontWeight: 700,
+                    fontSize: "var(--fs-20)",
+                    fontWeight: "var(--weight-bold)",
                     color: "var(--text-main)",
                     marginBottom: "14px",
                   }}
@@ -67,8 +67,8 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   {/* Title */}
                   <div
                     style={{
-                      fontSize: "1.45rem",
-                      fontWeight: 700,
+                      fontSize: "var(--fs-24)",
+                      fontWeight: "var(--weight-bold)",
                       color: c.isTrackPlaying(topResult)
                         ? "var(--accent-secondary)"
                         : "var(--text-main)",
@@ -88,7 +88,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       display: "flex",
                       alignItems: "center",
                       gap: "8px",
-                      fontSize: "0.86rem",
+                      fontSize: "var(--fs-14)",
                       color: "var(--text-muted)",
                     }}
                   >
@@ -98,8 +98,8 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         borderRadius: "10px",
                         backgroundColor: "var(--overlay-10)",
                         color: "var(--text-main)",
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
+                        fontSize: "var(--fs-12)",
+                        fontWeight: "var(--weight-semibold)",
                       }}
                     >
                       Song
@@ -113,7 +113,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       style={{
                         cursor: "pointer",
                         color: "var(--text-main)",
-                        fontWeight: 500,
+                        fontWeight: "var(--weight-medium)",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.textDecoration = "underline")

@@ -11,9 +11,7 @@
   background: var(--press-paper);
   color: var(--press-ink);
   font:
-    14px/1.45 "Kaze Press",
-    Arial,
-    sans-serif;
+    var(--fs-14)/1.45 var(--font-press);
   isolation: isolate;
 }
 .kaze-interface[data-interface="brutalist"] button,
@@ -54,7 +52,7 @@
 .kaze-interface[data-interface="brutalist"] h1,
 .kaze-interface[data-interface="brutalist"] h2,
 .kaze-interface[data-interface="brutalist"] strong {
-  font-weight: 850;
+  font-weight: var(--weight-ultra);
 }
 .kaze-interface[data-interface="brutalist"] img {
   display: block;
@@ -67,7 +65,7 @@
 }
 .kaze-interface[data-interface="brutalist"] small {
   display: block;
-  font-weight: 400;
+  font-weight: var(--weight-regular);
 }
 .kaze-interface[data-interface="brutalist"] input[type="range"] {
   accent-color: var(--press-red);
@@ -86,8 +84,8 @@
 .press-archive-footer,
 .press-queue-heading,
 .press-row-duration {
-  font-family: "Courier New", monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
   line-height: 1.35;
   letter-spacing: 0.045em;
   text-transform: uppercase;
@@ -127,18 +125,18 @@
   flex-direction: column;
   justify-content: center;
   padding: 5px 22px;
-  font-size: 64px !important;
-  font-weight: 900 !important;
+  font-size: var(--fs-64) !important;
+  font-weight: var(--weight-black) !important;
   letter-spacing: -0.085em;
   line-height: 0.88 !important;
   border-right: var(--press-rule);
 }
 .press-wordmark > span {
-  font-family: sans-serif;
-  font-size: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-10);
   letter-spacing: 0.27em;
   margin-top: 9px;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .press-header nav {
   display: grid;
@@ -152,14 +150,13 @@
   gap: 9px;
   text-transform: uppercase;
   padding: 16px 20px;
-  font-size: 12px;
-  font-weight: 750;
+  font-size: var(--fs-12);
+  font-weight: var(--weight-heavy);
   text-align: left;
 }
 .press-header nav button > span {
   font:
-    12px "Courier New",
-    monospace;
+    var(--fs-12) var(--font-mono);
 }
 .press-header nav button[aria-current="page"] {
   color: var(--press-red);
@@ -176,8 +173,7 @@
   gap: 12px;
   padding: 18px;
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
 }
 .press-edition > span {
   color: var(--press-muted);
@@ -224,7 +220,7 @@
   min-width: 0;
   height: 42px;
   outline-offset: -2px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .press-search input::placeholder {
   color: var(--press-muted);
@@ -232,8 +228,7 @@
 }
 .press-search kbd {
   font:
-    12px "Courier New",
-    monospace;
+    var(--fs-12) var(--font-mono);
 }
 .press-main {
   min-width: 0;
@@ -260,8 +255,8 @@
   min-width: 0;
 }
 .press-poster-title h1 {
-  font-size: clamp(56px, 9.7cqw, 158px);
-  font-weight: 900;
+  font-size: clamp(var(--fs-56), 9.7cqw, calc(158 * var(--fs-unit)));
+  font-weight: var(--weight-black);
   letter-spacing: -0.078em;
   line-height: 0.94;
   text-transform: uppercase;
@@ -303,8 +298,7 @@
   justify-content: space-between;
   padding: 10px 12px;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   background: var(--press-paper);
   border-top: var(--press-rule);
   opacity: 0;
@@ -322,20 +316,20 @@
   min-width: 0;
 }
 .press-poster-count {
-  font-size: clamp(90px, 18cqw, 280px);
+  font-size: clamp(var(--fs-90), 18cqw, calc(280 * var(--fs-unit)));
   line-height: 0.78;
   letter-spacing: -0.05em;
-  font-weight: 900;
+  font-weight: var(--weight-black);
   margin-left: -0.07em;
   color: var(--press-red);
 }
 .press-poster-annotation > .press-micro {
   display: block;
   margin: 18px 0 28px;
-  font-size: 10px;
+  font-size: var(--fs-10);
 }
 .press-poster-annotation h2 {
-  font-size: clamp(26px, 3.9cqw, 64px);
+  font-size: clamp(var(--fs-28), 3.9cqw, var(--fs-64));
   letter-spacing: -0.06em;
   line-height: 1;
   overflow-wrap: anywhere;
@@ -347,11 +341,11 @@
   gap: 10px;
   text-align: left;
   min-height: 44px;
-  font-size: 12px !important;
+  font-size: var(--fs-12) !important;
 }
 .press-poster-annotation .press-text-button {
   margin-top: 8px;
-  font-size: 16px !important;
+  font-size: var(--fs-16) !important;
 }
 .press-genre {
   display: block;
@@ -391,8 +385,7 @@
 }
 .press-ticket-number {
   font:
-    12px "Courier New",
-    monospace;
+    var(--fs-12) var(--font-mono);
   align-self: start;
 }
 .press-ticket img {
@@ -410,10 +403,10 @@
   white-space: nowrap;
 }
 .press-ticket strong {
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .press-ticket small {
-  font-size: 10px;
+  font-size: var(--fs-10);
   margin-top: 4px;
   color: var(--press-muted);
 }
@@ -445,10 +438,10 @@
 }
 .press-deck-track .press-micro {
   color: var(--press-muted);
-  font-size: 9px;
+  font-size: var(--fs-9);
 }
 .press-deck-track h2 {
-  font-size: 29px;
+  font-size: var(--fs-28);
   line-height: 1.05;
   letter-spacing: -0.05em;
   margin: 8px 0 5px;
@@ -456,7 +449,7 @@
 }
 .press-deck-track p {
   color: var(--press-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -473,9 +466,9 @@
   color: var(--press-paper);
 }
 .press-play-main > span {
-  font-size: 46px;
+  font-size: var(--fs-48);
   line-height: 0.95;
-  font-weight: 850;
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.06em;
 }
 .press-play-main:focus-visible {
@@ -495,8 +488,7 @@
   min-height: 44px;
   padding: 8px 12px;
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
 }
 .press-skips button + button {
   border-left: var(--press-rule);
@@ -512,8 +504,7 @@
   justify-content: space-between;
   gap: 8px;
   font:
-    9px "Courier New",
-    monospace;
+    var(--fs-9) var(--font-mono);
 }
 .press-position input {
   margin-top: 6px;
@@ -535,8 +526,7 @@
   width: 100%;
   min-height: 42px;
   font:
-    11px "Courier New",
-    monospace !important;
+    var(--fs-11) var(--font-mono) !important;
 }
 .press-deck-next-song {
   width: 100%;
@@ -550,20 +540,19 @@
   align-self: start;
   padding-top: 4px;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   color: var(--press-muted);
 }
 .press-deck-next-song strong {
   min-width: 0;
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-12);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .press-deck-next-song small {
-  font-size: 10px;
+  font-size: var(--fs-10);
   margin-top: 2px;
   color: var(--press-muted);
 }
@@ -573,7 +562,7 @@
 .press-next-empty {
   padding: 10px 0;
   color: var(--press-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .press-deck-bottom {
   margin-top: 12px;
@@ -589,15 +578,14 @@
   border-bottom: var(--press-rule) !important;
 }
 .press-flow > span {
-  font-size: 23px;
-  font-weight: 850;
+  font-size: var(--fs-24);
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.05em;
 }
 .press-flow > small {
   margin-left: auto;
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
 }
 .press-volume {
   display: flex;
@@ -610,12 +598,11 @@
 }
 .press-volume output {
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
 }
 .press-preview-note {
   color: var(--press-muted);
-  font-size: 9px;
+  font-size: var(--fs-9);
   padding-top: 6px;
 }
 .press-mobile-track {
@@ -640,15 +627,15 @@
   min-width: 0;
 }
 .press-view-heading h1 {
-  font-size: clamp(52px, 6.8vw, 112px);
-  font-weight: 900;
+  font-size: clamp(calc(52 * var(--fs-unit)), 6.8vw, var(--fs-112));
+  font-weight: var(--weight-black);
   letter-spacing: -0.075em;
   line-height: 0.87;
   margin-top: 16px;
 }
 .press-big-index {
-  font-size: clamp(80px, 10vw, 164px);
-  font-weight: 900;
+  font-size: clamp(var(--fs-80), 10vw, calc(164 * var(--fs-unit)));
+  font-weight: var(--weight-black);
   line-height: 0.8;
   letter-spacing: -0.05em;
   color: var(--press-red);
@@ -666,7 +653,7 @@
   padding-bottom: 18px;
 }
 .press-discover .press-view-heading h1 {
-  font-size: clamp(46px, 5vw, 84px);
+  font-size: clamp(var(--fs-48), 5vw, calc(84 * var(--fs-unit)));
   margin-top: 12px;
 }
 .press-bin-heading {
@@ -677,13 +664,13 @@
   padding: 22px 28px 10px;
 }
 .press-bin-heading h2 {
-  font-size: 30px;
+  font-size: var(--fs-32);
   line-height: 1.08;
   letter-spacing: -0.05em;
 }
 .press-bin-heading p {
   color: var(--press-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin-top: 7px;
 }
 .press-bin-controls {
@@ -731,7 +718,7 @@
   display: block;
   border-top: var(--press-rule);
   padding: 9px 0;
-  font-size: 10px;
+  font-size: var(--fs-10);
 }
 .press-sleeve-art {
   display: block;
@@ -770,8 +757,8 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  font-size: 22px !important;
-  font-weight: 750 !important;
+  font-size: var(--fs-22) !important;
+  font-weight: var(--weight-heavy) !important;
   letter-spacing: -0.05em;
   line-height: 1.1 !important;
   text-align: left;
@@ -782,14 +769,13 @@
   color: var(--press-red);
 }
 .press-sleeve > p {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--press-muted);
   margin-top: 4px;
 }
 .press-wall-note {
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
   margin: 10px 28px 28px;
   color: var(--press-muted);
 }
@@ -816,7 +802,7 @@
   text-transform: uppercase;
 }
 .press-tabs button > span {
-  font-size: 10px;
+  font-size: var(--fs-10);
   color: var(--press-muted);
 }
 .press-tabs button[aria-selected="true"] {
@@ -863,7 +849,7 @@
   transition: transform 180ms ease-out;
 }
 .press-record-spine strong {
-  font-size: 18px;
+  font-size: var(--fs-18);
   letter-spacing: -0.05em;
   writing-mode: vertical-rl;
   line-height: 1.1;
@@ -881,8 +867,7 @@
   bottom: 0;
   writing-mode: vertical-rl;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   height: 160px;
   max-width: 12px;
   white-space: nowrap;
@@ -937,8 +922,7 @@
   align-self: start;
   margin-top: 8px;
   font:
-    16px "Courier New",
-    monospace;
+    var(--fs-16) var(--font-mono);
 }
 .press-row-song {
   display: flex;
@@ -959,7 +943,7 @@
 }
 .press-row-song strong {
   display: block;
-  font-size: 23px;
+  font-size: var(--fs-24);
   line-height: 1.1;
   letter-spacing: -0.045em;
   overflow: hidden;
@@ -968,11 +952,11 @@
 }
 .press-row-song small {
   color: var(--press-muted);
-  font-size: 11px;
+  font-size: var(--fs-11);
   margin-top: 5px;
 }
 .press-row-album {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--press-muted);
   flex: 0 0 20%;
   overflow: hidden;
@@ -999,8 +983,8 @@
   border-bottom: var(--press-rule);
 }
 .press-playlist-number {
-  font-size: 50px;
-  font-weight: 850;
+  font-size: var(--fs-48);
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.08em;
   color: var(--press-red);
   width: 62px;
@@ -1014,14 +998,14 @@
 }
 .press-playlist-list strong {
   display: block;
-  font-size: 32px;
+  font-size: var(--fs-32);
   letter-spacing: -0.05em;
   line-height: 1;
 }
 .press-playlist-list small {
   color: var(--press-muted);
   margin-top: 7px;
-  font-size: 11px;
+  font-size: var(--fs-11);
 }
 .press-playlist-list > button:hover {
   color: var(--press-red);
@@ -1034,7 +1018,7 @@
 .press-collection-back {
   margin: 14px 28px 0;
   align-self: start;
-  font-size: 10px !important;
+  font-size: var(--fs-10) !important;
 }
 .press-collection-hero {
   display: grid;
@@ -1053,14 +1037,14 @@
   border: var(--press-rule);
 }
 .press-collection-hero h1 {
-  font-size: clamp(36px, 4.8vw, 78px);
+  font-size: clamp(var(--fs-36), 4.8vw, var(--fs-80));
   line-height: 0.95;
   letter-spacing: -0.07em;
   margin: 14px 0;
   overflow-wrap: anywhere;
 }
 .press-collection-hero p {
-  font-size: 19px;
+  font-size: var(--fs-20);
 }
 .press-solid-button {
   display: inline-flex;
@@ -1070,7 +1054,7 @@
   padding: 12px 20px;
   background: var(--press-red) !important;
   color: var(--press-paper) !important;
-  font-size: 11px !important;
+  font-size: var(--fs-11) !important;
   margin-top: 22px;
 }
 .press-solid-button:focus-visible {
@@ -1108,20 +1092,20 @@
   min-height: 260px;
 }
 .press-empty h2 {
-  font-size: 36px;
+  font-size: var(--fs-36);
   letter-spacing: -0.05em;
   line-height: 1;
 }
 .press-empty p {
   color: var(--press-muted);
   max-width: 45ch;
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .press-empty > .press-text-button {
   color: var(--press-red);
 }
 .press-search-query {
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-top: 24px;
   overflow-wrap: anywhere;
   color: var(--press-muted);
@@ -1141,13 +1125,13 @@
     padding-top: 24px;
   }
   .press-deck-track h2 {
-    font-size: 36px;
+    font-size: var(--fs-36);
   }
   .press-play-main {
     min-height: 120px !important;
   }
   .press-play-main > span {
-    font-size: 56px;
+    font-size: var(--fs-56);
   }
   .press-listen {
     padding: 30px 40px;
@@ -1182,18 +1166,18 @@
     grid-template-columns: 170px minmax(0, 1fr) 256px;
   }
   .press-wordmark {
-    font-size: 53px !important;
+    font-size: calc(53 * var(--fs-unit)) !important;
     padding-left: 18px;
   }
   .press-header nav button {
     padding: 14px 10px;
-    font-size: 10px;
+    font-size: var(--fs-10);
   }
   .press-edition {
-    font-size: 10px;
+    font-size: var(--fs-10);
   }
   .press-toolbar .press-micro {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-toolbar {
     padding-right: 14px;
@@ -1217,31 +1201,31 @@
     padding-right: 0;
   }
   .press-poster-annotation > .press-micro {
-    font-size: 8px;
+    font-size: var(--fs-8);
   }
   .press-poster-annotation .press-text-button {
-    font-size: 13px !important;
+    font-size: var(--fs-13) !important;
   }
   .press-deck {
     padding: 12px 14px;
   }
   .press-play-main > span {
-    font-size: 38px;
+    font-size: var(--fs-40);
   }
   .press-play-main svg {
     width: 30px;
   }
   .press-deck-track h2 {
-    font-size: 26px;
+    font-size: var(--fs-28);
   }
   .press-view-heading {
     padding: 24px 20px;
   }
   .press-view-heading h1 {
-    font-size: clamp(44px, 6.5vw, 72px);
+    font-size: clamp(calc(44 * var(--fs-unit)), 6.5vw, var(--fs-72));
   }
   .press-big-index {
-    font-size: 100px;
+    font-size: calc(100 * var(--fs-unit));
   }
   .press-track-row {
     gap: 12px;
@@ -1252,7 +1236,7 @@
     display: none;
   }
   .press-row-song strong {
-    font-size: 20px;
+    font-size: var(--fs-20);
   }
   .press-track-row .press-icon {
     min-width: 36px;
@@ -1265,7 +1249,7 @@
     --press-discovery-gutter: 20px;
   }
   .press-bin-heading h2 {
-    font-size: 26px;
+    font-size: var(--fs-28);
   }
   .press-wall-controls {
     padding: 0 20px 8px;
@@ -1304,7 +1288,7 @@
     padding: 12px 0;
   }
   .press-deck-track h2 {
-    font-size: 23px;
+    font-size: var(--fs-24);
   }
   .press-deck-next {
     display: none;
@@ -1317,7 +1301,7 @@
     min-height: 76px !important;
   }
   .press-play-main > span {
-    font-size: 36px;
+    font-size: var(--fs-36);
   }
   .press-listen {
     gap: 10px;
@@ -1325,18 +1309,18 @@
     padding-bottom: 14px;
   }
   .press-poster-title h1 {
-    font-size: clamp(48px, 8cqw, 110px);
+    font-size: clamp(var(--fs-48), 8cqw, var(--fs-112));
     margin-top: 6px;
   }
   .press-poster-count {
-    font-size: clamp(80px, 15cqw, 180px);
+    font-size: clamp(var(--fs-80), 15cqw, calc(180 * var(--fs-unit)));
   }
   .press-poster-annotation > .press-micro {
     margin: 10px 0 14px;
   }
   .press-line-label {
     padding: 8px 0;
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-ticket {
     padding: 8px 10px;
@@ -1349,7 +1333,7 @@
     grid-template-columns: 20px 40px minmax(0, 1fr) 18px;
   }
   .press-genre {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
 }
 @media (max-width: 760px) {
@@ -1370,12 +1354,12 @@
   .press-wordmark {
     grid-column: 1;
     grid-row: 1;
-    font-size: 49px !important;
+    font-size: var(--fs-48) !important;
     padding: 10px 16px;
     border-right: 0;
   }
   .press-wordmark > span {
-    font-size: 8px;
+    font-size: var(--fs-8);
     margin-top: 5px;
   }
   .press-edition {
@@ -1384,7 +1368,7 @@
     border-left: 0;
     padding: 12px 16px;
     gap: 9px;
-    font-size: 9px;
+    font-size: var(--fs-9);
     text-align: right;
   }
   .press-header nav {
@@ -1395,10 +1379,10 @@
   .press-header nav button {
     padding: 8px 12px;
     gap: 6px;
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-header nav button > span {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-content {
     display: block;
@@ -1434,14 +1418,14 @@
     container-type: normal;
   }
   .press-discover .press-view-heading h1 {
-    font-size: clamp(40px, 10vw, 64px);
+    font-size: clamp(var(--fs-40), 10vw, var(--fs-64));
   }
   .press-listen {
     padding: 18px 16px 22px;
     gap: 12px;
   }
   .press-poster-title h1 {
-    font-size: clamp(46px, 13cqw, 92px);
+    font-size: clamp(var(--fs-48), 13cqw, var(--fs-90));
   }
   .press-poster-body {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr);
@@ -1452,23 +1436,23 @@
     box-shadow: 4px 4px 0 var(--press-shadow);
   }
   .press-poster-count {
-    font-size: clamp(64px, 24cqw, 140px);
+    font-size: clamp(var(--fs-64), 24cqw, calc(140 * var(--fs-unit)));
   }
   .press-poster-annotation > .press-micro {
-    font-size: 8px;
+    font-size: var(--fs-8);
     margin: 12px 0 18px;
   }
   .press-poster-annotation h2 {
-    font-size: clamp(22px, 6cqw, 36px);
+    font-size: clamp(var(--fs-22), 6cqw, var(--fs-36));
   }
   .press-poster-annotation .press-text-button {
-    font-size: 12px !important;
+    font-size: var(--fs-12) !important;
   }
   .press-genre {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-line-label {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-line-label > span:last-child {
     display: none;
@@ -1500,7 +1484,7 @@
     min-height: 108px;
   }
   .press-deck-track h2 {
-    font-size: 34px;
+    font-size: var(--fs-36);
   }
   .press-deck-next {
     margin-top: 12px;
@@ -1510,7 +1494,7 @@
     margin-top: 18px;
   }
   .press-play-main > span {
-    font-size: 50px;
+    font-size: var(--fs-48);
   }
   .press-mobile-track {
     display: flex;
@@ -1533,14 +1517,14 @@
   .press-mobile-track > span {
     min-width: 0;
     flex: 1;
-    font-size: 12px;
-    font-weight: 750;
+    font-size: var(--fs-12);
+    font-weight: var(--weight-heavy);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
   .press-mobile-track small {
-    font-size: 10px;
+    font-size: var(--fs-10);
     color: var(--press-muted);
     margin-top: 3px;
   }
@@ -1549,8 +1533,7 @@
     align-items: center;
     gap: 4px;
     font:
-      9px "Courier New",
-      monospace;
+      var(--fs-9) var(--font-mono);
     min-height: 44px;
     color: var(--press-red);
   }
@@ -1559,15 +1542,15 @@
     gap: 12px;
   }
   .press-view-heading h1 {
-    font-size: clamp(42px, 11vw, 74px);
+    font-size: clamp(var(--fs-40), 11vw, var(--fs-72));
     line-height: 0.9;
     margin-top: 12px;
   }
   .press-view-heading .press-micro {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-big-index {
-    font-size: 70px;
+    font-size: var(--fs-72);
   }
   .press-bin-heading {
     padding: 20px 16px 8px;
@@ -1577,10 +1560,10 @@
     --press-discovery-gutter: 16px;
   }
   .press-bin-heading h2 {
-    font-size: 24px;
+    font-size: var(--fs-24);
   }
   .press-bin-heading p {
-    font-size: 11px;
+    font-size: var(--fs-11);
   }
   .press-bin-controls {
     gap: 0;
@@ -1591,7 +1574,7 @@
   }
   .press-bin-controls > span {
     min-width: 28px;
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-wall-controls {
     padding: 0 16px 8px;
@@ -1609,7 +1592,7 @@
   }
   .press-wall-note {
     margin-left: 16px;
-    font-size: 10px;
+    font-size: var(--fs-10);
   }
   .press-library,
   .press-queue,
@@ -1621,11 +1604,11 @@
     gap: 16px;
   }
   .press-tabs button {
-    font-size: 9px;
+    font-size: var(--fs-9);
     gap: 5px;
   }
   .press-tabs button > span {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-record-spines {
     padding: 24px 16px;
@@ -1638,7 +1621,7 @@
     align-items: start;
     flex-direction: column;
     gap: 4px;
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-library-tracks,
   .press-library-liked {
@@ -1651,13 +1634,13 @@
   .press-row-number {
     flex-basis: 22px;
     width: 22px;
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .press-row-song {
     gap: 10px;
   }
   .press-row-song strong {
-    font-size: 17px;
+    font-size: var(--fs-18);
   }
   .press-row-song img {
     width: 42px;
@@ -1665,7 +1648,7 @@
     flex-basis: 42px;
   }
   .press-row-duration {
-    font-size: 10px;
+    font-size: var(--fs-10);
     width: 32px;
   }
   .press-order {
@@ -1688,7 +1671,7 @@
     min-height: 120px;
   }
   .press-playlist-number {
-    font-size: 30px;
+    font-size: var(--fs-32);
     width: 34px;
   }
   .press-playlist-list img {
@@ -1696,10 +1679,10 @@
     height: 48px;
   }
   .press-playlist-list strong {
-    font-size: 24px;
+    font-size: var(--fs-24);
   }
   .press-playlist-list small {
-    font-size: 10px;
+    font-size: var(--fs-10);
   }
   .press-collection-back {
     margin-left: 16px;
@@ -1711,26 +1694,26 @@
     align-items: start;
   }
   .press-collection-hero h1 {
-    font-size: 32px;
+    font-size: var(--fs-32);
   }
   .press-collection-hero .press-micro {
-    font-size: 8px;
+    font-size: var(--fs-8);
   }
   .press-collection-hero p {
-    font-size: 14px;
+    font-size: var(--fs-14);
   }
   .press-solid-button {
     padding: 10px;
-    font-size: 9px !important;
+    font-size: var(--fs-9) !important;
     gap: 7px;
     margin-top: 15px;
   }
   .press-queue-heading {
     padding: 8px 16px;
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .press-queue-heading .press-text-button {
-    font-size: 10px !important;
+    font-size: var(--fs-10) !important;
   }
   .press-queue > .press-track-list,
   .press-search-results > .press-track-list {
@@ -1740,7 +1723,7 @@
     padding: 32px 16px;
   }
   .press-empty h2 {
-    font-size: 31px;
+    font-size: var(--fs-32);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1855,8 +1838,7 @@
 .kaze-interface[data-interface="brutalist"] .interface-route {
   margin-right: auto;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   text-transform: uppercase;
 }
 .kaze-interface[data-interface="brutalist"] .history-controls .player-icon-btn {
@@ -1881,7 +1863,7 @@
 }
 .kaze-interface[data-interface="brutalist"] .global-search input {
   height: 42px;
-  font-size: 12px !important;
+  font-size: var(--fs-12) !important;
   color: var(--press-ink) !important;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -1901,8 +1883,7 @@
   gap: 8px;
   min-height: 40px;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   text-transform: uppercase;
   padding: 0 6px;
 }
@@ -1913,7 +1894,7 @@
   .spatial-utilities-trigger
   span::after {
   content: "MORE";
-  font-size: 10px;
+  font-size: var(--fs-10);
 }
 .kaze-interface[data-interface="brutalist"] .spatial-utilities-menu {
   position: absolute;
@@ -2021,8 +2002,7 @@
 .press-position .time-label {
   width: auto;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
 }
 .press-position .time-label:last-child {
   text-align: right;
@@ -2052,8 +2032,7 @@
   color: var(--press-ink);
   text-transform: uppercase;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
 }
 .press-account-navigation .profile-navigation-avatar {
   width: 24px;
@@ -2091,7 +2070,7 @@
 }
 .kaze-interface[data-interface="brutalist"] .press-listen h1 {
   margin: 10px 0 0;
-  font-weight: 900;
+  font-weight: var(--weight-black);
   color: var(--press-ink);
 }
 .kaze-interface[data-interface="brutalist"]
@@ -2194,19 +2173,19 @@
 }
 .press-home-list-number {
   color: var(--press-red);
-  font-size: 52px;
-  font-weight: 850;
+  font-size: calc(52 * var(--fs-unit));
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.06em;
   line-height: 1;
 }
 .press-home-list-heading h2 {
-  font-size: 30px;
+  font-size: var(--fs-32);
   letter-spacing: -0.045em;
   line-height: 1.1;
 }
 .press-home-list-heading p {
   color: var(--press-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin-top: 7px;
 }
 .press-home-list-count {
@@ -2214,11 +2193,11 @@
   flex-direction: column;
   align-items: end;
   gap: 4px;
-  font: 10px "Courier New", monospace;
+  font: var(--fs-10) var(--font-mono);
   color: var(--press-muted);
 }
 .press-home-list-count strong {
-  font: 22px "Kaze Press", Arial, sans-serif;
+  font: var(--fs-22) var(--font-press);
   color: var(--press-ink);
 }
 .press-home-list-body {
@@ -2251,14 +2230,14 @@
 }
 .press-home-song strong {
   display: block;
-  font-size: 23px;
+  font-size: var(--fs-24);
   letter-spacing: -0.045em;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .press-home-song small {
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--press-muted);
 }
 .press-home-moment {
@@ -2271,12 +2250,12 @@
 }
 .press-home-moment h2,
 .press-home-week h2 {
-  font-size: 36px;
+  font-size: var(--fs-36);
   letter-spacing: -0.05em;
   margin: 10px 0;
 }
 .press-home-moment h3 {
-  font-size: 24px;
+  font-size: var(--fs-24);
 }
 .press-home-moment .music-artwork {
   aspect-ratio: 1;
@@ -2324,8 +2303,7 @@
   min-height: 30px;
   color: var(--press-muted);
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
 }
 .kaze-interface[data-interface="brutalist"] .chapter-nav button[aria-current] {
   color: var(--press-red);
@@ -2397,8 +2375,8 @@
   .discovery-track-card
   > div:nth-child(2) {
   margin-top: 14px !important;
-  font-size: 22px !important;
-  font-weight: 750 !important;
+  font-size: var(--fs-22) !important;
+  font-weight: var(--weight-heavy) !important;
   letter-spacing: -0.05em;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -2494,7 +2472,7 @@
   margin: 0 !important;
 }
 .kaze-interface[data-interface="brutalist"] .collection-copy h1 {
-  font-size: clamp(36px, 4.8vw, 78px) !important;
+  font-size: clamp(var(--fs-36), 4.8vw, var(--fs-80)) !important;
   line-height: 0.95 !important;
   letter-spacing: -0.07em !important;
   text-transform: uppercase;
@@ -2548,7 +2526,7 @@
   border-bottom: var(--press-rule);
 }
 .kaze-interface[data-interface="brutalist"] .queue-view .view-title {
-  font-size: clamp(52px, 6.8vw, 112px);
+  font-size: clamp(calc(52 * var(--fs-unit)), 6.8vw, var(--fs-112));
   line-height: 0.87;
   letter-spacing: -0.075em;
   text-transform: uppercase;
@@ -2582,7 +2560,7 @@
   background: none;
 }
 .kaze-interface[data-interface="brutalist"] .queue-track strong {
-  font-size: 23px;
+  font-size: var(--fs-24);
   letter-spacing: -0.045em;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -2606,7 +2584,7 @@
     gap: 16px;
   }
   .press-home-flow-copy h2 {
-    font-size: 32px;
+    font-size: var(--fs-32);
   }
   .press-home-row {
     gap: 10px;
@@ -2616,7 +2594,7 @@
     width: 32px;
   }
   .press-home-song strong {
-    font-size: 20px;
+    font-size: var(--fs-20);
   }
 }
 @media (max-height: 760px) and (min-width: 761px) {
@@ -2664,7 +2642,7 @@
     padding: 18px 16px;
   }
   .press-home-flow-copy h2 {
-    font-size: 26px;
+    font-size: var(--fs-28);
   }
   .press-home-moment {
     grid-template-columns: 1fr 100px;
@@ -2679,13 +2657,13 @@
     gap: 14px;
   }
   .press-home-list-number {
-    font-size: 36px;
+    font-size: var(--fs-36);
   }
   .press-home-list-heading h2 {
-    font-size: 23px;
+    font-size: var(--fs-24);
   }
   .press-home-list-heading p {
-    font-size: 11px;
+    font-size: var(--fs-11);
   }
   .press-home-list-body {
     padding: 0 12px;
@@ -2705,7 +2683,7 @@
     gap: 6px;
   }
   .press-home-song strong {
-    font-size: 17px;
+    font-size: var(--fs-18);
   }
   .press-home-row .press-icon {
     min-width: 30px;
@@ -2722,15 +2700,14 @@
     gap: 5px;
     color: var(--press-red);
     font:
-      10px "Courier New",
-      monospace;
+      var(--fs-10) var(--font-mono);
   }
   .kaze-interface[data-interface="brutalist"] .collection-hero {
     padding: 60px 16px 20px !important;
     gap: 20px !important;
   }
   .kaze-interface[data-interface="brutalist"] .collection-copy h1 {
-    font-size: 32px !important;
+    font-size: var(--fs-32) !important;
   }
   .kaze-interface[data-interface="brutalist"]
     .collection-view--liked
@@ -2762,8 +2739,8 @@
   background: var(--press-wash) !important;
 }
 .kaze-interface[data-interface="brutalist"] .press-header nav button {
-  font-weight: 750;
-  font-size: 12px;
+  font-weight: var(--weight-heavy);
+  font-size: var(--fs-12);
 }
 .kaze-interface[data-interface="brutalist"] .press-poster-page {
   width: 100%;
@@ -2784,7 +2761,7 @@
   box-shadow: none;
 }
 .kaze-interface[data-interface="brutalist"] .press-position .time-label {
-  font-weight: 400;
+  font-weight: var(--weight-regular);
 }
 @media (min-width: 1700px) {
   .kaze-interface[data-interface="brutalist"] .home-flow {
@@ -2796,7 +2773,7 @@
     padding: 20px !important;
   }
   .kaze-interface[data-interface="brutalist"] .press-header nav button {
-    font-size: 10px;
+    font-size: var(--fs-10);
   }
 }
 @media (max-width: 760px) {
@@ -2804,7 +2781,7 @@
     padding: 18px 16px !important;
   }
   .kaze-interface[data-interface="brutalist"] .press-header nav button {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
 }
 .kaze-interface[data-interface="brutalist"] .press-home {
@@ -2877,7 +2854,7 @@
 .kaze-interface[data-interface="brutalist"] .chart-card-region {
   color: var(--press-paper) !important;
   text-shadow: none !important;
-  font-size: clamp(16px, 1.4vw, 21px) !important;
+  font-size: clamp(var(--fs-16), 1.4vw, var(--fs-22)) !important;
 }
 
 /* Editorial album spotlight and a ruled listening summary retain the Home grid. */
@@ -2894,12 +2871,12 @@
   color: var(--press-red);
 }
 .press-home-section-heading h2 {
-  font-size: 22px;
+  font-size: var(--fs-22);
   margin: 8px 0 0;
 }
 .press-home-moment h3 {
-  font-size: clamp(30px, 3.8vw, 60px);
-  font-weight: 850;
+  font-size: clamp(var(--fs-32), 3.8vw, calc(60 * var(--fs-unit)));
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.06em;
   line-height: 1.02;
   max-width: 22ch;
@@ -2907,7 +2884,7 @@
   overflow-wrap: anywhere;
 }
 .press-home-moment-artist {
-  font-size: 18px;
+  font-size: var(--fs-18);
   margin-top: 12px;
 }
 .press-home-moment-note {
@@ -2958,15 +2935,15 @@
   min-width: 0;
 }
 .press-home-week-stats dt {
-  font: 10px "Courier New", monospace;
+  font: var(--fs-10) var(--font-mono);
   text-transform: uppercase;
   color: var(--press-muted);
 }
 .press-home-week-stats dd {
   order: -1;
   margin: 0 0 14px;
-  font-size: clamp(32px, 4.5vw, 72px);
-  font-weight: 850;
+  font-size: clamp(var(--fs-32), 4.5vw, var(--fs-72));
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.06em;
   line-height: 1;
   overflow-wrap: anywhere;
@@ -2980,7 +2957,7 @@
     gap: 20px;
   }
   .press-home-moment-artist {
-    font-size: 14px;
+    font-size: var(--fs-14);
   }
   .press-home-week-stats {
     gap: 16px;
@@ -2998,8 +2975,7 @@
   color: var(--press-ink);
   max-width: 140px;
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   padding: 8px 0;
 }
 .kaze-interface[data-interface="brutalist"] .press-discover .windowed-strip {
@@ -3028,7 +3004,7 @@
 .kaze-interface[data-interface="brutalist"]
   .discovery-track-card
   .discovery-card-title {
-  font-size: 22px !important;
+  font-size: var(--fs-22) !important;
   letter-spacing: -0.05em;
   line-height: 1.1 !important;
   margin-top: 14px !important;
@@ -3163,7 +3139,7 @@
   overflow: visible !important;
 }
 .kaze-interface[data-interface="brutalist"] .playlist-card h3 {
-  font-size: 32px !important;
+  font-size: var(--fs-32) !important;
   letter-spacing: -0.05em;
   line-height: 1;
   margin: 0 !important;
@@ -3206,14 +3182,14 @@
     height: 48px !important;
   }
   .kaze-interface[data-interface="brutalist"] .playlist-card h3 {
-    font-size: 24px !important;
+    font-size: var(--fs-24) !important;
   }
 }
 .kaze-interface[data-interface="brutalist"]
   .playlist-card
   > div:first-of-type
   > div:nth-child(2) {
-  font-size: 32px !important;
+  font-size: var(--fs-32) !important;
   letter-spacing: -0.05em;
   line-height: 1;
   margin: 0 !important;
@@ -3226,7 +3202,7 @@
   grid-column: 2;
   align-self: start;
   color: var(--press-muted);
-  font-size: 11px !important;
+  font-size: var(--fs-11) !important;
 }
 .kaze-interface[data-interface="brutalist"] .playlist-card > div:last-child {
   border: 0 !important;
@@ -3240,7 +3216,7 @@
     .playlist-card
     > div:first-of-type
     > div:nth-child(2) {
-    font-size: 24px !important;
+    font-size: var(--fs-24) !important;
   }
 }
 .kaze-interface[data-interface="brutalist"]
@@ -3268,8 +3244,7 @@
   border: 0;
   padding: 0;
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
   text-transform: uppercase;
 }
 .kaze-interface[data-interface="brutalist"] .queue-next-heading {
@@ -3278,9 +3253,9 @@
   align-items: center;
 }
 .kaze-interface[data-interface="brutalist"] .library-view .track-row .primary {
-  font-size: 21px;
+  font-size: var(--fs-22);
   letter-spacing: -0.045em;
-  font-weight: 750;
+  font-weight: var(--weight-heavy);
 }
 .kaze-interface[data-interface="brutalist"]
   .press-library-heading
@@ -3323,7 +3298,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 32px;
+  font-size: var(--fs-32);
   line-height: 1.1;
   letter-spacing: -0.05em;
 }
@@ -3354,8 +3329,7 @@
   height: 60px;
   margin: 0;
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
   text-transform: uppercase;
 }
 .press-fullscreen .fullscreen-main {
@@ -3398,8 +3372,8 @@
 
 /* Brutalist familiarity is a solid horizontal control; Spatial retains its dial. */
 .press-familiarity { width:min(360px,100%); margin-top:24px; }
-.press-familiarity-heading,.press-familiarity-endpoints { display:flex; justify-content:space-between; align-items:center; gap:16px; font:10px "Courier New",monospace; text-transform:uppercase; }
-.press-familiarity-heading output { font-size:18px; font-weight:750; }
+.press-familiarity-heading,.press-familiarity-endpoints { display:flex; justify-content:space-between; align-items:center; gap:16px; font:var(--fs-10) var(--font-mono); text-transform:uppercase; }
+.press-familiarity-heading output { font-size:var(--fs-18); font-weight:var(--weight-heavy); }
 .press-familiarity-track { position:relative; height:36px; margin-top:12px; border:var(--press-rule); background:var(--press-wash); }
 .press-familiarity-fill { position:absolute; inset:0; background:var(--press-red); transform:scaleX(var(--steering-fill)); transform-origin:left center; pointer-events:none; }
 .kaze-interface[data-interface="brutalist"] .press-familiarity input[type="range"] { position:absolute; inset:-6px 0; width:100%; height:44px; margin:0; padding:0; appearance:none; background:transparent; border:0; border-radius:0; cursor:ew-resize; touch-action:pan-y; }
@@ -3407,7 +3381,7 @@
 .press-familiarity input::-webkit-slider-thumb { appearance:none; width:10px; height:40px; margin-top:-4px; border:2px solid var(--press-paper); border-radius:0; background:var(--press-ink); }
 .press-familiarity input::-moz-range-track { height:32px; background:transparent; }
 .press-familiarity input::-moz-range-thumb { width:6px; height:36px; border:2px solid var(--press-paper); border-radius:0; background:var(--press-ink); }
-.press-familiarity-endpoints { color:var(--press-muted); margin-top:10px; font-size:9px; }
+.press-familiarity-endpoints { color:var(--press-muted); margin-top:10px; font-size:var(--fs-9); }
 
 /* Vertical wheel gestures replace the active bin without scrolling the heading. */
 .kaze-interface[data-interface="brutalist"] .press-discover {
@@ -3443,16 +3417,15 @@
 }
 .kaze-interface[data-interface="brutalist"] .settings-eyebrow {
   font:
-    10px "Courier New",
-    monospace;
+    var(--fs-10) var(--font-mono);
   letter-spacing: 0.05em;
   color: var(--press-muted);
 }
 .kaze-interface[data-interface="brutalist"] .settings-header h1 {
   margin: 0;
-  font-size: 48px;
+  font-size: var(--fs-48);
   line-height: 0.95;
-  font-weight: 900;
+  font-weight: var(--weight-black);
   letter-spacing: -0.065em;
   text-transform: uppercase;
   outline: none;
@@ -3477,15 +3450,14 @@
   display: flex;
   gap: 16px;
   align-items: baseline;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--fs-18);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
   margin: 0 0 18px;
 }
 .kaze-interface[data-interface="brutalist"] .settings-section h2 small {
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
   color: var(--press-red);
 }
 .kaze-interface[data-interface="brutalist"] .settings-style-options {
@@ -3514,8 +3486,8 @@
 }
 .kaze-interface[data-interface="brutalist"] .settings-style-options strong {
   display: block;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: var(--fs-18);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.015em;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -3525,7 +3497,7 @@
   > span {
   display: block;
   color: var(--press-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin-top: 4px;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -3538,7 +3510,7 @@
 .kaze-interface[data-interface="brutalist"] .settings-folder-form label {
   display: block;
   color: var(--press-muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-bottom: 10px;
 }
 .kaze-interface[data-interface="brutalist"] .settings-close select,
@@ -3552,12 +3524,12 @@
   background: var(--press-paper);
   color: var(--press-ink);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 .kaze-interface[data-interface="brutalist"] .settings-hint,
 .kaze-interface[data-interface="brutalist"] .settings-detail p {
   color: var(--press-muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.6;
   margin-top: 10px;
 }
@@ -3580,13 +3552,12 @@
 .kaze-interface[data-interface="brutalist"] .settings-section-icon small {
   color: var(--press-red);
   font:
-    11px "Courier New",
-    monospace;
+    var(--fs-11) var(--font-mono);
 }
 .kaze-interface[data-interface="brutalist"] .settings-section-link strong {
   display: block;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--fs-18);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
 }
 .kaze-interface[data-interface="brutalist"]
@@ -3596,7 +3567,7 @@
   display: block;
   color: var(--press-muted);
   margin-top: 5px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .kaze-interface[data-interface="brutalist"] .settings-account {
   display: flex;
@@ -3607,13 +3578,13 @@
   padding-top: 28px;
 }
 .kaze-interface[data-interface="brutalist"] .settings-account h2 {
-  font-size: 13px;
+  font-size: var(--fs-13);
   text-transform: uppercase;
   margin-bottom: 6px;
 }
 .kaze-interface[data-interface="brutalist"] .settings-account p {
   color: var(--press-muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .kaze-interface[data-interface="brutalist"]
   :is(.settings-action, .settings-logout, .settings-back) {
@@ -3627,7 +3598,7 @@
   border-radius: 0;
   background: none;
   color: var(--press-ink);
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .kaze-interface[data-interface="brutalist"] .settings-back {
   border: 0;
@@ -3679,13 +3650,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font:
-    13px "Courier New",
-    monospace;
+    var(--fs-13) var(--font-mono);
 }
 .kaze-interface[data-interface="brutalist"] .settings-folder span {
   display: block;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--press-muted);
 }
 .kaze-interface[data-interface="brutalist"] .settings-icon-action {
@@ -3718,8 +3688,8 @@
 .kaze-interface[data-interface="brutalist"] .settings-storage-summary > strong {
   display: block;
   margin-top: 20px;
-  font-size: 64px;
-  font-weight: 900;
+  font-size: var(--fs-64);
+  font-weight: var(--weight-black);
   letter-spacing: -0.06em;
   line-height: 1;
   color: var(--press-red);
@@ -3734,7 +3704,7 @@
   border-bottom: var(--press-rule);
 }
 .kaze-interface[data-interface="brutalist"] .settings-storage-action h2 {
-  font-size: 22px;
+  font-size: var(--fs-22);
   letter-spacing: -0.03em;
   margin-bottom: 6px;
 }
@@ -3764,13 +3734,13 @@
 }
 .kaze-interface[data-interface="brutalist"] .settings-view [role="alert"] {
   color: var(--press-red);
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-top: 12px;
   flex-basis: 100%;
 }
 .kaze-interface[data-interface="brutalist"] .settings-view [role="status"] {
   color: var(--press-muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-top: 12px;
 }
 @media (max-width: 1150px) {
@@ -3778,7 +3748,7 @@
     padding: 24px;
   }
   .kaze-interface[data-interface="brutalist"] .settings-header h1 {
-    font-size: 40px;
+    font-size: var(--fs-40);
   }
   .kaze-interface[data-interface="brutalist"] .settings-stack {
     padding: 0 24px 30px;
@@ -3792,7 +3762,7 @@
     padding: 22px 16px;
   }
   .kaze-interface[data-interface="brutalist"] .settings-header h1 {
-    font-size: 34px;
+    font-size: var(--fs-36);
   }
   .kaze-interface[data-interface="brutalist"] .settings-stack {
     padding: 0 16px 30px;
@@ -3833,14 +3803,14 @@
   gap: 6px;
   align-items: center;
   color: var(--press-red);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .kaze-interface[data-interface="brutalist"] .settings-links {
   padding: 22px 0;
   border-bottom: var(--press-rule);
 }
 .kaze-interface[data-interface="brutalist"] .settings-links h2 {
-  font-size: 18px;
+  font-size: var(--fs-18);
   text-transform: uppercase;
   margin: 0 0 16px;
 }
@@ -3848,7 +3818,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--press-red);
 }
 .kaze-interface[data-interface="brutalist"]
@@ -3882,8 +3852,8 @@
 }
 .kaze-interface[data-interface="brutalist"] .settings-logout-dialog h2 {
   margin: 0 0 22px;
-  font-size: 26px;
-  font-weight: 800;
+  font-size: var(--fs-28);
+  font-weight: var(--weight-extrabold);
   letter-spacing: -0.04em;
   line-height: 1.1;
 }
@@ -3905,7 +3875,7 @@
   button
   strong {
   display: block;
-  font-size: 17px;
+  font-size: var(--fs-18);
 }
 .kaze-interface[data-interface="brutalist"]
   .settings-logout-options
@@ -3913,7 +3883,7 @@
   span {
   display: block;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--press-muted);
   line-height: 1.5;
 }

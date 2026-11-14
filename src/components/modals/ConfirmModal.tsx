@@ -35,11 +35,11 @@ export function ConfirmModal() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
           <AlertTriangle size={20} color="var(--accent-secondary, var(--accent))" />
-          <h3 id="confirm-modal-title" style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "var(--text-main)" }}>
+          <h3 id="confirm-modal-title" style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: 0, color: "var(--text-main)" }}>
             {request.title}
           </h3>
         </div>
-        <p id="confirm-modal-message" style={{ fontSize: "0.88rem", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+        <p id="confirm-modal-message" style={{ fontSize: "var(--fs-14)", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 20px 0", lineHeight: 1.5 }}>
           {request.message}
         </p>
         <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>

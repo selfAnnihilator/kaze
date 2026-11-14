@@ -257,8 +257,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
-                            fontSize: "0.93rem",
-                            fontWeight: 600,
+                            fontSize: "var(--fs-15)",
+                            fontWeight: "var(--weight-semibold)",
                             color: isPlaying
                               ? "var(--accent-secondary)"
                               : "var(--text-main)",
@@ -271,7 +271,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         </div>
                         <div
                           style={{
-                            fontSize: "0.8rem",
+                            fontSize: "var(--fs-13)",
                             color: "var(--text-muted)",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -319,7 +319,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
                       <div
                         style={{
-                          fontSize: "0.8rem",
+                          fontSize: "var(--fs-13)",
                           color: "var(--text-dim)",
                           minWidth: "38px",
                           textAlign: "right",
@@ -371,12 +371,12 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
           }}
         >
           <Music size={40} color="var(--text-dim)" />
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)" }}>
+          <h3 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
             No songs found for “{searchQuery}”
           </h3>
           <p
             style={{
-              fontSize: "0.86rem",
+              fontSize: "var(--fs-14)",
               color: "var(--text-muted)",
               maxWidth: "420px",
             }}

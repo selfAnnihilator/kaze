@@ -24,8 +24,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
         >
           <h1
             style={{
-              fontSize: "28px",
-              fontWeight: 800,
+              fontSize: "var(--fs-28)",
+              fontWeight: "var(--weight-extrabold)",
               margin: 0,
               letterSpacing: "-0.5px",
             }}
@@ -39,8 +39,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
               color: "var(--accent-light)",
               padding: "2px 10px",
               borderRadius: "9999px",
-              fontSize: "12px",
-              fontWeight: 700,
+              fontSize: "var(--fs-12)",
+              fontWeight: "var(--weight-bold)",
             }}
           >
             {c.viewingYear}
@@ -49,7 +49,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
 
         <div
           style={{
-            fontSize: "13px",
+            fontSize: "var(--fs-13)",
             color: "var(--overlay-60)",
           }}
         >
@@ -85,7 +85,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                       : "transparent",
                     color: isActive ? "var(--text-main)" : "var(--overlay-60)",
                     fontWeight: isActive ? 700 : 500,
-                    fontSize: "13px",
+                    fontSize: "var(--fs-13)",
                     cursor: "pointer",
                     transition: "transform 0.15s ease, opacity 0.15s ease",
                     display: "flex",
@@ -110,8 +110,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
             border: "1px solid var(--overlay-12)",
             background: "var(--overlay-5)",
             color: "var(--text-main)",
-            fontSize: "12px",
-            fontWeight: 600,
+            fontSize: "var(--fs-12)",
+            fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",

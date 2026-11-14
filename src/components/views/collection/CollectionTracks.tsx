@@ -25,8 +25,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
           />
           <p
             style={{
-              fontSize: "1rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-16)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--text-main)",
             }}
           >
@@ -52,8 +52,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             />
             <p
               style={{
-                fontSize: "1.05rem",
-                fontWeight: 600,
+                fontSize: "var(--fs-16)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--text-main)",
                 marginBottom: "6px",
               }}
@@ -62,7 +62,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             </p>
             <p
               style={{
-                fontSize: "0.84rem",
+                fontSize: "var(--fs-13)",
                 color: "var(--text-muted)",
                 marginBottom: "16px",
               }}
@@ -74,7 +74,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
               type="button"
               className="btn btn-secondary"
               onClick={() => c.setSearchQuery("")}
-              style={{ fontSize: "0.82rem" }}
+              style={{ fontSize: "var(--fs-13)" }}
             >
               Clear Search
             </button>
@@ -97,8 +97,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             />
             <p
               style={{
-                fontSize: "1.05rem",
-                fontWeight: 600,
+                fontSize: "var(--fs-16)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--text-main)",
                 marginBottom: "6px",
               }}
@@ -127,8 +127,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
               columnGap: "12px",
               padding: "12px 18px",
               borderBottom: "1px solid var(--border)",
-              fontSize: "0.78rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-12)",
+              fontWeight: "var(--weight-semibold)",
               letterSpacing: "0.6px",
               color: "var(--text-dim)",
               textTransform: "uppercase",
@@ -180,7 +180,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                     columnGap: "12px",
                     padding: "10px 18px",
                     alignItems: "center",
-                    fontSize: "0.88rem",
+                    fontSize: "var(--fs-14)",
                     color:
                       isPlayingThis || isLoadingThis
                         ? "var(--accent-secondary)"
@@ -203,8 +203,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         isPlayingThis || isLoadingThis
                           ? "var(--accent-secondary)"
                           : "var(--text-dim)",
-                      fontSize: "0.85rem",
-                      fontWeight: 500,
+                      fontSize: "var(--fs-14)",
+                      fontWeight: "var(--weight-medium)",
                     }}
                   >
                     {isLoadingThis ? (
@@ -276,8 +276,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                     <div style={{ overflow: "hidden", minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: 600,
-                          fontSize: "0.92rem",
+                          fontWeight: "var(--weight-semibold)",
+                          fontSize: "var(--fs-15)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -290,7 +290,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       </div>
                       <div
                         style={{
-                          fontSize: "0.78rem",
+                          fontSize: "var(--fs-12)",
                           color: "var(--text-muted)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
@@ -307,7 +307,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                   <div
                     style={{
                       color: "var(--text-muted)",
-                      fontSize: "0.84rem",
+                      fontSize: "var(--fs-13)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -322,7 +322,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                     style={{
                       textAlign: "right",
                       color: "var(--text-dim)",
-                      fontSize: "0.82rem",
+                      fontSize: "var(--fs-13)",
                     }}
                   >
                     {c.formatDuration(track.duration_secs)}

@@ -135,13 +135,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <img src="/kaze-icon.png" alt="Kaze" style={{ width: "36px", height: "36px", borderRadius: "10px" }} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
+              <h2 style={{ margin: 0, fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)" }}>
                 {tab === "login" ? "Welcome Back" : "Create Account"}
               </h2>
               <p
                 style={{
                   margin: 0,
-                  fontSize: "12px",
+                  fontSize: "var(--fs-12)",
                   color: "var(--overlay-50)",
                 }}
               >
@@ -187,8 +187,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: tab === "login" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
               borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
               transition: "transform 0.15s ease, opacity 0.15s ease",
             }}
@@ -208,8 +208,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: tab === "signup" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
               borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
               transition: "transform 0.15s ease, opacity 0.15s ease",
             }}
@@ -230,7 +230,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: "var(--palette-red-300)",
               padding: "10px 12px",
               borderRadius: "8px",
-              fontSize: "12px",
+              fontSize: "var(--fs-12)",
               marginBottom: "16px",
             }}
           >
@@ -245,8 +245,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <label
               style={{
                 display: "block",
-                fontSize: "12px",
-                fontWeight: 600,
+                fontSize: "var(--fs-12)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--overlay-70)",
                 marginBottom: "6px",
               }}
@@ -279,7 +279,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   border: "none",
                   padding: "10px 0",
                   color: "var(--text-main)",
-                  fontSize: "14px",
+                  fontSize: "var(--fs-14)",
                   outline: "none",
                 }}
               />
@@ -290,8 +290,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <label
               style={{
                 display: "block",
-                fontSize: "12px",
-                fontWeight: 600,
+                fontSize: "var(--fs-12)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--overlay-70)",
                 marginBottom: "6px",
               }}
@@ -323,7 +323,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   border: "none",
                   padding: "10px 0",
                   color: "var(--text-main)",
-                  fontSize: "14px",
+                  fontSize: "var(--fs-14)",
                   outline: "none",
                 }}
               />
@@ -335,8 +335,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <label
                 style={{
                   display: "block",
-                  fontSize: "12px",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-12)",
+                  fontWeight: "var(--weight-semibold)",
                   color: "var(--overlay-70)",
                   marginBottom: "6px",
                 }}
@@ -368,7 +368,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     border: "none",
                     padding: "10px 0",
                     color: "var(--text-main)",
-                    fontSize: "14px",
+                    fontSize: "var(--fs-14)",
                     outline: "none",
                   }}
                 />
@@ -386,8 +386,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: "var(--text-main)",
               border: "none",
               borderRadius: "10px",
-              fontSize: "14px",
-              fontWeight: 600,
+              fontSize: "var(--fs-14)",
+              fontWeight: "var(--weight-semibold)",
               cursor: isLoading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",

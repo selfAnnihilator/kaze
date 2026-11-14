@@ -69,8 +69,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
         <div>
           <h1
             style={{
-              fontSize: "1.75rem",
-              fontWeight: 800,
+              fontSize: "var(--fs-28)",
+              fontWeight: "var(--weight-extrabold)",
               color: "var(--text-main)",
               display: "flex",
               alignItems: "center",
@@ -82,7 +82,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </h1>
           <p
             style={{
-              fontSize: "0.88rem",
+              fontSize: "var(--fs-14)",
               color: "var(--text-muted)",
               marginTop: "4px",
             }}
@@ -99,7 +99,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 className="btn btn-secondary"
                 onClick={onMarkAllRead}
                 style={{
-                  fontSize: "0.82rem",
+                  fontSize: "var(--fs-13)",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -114,7 +114,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               className="btn btn-secondary"
               onClick={onClearAll}
               style={{
-                fontSize: "0.82rem",
+                fontSize: "var(--fs-13)",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
@@ -136,7 +136,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           type="button"
           onClick={() => setFilter("all")}
           className={`btn ${filter === "all" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "0.82rem" }}
+          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
         >
           All ({notifications.length})
         </button>
@@ -144,7 +144,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           type="button"
           onClick={() => setFilter("downloads")}
           className={`btn ${filter === "downloads" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "0.82rem" }}
+          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
         >
           Downloads (
           {
@@ -160,7 +160,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           type="button"
           onClick={() => setFilter("errors")}
           className={`btn ${filter === "errors" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "0.82rem" }}
+          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
         >
           Errors ({notifications.filter((n) => n.type === "error").length})
         </button>
@@ -184,8 +184,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           />
           <h3
             style={{
-              fontSize: "1.05rem",
-              fontWeight: 700,
+              fontSize: "var(--fs-16)",
+              fontWeight: "var(--weight-bold)",
               color: "var(--text-main)",
               marginBottom: "4px",
             }}
@@ -194,7 +194,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </h3>
           <p
             style={{
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-14)",
               color: "var(--text-muted)",
               maxWidth: "400px",
               margin: "0 auto",
@@ -265,8 +265,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                     <div style={{ flex: 1 }}>
                       <div
                         style={{
-                          fontSize: "0.95rem",
-                          fontWeight: 700,
+                          fontSize: "var(--fs-15)",
+                          fontWeight: "var(--weight-bold)",
                           color: "var(--text-main)",
                           display: "flex",
                           alignItems: "center",
@@ -289,7 +289,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       </div>
                       <p
                         style={{
-                          fontSize: "0.85rem",
+                          fontSize: "var(--fs-14)",
                           color: "var(--text-muted)",
                           lineHeight: 1.4,
                         }}
@@ -301,7 +301,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                           display: "flex",
                           alignItems: "center",
                           gap: "6px",
-                          fontSize: "0.75rem",
+                          fontSize: "var(--fs-12)",
                           color: "var(--text-dim)",
                           marginTop: "8px",
                         }}

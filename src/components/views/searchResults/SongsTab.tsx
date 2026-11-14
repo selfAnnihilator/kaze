@@ -19,8 +19,8 @@ export function SongsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
           >
             <span
               style={{
-                fontSize: "0.82rem",
-                fontWeight: 600,
+                fontSize: "var(--fs-13)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--text-dim)",
               }}
             >
@@ -28,8 +28,8 @@ export function SongsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
             </span>
             <span
               style={{
-                fontSize: "0.82rem",
-                fontWeight: 600,
+                fontSize: "var(--fs-13)",
+                fontWeight: "var(--weight-semibold)",
                 color: "var(--text-dim)",
               }}
             >

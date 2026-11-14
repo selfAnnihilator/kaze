@@ -39,8 +39,8 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               </div>
               <div
                 style={{
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
+                  fontWeight: "var(--weight-bold)",
+                  fontSize: "var(--fs-15)",
                   color: "var(--text-main)",
                 }}
               >
@@ -48,7 +48,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               </div>
               <div
                 style={{
-                  fontSize: "0.8rem",
+                  fontSize: "var(--fs-13)",
                   color: "var(--text-muted)",
                   marginTop: "4px",
                 }}

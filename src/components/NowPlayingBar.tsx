@@ -155,8 +155,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
             <div
               className="player-track-title"
               style={{
-                fontWeight: 600,
-                fontSize: "0.92rem",
+                fontWeight: "var(--weight-semibold)",
+                fontSize: "var(--fs-15)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -194,7 +194,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
             </div>
             <div
               style={{
-                fontSize: "0.8rem",
+                fontSize: "var(--fs-13)",
                 color: "var(--text-muted)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",

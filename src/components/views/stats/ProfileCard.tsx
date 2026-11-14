@@ -44,8 +44,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "28px",
-              fontWeight: 800,
+              fontSize: "var(--fs-28)",
+              fontWeight: "var(--weight-extrabold)",
               color: "var(--text-main)",
               border: "3px solid var(--text-main-a50)",
               boxShadow: "0 0 20px var(--text-main-a25)",
@@ -171,8 +171,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   color: "var(--text-main)",
                   padding: "8px 10px",
                   borderRadius: "8px",
-                  fontSize: "12px",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-12)",
+                  fontWeight: "var(--weight-semibold)",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "background 0.15s ease",
@@ -199,8 +199,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   color: "var(--palette-red-300)",
                   padding: "8px 10px",
                   borderRadius: "8px",
-                  fontSize: "12px",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-12)",
+                  fontWeight: "var(--weight-semibold)",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "background 0.15s ease",
@@ -220,8 +220,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
             <h2
               style={{
-                fontSize: "26px",
-                fontWeight: 800,
+                fontSize: "var(--fs-28)",
+                fontWeight: "var(--weight-extrabold)",
                 margin: 0,
                 color: "var(--text-main)",
                 letterSpacing: "-0.5px",
@@ -233,7 +233,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
 
           <div
             style={{
-              fontSize: "13px",
+              fontSize: "var(--fs-13)",
               color: "var(--overlay-65)",
               display: "flex",
               alignItems: "center",
@@ -260,8 +260,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                     cursor: "pointer",
                     textDecoration: "underline",
                     padding: 0,
-                    fontSize: "13px",
-                    fontWeight: 600,
+                    fontSize: "var(--fs-13)",
+                    fontWeight: "var(--weight-semibold)",
                   }}
                 >
                   Sign in to customize profile photo
@@ -275,7 +275,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
               style={{
                 marginTop: "8px",
                 color: "var(--palette-red-300)",
-                fontSize: "12px",
+                fontSize: "var(--fs-12)",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
@@ -297,8 +297,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             color: "var(--text-main)",
             padding: "8px 16px",
             borderRadius: "10px",
-            fontSize: "13px",
-            fontWeight: 600,
+            fontSize: "var(--fs-13)",
+            fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
           }}
         >

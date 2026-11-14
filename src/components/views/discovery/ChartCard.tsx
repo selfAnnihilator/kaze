@@ -69,8 +69,8 @@ export const ChartCard: React.FC<{
             backgroundColor: "var(--shade-60)",
             padding: "3px 8px",
             borderRadius: "6px",
-            fontSize: "0.68rem",
-            fontWeight: 800,
+            fontSize: "var(--fs-11)",
+            fontWeight: "var(--weight-extrabold)",
             letterSpacing: "1.5px",
             color: "var(--text-main)",
             marginBottom: "6px",
@@ -81,8 +81,8 @@ export const ChartCard: React.FC<{
         <div
           className="chart-card-region"
           style={{
-            fontSize: "1.05rem",
-            fontWeight: 900,
+            fontSize: "var(--fs-16)",
+            fontWeight: "var(--weight-black)",
             letterSpacing: "0.5px",
             color: "var(--text-main)",
             textShadow: "0 2px 8px var(--shade-60)",
@@ -127,8 +127,8 @@ export const ChartCard: React.FC<{
       <div
         style={{
           marginTop: "10px",
-          fontWeight: 700,
-          fontSize: "0.88rem",
+          fontWeight: "var(--weight-bold)",
+          fontSize: "var(--fs-14)",
           color: "var(--text-main)",
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -143,8 +143,8 @@ export const ChartCard: React.FC<{
       <div
         style={{
           marginTop: "3px",
-          fontWeight: 400,
-          fontSize: "0.76rem",
+          fontWeight: "var(--weight-regular)",
+          fontSize: "var(--fs-12)",
           color: "var(--text-muted)",
           whiteSpace: "nowrap",
           overflow: "hidden",

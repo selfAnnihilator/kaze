@@ -166,8 +166,8 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
 
         <div
           style={{
-            fontWeight: 700,
-            fontSize: "0.95rem",
+            fontWeight: "var(--weight-bold)",
+            fontSize: "var(--fs-15)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -178,7 +178,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
         </div>
         <div
           style={{
-            fontSize: "0.82rem",
+            fontSize: "var(--fs-13)",
             color: "var(--text-muted)",
             marginTop: "2px",
             whiteSpace: "nowrap",
@@ -191,7 +191,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
         </div>
         <div
           style={{
-            fontSize: "0.75rem",
+            fontSize: "var(--fs-12)",
             color: "var(--text-dim)",
             marginTop: "6px",
             display: "flex",

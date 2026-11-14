@@ -1,8 +1,8 @@
 /* Kaze / test: charcoal, burnt orange, slate, and violet. */
 
 body { background: var(--palette-sand-950); }
-h1, h2, h3, .view-title { font-family: var(--font-heading); font-weight: 650 !important; letter-spacing: -.015em; }
-button { font-weight: 450; }
+h1, h2, h3, .view-title { font-family: var(--font-heading); font-weight: var(--weight-demibold) !important; letter-spacing: -.015em; }
+button { font-weight: var(--weight-book); }
 .app-container { border: 1px solid var(--accent-slate-a35); }
 .app-container::after {
   content: '';
@@ -20,7 +20,7 @@ button { font-weight: 450; }
 .sidebar { width: 216px; padding-top: 32px; background-image: linear-gradient(var(--bg-main-a95), var(--bg-main-a95)), url('/kaze-orange-backdrop.webp'); background-size: cover; }
 .kage-logo { width: 36px; height: 36px; border-radius: 10px; opacity: .92; transition: opacity 0.15s; }
 .kage-logo:hover { opacity: 1; }
-.nav-button { padding: 12px; font-size: 12px; border-radius: 9px; }
+.nav-button { padding: 12px; font-size: var(--fs-12); border-radius: 9px; }
 .nav-button.active { background: var(--accent-a10); box-shadow: inset 0 0 0 1px var(--accent-a40); }
 .nav-button.active svg { color: var(--accent-light); }
 
@@ -28,8 +28,8 @@ button { font-weight: 450; }
 .global-search { position: relative; z-index: 2; background: transparent !important; border: 0 !important; padding: 0 !important; gap: 10px !important; margin-bottom: 8px !important; }
 .global-search form { justify-content: flex-end; }
 .global-search form > div { background: var(--bg-main-a85) !important; max-width: 480px; padding: 10px 14px !important; }
-.global-search input { font-size: 11px !important; }
-.global-search form > .btn { font-size: 10px !important; background: var(--accent-a10); color: var(--accent-light); border: 1px solid var(--accent-a35); border-radius: 24px; padding: 10px 14px !important; }
+.global-search input { font-size: var(--fs-11) !important; }
+.global-search form > .btn { font-size: var(--fs-10) !important; background: var(--accent-a10); color: var(--accent-light); border: 1px solid var(--accent-a35); border-radius: 24px; padding: 10px 14px !important; }
 .discovery-hero { min-height: 420px; height: min(44vh, 460px); align-items: stretch; }
 .discovery-hero::before {
   inset: -110px 0 -28px;
@@ -39,16 +39,16 @@ button { font-weight: 450; }
     url('/kaze-orange-backdrop.webp') 58% center / cover;
 }
 .discovery-hero-copy { padding: 30px 0 25px; max-width: 76%; display: flex; flex-direction: column; align-items: flex-start; }
-.hero-eyebrow { font-size: 8px; letter-spacing: .24em; margin-bottom: 15px; color: var(--accent-light); }
-.discovery-hero h1 { font: 700 clamp(32px, 2.8vw, 48px)/1.02 var(--font-heading); letter-spacing: -.025em; text-shadow: 0 2px 15px var(--shade-60); }
-.hero-japanese { font-size: 12px; letter-spacing: .28em; color: var(--accent-light); margin-top: 16px; }
+.hero-eyebrow { font-size: var(--fs-8); letter-spacing: .24em; margin-bottom: 15px; color: var(--accent-light); }
+.discovery-hero h1 { font: var(--weight-bold) clamp(var(--fs-32), 2.8vw, var(--fs-48))/1.02 var(--font-heading); letter-spacing: -.025em; text-shadow: 0 2px 15px var(--shade-60); }
+.hero-japanese { font-size: var(--fs-12); letter-spacing: .28em; color: var(--accent-light); margin-top: 16px; }
 .hero-signature { padding: 30px 0; justify-content: center; color: var(--accent-light); }
-.hero-signature span { font-size: 15px; letter-spacing: .55em; }
+.hero-signature span { font-size: var(--fs-15); letter-spacing: .55em; }
 .album-card { border-radius: 7px; background: transparent; border-color: transparent; padding: 8px; box-shadow: none; }
 .mix-card { background: transparent !important; border-color: transparent !important; padding: 0 !important; box-shadow: none !important; }
-.mix-card > div:nth-child(2) { font: 20px var(--font-heading) !important; font-weight: 500 !important; color: var(--text-main) !important; }
+.mix-card > div:nth-child(2) { font: var(--fs-20) var(--font-heading) !important; font-weight: var(--weight-medium) !important; color: var(--text-main) !important; }
 .content-card { border-radius: 8px; }
-.btn { font-weight: 500; }
+.btn { font-weight: var(--weight-medium); }
 .btn-primary { color: var(--bg-main); }
 .tab-btn.active { color: var(--accent-light); }
 .player-bar { background-image: none; border-top-color: var(--accent-slate-a40); height: 82px; }
@@ -72,5 +72,5 @@ button { font-weight: 450; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: var(--accent-secondary); }
 ::selection { background: var(--accent-secondary-a30); color: var(--text-main); }
 @media (max-width: 1000px) { .sidebar { width: 190px; } .main-content { --content-gutter: 26px; padding-inline: 26px; } .discovery-hero { min-height: 390px; } }
-@media (max-height: 720px) { .discovery-hero { min-height: 340px; } .hero-eyebrow { display: none; } .discovery-hero h1 { font-size: 30px; } }
+@media (max-height: 720px) { .discovery-hero { min-height: 340px; } .hero-eyebrow { display: none; } .discovery-hero h1 { font-size: var(--fs-32); } }
 

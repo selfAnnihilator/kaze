@@ -61,8 +61,8 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               </div>
               <div
                 style={{
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
+                  fontWeight: "var(--weight-bold)",
+                  fontSize: "var(--fs-15)",
                   color: "var(--text-main)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -73,7 +73,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               </div>
               <div
                 style={{
-                  fontSize: "0.78rem",
+                  fontSize: "var(--fs-12)",
                   color: "var(--text-muted)",
                   marginTop: "4px",
                 }}

@@ -34,13 +34,13 @@ export function TopDays({ c }: { c: StatsViewContext }) {
           <Award size={18} />
         </div>
         <div>
-          <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+          <h2 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: 0 }}>
             Top 5 Days Listened to Most
           </h2>
           <p
             style={{
               margin: 0,
-              fontSize: "12px",
+              fontSize: "var(--fs-12)",
               color: "var(--overlay-40)",
             }}
           >
@@ -55,7 +55,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
             padding: "36px 0",
             textAlign: "center",
             color: "var(--overlay-40)",
-            fontSize: "13px",
+            fontSize: "var(--fs-13)",
           }}
         >
           No daily listening peaks logged yet. Keep playing your favorite tunes!
@@ -100,8 +100,8 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                     borderRadius: "50%",
                     background: rankBadgeBg,
                     color: "var(--text-main)",
-                    fontSize: "12px",
-                    fontWeight: 800,
+                    fontSize: "var(--fs-12)",
+                    fontWeight: "var(--weight-extrabold)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -111,8 +111,8 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                 </div>
                 <div
                   style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
+                    fontSize: "var(--fs-11)",
+                    fontWeight: "var(--weight-bold)",
                     color: "var(--accent-light)",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
@@ -123,8 +123,8 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                 </div>
                 <div
                   style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
+                    fontSize: "var(--fs-14)",
+                    fontWeight: "var(--weight-semibold)",
                     color: "var(--text-main)",
                     marginBottom: "8px",
                   }}
@@ -133,8 +133,8 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                 </div>
                 <div
                   style={{
-                    fontSize: "20px",
-                    fontWeight: 800,
+                    fontSize: "var(--fs-20)",
+                    fontWeight: "var(--weight-extrabold)",
                     color: "var(--accent-secondary)",
                   }}
                 >

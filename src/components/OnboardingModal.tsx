@@ -34,10 +34,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       <div className="modal-content">
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
           <img className="kage-logo" src="/kaze-icon.png" alt="" />
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 700 }}>Welcome to Kaze</h2>
+          <h2 style={{ fontSize: "var(--fs-22)", fontWeight: "var(--weight-bold)" }}>Welcome to Kaze</h2>
         </div>
 
-        <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", lineHeight: 1.5, marginBottom: "20px" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-15)", lineHeight: 1.5, marginBottom: "20px" }}>
           Kaze is a local-first, privacy-respecting music player. To get started, confirm your
           music directory. Kaze stays strictly within this folder and never scans outside your
           approved roots.
@@ -64,8 +64,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <Folder size={20} color={useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
               <div>
-                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>Use Default System Music Directory</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", wordBreak: "break-all" }}>
+                <div style={{ fontWeight: "var(--weight-semibold)", fontSize: "var(--fs-14)" }}>Use Default System Music Directory</div>
+                <div style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)", wordBreak: "break-all" }}>
                   {defaultMusicDir || "~/Music"}
                 </div>
               </div>
@@ -87,7 +87,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <Folder size={20} color={!useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
-                <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Choose Custom Music Directory</span>
+                <span style={{ fontWeight: "var(--weight-semibold)", fontSize: "var(--fs-14)" }}>Choose Custom Music Directory</span>
               </div>
               {!useDefault && <Check size={18} color="var(--accent)" />}
             </div>
@@ -105,7 +105,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   backgroundColor: "var(--bg-sidebar)",
                   border: "1px solid var(--border-light)",
                   color: "var(--text-main)",
-                  fontSize: "0.88rem",
+                  fontSize: "var(--fs-14)",
                   marginTop: "8px",
                 }}
                 autoFocus
@@ -114,7 +114,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </div>
 
           {/* Start Scan Checkbox */}
-          <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.88rem", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "var(--fs-14)", cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={startScan}

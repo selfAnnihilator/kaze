@@ -29,8 +29,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           style={{
             padding: "6px 14px",
             borderRadius: "9999px",
-            fontSize: "0.82rem",
-            fontWeight: 600,
+            fontSize: "var(--fs-13)",
+            fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
             border: "none",
             backgroundColor:
@@ -47,8 +47,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           style={{
             padding: "6px 14px",
             borderRadius: "9999px",
-            fontSize: "0.82rem",
-            fontWeight: 600,
+            fontSize: "var(--fs-13)",
+            fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
             border: "none",
             backgroundColor:
@@ -66,8 +66,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             style={{
               padding: "6px 14px",
               borderRadius: "9999px",
-              fontSize: "0.82rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
               border: "none",
               backgroundColor:
@@ -88,8 +88,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             style={{
               padding: "6px 14px",
               borderRadius: "9999px",
-              fontSize: "0.82rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
               border: "none",
               backgroundColor:
@@ -110,8 +110,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             style={{
               padding: "6px 14px",
               borderRadius: "9999px",
-              fontSize: "0.82rem",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
               border: "none",
               backgroundColor:
@@ -129,7 +129,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
 
       {/* Clear Search & Results info */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+        <span style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)" }}>
           Search results for &ldquo;
           <span style={{ color: "var(--text-main)" }}>{c.searchQuery}</span>&rdquo;
         </span>
@@ -139,7 +139,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           className="btn btn-secondary"
           style={{
             padding: "5px 12px",
-            fontSize: "0.8rem",
+            fontSize: "var(--fs-13)",
             display: "inline-flex",
             alignItems: "center",
             gap: "6px",

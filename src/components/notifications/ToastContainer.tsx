@@ -63,8 +63,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: "0.88rem",
-            fontWeight: 700,
+            fontSize: "var(--fs-14)",
+            fontWeight: "var(--weight-bold)",
             color: "var(--text-main)",
             marginBottom: "2px",
           }}
@@ -73,7 +73,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         </div>
         <div
           style={{
-            fontSize: "0.8rem",
+            fontSize: "var(--fs-13)",
             color: "var(--text-muted)",
             lineHeight: 1.35,
             wordBreak: "break-word",

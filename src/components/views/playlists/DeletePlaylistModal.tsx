@@ -46,8 +46,8 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
               <div>
                 <h3
                   style={{
-                    fontSize: "1.15rem",
-                    fontWeight: 700,
+                    fontSize: "var(--fs-18)",
+                    fontWeight: "var(--weight-bold)",
                     margin: "0 0 6px 0",
                     color: "var(--palette-red-200)",
                   }}
@@ -56,7 +56,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 </h3>
                 <p
                   style={{
-                    fontSize: "0.88rem",
+                    fontSize: "var(--fs-14)",
                     color: "var(--text-dim)",
                     margin: 0,
                     lineHeight: 1.5,
@@ -93,7 +93,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 style={{
                   backgroundColor: "var(--danger, var(--danger))",
                   color: "var(--white)",
-                  fontWeight: 600,
+                  fontWeight: "var(--weight-semibold)",
                   border: "none",
                   display: "flex",
                   alignItems: "center",

@@ -104,7 +104,7 @@ const LibraryRow = ({
         columnGap: "12px",
         alignItems: "center",
         padding: "0 14px",
-        fontSize: "0.9rem",
+        fontSize: "var(--fs-14)",
         color: "var(--text-muted)",
         backgroundColor: isLoading ? "var(--accent-a12)" : undefined,
         borderBottom: "1px solid var(--border)",
@@ -175,7 +175,7 @@ const LibraryRow = ({
           style={{
             backgroundColor: "var(--border)",
             color: "var(--text-muted)",
-            fontSize: "0.72rem",
+            fontSize: "var(--fs-12)",
             padding: "2px 6px",
             borderRadius: "4px",
           }}
@@ -375,7 +375,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                   border: "none",
                   outline: "none",
                   color: "var(--text-main)",
-                  fontSize: "0.88rem",
+                  fontSize: "var(--fs-14)",
                   width: "100%",
                 }}
               />
@@ -401,10 +401,10 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               color: "var(--text-dim)",
             }}
           >
-            <p style={{ fontSize: "1.1rem", marginBottom: "8px" }}>
+            <p style={{ fontSize: "var(--fs-18)", marginBottom: "8px" }}>
               {emptyTitle}
             </p>
-            <p style={{ fontSize: "0.88rem" }}>
+            <p style={{ fontSize: "var(--fs-14)" }}>
               {emptyHint}
             </p>
           </div>
@@ -431,8 +431,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                 columnGap: "12px",
                 padding: "10px 14px",
                 color: "var(--text-dim)",
-                fontSize: "0.8rem",
-                fontWeight: 600,
+                fontSize: "var(--fs-13)",
+                fontWeight: "var(--weight-semibold)",
                 borderBottom: "1px solid var(--border)",
                 textTransform: "uppercase",
                 backgroundColor: "var(--bg-card)",

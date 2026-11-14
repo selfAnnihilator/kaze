@@ -18,8 +18,8 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
             >
               <h2
                 style={{
-                  fontSize: "1.15rem",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-18)",
+                  fontWeight: "var(--weight-semibold)",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -28,7 +28,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                 <Sparkles size={18} color="var(--accent-light)" />
                 <span>Curated Smart Mixes & Recommendations</span>
               </h2>
-              <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+              <span style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)" }}>
                 Automatically derived from your genres and library
               </span>
             </div>
@@ -52,14 +52,14 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
               />
               <div
                 style={{
-                  fontWeight: 600,
+                  fontWeight: "var(--weight-semibold)",
                   color: "var(--text-main)",
                   marginBottom: "4px",
                 }}
               >
                 Generating Smart Mixes...
               </div>
-              <p style={{ fontSize: "0.85rem" }}>
+              <p style={{ fontSize: "var(--fs-14)" }}>
                 Auto-curating mixes based on your music library folders and
                 genres.
               </p>
@@ -149,8 +149,8 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
 
                         <div
                           style={{
-                            fontWeight: 700,
-                            fontSize: "1.05rem",
+                            fontWeight: "var(--weight-bold)",
+                            fontSize: "var(--fs-16)",
                             color: "var(--text-main)",
                             marginBottom: "6px",
                           }}
@@ -159,7 +159,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                         </div>
                         <div
                           style={{
-                            fontSize: "0.82rem",
+                            fontSize: "var(--fs-13)",
                             color: "var(--text-dim)",
                             lineHeight: 1.4,
                             marginBottom: "16px",
@@ -184,7 +184,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                           style={{
                             flex: 1,
                             justifyContent: "center",
-                            fontSize: "0.85rem",
+                            fontSize: "var(--fs-14)",
                             padding: "8px 12px",
                           }}
                           onClick={(e) => {
@@ -199,7 +199,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                         <button
                           className="btn btn-secondary"
                           style={{
-                            fontSize: "0.82rem",
+                            fontSize: "var(--fs-13)",
                             padding: "8px 12px",
                             display: "flex",
                             alignItems: "center",

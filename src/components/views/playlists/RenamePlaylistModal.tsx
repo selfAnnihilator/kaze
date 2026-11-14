@@ -26,7 +26,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 style={{ display: "flex", alignItems: "center", gap: "10px" }}
               >
                 <Pencil size={20} color="var(--accent-light, var(--text-main))" />
-                <h3 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
+                <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)", margin: 0 }}>
                   Rename Playlist
                 </h3>
               </div>
@@ -49,7 +49,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 <label
                   style={{
                     display: "block",
-                    fontSize: "0.82rem",
+                    fontSize: "var(--fs-13)",
                     color: "var(--text-dim)",
                     marginBottom: "8px",
                   }}
@@ -65,14 +65,14 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                     c.setRenameError(null);
                   }}
                   className="input-field"
-                  style={{ width: "100%", fontSize: "0.95rem" }}
+                  style={{ width: "100%", fontSize: "var(--fs-15)" }}
                   placeholder="Enter playlist name"
                 />
                 {c.renameError && (
                   <p
                     style={{
                       color: "var(--danger, var(--danger))",
-                      fontSize: "0.8rem",
+                      fontSize: "var(--fs-13)",
                       marginTop: "6px",
                     }}
                   >

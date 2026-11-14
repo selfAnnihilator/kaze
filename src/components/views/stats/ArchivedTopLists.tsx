@@ -20,7 +20,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
           padding: "24px",
         }}
       >
-        <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 16px 0" }}>
+        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: "0 0 16px 0" }}>
           All-Time Top 10 Songs
         </h3>
         {!c.stats?.top_songs || c.stats.top_songs.length === 0 ? (
@@ -29,7 +29,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
               padding: "36px 0",
               textAlign: "center",
               color: "var(--overlay-40)",
-              fontSize: "13px",
+              fontSize: "var(--fs-13)",
             }}
           >
             No songs recorded yet.
@@ -50,8 +50,8 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
                 <span
                   style={{
                     width: "28px",
-                    fontSize: "15px",
-                    fontWeight: 800,
+                    fontSize: "var(--fs-15)",
+                    fontWeight: "var(--weight-extrabold)",
                     color: idx === 0 ? "var(--palette-amber-450)" : idx === 1 ? "var(--palette-slate-100)" : idx === 2 ? "var(--palette-orange-550)" : "var(--overlay-50)",
                     textAlign: "center",
                   }}
@@ -59,18 +59,18 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
                   {idx + 1}
                 </span>
                 <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-main)" }}>
+                  <div style={{ fontSize: "var(--fs-14)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
                     {song.title}
                   </div>
-                  <div style={{ fontSize: "12px", color: "var(--overlay-50)" }}>
+                  <div style={{ fontSize: "var(--fs-12)", color: "var(--overlay-50)" }}>
                     {song.artist_name || "Unknown Artist"}
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)" }}>
+                  <div style={{ fontSize: "var(--fs-13)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
                     {c.formatSeconds(song.total_seconds)}
                   </div>
-                  <div style={{ fontSize: "11px", color: "var(--overlay-40)" }}>
+                  <div style={{ fontSize: "var(--fs-11)", color: "var(--overlay-40)" }}>
                     {song.play_count} plays
                   </div>
                 </div>

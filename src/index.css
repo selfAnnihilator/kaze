@@ -28,7 +28,7 @@ button, input, select, textarea { font-family: inherit; }
   gap: 18px;
   background: var(--startup-substrate);
   color: var(--startup-ink);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 .app-startup-sr {
   position: absolute;
@@ -78,9 +78,9 @@ button, input, select, textarea { font-family: inherit; }
 .app-startup-name {
   position: relative;
   display: flex;
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 23px;
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: var(--fs-24);
+  font-weight: var(--weight-bold);
   line-height: 1.2;
 }
 .app-startup-name > span {
@@ -117,8 +117,8 @@ button, input, select, textarea { font-family: inherit; }
 .app-startup-frame::after { bottom: -2px; transform-origin: right; }
 [data-startup-style="brutalist"] .app-startup-icon { border-radius: 0; }
 [data-startup-style="brutalist"] .app-startup-name {
-  font-size: 38px;
-  font-weight: 850;
+  font-size: var(--fs-40);
+  font-weight: var(--weight-ultra);
   letter-spacing: -0.045em;
 }
 [data-startup-style="brutalist"] .app-startup-name > span {
@@ -223,8 +223,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: var(--fs-14);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   text-align: left;
@@ -278,13 +278,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     url('/kage-landscape.svg') center / cover;
 }
 .discovery-hero-copy { padding: 30px 0; }
-.hero-eyebrow { font-size: 9px; letter-spacing: 2.8px; color: var(--text-muted); margin-bottom: 14px; }
-.discovery-hero h1 { font-size: clamp(30px, 3.4vw, 48px); letter-spacing: -1.6px; line-height: 1.06; font-weight: 750; }
+.hero-eyebrow { font-size: var(--fs-9); letter-spacing: 2.8px; color: var(--text-muted); margin-bottom: 14px; }
+.discovery-hero h1 { font-size: clamp(var(--fs-32), 3.4vw, var(--fs-48)); letter-spacing: -1.6px; line-height: 1.06; font-weight: var(--weight-heavy); }
 .discovery-hero h1 em { color: var(--accent); font-style: normal; }
-.discovery-hero-copy > p:last-child { font-size: 12px; line-height: 1.6; margin-top: 16px; color: var(--palette-taupe-300); }
+.discovery-hero-copy > p:last-child { font-size: var(--fs-12); line-height: 1.6; margin-top: 16px; color: var(--palette-taupe-300); }
 .hero-signature { align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 25px 0 25px 25px; color: var(--palette-orange-300); }
-.hero-signature span { writing-mode: vertical-rl; font-family: 'Noto Sans JP', serif; font-size: 35px; letter-spacing: 9px; }
-.hero-signature small { font-size: 7px; line-height: 1.8; letter-spacing: 1.5px; }
+.hero-signature span { writing-mode: vertical-rl; font-family: var(--font-jp); font-size: var(--fs-36); letter-spacing: 9px; }
+.hero-signature small { font-size: var(--fs-8); line-height: 1.8; letter-spacing: 1.5px; }
 
 .view-header {
   display: flex;
@@ -294,8 +294,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .view-title {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: var(--fs-28);
+  font-weight: var(--weight-bold);
 }
 
 /* Tables & Lists */
@@ -308,8 +308,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-align: left;
   padding: 10px 14px;
   color: var(--text-dim);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-13);
+  font-weight: var(--weight-semibold);
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
 }
@@ -326,14 +326,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .track-row td {
   padding: 12px 14px;
-  font-size: 0.9rem;
+  font-size: var(--fs-14);
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
 }
 
 .track-row td.primary {
   color: var(--text-main);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 /* Buttons & Badges */
@@ -341,8 +341,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: inline-block;
   padding: 3px 8px;
   border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--fs-12);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
 }
 
@@ -354,8 +354,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 8px;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: var(--fs-14);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   border: none;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
@@ -501,7 +501,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .time-label {
-  font-size: 0.75rem;
+  font-size: var(--fs-12);
   color: var(--text-dim);
   width: 38px;
   text-align: center;
@@ -570,12 +570,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .global-search { box-shadow: none !important; background-color: var(--palette-taupe-900) !important; }
 .global-search form > div { border-radius: 24px !important; }
-.global-search input { font-size: 13px !important; }
+.global-search input { font-size: var(--fs-13) !important; }
 .global-search form > div:focus-within { border-color: var(--accent-light) !important; }
 
 @media (max-width: 1000px) {
   .sidebar { width: 195px; padding-left: 10px; padding-right: 10px; }
-  .nav-button { gap: 9px; font-size: 12px; }
+  .nav-button { gap: 9px; font-size: var(--fs-12); }
   .main-content { --content-gutter: 20px; padding: 20px; }
   .player-track-info { width: 250px; }
   .player-volume { width: 180px; }
@@ -605,8 +605,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   gap: 8px;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: var(--fs-14);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   background: none;
   border: none;
@@ -632,7 +632,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text-main);
   border-radius: 8px;
   padding: 8px 14px;
-  font-size: 0.88rem;
+  font-size: var(--fs-14);
   outline: none;
   transition: border-color 0.15s ease;
 }

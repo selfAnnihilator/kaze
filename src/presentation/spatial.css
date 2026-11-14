@@ -198,7 +198,7 @@
 :root[data-interface="spatial"] .interface-route {
   order: 1;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-12);
   width: 160px;
   max-width: 25%;
 }
@@ -225,7 +225,7 @@
   padding: 8px 4px !important;
 }
 :root[data-interface="spatial"] .kaze-interface .global-search input {
-  font-size: 12px !important;
+  font-size: var(--fs-12) !important;
   color: var(--text-main) !important;
 }
 :root[data-interface="spatial"] .kaze-interface .global-search .btn-primary {
@@ -317,8 +317,8 @@
   min-width: 0;
 }
 .spatial-discovery-caption h2 {
-  font-size: 22px;
-  font-weight: 500 !important;
+  font-size: var(--fs-22);
+  font-weight: var(--weight-medium) !important;
   line-height: 1.25;
   letter-spacing: -0.035em;
   white-space: nowrap;
@@ -327,7 +327,7 @@
 }
 .spatial-discovery-caption p {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin: 8px 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -340,8 +340,8 @@
   height: 100%;
   color: var(--accent);
   background: var(--bg-card);
-  font-size: clamp(30px, 5cqw, 72px);
-  font-weight: 700;
+  font-size: clamp(var(--fs-32), 5cqw, var(--fs-72));
+  font-weight: var(--weight-bold);
   letter-spacing: -0.06em;
 }
 .spatial-discovery-panel {
@@ -362,7 +362,7 @@
 :root[data-interface="spatial"] .chapter-nav button {
   padding: 6px 0;
   gap: 7px;
-  font-size: 10px;
+  font-size: var(--fs-10);
 }
 :root[data-interface="spatial"] .chapter-nav button[aria-current] {
   color: var(--accent);
@@ -372,13 +372,13 @@
 }
 .spatial-discovery-copy h1 {
   margin: 14px 0 10px;
-  font-size: 48px;
+  font-size: var(--fs-48);
   letter-spacing: -0.065em;
   line-height: 1.03;
-  font-weight: 600 !important;
+  font-weight: var(--weight-semibold) !important;
 }
 .spatial-discovery-copy > p {
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.5;
   color: var(--text-muted);
   max-width: 55ch;
@@ -398,8 +398,8 @@
 }
 .spatial-discovery-detail h2,
 .spatial-preview-title {
-  font-size: 21px;
-  font-weight: 400 !important;
+  font-size: var(--fs-22);
+  font-weight: var(--weight-regular) !important;
   letter-spacing: -0.035em;
   white-space: nowrap;
   overflow: hidden;
@@ -420,7 +420,7 @@
   flex-shrink: 0;
 }
 .spatial-discovery-detail p {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--text-muted);
   margin: 6px 0 0;
   overflow: hidden;
@@ -454,7 +454,7 @@
 .spatial-discovery-scroll-cue span {
   transform: rotate(-90deg);
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--fs-10);
   letter-spacing: 0.1em;
 }
 :root[data-interface="spatial"] .spatial-discovery-panel .chapter-stage {
@@ -552,19 +552,19 @@
   .discovery-track-card.discovery-preview-target
   > div
   > div:nth-child(2) {
-  font-size: 12px !important;
-  font-weight: 500 !important;
+  font-size: var(--fs-12) !important;
+  font-weight: var(--weight-medium) !important;
 }
 :root[data-interface="spatial"]
   .discovery-track-card.discovery-preview-target
   > div
   > div:nth-child(3) {
-  font-size: 11px !important;
+  font-size: var(--fs-11) !important;
 }
 :root[data-interface="spatial"] .discovery-track-card .btn,
 :root[data-interface="spatial"] .discovery-track-card .song-download-button {
   min-height: 30px;
-  font-size: 10px !important;
+  font-size: var(--fs-10) !important;
   padding: 3px 5px !important;
 }
 :root[data-interface="spatial"] .discovery-track-card:focus-within button {
@@ -594,13 +594,13 @@
   gap: 12px;
 }
 :root[data-interface="spatial"] .kaze-interface .player-track-title {
-  font-size: 12px !important;
+  font-size: var(--fs-12) !important;
 }
 :root[data-interface="spatial"]
   .kaze-interface
   .player-track-metadata
   > div:last-child {
-  font-size: 11px !important;
+  font-size: var(--fs-11) !important;
   margin-top: 5px;
 }
 :root[data-interface="spatial"] .kaze-interface .player-controls {
@@ -635,7 +635,7 @@
   gap: 12px;
 }
 :root[data-interface="spatial"] .time-label {
-  font-size: 9px;
+  font-size: var(--fs-9);
 }
 :root[data-interface="spatial"] .scrubber {
   --accent: var(--text-main);
@@ -660,7 +660,7 @@
 :root[data-interface="spatial"]
   .main-content[data-view="now_playing"][data-fixed-stage]
   .stage-index {
-  font-size: 30px;
+  font-size: var(--fs-32);
 }
 :root[data-interface="spatial"]
   .main-content[data-view="now_playing"][data-fixed-stage]
@@ -692,7 +692,7 @@
   .main-content[data-view="now_playing"][data-fixed-stage]
   .stage-caption
   h1 {
-  font-size: 36px;
+  font-size: var(--fs-36);
 }
 :root[data-interface="spatial"]
   .main-content[data-view="now_playing"][data-fixed-stage]
@@ -704,7 +704,7 @@
   .main-content[data-view="now_playing"][data-fixed-stage]
   .stage-caption
   p {
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-top: 8px;
 }
 @media (min-width: 1600px) and (min-height: 850px) {
@@ -714,7 +714,7 @@
     --strip-item-width: 174px;
   }
   .spatial-discovery-copy h1 {
-    font-size: 58px;
+    font-size: var(--fs-56);
   }
 }
 @media (max-height: 760px) {
@@ -740,11 +740,11 @@
     gap: 12px;
   }
   .spatial-discovery-copy h1 {
-    font-size: 32px;
+    font-size: var(--fs-32);
     margin: 8px 0;
   }
   .spatial-discovery-copy > p {
-    font-size: 12px;
+    font-size: var(--fs-12);
   }
   .spatial-discovery-detail {
     padding-top: 10px;
@@ -752,10 +752,10 @@
   }
   .spatial-discovery-detail h2,
   .spatial-preview-title {
-    font-size: 17px;
+    font-size: var(--fs-18);
   }
   .spatial-discovery-detail p {
-    font-size: 11px;
+    font-size: var(--fs-11);
     margin-top: 4px;
   }
   :root[data-interface="spatial"]
@@ -768,13 +768,13 @@
     gap: 2px 12px;
   }
   :root[data-interface="spatial"] .chapter-nav button {
-    font-size: 9px;
+    font-size: var(--fs-9);
   }
   .spatial-discovery-caption {
     height: 50px;
   }
   .spatial-discovery-caption h2 {
-    font-size: 18px;
+    font-size: var(--fs-18);
   }
   :root[data-interface="spatial"] .kaze-interface > .player-bar {
     min-height: 90px;
@@ -809,7 +809,7 @@
     gap: 8px;
   }
   .spatial-discovery-copy h1 {
-    font-size: 38px;
+    font-size: var(--fs-40);
   }
 }
 @media (max-width: 860px) {
@@ -831,13 +831,13 @@
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   }
   .spatial-discovery-copy h1 {
-    font-size: 30px;
+    font-size: var(--fs-32);
   }
   :root[data-interface="spatial"] .chapter-nav {
     gap: 0 10px;
   }
   .spatial-discovery-caption h2 {
-    font-size: 18px;
+    font-size: var(--fs-18);
   }
   :root[data-interface="spatial"] .kaze-interface > .player-bar {
     margin-inline: 14px;
@@ -867,7 +867,7 @@
     gap: 10px;
   }
   .spatial-discovery-copy h1 {
-    font-size: 30px;
+    font-size: var(--fs-32);
     margin: 6px 0 0;
   }
   .spatial-discovery-copy > p {

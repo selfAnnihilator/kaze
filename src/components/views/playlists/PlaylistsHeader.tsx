@@ -16,7 +16,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
           <p
             style={{
               color: "var(--text-dim)",
-              fontSize: "0.88rem",
+              fontSize: "var(--fs-14)",
               marginTop: "4px",
             }}
           >
@@ -36,7 +36,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
           <p
             style={{
               color: "var(--text-dim)",
-              fontSize: "0.88rem",
+              fontSize: "var(--fs-14)",
               marginTop: "4px",
             }}
           >

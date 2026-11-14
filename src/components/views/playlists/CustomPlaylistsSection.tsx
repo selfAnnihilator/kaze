@@ -16,10 +16,10 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                 marginBottom: "16px",
               }}
             >
-              <h2 style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+              <h2 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-semibold)" }}>
                 Your Custom Playlists
               </h2>
-              <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+              <span style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)" }}>
                 {c.customPlaylists.length} custom{" "}
                 {c.customPlaylists.length === 1 ? "playlist" : "playlists"}
               </span>
@@ -44,15 +44,15 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
               />
               <div
                 style={{
-                  fontWeight: 600,
-                  fontSize: "1.05rem",
+                  fontWeight: "var(--weight-semibold)",
+                  fontSize: "var(--fs-16)",
                   color: "var(--text-main)",
                   marginBottom: "6px",
                 }}
               >
                 Sign In to Manage Playlists
               </div>
-              <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
+              <p style={{ fontSize: "var(--fs-14)", marginBottom: "20px" }}>
                 Sign in to your account to create, customize, and synchronize
                 your personal playlists across devices.
               </p>
@@ -88,15 +88,15 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
               />
               <div
                 style={{
-                  fontWeight: 600,
-                  fontSize: "1.05rem",
+                  fontWeight: "var(--weight-semibold)",
+                  fontSize: "var(--fs-16)",
                   color: "var(--text-main)",
                   marginBottom: "6px",
                 }}
               >
                 No custom playlists yet
               </div>
-              <p style={{ fontSize: "0.88rem", marginBottom: "20px" }}>
+              <p style={{ fontSize: "var(--fs-14)", marginBottom: "20px" }}>
                 Create custom playlists manually, save a Smart Mix as a
                 permanent playlist, or import a playlist link.
               </p>
@@ -231,7 +231,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                                 style={{
                                   padding: "8px 10px",
                                   color: "var(--text-dim)",
-                                  fontSize: "0.78rem",
+                                  fontSize: "var(--fs-12)",
                                 }}
                               >
                                 Default playlist
@@ -316,8 +316,8 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                       </div>
                       <div
                         style={{
-                          fontWeight: 600,
-                          fontSize: "1rem",
+                          fontWeight: "var(--weight-semibold)",
+                          fontSize: "var(--fs-16)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -327,7 +327,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                       </div>
                       <div
                         style={{
-                          fontSize: "0.8rem",
+                          fontSize: "var(--fs-13)",
                           color: "var(--text-dim)",
                           marginTop: "4px",
                         }}
@@ -349,7 +349,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                       <button
                         className="btn btn-primary"
                         style={{
-                          fontSize: "0.8rem",
+                          fontSize: "var(--fs-13)",
                           padding: "6px 12px",
                           display: "flex",
                           alignItems: "center",
@@ -364,7 +364,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                         <span>Play</span>
                       </button>
                       <span
-                        style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}
+                        style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)" }}
                       >
                         {pl.track_count ?? 0} tracks
                       </span>

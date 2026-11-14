@@ -32,8 +32,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         >
           <span
             style={{
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
@@ -56,12 +56,12 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             <Flame size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
+        <div style={{ fontSize: "var(--fs-32)", fontWeight: "var(--weight-extrabold)", color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.daily_seconds || 0)}
         </div>
         <div
           style={{
-            fontSize: "12px",
+            fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
             marginTop: "4px",
           }}
@@ -89,8 +89,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         >
           <span
             style={{
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
@@ -113,12 +113,12 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             <Calendar size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
+        <div style={{ fontSize: "var(--fs-32)", fontWeight: "var(--weight-extrabold)", color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.weekly_seconds || 0)}
         </div>
         <div
           style={{
-            fontSize: "12px",
+            fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
             marginTop: "4px",
           }}
@@ -146,8 +146,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         >
           <span
             style={{
-              fontSize: "13px",
-              fontWeight: 600,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
               color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
@@ -170,12 +170,12 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             <Award size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
+        <div style={{ fontSize: "var(--fs-32)", fontWeight: "var(--weight-extrabold)", color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.lifetime_seconds || 0)}
         </div>
         <div
           style={{
-            fontSize: "12px",
+            fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
             marginTop: "4px",
           }}

@@ -49,8 +49,8 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             color: "var(--text-main)",
             borderRadius: "20px",
             padding: "6px 14px",
-            fontSize: "0.82rem",
-            fontWeight: 600,
+            fontSize: "var(--fs-13)",
+            fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
             zIndex: 10,
             transition: "transform 0.15s ease, opacity 0.15s ease",
@@ -72,8 +72,8 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
         <div className="collection-copy" style={{ flex: 1, marginTop: "24px", zIndex: 2 }}>
           <div
             style={{
-              fontSize: "0.8rem",
-              fontWeight: 700,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-bold)",
               letterSpacing: "1.2px",
               color: "var(--overlay-85)",
               textTransform: "uppercase",
@@ -85,8 +85,8 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
 
           <h1
             style={{
-              fontSize: "clamp(2rem, 4vw, 3.2rem)",
-              fontWeight: 900,
+              fontSize: "clamp(var(--fs-32), 4vw, calc(51.2 * var(--fs-unit)))",
+              fontWeight: "var(--weight-black)",
               color: "var(--text-main)",
               lineHeight: 1.1,
               letterSpacing: "-0.5px",
@@ -99,7 +99,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
 
           <p
             style={{
-              fontSize: "0.95rem",
+              fontSize: "var(--fs-15)",
               color: "var(--overlay-90)",
               maxWidth: "600px",
               lineHeight: 1.4,
@@ -115,12 +115,12 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-14)",
               color: "var(--overlay-85)",
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontWeight: 700, color: "var(--text-main)" }}>Kaze</span>
+            <span style={{ fontWeight: "var(--weight-bold)", color: "var(--text-main)" }}>Kaze</span>
             <span>•</span>
             <span>
               {c.searchQuery.trim()

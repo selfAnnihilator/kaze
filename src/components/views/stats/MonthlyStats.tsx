@@ -53,8 +53,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             </div>
             <span
               style={{
-                fontSize: "13px",
-                fontWeight: 700,
+                fontSize: "var(--fs-13)",
+                fontWeight: "var(--weight-bold)",
                 color: "var(--overlay-70)",
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
@@ -67,15 +67,15 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
           <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
             <span
               style={{
-                fontSize: "36px",
-                fontWeight: 800,
+                fontSize: "var(--fs-36)",
+                fontWeight: "var(--weight-extrabold)",
                 color: "var(--text-main)",
                 letterSpacing: "-0.5px",
               }}
             >
               {c.formatSeconds(c.stats?.monthly_seconds || 0)}
             </span>
-            <span style={{ fontSize: "13px", color: "var(--overlay-50)" }}>
+            <span style={{ fontSize: "var(--fs-13)", color: "var(--overlay-50)" }}>
               total in {c.activeMonthName} {c.viewingYear}
             </span>
           </div>
@@ -101,8 +101,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               color: "var(--accent-secondary)",
               padding: "6px 14px",
               borderRadius: "9999px",
-              fontSize: "13px",
-              fontWeight: 700,
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-bold)",
             }}
           >
             <Calendar size={14} />
@@ -124,8 +124,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                 borderRadius: "10px",
                 color: "var(--text-main)",
                 padding: "7px 34px 7px 14px",
-                fontSize: "13px",
-                fontWeight: 600,
+                fontSize: "var(--fs-13)",
+                fontWeight: "var(--weight-semibold)",
                 cursor: "pointer",
                 outline: "none",
                 transition: "border-color 0.15s ease",
@@ -175,7 +175,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             justifyContent: "space-between",
             alignItems: "center",
             marginBottom: "16px",
-            fontSize: "12px",
+            fontSize: "var(--fs-12)",
             color: "var(--overlay-60)",
             minHeight: "22px",
           }}
@@ -190,7 +190,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               <span>
                 Daily listening activity across {c.activeMonthName} ({c.monthlyGraph.length} days)
                 {c.stats?.history_started_at ? (
-                  <span style={{ fontSize: "11px", color: "var(--overlay-45)", marginLeft: "8px" }}>
+                  <span style={{ fontSize: "var(--fs-11)", color: "var(--overlay-45)", marginLeft: "8px" }}>
                     • Detailed timeline history available since {new Date(c.stats.history_started_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 ) : null}
@@ -254,8 +254,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                       color: "var(--text-main)",
                       padding: "6px 10px",
                       borderRadius: "8px",
-                      fontSize: "11px",
-                      fontWeight: 600,
+                      fontSize: "var(--fs-11)",
+                      fontWeight: "var(--weight-semibold)",
                       whiteSpace: "nowrap",
                       zIndex: 20,
                       boxShadow: "0 8px 20px var(--shade-50)",
@@ -263,7 +263,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                     }}
                   >
                     <div>Day {point.day} ({point.date})</div>
-                    <div style={{ color: "var(--accent-secondary)", fontWeight: 700 }}>
+                    <div style={{ color: "var(--accent-secondary)", fontWeight: "var(--weight-bold)" }}>
                       {c.formatSeconds(point.total_seconds)}
                     </div>
                   </div>
@@ -292,9 +292,9 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             display: "flex",
             justifyContent: "space-between",
             paddingTop: "6px",
-            fontSize: "11px",
+            fontSize: "var(--fs-11)",
             color: "var(--overlay-40)",
-            fontWeight: 600,
+            fontWeight: "var(--weight-semibold)",
           }}
         >
           <span>Day 1</span>

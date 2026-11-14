@@ -138,13 +138,13 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           }}
         >
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--text-main)", margin: 0,
+            <h2 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", color: "var(--text-main)", margin: 0,
               }}>
               Add to Playlist
             </h2>
             <p
               style={{
-                fontSize: "0.82rem",
+                fontSize: "var(--fs-13)",
                 color: "var(--text-muted)",
                 marginTop: "2px",
                 whiteSpace: "nowrap",
@@ -166,14 +166,14 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   setCreateError(null);
                 }}
                 style={{
-                  fontSize: "0.78rem",
+                  fontSize: "var(--fs-12)",
                   padding: "6px 12px",
                   borderRadius: "8px",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "5px",
                   backgroundColor: "var(--accent)",
-                  fontWeight: 600,
+                  fontWeight: "var(--weight-semibold)",
                 }}
                 title="Create a new playlist"
               >
@@ -231,7 +231,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   borderRadius: "8px",
                   padding: "8px 12px",
                   color: "var(--text-main)",
-                  fontSize: "0.88rem",
+                  fontSize: "var(--fs-14)",
                   outline: "none",
                 }}
               />
@@ -241,8 +241,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 disabled={!newPlaylistName.trim() || isSubmitting}
                 style={{
                   padding: "8px 14px",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-13)",
+                  fontWeight: "var(--weight-semibold)",
                   opacity: !newPlaylistName.trim() || isSubmitting ? 0.6 : 1,
                 }}
               >
@@ -257,7 +257,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   setCreateError(null);
                   setNewPlaylistName("");
                 }}
-                style={{ padding: "8px 12px", fontSize: "0.82rem" }}
+                style={{ padding: "8px 12px", fontSize: "var(--fs-13)" }}
               >
                 Cancel
               </button>
@@ -270,7 +270,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   alignItems: "center",
                   gap: "6px",
                   marginTop: "8px",
-                  fontSize: "0.78rem",
+                  fontSize: "var(--fs-12)",
                   color: "var(--danger)",
                 }}
               >
@@ -308,15 +308,15 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
               />
               <p
                 style={{
-                  fontSize: "0.92rem",
-                  fontWeight: 600,
+                  fontSize: "var(--fs-15)",
+                  fontWeight: "var(--weight-semibold)",
                   color: "var(--text-main)",
                   marginBottom: "4px",
                 }}
               >
                 No playlists available
               </p>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+              <p style={{ fontSize: "var(--fs-13)", color: "var(--text-muted)" }}>
                 Click &ldquo;+ New Playlist&rdquo; above to create your first
                 playlist.
               </p>
@@ -389,8 +389,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: 600,
-                          fontSize: "0.92rem",
+                          fontWeight: "var(--weight-semibold)",
+                          fontSize: "var(--fs-15)",
                           color: isMember ? "var(--text-main)" : "var(--text-main)",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
@@ -401,7 +401,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       </div>
                       <div
                         style={{
-                          fontSize: "0.76rem",
+                          fontSize: "var(--fs-12)",
                           color: "var(--text-muted)",
                           marginTop: "1px",
                         }}
@@ -417,7 +417,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                     {isToggling && (
                       <span
                         style={{
-                          fontSize: "0.72rem",
+                          fontSize: "var(--fs-12)",
                           color: "var(--text-dim)",
                         }}
                       >
@@ -439,7 +439,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            fontSize: "0.78rem",
+            fontSize: "var(--fs-12)",
             color: "var(--text-dim)",
           }}
         >
@@ -454,7 +454,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             className="btn btn-secondary"
             style={{
               padding: "5px 14px",
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-13)",
               borderRadius: "6px",
             }}
           >

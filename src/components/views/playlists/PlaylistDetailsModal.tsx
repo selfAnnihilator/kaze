@@ -55,7 +55,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                       gap: "8px",
                     }}
                   >
-                    <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>
+                    <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)" }}>
                       {selectedPlaylist.name}
                     </h3>
                     {selectedPlaylist.is_smart_mix === 1 && (
@@ -64,7 +64,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                   </div>
                   <p
                     style={{
-                      fontSize: "0.85rem",
+                      fontSize: "var(--fs-14)",
                       color: "var(--text-dim)",
                       marginTop: "4px",
                     }}
@@ -149,7 +149,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
 
               <span
                 style={{
-                  fontSize: "0.85rem",
+                  fontSize: "var(--fs-14)",
                   color: "var(--text-dim)",
                   marginLeft: "auto",
                 }}
@@ -208,7 +208,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                       <td className="primary">{tr.title}</td>
                       <td>{tr.artist_name || "Unknown Artist"}</td>
                       <td
-                        style={{ textAlign: "right", fontFamily: "monospace" }}
+                        style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}
                       >
                         {c.formatSeconds(tr.duration_secs)}
                       </td>

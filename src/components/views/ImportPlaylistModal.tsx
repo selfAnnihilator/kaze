@@ -141,7 +141,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
             style={{ display: "flex", alignItems: "center", gap: "10px" }}
           >
             <Share2 size={24} color="var(--accent-secondary)" />
-            <h3 style={{ fontSize: "1.3rem", fontWeight: 700 }}>
+            <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)" }}>
               Import playlist (up to 50 songs)
             </h3>
           </div>
@@ -160,7 +160,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
 
         <p
           style={{
-            fontSize: "0.88rem",
+            fontSize: "var(--fs-14)",
             color: "var(--text-muted)",
             marginBottom: "16px",
             lineHeight: 1.5,
@@ -182,7 +182,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
             value={jiosaavnInput}
             onChange={(e) => setJioSaavnInput(e.target.value)}
             className="input-field"
-            style={{ flex: 1, fontFamily: "monospace", fontSize: "0.9rem" }}
+            style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "var(--fs-14)" }}
           />
           <button
             type="submit"
@@ -204,7 +204,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
               backgroundColor: "var(--danger-a12)",
               border: "1px solid var(--danger)",
               color: "var(--palette-red-200)",
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-14)",
               marginBottom: "16px",
               display: "flex",
               alignItems: "center",
@@ -243,8 +243,8 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
               <div>
                 <div
                   style={{
-                    fontWeight: 700,
-                    fontSize: "1.1rem",
+                    fontWeight: "var(--weight-bold)",
+                    fontSize: "var(--fs-18)",
                     color: "var(--text-main)",
                   }}
                 >
@@ -255,21 +255,21 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                     display: "flex",
                     gap: "12px",
                     marginTop: "6px",
-                    fontSize: "0.82rem",
+                    fontSize: "var(--fs-13)",
                   }}
                 >
                   <span style={{ color: "var(--text-dim)" }}>
                     Total: {jiosaavnResult.total_tracks} tracks
                   </span>
                   <span
-                    style={{ color: "var(--success)", fontWeight: 600 }}
+                    style={{ color: "var(--success)", fontWeight: "var(--weight-semibold)" }}
                   >
                     ● {jiosaavnResult.matched_tracks} Local
                   </span>
                   <span
                     style={{
                       color: "var(--accent-secondary, var(--accent))",
-                      fontWeight: 600,
+                      fontWeight: "var(--weight-semibold)",
                     }}
                   >
                     ● {jiosaavnResult.missing_tracks} Online
@@ -279,7 +279,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   <div
                     style={{
                       marginTop: "6px",
-                      fontSize: "0.78rem",
+                      fontSize: "var(--fs-12)",
                       color: "var(--text-dim)",
                     }}
                   >
@@ -290,7 +290,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   <details
                     style={{
                       marginTop: "6px",
-                      fontSize: "0.8rem",
+                      fontSize: "var(--fs-13)",
                       color: "var(--text-muted)",
                     }}
                   >
@@ -360,7 +360,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   border: "1px solid var(--border)",
                   backgroundColor: "var(--shade-25)",
                   color: "var(--text-main)",
-                  fontSize: "0.82rem",
+                  fontSize: "var(--fs-13)",
                   outline: "none",
                 }}
               />
@@ -438,7 +438,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                               className="btn btn-secondary"
                               style={{
                                 padding: "4px 10px",
-                                fontSize: "0.75rem",
+                                fontSize: "var(--fs-12)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "5px",

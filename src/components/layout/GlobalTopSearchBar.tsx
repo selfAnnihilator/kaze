@@ -85,7 +85,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
               border: "none",
               outline: "none",
               color: "var(--text-main)",
-              fontSize: "0.95rem",
+              fontSize: "var(--fs-15)",
               width: "100%",
             }}
           />

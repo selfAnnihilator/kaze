@@ -136,8 +136,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   border-radius: 50%;
   background: var(--bg-card-hover);
   color: var(--text-main);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-13);
+  font-weight: var(--weight-semibold);
 }
 .profile-navigation-avatar img {
   display: block;
@@ -191,7 +191,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 .kaze-interface .nav-button {
   padding: 10px;
-  font-size: 11px;
+  font-size: var(--fs-11);
   min-height: 35px;
   border-radius: var(--ui-radius);
   gap: 9px;
@@ -234,13 +234,13 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   gap: 4px;
 }
 .interface-name {
-  font-size: 10px;
+  font-size: var(--fs-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
 .interface-route {
-  font-size: 11px;
+  font-size: var(--fs-11);
   text-transform: capitalize;
   color: var(--text-muted);
   margin-left: auto;
@@ -266,7 +266,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   background: var(--bg-card) !important;
 }
 .kaze-interface .view-title {
-  font-size: 34px;
+  font-size: var(--fs-36);
   letter-spacing: -0.055em;
   line-height: 1.12;
 }
@@ -277,8 +277,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 .interface-eyebrow {
   color: var(--text-dim);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--fs-10);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -310,7 +310,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 .home-heading h1 {
   max-width: 650px;
-  font-size: 30px !important;
+  font-size: var(--fs-32) !important;
   line-height: 1.15;
   letter-spacing: -0.05em !important;
 }
@@ -328,8 +328,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   position: absolute;
   left: 0;
   top: -18px;
-  font-size: 130px;
-  font-weight: 800;
+  font-size: calc(130 * var(--fs-unit));
+  font-weight: var(--weight-extrabold);
   letter-spacing: -0.09em;
   line-height: 1;
   color: var(--text-main);
@@ -357,7 +357,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   background: var(--bg-main);
 }
 .home-flow-copy h2 {
-  font-size: 25px !important;
+  font-size: var(--fs-24) !important;
 }
 .kaze-interface .home-steering {
   flex: 0 1 310px !important;
@@ -431,8 +431,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   margin: 0;
 }
 .kaze-interface .discovery-hero-copy h1 {
-  font-family: Inter, sans-serif;
-  font-size: 40px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-40);
   letter-spacing: -0.06em;
   line-height: 1;
 }
@@ -471,10 +471,10 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   color: var(--text-muted);
   background: transparent;
   border: 0;
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .chapter-nav button small {
-  font-size: 10px;
+  font-size: var(--fs-10);
   color: var(--text-dim);
 }
 .chapter-nav button[aria-current] {
@@ -491,15 +491,15 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 .chapter-number {
   display: block;
-  font-size: 70px;
+  font-size: var(--fs-72);
   letter-spacing: -0.07em;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 1;
   color: var(--text-dim);
   margin-bottom: 8px;
 }
 .discovery-chapter h2 {
-  font-size: 26px !important;
+  font-size: var(--fs-28) !important;
   letter-spacing: -0.04em;
 }
 .discovery-chapter > div,
@@ -509,7 +509,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .chapter-help {
   grid-column: 2;
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: var(--fs-11);
   line-height: 1.5;
 }
 .kaze-interface .horizontal-scroll-row {
@@ -594,7 +594,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   border-radius: 4px !important;
 }
 .kaze-interface .collection-view > .collection-hero h1 {
-  font-size: 44px !important;
+  font-size: calc(44 * var(--fs-unit)) !important;
   letter-spacing: -0.055em;
 }
 .kaze-interface .collection-track-header,
@@ -615,8 +615,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   justify-content: space-between;
 }
 .stage-index {
-  font-size: 55px;
-  font-weight: 700;
+  font-size: var(--fs-56);
+  font-weight: var(--weight-bold);
   line-height: 1;
   color: var(--text-dim);
   letter-spacing: -0.06em;
@@ -661,7 +661,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   align-items: center;
   justify-content: space-between;
   margin-top: 14px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .stage-past small,
 .stage-future small {
@@ -680,14 +680,14 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   margin: 0 auto;
 }
 .stage-caption h1 {
-  font-size: 40px;
+  font-size: var(--fs-40);
   letter-spacing: -0.06em;
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
 .stage-caption p {
   margin-top: 12px;
-  font-size: 17px;
+  font-size: var(--fs-18);
   color: var(--text-muted);
 }
 .stage-caption small {
@@ -725,7 +725,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   flex-shrink: 0;
 }
 .queue-current h2 {
-  font-size: 24px;
+  font-size: var(--fs-24);
   margin: 8px 0;
 }
 .queue-current p {
@@ -734,7 +734,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .queue-next-label {
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 16px;
+  font-size: var(--fs-16);
 }
 .queue-entry {
   height: 100%;
@@ -747,7 +747,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .queue-number {
   width: 34px;
   color: var(--text-dim);
-  font-size: 18px;
+  font-size: var(--fs-18);
   flex-shrink: 0;
 }
 .queue-entry .music-artwork {
@@ -773,11 +773,11 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   overflow: hidden;
 }
 .queue-track strong {
-  font-size: 15px;
+  font-size: var(--fs-15);
 }
 .queue-track span {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--text-muted);
 }
 /* Shared controls stay mounted, with independent progress subscriptions. */
@@ -808,7 +808,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   flex: 0 1 auto;
 }
 .kaze-interface .player-track-title {
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .kaze-interface .player-icon-btn {
   color: var(--text-muted);
@@ -839,7 +839,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   justify-content: space-between;
   align-items: center;
   padding: 18px 28px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--text-muted);
 }
 .fullscreen-main {
@@ -875,11 +875,11 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   border-bottom: 1px solid var(--border);
 }
 .interface-picker h2 {
-  font-size: 22px;
+  font-size: var(--fs-22);
 }
 .interface-picker p {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin-top: 8px;
 }
 .interface-picker [role="alert"] {
@@ -905,12 +905,12 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   color: var(--text-main);
 }
 .interface-options strong {
-  font-size: 25px;
+  font-size: var(--fs-24);
   display: block;
   letter-spacing: -0.04em;
 }
 .interface-options span {
-  font-size: 12px;
+  font-size: var(--fs-12);
   display: block;
   margin-top: 10px;
 }
@@ -936,7 +936,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     padding-top: 100px;
   }
   .home-flow-word {
-    font-size: 170px;
+    font-size: calc(170 * var(--fs-unit));
   }
   .stage-current {
     width: 380px;
@@ -1004,7 +1004,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     width: 126px;
   }
   .kaze-interface .nav-button {
-    font-size: 10px !important;
+    font-size: var(--fs-10) !important;
     gap: 6px;
     padding: 9px 5px !important;
   }
@@ -1038,10 +1038,10 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     padding: 5px;
   }
   .kaze-interface .view-title {
-    font-size: 28px;
+    font-size: var(--fs-28);
   }
   .home-heading h1 {
-    font-size: 24px !important;
+    font-size: var(--fs-24) !important;
   }
   .home-flow-content {
     display: flex !important;
@@ -1064,7 +1064,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     width: 220px;
   }
   .home-flow-word {
-    font-size: 110px;
+    font-size: var(--fs-112);
   }
   .home-rediscover {
     width: 100%;
@@ -1088,7 +1088,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     gap: 10px;
   }
   .chapter-nav button {
-    font-size: 11px;
+    font-size: var(--fs-11);
     gap: 5px;
     padding: 6px;
   }
@@ -1096,7 +1096,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     margin-top: 16px;
   }
   .kaze-interface .discovery-hero-copy h1 {
-    font-size: 32px;
+    font-size: var(--fs-32);
   }
   .stage-current {
     width: 230px;
@@ -1115,13 +1115,13 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
     transform: translateX(155px) translateY(30px) rotate(9deg) scale(0.7);
   }
   .stage-caption h1 {
-    font-size: 32px;
+    font-size: var(--fs-32);
   }
   .kaze-interface .collection-view > .collection-hero {
     flex-wrap: wrap;
   }
   .kaze-interface .collection-view > .collection-hero h1 {
-    font-size: 32px !important;
+    font-size: var(--fs-32) !important;
   }
   .kaze-interface .collection-track-header,
   .kaze-interface .collection-track-row {
@@ -1188,7 +1188,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 .wishlist-view > .view-header p {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
   margin-top: 10px;
 }
 .wishlist-form {
@@ -1202,7 +1202,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .wishlist-form label {
   display: grid;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-12);
   flex: 1 1 160px;
 }
 .wishlist-filters {
@@ -1242,7 +1242,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .wishlist-song span {
   color: var(--text-muted);
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .wishlist-row select {
   background: var(--bg-card);
@@ -1275,7 +1275,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
       ) 0 44px 48px var(--library-actions-width, 106px) !important;
     padding-left: 6px !important;
     padding-right: 6px !important;
-    font-size: 12px !important;
+    font-size: var(--fs-12) !important;
   }
   .kaze-interface .library-view .track-row > div:nth-child(4),
   .kaze-interface .library-list-header > div:nth-child(4) {
@@ -1338,11 +1338,11 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 }
 [data-interface="spatial"] .stage-past span,
 [data-interface="spatial"] .stage-future span {
-  font-size: 20px;
+  font-size: var(--fs-20);
 }
 [data-interface="spatial"] .stage-past small,
 [data-interface="spatial"] .stage-future small {
-  font-size: 18px;
+  font-size: var(--fs-18);
 }
 [data-interface="spatial"] .gallery-item:nth-child(3n + 2) {
   width: 88%;
@@ -1395,10 +1395,10 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 @media (max-height: 700px) {
   .kaze-interface .discovery-hero { display: none; }
   .discovery-chapters { min-height: 0; }
-  .chapter-number { font-size: 36px; margin-bottom: 0; }
+  .chapter-number { font-size: var(--fs-36); margin-bottom: 0; }
   .chapter-nav { padding-top: 0; }
   .chapter-help { display: none; }
-  .discovery-chapter h2 { font-size: 22px !important; }
+  .discovery-chapter h2 { font-size: var(--fs-22) !important; }
   .windowed-strip { height: 270px; padding: 8px 0 !important; }
   .kaze-interface .discovery-track-card > div > div:first-child { height: 160px !important; aspect-ratio: auto !important; }
 }

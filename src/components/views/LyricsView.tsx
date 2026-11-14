@@ -110,7 +110,7 @@ function SyncedLyricRow({
         }}
         style={{
           fontSize: isFullScreen ? "2.2rem" : "1.55rem",
-          fontWeight: 700,
+          fontWeight: "var(--weight-bold)",
           lineHeight: 1.45,
           cursor: "pointer",
           color: restColor,
@@ -153,7 +153,7 @@ function PlainLyricRow({ index, style, ariaAttributes, lines, isFullScreen }: Ro
       <div
         style={{
           fontSize: isFullScreen ? "1.8rem" : "1.3rem",
-          fontWeight: 600,
+          fontWeight: "var(--weight-semibold)",
           lineHeight: 1.6,
           color: "var(--overlay-75)",
           textAlign: "center",
@@ -341,7 +341,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
           }}
         >
           <RefreshCw size={28} className="spin-animation" color="var(--accent-light)" />
-          <span style={{ fontSize: "0.95rem" }}>Finding synchronized lyrics...</span>
+          <span style={{ fontSize: "var(--fs-15)" }}>Finding synchronized lyrics...</span>
         </div>
       ) : error || (!lyricsData?.syncedLyrics && !lyricsData?.plainLyrics) ? (
         <div
@@ -353,10 +353,10 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
           }}
         >
           <Mic2 size={42} color="var(--text-dim)" style={{ marginBottom: "16px" }} />
-          <h3 style={{ color: "var(--text-main)", fontSize: "1.1rem", marginBottom: "8px" }}>
+          <h3 style={{ color: "var(--text-main)", fontSize: "var(--fs-18)", marginBottom: "8px" }}>
             {lyricsData?.instrumental ? "Instrumental Track" : "No Lyrics Available"}
           </h3>
-          <p style={{ fontSize: "0.88rem", lineHeight: 1.5 }}>
+          <p style={{ fontSize: "var(--fs-14)", lineHeight: 1.5 }}>
             {lyricsData?.instrumental
               ? "This track is marked as an instrumental piece."
               : `We couldn't find synchronized lyrics for "${title}" by ${artist}.`}
@@ -413,8 +413,8 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            fontWeight: 700,
-            fontSize: "0.85rem",
+            fontWeight: "var(--weight-bold)",
+            fontSize: "var(--fs-14)",
             cursor: "pointer",
             transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             zIndex: 10,

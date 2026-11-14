@@ -107,8 +107,8 @@ export const MixCard: React.FC<{
       <div
         style={{
           marginTop: "10px",
-          fontWeight: 700,
-          fontSize: "0.88rem",
+          fontWeight: "var(--weight-bold)",
+          fontSize: "var(--fs-14)",
           color: "var(--text-main)",
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -123,8 +123,8 @@ export const MixCard: React.FC<{
       <div
         style={{
           marginTop: "3px",
-          fontWeight: 400,
-          fontSize: "0.76rem",
+          fontWeight: "var(--weight-regular)",
+          fontSize: "var(--fs-12)",
           color: "var(--text-muted)",
           whiteSpace: "nowrap",
           overflow: "hidden",

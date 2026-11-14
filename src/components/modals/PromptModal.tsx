@@ -43,7 +43,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Sparkles size={20} color="var(--accent-secondary, var(--accent))" />
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "var(--text-main)",
+            <h3 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: 0, color: "var(--text-main)",
               }}>
               {title}
             </h3>
@@ -57,7 +57,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           </button>
         </div>
 
-        <p style={{ fontSize: "0.88rem", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 16px 0", lineHeight: 1.5,
+        <p style={{ fontSize: "var(--fs-14)", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 16px 0", lineHeight: 1.5,
           }}>
           {message}
         </p>
@@ -69,7 +69,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             className="input-field"
             value={val}
             onChange={(e) => setVal(e.target.value)}
-            style={{ width: "100%", fontSize: "0.95rem", marginBottom: "20px" }}
+            style={{ width: "100%", fontSize: "var(--fs-15)", marginBottom: "20px" }}
           />
           <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
             <button type="button" className="btn btn-secondary" onClick={onCancel}>
