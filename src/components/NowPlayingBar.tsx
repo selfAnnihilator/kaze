@@ -1,5 +1,6 @@
 import { isOnlineTrack } from "../trackKind";
 import { DownloadButton } from "./DownloadButton";
+import { useSongDownloaded } from "../services/downloadProgress";
 import { NotInterestedButton } from "./NotInterestedButton";
 import React, { useState } from "react";
 import {
@@ -166,6 +167,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
     onInspectWhyTrack,
   }) => {
     const isOnline = isOnlineTrack(currentTrack) === true;
+    const isKazeDownload = useSongDownloaded(currentTrack?.id ?? "");
     const activeTitle = currentTrack?.title || "No Track Selected";
     const activeArtist =
       currentTrack?.artist_name?.trim() ||
@@ -339,7 +341,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               )}
             </div>
           )}
-          {isOnline && currentTrack && <DownloadButton key={`download:${currentTrack.id}`} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}
+          {(isOnline || isKazeDownload) && currentTrack && <DownloadButton key={`download:${currentTrack.id}`} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}
           {onOpenAddToPlaylist && currentTrack && (
             <button
               className="player-icon-btn"

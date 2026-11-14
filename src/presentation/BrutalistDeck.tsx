@@ -1,5 +1,6 @@
 import { isOnlineTrack } from "../trackKind";
 import { DownloadButton } from "../components/DownloadButton";
+import { useSongDownloaded } from "../services/downloadProgress";
 import { NotInterestedButton } from "../components/NotInterestedButton";
 import { memo } from "react";
 import {
@@ -55,6 +56,8 @@ export const BrutalistDeck = memo(function BrutalistDeck(
   // undefined while the playing track is still resolving: show neither state.
   const kind = isOnlineTrack(track);
   const online = kind === true;
+  // A local track that is a Kaze download keeps its ✓ (click to remove).
+  const kazeDownload = useSongDownloaded(track?.id ?? "") && kind === false;
   const toggleLike = () => {
     if (!track) return;
     if (online && p.onLikeOnline)
@@ -212,7 +215,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
           <div className="press-track-tools">
             {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
             {/* Local songs have nothing to download; a resolving track shows a neutral control. */}
-            {track && kind !== false && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} pending={kind === undefined} compact />}
+            {track && (kind !== false || kazeDownload) && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} pending={kind === undefined} compact />}
             {track && p.onOpenAddToPlaylist && (
               <button
                 className="press-icon"

@@ -60,7 +60,7 @@ test("download controls follow only Kaze's own downloads; local songs have none"
   // No fuzzy local matching feeds download state anywhere.
   for (const file of ["src/components/views/OnlineSearchResultsSection.tsx", "src/components/views/DiscoveryView.tsx", "src/components/views/CollectionDetailView.tsx"])
     assert.doesNotMatch(read(file), /downloaded=\{!!\w+\.local_copy\}|downloaded=\{!!track\.is_downloaded\}/, file);
-  assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && kind !== false && <DownloadButton/);
+  assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && \(kind !== false \|\| kazeDownload\) && <DownloadButton/);
   assert.match(read("src/components/views/CollectionDetailView.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
   assert.match(read("src/components/views/DiscoveryView.tsx"), /!isLocalTrack && <DownloadButton/);
 });
@@ -75,4 +75,15 @@ test("Local and Downloads lists request their own section from the backend", () 
   assert.match(read("src/hooks/useScopedTracks.ts"), /!inDownloadsFolder\(t, downloadsDir\)/);
   // The folder watcher's event refreshes everything live.
   assert.match(read("src/App.tsx"), /case "DownloadsChanged":/);
+});
+
+test("downloaded songs can be removed from the deck, the bar and the Downloads list", () => {
+  const app = read("src/App.tsx");
+  assert.match(app, /<ConfirmModal \/>/, "one store-driven popup, no App state");
+  assert.doesNotMatch(app, /useConfirmRequest/, "App never subscribes to the popup");
+  assert.match(app, /downloadControls\s+emptyTitle="No downloaded songs yet"/);
+  assert.match(read("src/components/views/LibraryView.tsx"), /downloadControls && <DownloadButton/);
+  assert.match(read("src/presentation/BrutalistDeck.tsx"), /kind !== false \|\| kazeDownload/);
+  assert.match(read("src/components/NowPlayingBar.tsx"), /isOnline \|\| isKazeDownload/);
+  assert.match(app, /case "DownloadsChanged":[\s\S]{0,200}fetchTrackPlaylistMemberships\(\)/);
 });

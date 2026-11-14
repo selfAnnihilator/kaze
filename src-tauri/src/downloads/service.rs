@@ -4,7 +4,7 @@ use crate::core::error::{AppError, AppResult};
 use crate::core::event::Event;
 use crate::core::event_bus::EventBus;
 use crate::database::models::DownloadTaskRecord;
-use crate::database::repositories::DownloadRepository;
+use crate::database::repositories::{DownloadRepository, OnlineRecording};
 use crate::discovery::WishlistManager;
 use crate::library::{parse_download_stem, LibraryService};
 use chrono::Utc;
@@ -601,6 +601,99 @@ impl DownloadService {
         });
     }
 
+    /// Removes a song from Downloads: deletes Kaze's file and turns the library
+    /// row back into the online recording (likes, playlists and history move
+    /// with it). `track_id` may be the online id, a saved alias or the local row.
+    /// Returns the released `(local id, online id)` when a library row existed.
+    pub async fn remove_download(
+        &self,
+        track_id: &str,
+        source_id: Option<&str>,
+    ) -> AppResult<Option<(String, String)>> {
+        let source = match source_id.or_else(|| track_id.strip_prefix("jiosaavn:")) {
+            Some(source) => Some(source.to_string()),
+            None => self.source_of_track(track_id).await?,
+        };
+        let tasks: Vec<_> = self
+            .repo
+            .list_tasks(None, 10000)
+            .await?
+            .into_iter()
+            .filter(|t| matches!(t.status.as_str(), "COMPLETED" | "MISSING"))
+            .filter(|t| source.is_some() && t.source_track_id == source)
+            .collect();
+        if tasks.is_empty() {
+            return Err(AppError::Validation("This song isn't in Downloads".into()));
+        }
+        // Only ever delete Kaze's own files: check every file before deleting any.
+        for task in &tasks {
+            if let Some(path) = task.destination_path.as_deref().map(Path::new) {
+                if path.exists() && !in_folder(path, &self.download_dir) {
+                    return Err(AppError::Validation(format!(
+                        "{} is outside Kaze's download folder, so Kaze won't delete it",
+                        path.display()
+                    )));
+                }
+            }
+        }
+        let mut released = None;
+        for task in &tasks {
+            if let Some(path) = task.destination_path.as_deref() {
+                match tokio::fs::remove_file(path).await {
+                    Ok(()) => info!(task_id = %task.id, file = %path, "Removed download"),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(e) => return Err(AppError::Io(format!("Couldn't delete {path}: {e}"))),
+                }
+            }
+            if let Some(pair) = self.release(task).await? {
+                released = Some(pair);
+            }
+            self.repo.delete_task(&task.id).await?;
+        }
+        let _ = self.event_bus.publish(Event::DownloadsChanged);
+        Ok(released)
+    }
+
+    /// The recording behind a local library row, from its file.
+    async fn source_of_track(&self, track_id: &str) -> AppResult<Option<String>> {
+        let Some(track) = self.library_service.track_repo().find_by_id(track_id).await? else {
+            return Ok(None);
+        };
+        let path = PathBuf::from(&track.file_path);
+        let canonical = |p: &str| canonical_file(Path::new(p));
+        let by_task = self
+            .repo
+            .list_tasks(None, 10000)
+            .await?
+            .into_iter()
+            .find(|t| t.destination_path.as_deref().is_some_and(|d| canonical(d) == canonical(&track.file_path)))
+            .and_then(|t| t.source_track_id);
+        Ok(match by_task {
+            Some(source) => Some(source),
+            None => source_of(&path).await,
+        })
+    }
+
+    /// Hands a download's library row back to its online recording.
+    async fn release(&self, task: &DownloadTaskRecord) -> AppResult<Option<(String, String)>> {
+        let Some(path) = task.destination_path.as_deref() else { return Ok(None) };
+        let paths = vec![path.to_string(), canonical_file(Path::new(path))];
+        let Some(source) = task.source_track_id.clone() else {
+            // No recording to fall back to: nothing to keep the data on.
+            for path in &paths {
+                self.library_service.track_repo().delete_by_path(path).await?;
+            }
+            return Ok(None);
+        };
+        let recording = OnlineRecording {
+            source_id: source,
+            title: task.title.clone(),
+            artist: task.artist.clone(),
+            album: task.album.clone(),
+        };
+        self.repo.release_to_online(&paths, &recording).await
+    }
+
     /// Brings records and the library in line with the Kaze folder, then tells the UI.
     pub async fn sync_folder(&self) -> AppResult<()> {
         self.adopt_orphans().await?;
@@ -657,7 +750,10 @@ impl DownloadService {
                     self.repo
                         .update_status(&task.id, "MISSING", None, Some(MISSING_MESSAGE), task.completed_at)
                         .await?;
-                    let _ = self.library_service.track_repo().delete_by_path(path).await;
+                    // Keep the song's likes, playlists and history on its online version.
+                    if let Err(error) = self.release(&task).await {
+                        warn!(%error, task_id = %task.id, "Could not release a missing download");
+                    }
                     info!(task_id = %task.id, file = %path, "Downloaded file is missing");
                 } else if status == "MISSING" && present {
                     self.repo
@@ -730,6 +826,15 @@ async fn source_of(path: &Path) -> Option<String> {
     }
     let stem = path.file_stem().and_then(|s| s.to_str())?;
     parse_download_stem(stem).map(|n| n.source_id)
+}
+
+/// The canonical path of a file that may no longer exist (its folder still does).
+fn canonical_file(path: &Path) -> String {
+    let resolved = match (path.parent(), path.file_name()) {
+        (Some(parent), Some(name)) => parent.canonicalize().map(|p| p.join(name)).ok(),
+        _ => None,
+    };
+    resolved.unwrap_or_else(|| path.to_path_buf()).to_string_lossy().into_owned()
 }
 
 /// Whether `path` sits directly in `dir` (the Kaze folder is not recursive).

@@ -213,6 +213,7 @@ export interface JioSaavnPlaylistImport {
 
 export type Command =
   | { command: "DownloadTrack"; payload: { track_id: string } }
+  | { command: "RemoveDownload"; payload: { track_id: string; source_id?: string } }
   | { command: "FillLibraryGaps"; payload: { retry: boolean } }
   | { command: "RemoveProviderEnrichment" }
   | { command: "SetMetadataPreference"; payload: { key: string; enabled: boolean } }

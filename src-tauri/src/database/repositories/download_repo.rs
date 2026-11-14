@@ -32,6 +32,30 @@ pub trait DownloadRepository: Send + Sync {
         old_track_path: &str,
         new_track_path: &str,
     ) -> AppResult<()>;
+    /// Turns a downloaded song's library row back into its online recording.
+    /// Likes, playlist entries, history and statistics move to the online song
+    /// first, so deleting the local row loses nothing. Returns the released
+    /// `(local id, online id)`, or `None` when no library row exists at those paths.
+    async fn release_to_online(
+        &self,
+        track_paths: &[String],
+        recording: &OnlineRecording,
+    ) -> AppResult<Option<(String, String)>>;
+}
+
+/// The online recording a downloaded file came from.
+#[derive(Debug, Clone)]
+pub struct OnlineRecording {
+    pub source_id: String,
+    pub title: String,
+    pub artist: String,
+    pub album: Option<String>,
+}
+
+impl OnlineRecording {
+    pub fn track_id(&self) -> String {
+        format!("jiosaavn:{}", self.source_id)
+    }
 }
 
 #[derive(Clone)]
@@ -227,5 +251,96 @@ impl DownloadRepository for SqliteDownloadRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn release_to_online(
+        &self,
+        track_paths: &[String],
+        recording: &OnlineRecording,
+    ) -> AppResult<Option<(String, String)>> {
+        let mut local = None;
+        for path in track_paths {
+            local = sqlx::query_as::<_, (String, f64)>(
+                "SELECT id, duration_secs FROM tracks WHERE file_path = ? AND file_path NOT LIKE 'online://%'",
+            )
+            .bind(path)
+            .fetch_optional(&self.pool)
+            .await?;
+            if local.is_some() {
+                break;
+            }
+        }
+        let Some((local_id, duration)) = local else { return Ok(None) };
+        let online_id = recording.track_id();
+
+        // Create the online song only when missing: updating an existing one
+        // would reset its artwork flag.
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tracks WHERE id = ?)")
+            .bind(&online_id)
+            .fetch_one(&self.pool)
+            .await?;
+        if !exists {
+            crate::recommendations::mixes::ensure_online_track(
+                &self.pool,
+                &crate::recommendations::mixes::OnlineTrackInput {
+                    id: &online_id,
+                    title: &recording.title,
+                    artist: Some(&recording.artist),
+                    album: recording.album.as_deref(),
+                    duration_secs: Some(duration),
+                    cover_art_url: None,
+                    preview_url: None,
+                },
+            )
+            .await?;
+        }
+
+        let mut tx = self.pool.begin().await?;
+        let rekey = |sql: &'static str| sqlx::query(sql).bind(online_id.clone()).bind(local_id.clone());
+        // Playlists and Liked Songs: a playlist that already has the online song
+        // keeps that entry (the uniqueness trigger ignores the update), and the
+        // leftover duplicate goes with the local row below.
+        rekey("UPDATE OR IGNORE playlist_tracks SET track_id = ? WHERE track_id = ?").execute(&mut *tx).await?;
+        rekey("UPDATE playback_history SET track_id = ? WHERE track_id = ?").execute(&mut *tx).await?;
+        rekey("UPDATE recommendation_feedback SET track_id = ? WHERE track_id = ?").execute(&mut *tx).await?;
+        rekey("UPDATE OR IGNORE flow_slot_assignments SET track_id = ? WHERE track_id = ?").execute(&mut *tx).await?;
+        rekey(
+            "INSERT INTO track_statistics (user_id, track_id, play_count, total_time_listened, completion_count, \
+             skip_count, last_played_at, manual_like, playlist_addition_count) \
+             SELECT user_id, ?, play_count, total_time_listened, completion_count, skip_count, last_played_at, \
+             manual_like, playlist_addition_count FROM track_statistics WHERE track_id = ? \
+             ON CONFLICT(user_id, track_id) DO UPDATE SET \
+             play_count = play_count + excluded.play_count, \
+             total_time_listened = total_time_listened + excluded.total_time_listened, \
+             completion_count = completion_count + excluded.completion_count, \
+             skip_count = skip_count + excluded.skip_count, \
+             last_played_at = NULLIF(MAX(COALESCE(last_played_at, 0), COALESCE(excluded.last_played_at, 0)), 0), \
+             manual_like = CASE WHEN excluded.manual_like != 0 THEN excluded.manual_like ELSE manual_like END, \
+             playlist_addition_count = playlist_addition_count + excluded.playlist_addition_count",
+        )
+        .execute(&mut *tx)
+        .await?;
+        rekey(
+            "INSERT INTO track_device_statistics (user_id, device_id, track_id, play_count, total_time_listened, \
+             completion_count, skip_count, last_played_at, updated_at) \
+             SELECT user_id, device_id, ?, play_count, total_time_listened, completion_count, skip_count, \
+             last_played_at, updated_at FROM track_device_statistics WHERE track_id = ? \
+             ON CONFLICT(user_id, device_id, track_id) DO UPDATE SET \
+             play_count = play_count + excluded.play_count, \
+             total_time_listened = total_time_listened + excluded.total_time_listened, \
+             completion_count = completion_count + excluded.completion_count, \
+             skip_count = skip_count + excluded.skip_count, \
+             last_played_at = NULLIF(MAX(COALESCE(last_played_at, 0), COALESCE(excluded.last_played_at, 0)), 0), \
+             updated_at = MAX(updated_at, excluded.updated_at)",
+        )
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("DELETE FROM track_device_statistics WHERE track_id = ?")
+            .bind(&local_id)
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("DELETE FROM tracks WHERE id = ?").bind(&local_id).execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(Some((local_id, online_id)))
     }
 }

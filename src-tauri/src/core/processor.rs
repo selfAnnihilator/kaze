@@ -1459,6 +1459,17 @@ impl CoreProcessor {
                 let task = self.download_service.download_track(&track).await?;
                 Ok(CommandResponse::DownloadStarted { task_id: task.id })
             }
+            Command::RemoveDownload { track_id, source_id } => {
+                let released = self
+                    .download_service
+                    .remove_download(&track_id, source_id.as_deref())
+                    .await?;
+                if let Some((local, online)) = released {
+                    // Queued or playing copies continue as the online song.
+                    self.playback_service.replace_queued_track(&local, &online).await;
+                }
+                Ok(CommandResponse::Ok)
+            }
             Command::StartDownload {
                 search_result_id,
                 wishlist_id,
@@ -2867,25 +2878,39 @@ impl CoreProcessor {
                 for (id, source) in aliases {
                     sources.entry(source).or_default().push(id);
                 }
-                let val = tasks
-                    .into_iter()
-                    .filter_map(|task| {
-                        let ids = task
-                            .source_track_id
-                            .as_ref()
-                            .and_then(|id| sources.get(id))
-                            .cloned()
-                            .unwrap_or_default();
-                        let file_present = task
-                            .destination_path
-                            .as_deref()
-                            .is_some_and(|path| std::path::Path::new(path).is_file());
-                        let mut value = serde_json::to_value(task).ok()?;
-                        value["track_ids"] = serde_json::json!(ids);
-                        value["file_present"] = serde_json::json!(file_present);
-                        Some(value)
-                    })
-                    .collect();
+                let mut val = Vec::with_capacity(tasks.len());
+                for task in tasks {
+                    let mut ids = task
+                        .source_track_id
+                        .as_ref()
+                        .and_then(|id| sources.get(id))
+                        .cloned()
+                        .unwrap_or_default();
+                    let file_present = task
+                        .destination_path
+                        .as_deref()
+                        .is_some_and(|path| std::path::Path::new(path).is_file());
+                    // The library row of the saved file, so the Downloads list can
+                    // show (and remove) the download for its own rows.
+                    if let Some(path) = task.destination_path.as_deref().filter(|_| file_present) {
+                        let canonical = std::path::Path::new(path)
+                            .canonicalize()
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .unwrap_or_else(|_| path.to_string());
+                        let local: Option<String> = sqlx::query_scalar(
+                            "SELECT id FROM tracks WHERE file_path IN (?, ?) LIMIT 1",
+                        )
+                        .bind(path)
+                        .bind(&canonical)
+                        .fetch_optional(&self.db_pool)
+                        .await?;
+                        ids.extend(local);
+                    }
+                    let Ok(mut value) = serde_json::to_value(task) else { continue };
+                    value["track_ids"] = serde_json::json!(ids);
+                    value["file_present"] = serde_json::json!(file_present);
+                    val.push(value);
+                }
                 Ok(QueryResponse::Downloads(val))
             }
             Query::ImportJioSaavnPlaylist { url_or_id } => {

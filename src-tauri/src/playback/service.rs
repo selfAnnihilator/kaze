@@ -403,6 +403,13 @@ impl PlaybackService {
             .map(|flow| flow.user_id.clone())
             .unwrap_or_else(|| "default".into())
     }
+    /// A removed download becomes its online recording: queued copies follow it.
+    pub async fn replace_queued_track(&self, old_id: &str, new_id: &str) {
+        let changed = self.queue.write().await.replace_track(old_id, new_id);
+        if changed {
+            self.emit_queue_updated().await;
+        }
+    }
     pub async fn remove_recommended_songs(&self, user: &str, ids: &[String]) -> AppResult<()> {
         if self.recommendation_user_id().await != user {
             return Ok(());

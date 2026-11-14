@@ -144,6 +144,16 @@ impl PlaybackQueue {
         self.items.len() != initial_len
     }
 
+    /// Points every occurrence of a track at another id, keeping order and position.
+    pub fn replace_track(&mut self, old_id: &str, new_id: &str) -> bool {
+        let mut changed = false;
+        for item in self.items.iter_mut().filter(|item| item.track_id == old_id) {
+            item.track_id = new_id.to_string();
+            changed = true;
+        }
+        changed
+    }
+
     /// Clears the queue.
     pub fn clear(&mut self) {
         self.items.clear();
@@ -390,6 +400,20 @@ mod tests {
             artist: "Artist".to_string(),
             duration_secs: 180.0,
         }
+    }
+
+    #[test]
+    fn replace_track_swaps_ids_in_place() {
+        let mut queue = PlaybackQueue::new();
+        for id in ["a", "local", "b"] {
+            queue.enqueue(item(id), false);
+        }
+        queue.set_current_index(1);
+        assert!(queue.replace_track("local", "jiosaavn:x"));
+        let ids: Vec<_> = queue.items().iter().map(|i| i.track_id.as_str()).collect();
+        assert_eq!(ids, ["a", "jiosaavn:x", "b"]);
+        assert_eq!(queue.current().map(|i| i.track_id.as_str()), Some("jiosaavn:x"));
+        assert!(!queue.replace_track("missing", "y"));
     }
 
     #[test]

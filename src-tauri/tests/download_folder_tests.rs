@@ -256,3 +256,127 @@ fn no_new_migrations_without_a_compatibility_decision() {
         .count();
     assert_eq!(count, 32, "a new migration makes older Kaze versions fail to start");
 }
+
+async fn scalar(pool: &sqlx::SqlitePool, sql: &str, bind: &str) -> i64 {
+    sqlx::query_scalar(sql).bind(bind).fetch_one(pool).await.unwrap()
+}
+
+/// Gives a library row a like, a playlist entry, a play and statistics.
+async fn add_user_data(pool: &sqlx::SqlitePool, track: &str) {
+    for sql in [
+        "INSERT OR IGNORE INTO playlists (id, name, created_at, updated_at) VALUES ('pl', 'Mix', 1, 1)",
+        "INSERT INTO playlist_tracks (playlist_id, track_id, position, added_at) VALUES ('pl', ?, 0, 1)",
+        "INSERT INTO playback_history (id, track_id, started_at, ended_at, seconds_listened, percentage_listened, completed, skipped, source) VALUES ('h1', ?, 1, 2, 30, 0.5, 0, 0, 'library')",
+        "INSERT INTO track_statistics (user_id, track_id, play_count, last_played_at, manual_like) VALUES ('default', ?, 2, 50, 1)",
+    ] {
+        sqlx::query(sql).bind(track).execute(pool).await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn removing_a_download_deletes_the_file_and_keeps_the_song_online() -> AppResult<()> {
+    let root = tempdir().unwrap();
+    let kaze = root.path().join("Kaze");
+    std::fs::create_dir_all(&kaze).unwrap();
+    let file = kaze.join("Artist - Song (rem12345).m4a");
+    std::fs::copy(FIXTURE, &file).unwrap();
+    let pool = pool().await;
+    let f = service(&pool, &kaze);
+    f.service.list_downloads(None, 100).await?;
+    let local = f.library.track_repo().find_by_path(&canonical(&file)).await?.unwrap().id;
+    add_user_data(&pool, &local).await;
+    // The online song already has its own plays: counts are merged, not replaced.
+    music_player_backend::recommendations::mixes::ensure_online_track(
+        &pool,
+        &music_player_backend::recommendations::mixes::OnlineTrackInput {
+            id: "jiosaavn:rem12345", title: "Song", artist: Some("Artist"), album: None,
+            duration_secs: Some(100.0), cover_art_url: None, preview_url: None,
+        },
+    )
+    .await?;
+    sqlx::query("INSERT INTO track_statistics (user_id, track_id, play_count, last_played_at) VALUES ('default', 'jiosaavn:rem12345', 3, 10)")
+        .execute(&pool).await.unwrap();
+
+    let released = f.service.remove_download("jiosaavn:rem12345", Some("rem12345")).await?;
+
+    assert_eq!(released, Some((local.clone(), "jiosaavn:rem12345".to_string())));
+    assert!(!file.exists(), "the file is deleted");
+    assert!(f.service.list_downloads(None, 100).await?.is_empty(), "the song is no longer downloaded");
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM tracks WHERE id = ?", &local).await, 0);
+    let online = "jiosaavn:rem12345";
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playlist_tracks WHERE track_id = ?", online).await, 1, "playlist entry kept");
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playback_history WHERE track_id = ?", online).await, 1, "history kept");
+    assert_eq!(scalar(&pool, "SELECT play_count FROM track_statistics WHERE track_id = ?", online).await, 5, "plays merged");
+    assert_eq!(scalar(&pool, "SELECT manual_like FROM track_statistics WHERE track_id = ?", online).await, 1, "like kept");
+    assert_eq!(scalar(&pool, "SELECT last_played_at FROM track_statistics WHERE track_id = ?", online).await, 50);
+    Ok(())
+}
+
+#[tokio::test]
+async fn removing_works_from_the_local_row_and_creates_the_online_song() -> AppResult<()> {
+    let root = tempdir().unwrap();
+    let kaze = root.path().join("Kaze");
+    std::fs::create_dir_all(&kaze).unwrap();
+    let file = kaze.join("Artist - Song (loc12345).m4a");
+    std::fs::copy(FIXTURE, &file).unwrap();
+    let pool = pool().await;
+    let f = service(&pool, &kaze);
+    f.service.list_downloads(None, 100).await?;
+    let local = f.library.track_repo().find_by_path(&canonical(&file)).await?.unwrap().id;
+    add_user_data(&pool, &local).await;
+
+    // The Downloads list only knows the local row.
+    f.service.remove_download(&local, None).await?;
+
+    assert!(!file.exists());
+    let online = "jiosaavn:loc12345";
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM tracks WHERE id = ? AND file_path LIKE 'online://%'", online).await, 1);
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playlist_tracks WHERE track_id = ?", online).await, 1);
+    assert_eq!(scalar(&pool, "SELECT play_count FROM track_statistics WHERE track_id = ?", online).await, 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_file_outside_the_kaze_folder_is_never_deleted() -> AppResult<()> {
+    let root = tempdir().unwrap();
+    let kaze = root.path().join("Kaze");
+    let elsewhere = root.path().join("Mine");
+    std::fs::create_dir_all(&kaze).unwrap();
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    let file = elsewhere.join("Artist - Song (out12345).m4a");
+    std::fs::copy(FIXTURE, &file).unwrap();
+    let pool = pool().await;
+    let f = service(&pool, &kaze);
+    f.repo.create_task(&completed("dl_out", "out12345", &file)).await?;
+
+    assert!(f.service.remove_download("jiosaavn:out12345", None).await.is_err());
+    assert!(file.is_file(), "the user's file is untouched");
+    assert!(f.repo.get_task_by_id("dl_out").await?.is_some());
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_download_deleted_outside_kaze_keeps_its_likes_on_the_online_song() -> AppResult<()> {
+    let root = tempdir().unwrap();
+    let kaze = root.path().join("Kaze");
+    std::fs::create_dir_all(&kaze).unwrap();
+    let file = kaze.join("Artist - Song (gone1234).m4a");
+    std::fs::copy(FIXTURE, &file).unwrap();
+    let pool = pool().await;
+    let f = service(&pool, &kaze);
+    let task = f.service.list_downloads(None, 100).await?.remove(0);
+    let local = f.library.track_repo().find_by_path(&canonical(&file)).await?.unwrap().id;
+    add_user_data(&pool, &local).await;
+
+    std::fs::remove_file(&file).unwrap();
+    f.service.sync_folder().await?;
+
+    assert_eq!(f.repo.get_task_by_id(&task.id).await?.unwrap().status, "MISSING");
+    let online = "jiosaavn:gone1234";
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playlist_tracks WHERE track_id = ?", online).await, 1);
+    assert_eq!(scalar(&pool, "SELECT COUNT(*) FROM playback_history WHERE track_id = ?", online).await, 1);
+    // Removing it now (file already gone) just clears the record.
+    f.service.remove_download(online, None).await?;
+    assert!(f.repo.get_task_by_id(&task.id).await?.is_none());
+    Ok(())
+}

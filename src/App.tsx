@@ -42,6 +42,7 @@ import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { attachLocalSearchMatches } from "./localTrackMatch";
 import { PromptModal } from "./components/modals/PromptModal";
+import { ConfirmModal } from "./components/modals/ConfirmModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useAuth } from "./hooks/app/useAuth";
 import { useLibrary, useLibraryPlayback, type ListScope } from "./hooks/app/useLibrary";
@@ -753,6 +754,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         case "DownloadsChanged":
           fetchDownloads();
           fetchTracks();
+          // A removed download's likes and playlist entries move to its online song.
+          fetchTrackPlaylistMemberships();
           break;
 
         case "DownloadProgress":
@@ -2038,6 +2041,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                           onRemoveFeedback={handleRemoveFeedback}
                           trackPlaylistMap={regularTrackPlaylistMap}
                           likedTrackIds={likedTrackIds}
+                          downloadControls
                           emptyTitle="No downloaded songs yet"
                           emptyHint="Use the download button on any online song. It is saved to Kaze's folder and appears here."
                           onOpenAddToPlaylistModal={(t) =>
@@ -2293,6 +2297,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
             }}
           />
         )}
+
+        {/* Yes/No questions (e.g. removing a download); store-driven, no App state */}
+        <ConfirmModal />
 
         {/* Flow Why This Track Modal */}
         {whyTrackModal && (

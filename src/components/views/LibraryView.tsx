@@ -4,6 +4,7 @@ import { List, RowComponentProps } from "react-window";
 import { Pause, Play, Search, RotateCw, Shuffle, Heart, Check, Bookmark, BookmarkCheck, ListPlus,
 } from "lucide-react";
 import { Track } from "../../types";
+import { DownloadButton } from "../DownloadButton";
 
 interface LibraryViewProps {
   tracks: Track[];
@@ -36,6 +37,8 @@ interface LibraryViewProps {
   trackPlaylistMap?: Record<string, string[]>;
   likedTrackIds?: Set<string>;
   onOpenAddToPlaylistModal?: (track: Track) => void;
+  /** Downloads list: each row shows its ✓ download control (click to remove). */
+  downloadControls?: boolean;
 }
 
 const formatSeconds = (secs: number) => {
@@ -61,6 +64,7 @@ type LibraryRowProps = {
   onLikeTrack: (trackId: string) => void;
   onRemoveFeedback: (trackId: string) => void;
   onOpenAddToPlaylistModal?: (track: Track) => void;
+  downloadControls?: boolean;
 };
 
 const LibraryRow = ({
@@ -78,6 +82,7 @@ const LibraryRow = ({
   onLikeTrack,
   onRemoveFeedback,
   onOpenAddToPlaylistModal,
+  downloadControls,
 }: RowComponentProps<LibraryRowProps>): React.ReactElement | null => {
   const track = tracks[index];
   if (!track) return null;
@@ -180,7 +185,8 @@ const LibraryRow = ({
       <div style={{ textAlign: "right" }}>
         {formatSeconds(track.duration_secs)}
       </div>
-      <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}>
+        {downloadControls && <DownloadButton trackId={track.id} title={track.title} compact />}
         <button
           className="player-icon-btn"
           title={
@@ -279,6 +285,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
     trackPlaylistMap,
     likedTrackIds,
     onOpenAddToPlaylistModal,
+    downloadControls,
   }) => {
     const [searchTerm, setSearchTerm] = useState(searchQuery);
     const debounceTimerRef = useRef<any>(null);
@@ -461,6 +468,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                   onLikeTrack,
                   onRemoveFeedback,
                   onOpenAddToPlaylistModal,
+                  downloadControls,
                 }}
                 style={{
                   height: Math.max(200, containerHeight - 42),

@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 const directory = await mkdtemp(join(tmpdir(), "kaze-song-controls-"));
 let controls;
 try {
-  const result = await build({ stdin: { contents: `export { DownloadButton } from './src/components/DownloadButton'; export { downloadProgress, useSongDownloaded } from './src/services/downloadProgress'; export { isOnlineTrack } from './src/trackKind'; export { NotInterestedButton } from './src/components/NotInterestedButton'; export { recommendationPreferences } from './src/services/recommendationPreferences';`, resolveDir: process.cwd(), loader: "ts" }, bundle: true, format: "esm", write: false, packages: "external", jsx: "automatic" });
+  const result = await build({ stdin: { contents: `export { DownloadButton, removeDownload } from './src/components/DownloadButton'; export { answerConfirm, confirmAction } from './src/services/confirmDialog'; export { downloadProgress, useSongDownloaded } from './src/services/downloadProgress'; export { isOnlineTrack } from './src/trackKind'; export { NotInterestedButton } from './src/components/NotInterestedButton'; export { recommendationPreferences } from './src/services/recommendationPreferences';`, resolveDir: process.cwd(), loader: "ts" }, bundle: true, format: "esm", write: false, packages: "external", jsx: "automatic" });
   await symlink(join(process.cwd(), "node_modules"), join(directory, "node_modules"));
   await writeFile(join(directory, "controls.mjs"), result.outputFiles[0].text);
   controls = await import(pathToFileURL(join(directory, "controls.mjs")));
@@ -100,4 +100,37 @@ test("a pending now-playing song is always resolved, even when a newer playback 
   const staleBranch = fetcher.slice(fetcher.indexOf("if (revision !== playbackStateRevision.current)"));
   assert.ok(staleBranch.length < fetcher.length, "stale results get their own branch, not a bare return");
   assert.match(staleBranch.slice(0, 600), /prev\.current_track\?\.pending && prev\.current_track\.id === resolved\.id/);
+});
+test("a downloaded ✓ is clickable and offers removal", () => {
+  controls.downloadProgress.replace([{ ...song, id: "t-done", source_track_id: "done-1", track_ids: ["local-row"], status: "COMPLETED", file_present: true }]);
+  for (const html of [button("jiosaavn:done-1", { sourceId: "done-1" }), button("local-row")]) {
+    assert.match(html, /Downloaded Song\. Click to remove/);
+    assert.doesNotMatch(html, /disabled/, "the ✓ is a button you can press");
+  }
+  controls.downloadProgress.replace([]);
+});
+test("removing asks first: No changes nothing, Yes sends RemoveDownload", async () => {
+  // Outside Tauri the API logs each call (browser mock): record them from there.
+  const calls = [];
+  const log = console.log;
+  console.log = (label, request) => {
+    if (String(label).startsWith("[Mock Browser API]")) calls.push(request?.command ?? request?.query);
+    else log(label, request);
+  };
+  try {
+    const kept = controls.removeDownload("jiosaavn:done-1", "done-1", "Song");
+    controls.answerConfirm(false);
+    assert.equal(await kept, false);
+    assert.deepEqual(calls, [], "No sends nothing");
+    const removed = controls.removeDownload("jiosaavn:done-1", "done-1", "Song");
+    controls.answerConfirm(true);
+    assert.equal(await removed, true);
+    assert.deepEqual(calls, ["RemoveDownload", "GetDownloads"]);
+    // A second question replaces an unanswered one, which counts as No.
+    const first = controls.confirmAction({ title: "A", message: "a" });
+    const second = controls.confirmAction({ title: "B", message: "b" });
+    assert.equal(await first, false);
+    controls.answerConfirm(true);
+    assert.equal(await second, true);
+  } finally { console.log = log; }
 });

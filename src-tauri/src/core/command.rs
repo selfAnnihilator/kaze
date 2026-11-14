@@ -230,6 +230,12 @@ pub enum Command {
     DownloadTrack {
         track_id: String,
     },
+    /// Deletes Kaze's downloaded file; the song becomes an online song again.
+    RemoveDownload {
+        track_id: String,
+        #[serde(default)]
+        source_id: Option<String>,
+    },
     StartDownload {
         search_result_id: String,
         wishlist_id: Option<String>,
