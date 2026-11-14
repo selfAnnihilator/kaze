@@ -429,10 +429,6 @@
       "lines": 185,
       "smells": 1
     },
-    "src-tauri/src/discovery/coordinator/for_you.rs": {
-      "lines": 530,
-      "smells": 1
-    },
     "src-tauri/src/discovery/coordinator/starters.rs": {
       "lines": 313,
       "smells": 3
