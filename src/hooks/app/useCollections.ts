@@ -1,17 +1,18 @@
-import { isOnlineTrack } from "../../trackKind";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { dispatchCommand, executeQuery } from "../../services/api";
+import { dispatchCommand } from "../../services/api";
 import { viewDestination } from "../../navigationHistory";
 import type { NavigationDestination } from "../../navigationHistory";
-import type { DiscoveryRecommendation, PlaybackState, Playlist, Track } from "../../types";
+import type { DiscoveryRecommendation, PlaybackState, Playlist } from "../../types";
 import type { CollectionData, CollectionTrackItem } from "../../components/views/CollectionDetailView";
 import type { usePlaybackControls } from "./usePlaybackControls";
+import { useCollectionTracksLoader } from "./useCollectionTracksLoader";
+import { usePlayDiscoveredCollection } from "./usePlayDiscoveredCollection";
 
 type Controls = ReturnType<typeof usePlaybackControls>;
 
-type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
-type PlayingOrigin = {
+export type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
+export type PlayingOrigin = {
   type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
   id?: string;
   name?: string;
@@ -46,7 +47,6 @@ export function useCollections({
   handleToggleShuffle: Controls["handleToggleShuffle"];
   handleStopOnlineAudio: Controls["handleStopOnlineAudio"];
 }) {
-  const [isLoadingCollectionTracks, setIsLoadingCollectionTracks] = useState<boolean>(false);
 
   // --- Collection Detail Handlers (Mixes, Top Charts, Playlists) ---
   const handleOpenCollection = useCallback(
@@ -64,281 +64,9 @@ export function useCollections({
     [navigate],
   );
 
-  useEffect(() => {
-    const collection = activeCollection;
-    if (!collection || collection.tracks !== undefined) {
-      setIsLoadingCollectionTracks(false);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      setIsLoadingCollectionTracks(true);
-      try {
-        if (collection.playlistId) {
-          const res = await executeQuery({
-            query: "GetPlaylistTracks",
-            payload: { playlist_id: collection.playlistId },
-          });
-          const plTracks: Track[] = (res.data as any) || [];
-          const items: CollectionTrackItem[] = plTracks.map((t) => {
-            const isOnline = !!isOnlineTrack(t);
-            return {
-              id: t.id,
-              title: t.title,
-              artist: t.artist_name || "Unknown Artist",
-              album: t.album_title,
-              duration_secs: t.duration_secs ?? 0,
-              cover_art_url: t.cover_art_url,
-              preview_url: t.preview_url,
-              is_downloaded: !isOnline,
-              matched_local_track_id: isOnline ? undefined : t.id,
-              rawLocalTrack: isOnline ? undefined : t,
-              rawRecommendation: isOnline
-                ? {
-                    external_track_id: t.id,
-                    provider: t.playback_source?.provider || "online",
-                    provider_id: t.playback_source?.track_id || t.id,
-                    playback_source: t.playback_source,
-                    title: t.title,
-                    artist: t.artist_name || "Unknown Artist",
-                    album: t.album_title,
-                    duration_secs: t.duration_secs ?? 0,
-                    cover_art_url: t.cover_art_url,
-                    preview_url: t.preview_url,
-                    match_status: "NOT_FOUND",
-                    recommendation_reason: "",
-                    in_wishlist: false,
-                  }
-                : undefined,
-            };
-          });
-          setActiveCollection((prev) =>
-            !cancelled && prev === collection
-              ? { ...prev, tracks: items }
-              : prev,
-          );
-        } else if (collection.type === "chart" || collection.searchQuery) {
-          const res = await executeQuery(
-            collection.type === "chart"
-              ? {
-                  query: "GetChartSongs",
-                  payload: { chart_id: collection.id, limit: 50 },
-                }
-              : {
-                  query: "SearchOnlineMusic",
-                  payload: { query: collection.searchQuery!, limit: 50 },
-                },
-          );
-          const onlineRecs: DiscoveryRecommendation[] = (res.data as any) || [];
-          const items: CollectionTrackItem[] = onlineRecs.map((r) => {
-            const validLocalId =
-              r.matched_local_track_id &&
-              !r.matched_local_track_id.startsWith("online:") &&
-              !r.matched_local_track_id.startsWith("itunes:")
-                ? r.matched_local_track_id
-                : undefined;
-            return {
-              id: r.external_track_id,
-              title: r.title,
-              artist: r.artist,
-              album: r.album,
-              duration_secs: r.duration_secs ?? 0,
-              cover_art_url: r.cover_art_url,
-              preview_url: r.preview_url,
-              is_downloaded: !!validLocalId,
-              matched_local_track_id: validLocalId,
-              rawRecommendation: r,
-            };
-          });
-          setActiveCollection((prev) =>
-            !cancelled && prev === collection
-              ? { ...prev, tracks: items }
-              : prev,
-          );
-        }
-      } catch (err) {
-        console.error("Failed to load collection tracks:", err);
-      } finally {
-        if (!cancelled) setIsLoadingCollectionTracks(false);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCollection, setActiveCollection]);
+  const isLoadingCollectionTracks = useCollectionTracksLoader(activeCollection, setActiveCollection);
 
-  const handlePlayDiscoveredCollection = useCallback(
-    async (collection: CollectionData) => {
-      if (collection.type !== "chart" && !collection.searchQuery) return;
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        addAppNotification(
-          "warning",
-          "No Internet Connection",
-          `Cannot load ${collection.title}. Connect to the internet to stream this collection.`,
-        );
-        return;
-      }
-
-      try {
-        const response = await executeQuery(
-          collection.type === "chart"
-            ? {
-                query: "GetChartSongs",
-                payload: { chart_id: collection.id, limit: 50 },
-              }
-            : {
-                query: "SearchOnlineMusic",
-                payload: { query: collection.searchQuery!, limit: 50 },
-              },
-        );
-        const results = (
-          (response?.data as DiscoveryRecommendation[]) || []
-        ).filter(
-          (track, index, all) =>
-            all.findIndex(
-              (candidate) =>
-                candidate.external_track_id === track.external_track_id,
-            ) === index,
-        );
-        if (results.length === 0) {
-          addAppNotification(
-            "warning",
-            "No Songs Found",
-            `${collection.title} did not return any playable songs.`,
-          );
-          return;
-        }
-
-        const localIdFor = (track: DiscoveryRecommendation) => {
-          const localId = track.matched_local_track_id;
-          return localId &&
-            !localId.startsWith("online:") &&
-            !localId.startsWith("itunes:")
-            ? localId
-            : null;
-        };
-        const resolvedId = (track: DiscoveryRecommendation) =>
-          localIdFor(track) || track.external_track_id;
-        const isLocal = (track: DiscoveryRecommendation) =>
-          localIdFor(track) !== null;
-        const collectionIds = new Set(results.map(resolvedId));
-        const preservedQueue = Array.from(queuedTrackIds).filter(
-          (trackId) => !collectionIds.has(trackId),
-        );
-        const first = results[0];
-        const firstId = resolvedId(first);
-
-        setPlayingOrigin({
-          type: collection.type === "chart" ? "chart" : "mix",
-          id: collection.id,
-          name: collection.title,
-          collectionData: {
-            ...collection,
-            tracks: results.map((track) => ({
-              id: track.external_track_id,
-              title: track.title,
-              artist: track.artist,
-              album: track.album,
-              duration_secs: track.duration_secs ?? 0,
-              cover_art_url: track.cover_art_url,
-              preview_url: track.preview_url,
-              is_downloaded: isLocal(track),
-              matched_local_track_id: isLocal(track)
-                ? resolvedId(track)
-                : undefined,
-              rawRecommendation: track,
-            })),
-          },
-        });
-
-        if (!isLocal(first)) {
-          try {
-            await dispatchCommand({
-              command: "EnqueueOnlineTrack",
-              payload: {
-                track_id: firstId,
-                title: first.title,
-                artist: first.artist,
-                album: first.album,
-                duration_secs: first.duration_secs,
-                cover_art_url: first.cover_art_url,
-                preview_url: first.preview_url,
-                play_next: false,
-              },
-            });
-          } catch (error: any) {
-            if (
-              !String(error?.message || error)
-                .toLowerCase()
-                .includes("already in the queue")
-            ) {
-              throw error;
-            }
-          }
-        }
-
-        await dispatchCommand({
-          command: "PlayTrack",
-          payload: { track_id: firstId, source: "collection" },
-        });
-
-        for (const track of results.slice(1)) {
-          const trackId = resolvedId(track);
-          try {
-            if (isLocal(track)) {
-              await dispatchCommand({
-                command: "EnqueueTrack",
-                payload: { track_id: trackId, play_next: false },
-              });
-            } else {
-              await dispatchCommand({
-                command: "EnqueueOnlineTrack",
-                payload: {
-                  track_id: trackId,
-                  title: track.title,
-                  artist: track.artist,
-                  album: track.album,
-                  duration_secs: track.duration_secs,
-                  cover_art_url: track.cover_art_url,
-                  preview_url: track.preview_url,
-                  play_next: false,
-                },
-              });
-            }
-          } catch (error) {
-            console.warn("Could not enqueue chart track:", error);
-          }
-        }
-
-        for (const trackId of preservedQueue) {
-          try {
-            await dispatchCommand({
-              command: "EnqueueTrack",
-              payload: { track_id: trackId, play_next: false },
-            });
-          } catch (error) {
-            console.warn("Could not preserve queued track after chart:", error);
-          }
-        }
-
-        fetchPlaybackState();
-      } catch (error: any) {
-        console.error("Failed to play discovered collection:", error);
-        addAppNotification(
-          "error",
-          "Collection Playback Failed",
-          error?.message || `Could not play ${collection.title}.`,
-        );
-      }
-    },
-    [
-      queuedTrackIds,
-      addAppNotification,
-      handleStopOnlineAudio,
-      fetchPlaybackState,
-    ],
-  );
+  const handlePlayDiscoveredCollection = usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackState, queuedTrackIds, addAppNotification, handleStopOnlineAudio });
 
   const handleOpenPlayingOrigin = useCallback(() => {
     if (!playingOrigin) return;

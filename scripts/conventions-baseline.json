@@ -210,8 +210,8 @@
       "smells": 2
     },
     "src/hooks/app/useCollections.ts": {
-      "lines": 680,
-      "smells": 4
+      "lines": 408,
+      "smells": 3
     },
     "src/hooks/app/useDiscoveryFeeds.ts": {
       "lines": 88,
@@ -444,6 +444,14 @@
     "src-tauri/src/database/repositories/track_repo/writes.rs": {
       "lines": 290,
       "smells": 8
+    },
+    "src/hooks/app/useCollectionTracksLoader.ts": {
+      "lines": 119,
+      "smells": 2
+    },
+    "src/hooks/app/usePlayDiscoveredCollection.ts": {
+      "lines": 189,
+      "smells": 1
     }
   }
 }
