@@ -206,7 +206,7 @@
       "smells": 2
     },
     "src/components/views/OnlineSearchResultsSection.tsx": {
-      "lines": 1078,
+      "lines": 408,
       "smells": 3
     },
     "src/components/views/PlaylistsView.tsx": {

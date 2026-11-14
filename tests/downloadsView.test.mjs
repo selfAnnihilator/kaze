@@ -58,7 +58,11 @@ test("Play all toggles pause/resume and shuffle is a per-section toggle", () => 
 
 test("download controls follow only Kaze's own downloads; local songs have none", () => {
   // No fuzzy local matching feeds download state anywhere.
-  for (const file of ["src/components/views/OnlineSearchResultsSection.tsx", "src/components/views/DiscoveryView.tsx", "src/components/views/CollectionDetailView.tsx"])
+  for (const file of [
+    "src/components/views/OnlineSearchResultsSection.tsx", "src/components/views/searchResults/AllResultsTab.tsx", "src/components/views/searchResults/SongsTab.tsx",
+    "src/components/views/DiscoveryView.tsx", "src/components/views/discovery/DiscoveryTrackCard.tsx",
+    "src/components/views/CollectionDetailView.tsx",
+  ])
     assert.doesNotMatch(read(file), /downloaded=\{!!\w+\.local_copy\}|downloaded=\{!!track\.is_downloaded\}/, file);
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /track && \(kind !== false \|\| kazeDownload\) && <DownloadButton/);
   assert.match(read("src/components/views/CollectionDetailView.tsx"), /!track\.rawLocalTrack && <DownloadButton/);
