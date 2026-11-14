@@ -1,6 +1,4 @@
-import { useScopedTracks } from "./hooks/useScopedTracks";
 import { ownBackendSubscription } from "./services/backendSubscription";
-import { useLibraryPage } from "./hooks/useLibraryPage";
 import { PlaybackNotice, showEmptyPlaybackNotice } from "./components/PlaybackNotice";
 import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
 import { RecommendationSetupGate } from "./components/MusicTaste";
@@ -16,7 +14,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, useSyncExtern
 } from "react";
 import {
   Track,
-  Album,
   Playlist,
   WishlistItem,
   DownloadTask,
@@ -53,6 +50,7 @@ import { AddToPlaylistModalTrack } from "./components/modals/AddToPlaylistModal"
 import { PromptModal } from "./components/modals/PromptModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useAuth } from "./hooks/app/useAuth";
+import { useLibrary, useLibraryPlayback } from "./hooks/app/useLibrary";
 import {
   CollectionDetailView,
   CollectionData,
@@ -82,9 +80,6 @@ import { BrutalistNavigation, BrutalistLibraryHeader } from "./presentation/Brut
 import { BrutalistDeck } from "./presentation/BrutalistDeck";
 import { BrutalistPoster } from "./presentation/BrutalistPoster";
 import { SpatialUtilities, SpatialLibraryHeader } from "./presentation/SpatialUtilities";
-
-// Downloads section shuffle toggle, persisted per device ("1" on, "0" off).
-const DOWNLOADS_SHUFFLE_KEY = "kaze.downloads.shuffle";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
 const DownloadsView = lazy(() =>
@@ -206,21 +201,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, []);
 
   // Library & Content Data
-  const trackPage = useLibraryPage<Track>("GetLibraryTracksPage", 200, currentUser?.id || "default", `${destination.view}:${destination.libraryAlbumId || ""}:${destination.libraryQuery || ""}`);
-  const albumPage = useLibraryPage<Album>("GetLibraryAlbumsPage", 100, currentUser?.id || "default", destination.view);
-  const scoped = useScopedTracks(currentUser?.id || "default", destination.libraryAlbumId, destination.libraryQuery, destination.view === "library" && !destination.collection && !destination.lyrics);
-  const scopedRefreshRef = useRef(scoped.refresh);
-  scopedRefreshRef.current = scoped.refresh;
-  const libraryScoped = Boolean(destination.libraryAlbumId || destination.libraryQuery);
-  const tracks = libraryScoped ? scoped.rows : trackPage.items;
-  const setTracks = useCallback((update: React.SetStateAction<Track[]>) => {
-    trackPage.setItems(update);
-    scoped.setItems(update);
-  }, [trackPage.setItems]);
+  const {
+    trackPage, albumPage, scoped, libraryScoped, tracks, setTracks, tracksRef, albums,
+    settings, isScanning, setIsScanning,
+    fetchTracks, fetchAlbums, fetchSettings, handleAddFolder, handleRemoveFolder, handleRescanLibrary,
+  } = useLibrary({ userId: currentUser?.id || "default", destination, initialSettings, fetchOnboardingStatus });
   const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
-  const tracksRef = useRef<Track[]>([]);
-  tracksRef.current = tracks;
-  const albums = albumPage.items;
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null,
   );
@@ -232,7 +218,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   );
   const discoveryRecsRef = useRef<DiscoveryRecommendation[]>([]);
   discoveryRecsRef.current = discoveryRecs;
-  const [settings, setSettings] = useState<AppSettings>(initialSettings);
   const interfacePreference = useInterfacePreference(settings);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const previousTrackRef = useRef<Track | undefined>(undefined);
@@ -241,7 +226,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     previousTrackRef.current = observedTrackRef.current;
     observedTrackRef.current = playbackState.current_track;
   }
-  const [isScanning, setIsScanning] = useState(false);
 
   // Notifications & Toasts System
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -400,12 +384,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   }, []);
 
-  const fetchTracks = useCallback(async () => {
-    void trackPage.refresh();
-    await scopedRefreshRef.current();
-  }, []);
-
-  const fetchAlbums = albumPage.refresh;
 
   const playlistRequest = useRef(0);
   const membershipRequest = useRef(0);
@@ -579,16 +557,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     void fetchDiscovery();
   }, [currentUser?.id, fetchDiscovery]);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await executeQuery({ query: "GetSettings" });
-      if (res.data) {
-        setSettings(res.data as AppSettings);
-      }
-    } catch (err) {
-      console.error("Failed to fetch settings:", err);
-    }
-  }, []);
 
   afterAuthRef.current = async (title, message) => {
     addAppNotification("success", title, message);
@@ -1170,74 +1138,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     ],
   );
 
-  // Downloads view: ordered list playback (plays in order, stops at the end).
-  // The shuffle toggle belongs to this section only: it is never read back from
-  // the queue, so other sections (playlists) cannot flip it. Persisted across restarts.
-  const [libraryShuffle, setLibraryShuffle] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(DOWNLOADS_SHUFFLE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const downloadsListActive =
-    playbackState.source === "archive" && (playbackState.is_playing || Boolean(playbackState.is_paused));
-  const startLibraryList = useCallback(
-    async (startId?: string) => {
-      const requestId = beginPlaybackLoading(startId ?? "library-list");
-      try {
-        await dispatchCommand({
-          command: "PlayTrackList",
-          payload: {
-            // Search only filters the view; playback always covers the full Downloads list.
-            track_ids: null,
-            start_track_id: startId ?? null,
-            shuffle: libraryShuffle,
-          },
-        });
-        await fetchPlaybackState();
-      } catch (err) {
-        await fetchPlaybackState();
-        throw err;
-      } finally {
-        endPlaybackLoading(requestId);
-      }
-    },
-    [libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading],
-  );
-  const handleLibraryRowPlay = useCallback(
-    async (trackId: string) => {
-      if (playbackState.current_track?.id === trackId && (playbackState.is_playing || playbackState.is_paused)) {
-        await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
-        await fetchPlaybackState();
-        return;
-      }
-      await startLibraryList(trackId);
-    },
-    [playbackState.current_track?.id, playbackState.is_playing, playbackState.is_paused, fetchPlaybackState, startLibraryList],
-  );
-  // Play all doubles as Pause/Resume while the Downloads list is the active source.
-  const handleLibraryPlayAll = useCallback(async () => {
-    if (downloadsListActive) {
-      await dispatchCommand({ command: playbackState.is_playing ? "Pause" : "Resume" });
-      await fetchPlaybackState();
-      return;
-    }
-    await startLibraryList();
-  }, [downloadsListActive, playbackState.is_playing, fetchPlaybackState, startLibraryList]);
-  const handleLibraryToggleShuffle = useCallback(async () => {
-    const next = !libraryShuffle;
-    setLibraryShuffle(next);
-    try {
-      localStorage.setItem(DOWNLOADS_SHUFFLE_KEY, next ? "1" : "0");
-    } catch {
-      // Storage unavailable: toggle still applies for this session.
-    }
-    // Takes effect after the current song: only the upcoming Downloads tracks are reordered.
-    if (playbackState.source === "archive") {
-      await dispatchCommand({ command: "SetArchiveShuffle", payload: { enabled: next } });
-    }
-  }, [libraryShuffle, playbackState.source]);
+  const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle,
+  } = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading });
 
   const handlePlayOnlineTrack = useCallback(
     async (
@@ -1771,35 +1673,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   };
 
-  // Library & folder management
-  const handleAddFolder = async (path: string) => {
-    await dispatchCommand({
-      command: "AddLibraryFolder",
-      payload: { path },
-    });
-    fetchOnboardingStatus();
-  };
-
-  const handleRemoveFolder = async (folderId: string) => {
-    await dispatchCommand({
-      command: "RemoveLibraryFolder",
-      payload: { folder_id: folderId },
-    });
-    fetchOnboardingStatus();
-  };
-
-  const handleRescanLibrary = async () => {
-    setIsScanning(true);
-    try {
-      await dispatchCommand({
-        command: "ScanLibrary",
-        payload: { incremental: false },
-      });
-    } catch (error) {
-      setIsScanning(false);
-      throw error;
-    }
-  };
 
   // Playlists & Smart Mixes
   const handleRenamePlaylist = async (playlistId: string, name: string) => {

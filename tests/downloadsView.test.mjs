@@ -24,7 +24,7 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
 });
 
 test("library playback dispatches ordered PlayTrackList", () => {
-  const app = read("src/App.tsx");
+  const app = read("src/hooks/app/useLibrary.ts");
   assert.match(app, /command: "PlayTrackList"/);
   // Search filters the view only: the list always plays the full library.
   const start = app.slice(app.indexOf("const startLibraryList"), app.indexOf("const handleLibraryRowPlay"));
@@ -36,7 +36,7 @@ test("Play all toggles pause/resume and shuffle is a per-section toggle", () => 
   const view = read("src/components/views/LibraryView.tsx");
   assert.match(view, /listState === "playing" \? "Pause"/);
   assert.match(view, /aria-pressed=\{shuffleEnabled\}/);
-  const app = read("src/App.tsx");
+  const app = read("src/hooks/app/useLibrary.ts");
   // Section-local shuffle state: never derived from the queue-wide is_shuffled flag.
   assert.match(app, /const \[libraryShuffle, setLibraryShuffle\] = useState<boolean>\(/);
   // Persisted across restarts under a section-specific key.
