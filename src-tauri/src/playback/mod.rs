@@ -1,6 +1,7 @@
 pub mod backend;
 pub mod output;
 pub mod decoder;
+pub mod hidden_ticks;
 pub mod progressive;
 pub mod queue;
 pub mod resolution_cache;

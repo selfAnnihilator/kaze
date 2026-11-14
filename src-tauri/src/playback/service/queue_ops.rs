@@ -146,9 +146,9 @@ impl PlaybackService {
         };
 
         let _ = self.event_bus.publish(Event::QueueUpdated {
-            items,
+            items: Arc::new(items),
             current_index,
-            queue_track_ids,
+            queue_track_ids: Arc::new(queue_track_ids),
             source,
         });
 

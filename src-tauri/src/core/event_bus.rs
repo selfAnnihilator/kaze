@@ -1,7 +1,7 @@
 use crate::core::error::AppResult;
 use crate::core::event::Event;
 use tokio::sync::broadcast;
-use tracing::debug;
+use tracing::trace;
 
 /// Default capacity for the event broadcast channel.
 pub const DEFAULT_EVENT_BUS_CAPACITY: usize = 1024;
@@ -21,7 +21,8 @@ impl EventBus {
 
     /// Publishes a domain event across the event bus to all active subscribers.
     pub fn publish(&self, event: Event) -> AppResult<usize> {
-        debug!(?event, "Publishing domain event to EventBus");
+        // Position ticks arrive 4x/s; formatting every event is trace-only.
+        trace!(?event, "Publishing domain event to EventBus");
         if self.sender.receiver_count() == 0 {
             return Ok(0);
         }

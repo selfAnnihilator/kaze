@@ -4,6 +4,7 @@ use music_player_backend::core::processor::CoreProcessor;
 use music_player_backend::core::query::{Query, QueryResponse};
 use music_player_backend::database::init_db_pool;
 use music_player_backend::logging::init_logging;
+use music_player_backend::playback::hidden_ticks::HiddenTicks;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
@@ -146,10 +147,14 @@ pub fn run() {
 
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();
+                let hidden_ticks = watch_visibility(&handle);
                 handle.state::<lifecycle::DesktopLifecycle>().spawn(async move {
                     loop {
                         match rx.recv().await {
                             Ok(event) => {
+                                if !hidden_ticks.forward(&event) {
+                                    continue;
+                                }
                                 if let Err(e) = emit_handle.emit("backend-event", &event) {
                                     tracing::error!(?e, "Failed to emit backend-event to webview");
                                 }
@@ -263,6 +268,29 @@ pub fn run() {
                 _ => {}
             }
         });
+}
+
+/// Tracks whether the main window is mapped, so position ticks are not sent
+/// to a hidden webview. GTK map/unmap covers every show and hide path (tray,
+/// close-to-tray, MPRIS raise, launcher activation).
+fn watch_visibility(handle: &tauri::AppHandle) -> Arc<HiddenTicks> {
+    let window = handle.get_webview_window("main");
+    let ticks = Arc::new(HiddenTicks::new(
+        window.as_ref().and_then(|w| w.is_visible().ok()).unwrap_or(true),
+    ));
+    #[cfg(target_os = "linux")]
+    if let Some(native) = window.and_then(|w| w.gtk_window().ok()) {
+        use gtk::prelude::*;
+        let (shown, hidden) = (ticks.clone(), ticks.clone());
+        let emit_handle = handle.clone();
+        native.connect_map(move |_| {
+            if let Some(event) = shown.shown() {
+                let _ = emit_handle.emit("backend-event", &event);
+            }
+        });
+        native.connect_unmap(move |_| hidden.hidden());
+    }
+    ticks
 }
 
 fn main() {

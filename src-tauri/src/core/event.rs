@@ -73,10 +73,12 @@ pub enum Event {
         volume: f32,
         is_muted: bool,
     },
+    /// Shared (`Arc`) so each event-bus subscriber's copy is cheap; the JSON
+    /// shape is unchanged.
     QueueUpdated {
-        items: Vec<QueueItem>,
+        items: std::sync::Arc<Vec<QueueItem>>,
         current_index: Option<usize>,
-        queue_track_ids: Vec<String>,
+        queue_track_ids: std::sync::Arc<Vec<String>>,
         /// Playback source that owns the queue ("library", "flow", "archive", ...).
         #[serde(default)]
         source: String,

@@ -211,13 +211,12 @@ pub async fn start_mpris_service(
                                 .await;
                         break;
                     }
-                    // Existing ticks detect only real state/capability edges,
-                    // such as progressive audio becoming seekable. Position is
-                    // never part of PropertiesChanged, and unchanged snapshots
-                    // emit nothing.
+                    // Every state/capability edge publishes its own event, such
+                    // as PlaybackCapabilitiesChanged when progressive audio
+                    // becomes seekable. Position is never part of
+                    // PropertiesChanged, so position ticks are ignored.
                     Ok(
-                        Event::PlaybackPositionChanged { .. }
-                        | Event::PlaybackStarted { .. }
+                        Event::PlaybackStarted { .. }
                         | Event::PlaybackPaused { .. }
                         | Event::PlaybackResumed { .. }
                         | Event::PlaybackStopped { .. }
