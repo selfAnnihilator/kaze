@@ -73,10 +73,6 @@
       "lines": 277,
       "smells": 1
     },
-    "src-tauri/src/playback/stream.rs": {
-      "lines": 960,
-      "smells": 10
-    },
     "src-tauri/src/providers/enrichment.rs": {
       "lines": 436,
       "smells": 2
@@ -440,6 +436,14 @@
     "src-tauri/src/database/repositories/stats_repo/writes.rs": {
       "lines": 176,
       "smells": 1
+    },
+    "src-tauri/src/playback/stream/cache.rs": {
+      "lines": 352,
+      "smells": 7
+    },
+    "src-tauri/src/playback/stream/progressive.rs": {
+      "lines": 140,
+      "smells": 3
     }
   }
 }
