@@ -157,10 +157,6 @@
       "lines": 161,
       "smells": 2
     },
-    "src/components/views/DiscoveryView.tsx": {
-      "lines": 535,
-      "smells": 1
-    },
     "src/components/views/ImportPlaylistModal.tsx": {
       "lines": 487,
       "smells": 2

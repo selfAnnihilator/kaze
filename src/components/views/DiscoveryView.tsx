@@ -16,6 +16,7 @@ import { TrendingShelf } from "./discovery/TrendingShelf";
 import { ForYouShelf } from "./discovery/ForYouShelf";
 import { MixesShelf } from "./discovery/MixesShelf";
 import { ChartsShelf } from "./discovery/ChartsShelf";
+import { useDiscoverySearch } from "./discovery/useDiscoverySearch";
 
 interface DiscoveryViewProps {
   recommendations: DiscoveryRecommendation[];
@@ -172,83 +173,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
     };
   }, [_onRefresh, onRefreshTrending]);
 
-  // Online Search State (fallback if not controlled by parent)
-  const [internalSearchQuery, setInternalSearchQuery] = useState("");
-  const [internalIsSearching, setInternalIsSearching] = useState(false);
-  const [internalSearchResults, setInternalSearchResults] = useState<
-    DiscoveryRecommendation[] | null
-  >(null);
-
-  const searchQuery =
-    propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
-  const setSearchQuery = propSetSearchQuery || setInternalSearchQuery;
-  const searchResults =
-    propSearchResults !== undefined ? propSearchResults : internalSearchResults;
-  const setSearchResults = propSetSearchResults || setInternalSearchResults;
-  const searching = propIsSearchingOnline ?? internalIsSearching;
-  const searchActive = searchResults !== null || searching;
-
-  const handleSearchOnline = async (queryOverride?: string) => {
-    if (propOnSearchOnline) {
-      await propOnSearchOnline(queryOverride);
-      return;
-    }
-    const q = (
-      typeof queryOverride === "string" ? queryOverride : searchQuery
-    ).trim();
-    if (!q) {
-      setSearchResults(null);
-      return;
-    }
-    setSearchResults([]);
-    if (propIsSearchingOnline === undefined) setInternalIsSearching(true);
-    try {
-      const res = await executeQuery({
-        query: "SearchOnlineMusic",
-        payload: { query: q, limit: 35 },
-      });
-      let incoming: DiscoveryRecommendation[] = [];
-      if (res && Array.isArray(res.data)) {
-        incoming = res.data;
-      }
-
-      // Filter to relevant results matching the search query
-      const qLower = q.toLowerCase();
-      const qTokens = qLower.split(/\s+/).filter((t) => t.length > 1);
-
-      const relevant = incoming.filter((r) => {
-        const titleLower = r.title.toLowerCase();
-        const artistLower = r.artist.toLowerCase();
-        const albumLower = r.album ? r.album.toLowerCase() : "";
-        if (
-          titleLower.includes(qLower) ||
-          artistLower.includes(qLower) ||
-          albumLower.includes(qLower)
-        ) {
-          return true;
-        }
-        return qTokens.some(
-          (tok) => titleLower.includes(tok) || artistLower.includes(tok),
-        );
-      });
-
-      setSearchResults(relevant.length > 0 ? relevant : incoming);
-    } catch (err) {
-      console.error("Online music search failed:", err);
-      setSearchResults([]);
-    } finally {
-      if (propIsSearchingOnline === undefined) setInternalIsSearching(false);
-    }
-  };
-
-  const handleClearSearch = () => {
-    if (propOnClearSearch) {
-      propOnClearSearch();
-      return;
-    }
-    setSearchQuery("");
-    setSearchResults(null);
-  };
+  const { searchQuery, setSearchQuery, searchResults, searching, searchActive, handleSearchOnline, handleClearSearch } = useDiscoverySearch({
+    searchQuery: propSearchQuery, setSearchQuery: propSetSearchQuery, searchResults: propSearchResults,
+    setSearchResults: propSetSearchResults, isSearchingOnline: propIsSearchingOnline,
+    onSearchOnline: propOnSearchOnline, onClearSearch: propOnClearSearch,
+  });
 
   const songsScrollRef = useRef<HTMLDivElement>(null);
   const forYouScrollRef = useRef<HTMLDivElement>(null);
