@@ -5,7 +5,7 @@ import { WindowedGallery } from "../../presentation/WindowedGallery";
 import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { Disc, Calendar } from "lucide-react";
 import { Album } from "../../types";
-import { loadCoverArt, peekCoverArt, subscribeCoverArt, coverArtGeneration } from "../../services/coverArt";
+import { loadCoverArt, peekCoverArt, subscribeCoverArt, coverArtGeneration, sizedCoverUrl } from "../../services/coverArt";
 
 // Single shared IntersectionObserver for all album cards to eliminate per-card observer overhead
 const observerCallbacks = new Map<Element, () => void>();
@@ -148,7 +148,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
           {/* Cover image overlay */}
           {coverUrl && (
             <img
-              src={coverUrl}
+              src={sizedCoverUrl(coverUrl, cardRef.current?.clientWidth || 256)}
               alt={album.title}
               loading="lazy"
               decoding="async"

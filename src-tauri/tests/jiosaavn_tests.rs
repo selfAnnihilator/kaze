@@ -442,7 +442,7 @@ async fn validated_artwork_uses_existing_loader_after_offline_restart() {
     let id = repo.save_scanned_track(original).await.unwrap();
     let art = temp.path().join("enrichment-artwork").join("song.png");
     std::fs::create_dir_all(art.parent().unwrap()).unwrap();
-    std::fs::write(&art, png).unwrap();
+    std::fs::write(&art, &png).unwrap();
     sqlx::query("INSERT INTO track_enrichment(track_id,provider,provider_id,cover_art_path,state,attempted_at) VALUES (?,'jiosaavn','song',?,'matched',0)")
         .bind(&id).bind(art.to_string_lossy().as_ref()).execute(&pool).await.unwrap();
     drop(repo);
@@ -462,7 +462,11 @@ async fn validated_artwork_uses_existing_loader_after_offline_restart() {
     let QueryResponse::CoverArt(Some(art)) = art else {
         panic!("persisted local artwork");
     };
-    assert!(art.starts_with("data:image/png;base64,"));
+    // Local covers cross IPC as a short kaze-art URL; the image is served by
+    // the protocol handler (unchanged here: it is smaller than any size).
+    assert!(art.starts_with("kaze-art://localhost/"), "{art}");
+    let (served, mime) = core.track_artwork_image(&id, 128).await.expect("served artwork");
+    assert_eq!((served.as_slice(), mime), (png.as_slice(), "image/png"));
     let payload = SyncManager::prepare_local_sync_payload(&pool, "default")
         .await
         .unwrap();

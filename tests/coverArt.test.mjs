@@ -32,7 +32,7 @@ registerHooks({
     return next(url, context);
   },
 });
-const { loadCoverArt, peekCoverArt, clearCoverArtCache } =
+const { loadCoverArt, peekCoverArt, clearCoverArtCache, coverSize, sizedCoverUrl } =
   await import("../src/services/coverArt.ts");
 const deferred = () => {
   let resolve;
@@ -102,12 +102,12 @@ test("artwork cache is bounded by entry count and retained string bytes", async 
   globalThis.coverArtHarness = {
     query: (q) => Promise.resolve({ data: q.payload.track_id }),
   };
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 520; i++) {
     await loadCoverArt(`track-${i}`);
     await flush();
   }
   assert.equal(peekCoverArt("track-0"), undefined);
-  assert.equal(peekCoverArt("track-69"), "track-69");
+  assert.equal(peekCoverArt("track-519"), "track-519");
   clearCoverArtCache();
   globalThis.coverArtHarness.query = () =>
     Promise.resolve({ data: "x".repeat(1024 * 1024) });
@@ -129,4 +129,16 @@ test("scan invalidation prevents a late old read from repopulating the cache", a
   await reading;
   await flush();
   assert.equal(peekCoverArt("changed"), undefined);
+});
+
+test("local covers are requested at the size they are shown; other URLs pass through", () => {
+  assert.equal(coverSize(48, 1), 128);
+  assert.equal(coverSize(48, 2), 128);
+  assert.equal(coverSize(212, 1), 256);
+  assert.equal(coverSize(212, 2), 512);
+  assert.equal(coverSize(900, 2), 1024);
+  assert.equal(sizedCoverUrl("kaze-art://localhost/6162?v=2", 212, 1), "kaze-art://localhost/6162?v=2&s=256");
+  assert.equal(sizedCoverUrl("http://kaze-art.localhost/6162", 60, 1), "http://kaze-art.localhost/6162?s=128");
+  const online = "https://c.saavncdn.com/x-500x500.jpg";
+  assert.equal(sizedCoverUrl(online, 48, 1), online);
 });

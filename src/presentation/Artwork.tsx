@@ -1,6 +1,6 @@
-import { memo, useEffect, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Disc3 } from "lucide-react";
-import { loadCoverArt, subscribeCoverArt, coverArtGeneration } from "../services/coverArt";
+import { loadCoverArt, subscribeCoverArt, coverArtGeneration, sizedCoverUrl } from "../services/coverArt";
 
 export const Artwork = memo(function Artwork({
   src,
@@ -18,6 +18,13 @@ export const Artwork = memo(function Artwork({
     null,
   );
   const [failed, setFailed] = useState<string | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  // Measured once: the frame's size is fixed by CSS, and local covers are
+  // resized to it so a 48px row never decodes a full-size image.
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    setWidth(frame.current?.clientWidth || 256);
+  }, []);
   useEffect(() => {
     if (
       src ||
@@ -33,11 +40,13 @@ export const Artwork = memo(function Artwork({
       controller.abort();
     };
   }, [src, trackId, artGeneration]);
-  const url =
+  const loaded =
     src || (resolved && resolved.id === trackId && resolved.generation === artGeneration ? resolved.src : undefined);
+  const url = loaded && width ? sizedCoverUrl(loaded, width) : undefined;
   const hasImage = !!url && failed !== url;
   return (
     <div
+      ref={frame}
       className={`music-artwork${hasImage ? "" : " music-artwork--placeholder"} ${className}`}
     >
       {hasImage ? (

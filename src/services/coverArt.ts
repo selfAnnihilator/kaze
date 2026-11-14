@@ -18,6 +18,21 @@ let bytes = 0,
   active = 0,
   generation = 0;
 const MAX_BYTES = 8 * 1024 * 1024;
+// URLs are short now (local covers are kaze-art: links), so many fit.
+const MAX_ENTRIES = 512;
+const SIZES = [128, 256, 512, 1024];
+
+/** The size bucket the backend resizes to: CSS pixels x device pixel ratio, rounded up. */
+export function coverSize(cssPixels: number, ratio = globalThis.devicePixelRatio || 1) {
+  const wanted = Math.ceil(cssPixels * ratio);
+  return SIZES.find((size) => size >= wanted) ?? SIZES[SIZES.length - 1];
+}
+
+/** Asks for a local cover at the size it is shown; other URLs are unchanged. */
+export function sizedCoverUrl(url: string, cssPixels: number, ratio?: number) {
+  if (!/^(kaze-art:|http:\/\/kaze-art\.localhost)/.test(url)) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}s=${coverSize(cssPixels, ratio)}`;
+}
 
 export function peekCoverArt(id: string): string | null | undefined {
   const value = cache.get(id);
@@ -48,7 +63,7 @@ function remember(id: string, url: string | null) {
   cache.delete(id);
   cache.set(id, url);
   bytes += cost;
-  while (cache.size > 64 || bytes > MAX_BYTES) {
+  while (cache.size > MAX_ENTRIES || bytes > MAX_BYTES) {
     const oldest = cache.keys().next().value!;
     bytes -= (cache.get(oldest)?.length || 0) * 2;
     cache.delete(oldest);

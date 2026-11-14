@@ -1,3 +1,4 @@
+mod artwork;
 mod routing;
 mod cloud;
 mod profile;
@@ -45,7 +46,6 @@ use crate::profile::ProfileService;
 use crate::providers::ProviderCoordinator;
 use crate::ranking::RankingEngine;
 use crate::recommendations::{LocalRecommender, SmartMixGenerator, TasteProfileEngine};
-use base64::Engine;
 use lofty::file::TaggedFileExt;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
@@ -83,7 +83,7 @@ pub struct CoreProcessor {
     flow_engine: Arc<crate::recommendations::FlowEngine>,
     online_catalog: Arc<crate::providers::online_catalog::OnlineCatalog>,
     config: Arc<RwLock<AppConfig>>,
-    cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, Option<String>>>>,
+    cover_art_cache: Arc<tokio::sync::RwLock<HashMap<String, artwork::ResolvedArt>>>,
     is_quitting: AtomicBool,
     close_button_quits: AtomicBool,
     close_behavior_ready: OnceCell<()>,

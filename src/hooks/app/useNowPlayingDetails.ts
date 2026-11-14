@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { subscribeCoverArt, coverArtGeneration, loadCoverArt } from "../../services/coverArt";
+import { subscribeCoverArt, coverArtGeneration, loadCoverArt, sizedCoverUrl } from "../../services/coverArt";
 import type { Album, DiscoveryRecommendation, Playlist, Track } from "../../types";
 import type { CollectionData } from "../../components/views/CollectionDetailView";
 
@@ -11,6 +11,8 @@ function matchesTrack(current: Track, item: { title: string; artist: string; mat
   return item.matched_local_track_id === current.id || id === current.id
     || (sameText(item.title, current.title) && sameText(item.artist, current.artist_name));
 }
+
+const NOW_PLAYING_CSS_PIXELS = 1024;
 
 /** Resolves the playing track's cover once per track and shares it with the mounted views. */
 function useResolvedCover(track: Track | undefined) {
@@ -24,7 +26,9 @@ function useResolvedCover(track: Track | undefined) {
     });
     return () => controller.abort();
   }, [track?.id, track?.cover_art_url, track?.has_cover_art, artworkGeneration]);
-  return track?.cover_art_url || (resolved?.generation === artworkGeneration && resolved?.id === track?.id ? resolved?.url : null);
+  const url = track?.cover_art_url || (resolved?.generation === artworkGeneration && resolved?.id === track?.id ? resolved?.url : null);
+  // One image serves the bar, the stage and full screen: the largest size.
+  return url ? sizedCoverUrl(url, NOW_PLAYING_CSS_PIXELS) : url;
 }
 
 /** The best artwork for the playing track, from the most to the least specific source. */

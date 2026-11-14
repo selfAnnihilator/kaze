@@ -97,6 +97,7 @@ impl CoreProcessor {
                 match cover_events.recv().await {
                     Ok(Event::LibraryMetadataUpdated | Event::LibraryScanCompleted { .. }) => {
                         cover_cache_updates.write().await.clear();
+                        crate::library::artwork::bump_version();
                         metadata_playback.refresh_queue_metadata().await;
                     }
                     Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => (),

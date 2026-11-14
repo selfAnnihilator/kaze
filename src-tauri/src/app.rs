@@ -4,6 +4,7 @@ use music_player_backend::core::processor::CoreProcessor;
 use music_player_backend::core::query::{Query, QueryResponse};
 use music_player_backend::database::init_db_pool;
 use music_player_backend::logging::init_logging;
+use music_player_backend::library::artwork;
 use music_player_backend::playback::hidden_ticks::HiddenTicks;
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
@@ -110,6 +111,7 @@ pub fn run() {
     );
     builder
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .register_asynchronous_uri_scheme_protocol(artwork::SCHEME, serve_artwork)
         .setup(move |app| {
             let handle = app.handle().clone();
 
@@ -188,6 +190,7 @@ pub fn run() {
                     }
                 }
 
+                processor.prune_artwork_cache();
                 handle.manage(processor);
 
                 // Silent background update check — fires 5s after startup
@@ -268,6 +271,37 @@ pub fn run() {
                 _ => {}
             }
         });
+}
+
+/// Serves `kaze-art:` cover URLs: resized local artwork from the disk cache.
+fn serve_artwork<R: tauri::Runtime>(
+    ctx: tauri::UriSchemeContext<'_, R>,
+    request: tauri::http::Request<Vec<u8>>,
+    responder: tauri::UriSchemeResponder,
+) {
+    let app = ctx.app_handle().clone();
+    tauri::async_runtime::spawn(async move {
+        let uri = request.uri();
+        let image = match (
+            artwork::parse_request(uri.path(), uri.query()),
+            app.try_state::<Arc<CoreProcessor>>(),
+        ) {
+            (Some((track_id, size)), Some(processor)) => {
+                processor.track_artwork_image(&track_id, size).await
+            }
+            _ => None,
+        };
+        let response = match image {
+            // The URL carries a version that changes with the library, so
+            // the webview may keep the image for the whole session.
+            Some((bytes, mime)) => tauri::http::Response::builder()
+                .header("Content-Type", mime)
+                .header("Cache-Control", "max-age=31536000, immutable")
+                .body(bytes),
+            None => tauri::http::Response::builder().status(404).body(Vec::new()),
+        };
+        responder.respond(response.unwrap_or_default());
+    });
 }
 
 /// Tracks whether the main window is mapped, so position ticks are not sent
