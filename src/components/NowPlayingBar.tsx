@@ -207,7 +207,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
           </div>
           {/* Heart — works for all tracks */}
           {currentTrack && (
-            <div style={{ display: "flex", gap: "6px", marginLeft: "6px" }}>
+            <div style={{ display: "flex", gap: "var(--space-6)", marginLeft: "var(--space-6)" }}>
               <NotInterestedButton key={`dislike:${currentTrack.id}`} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} />
               <button
                 className="player-icon-btn"
@@ -291,7 +291,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                 color: isInPlaylist
                   ? "var(--accent-secondary)"
                   : "var(--text-muted)",
-                marginLeft: "4px",
+                marginLeft: "var(--space-4)",
               }}
             >
               {isInPlaylist ? (
@@ -371,7 +371,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
         {/* Right: Lyrics, Volume, and Full Screen Controls */}
         <div
           className="player-volume"
-          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          style={{ display: "flex", alignItems: "center", gap: "var(--space-6)" }}
         >
           {onOpenQueue && (
             <button
@@ -439,7 +439,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               onClick={onToggleFullscreen}
               style={{
                 color: isFullscreen ? "var(--text-main)" : "var(--text-muted)",
-                marginLeft: "4px",
+                marginLeft: "var(--space-4)",
               }}
             >
               {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}

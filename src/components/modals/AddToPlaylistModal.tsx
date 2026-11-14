@@ -106,7 +106,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9999,
-        padding: "20px",
+        padding: "var(--space-20)",
       }}
       onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
     >
@@ -129,12 +129,12 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         {/* Header */}
         <div
           style={{
-            padding: "18px 20px",
+            padding: "var(--space-18) var(--space-20)",
             borderBottom: "1px solid var(--overlay-8)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "12px",
+            gap: "var(--space-12)",
           }}
         >
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -146,7 +146,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
               style={{
                 fontSize: "var(--fs-13)",
                 color: "var(--text-muted)",
-                marginTop: "2px",
+                marginTop: "var(--space-2)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -156,7 +156,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
             {!showCreateForm && (
               <button
                 type="button"
@@ -167,11 +167,11 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 }}
                 style={{
                   fontSize: "var(--fs-12)",
-                  padding: "6px 12px",
+                  padding: "var(--space-6) var(--space-12)",
                   borderRadius: "8px",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "5px",
+                  gap: "var(--space-6)",
                   backgroundColor: "var(--accent)",
                   fontWeight: "var(--weight-semibold)",
                 }}
@@ -190,7 +190,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 border: "none",
                 color: "var(--text-dim)",
                 cursor: "pointer",
-                padding: "6px",
+                padding: "var(--space-6)",
                 display: "flex",
                 borderRadius: "6px",
               }}
@@ -206,12 +206,12 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           <form
             onSubmit={handleCreateSubmit}
             style={{
-              padding: "14px 20px",
+              padding: "var(--space-14) var(--space-20)",
               backgroundColor: "var(--overlay-3)",
               borderBottom: "1px solid var(--overlay-8)",
             }}
           >
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "var(--space-8)" }}>
               <input
                 type="text"
                 autoFocus
@@ -229,7 +229,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                     ? "1px solid var(--danger)"
                     : "1px solid var(--overlay-15)",
                   borderRadius: "8px",
-                  padding: "8px 12px",
+                  padding: "var(--space-8) var(--space-12)",
                   color: "var(--text-main)",
                   fontSize: "var(--fs-14)",
                   outline: "none",
@@ -240,7 +240,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 className="btn btn-primary"
                 disabled={!newPlaylistName.trim() || isSubmitting}
                 style={{
-                  padding: "8px 14px",
+                  padding: "var(--space-8) var(--space-14)",
                   fontSize: "var(--fs-13)",
                   fontWeight: "var(--weight-semibold)",
                   opacity: !newPlaylistName.trim() || isSubmitting ? 0.6 : 1,
@@ -257,7 +257,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   setCreateError(null);
                   setNewPlaylistName("");
                 }}
-                style={{ padding: "8px 12px", fontSize: "var(--fs-13)" }}
+                style={{ padding: "var(--space-8) var(--space-12)", fontSize: "var(--fs-13)" }}
               >
                 Cancel
               </button>
@@ -268,8 +268,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
-                  marginTop: "8px",
+                  gap: "var(--space-6)",
+                  marginTop: "var(--space-8)",
                   fontSize: "var(--fs-12)",
                   color: "var(--danger)",
                 }}
@@ -287,31 +287,31 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "10px 14px",
+            padding: "var(--space-10) var(--space-14)",
             display: "flex",
             flexDirection: "column",
-            gap: "4px",
+            gap: "var(--space-4)",
           }}
         >
           {userPlaylists.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
-                padding: "40px 20px",
+                padding: "var(--space-40) var(--space-20)",
                 color: "var(--text-dim)",
               }}
             >
               <ListMusic
                 size={36}
                 color="var(--text-dim)"
-                style={{ marginBottom: "10px" }}
+                style={{ marginBottom: "var(--space-10)" }}
               />
               <p
                 style={{
                   fontSize: "var(--fs-15)",
                   fontWeight: "var(--weight-semibold)",
                   color: "var(--text-main)",
-                  marginBottom: "4px",
+                  marginBottom: "var(--space-4)",
                 }}
               >
                 No playlists available
@@ -337,8 +337,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "14px",
-                      padding: "8px 12px",
+                      gap: "var(--space-14)",
+                      padding: "var(--space-8) var(--space-12)",
                       borderRadius: "10px",
                       cursor: "pointer",
                       backgroundColor: isMember
@@ -434,7 +434,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         {/* Footer info */}
         <div
           style={{
-            padding: "12px 20px",
+            padding: "var(--space-12) var(--space-20)",
             borderTop: "1px solid var(--overlay-8)",
             display: "flex",
             alignItems: "center",
@@ -453,7 +453,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
             className="btn btn-secondary"
             style={{
-              padding: "5px 14px",
+              padding: "var(--space-6) var(--space-14)",
               fontSize: "var(--fs-13)",
               borderRadius: "6px",
             }}

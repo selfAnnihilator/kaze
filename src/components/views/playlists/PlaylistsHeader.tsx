@@ -8,7 +8,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
         <div>
           <h1
             className="view-title"
-            style={{ display: "flex", alignItems: "center", gap: "10px" }}
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-10)" }}
           >
             <Sparkles size={28} color="var(--accent-secondary)" />
             <span>Smart Mixes</span>
@@ -17,7 +17,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
             style={{
               color: "var(--text-dim)",
               fontSize: "var(--fs-14)",
-              marginTop: "4px",
+              marginTop: "var(--space-4)",
             }}
           >
             Auto-curated library blends, daily discovery, and genre mixes
@@ -28,7 +28,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
         <div>
           <h1
             className="view-title"
-            style={{ display: "flex", alignItems: "center", gap: "10px" }}
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-10)" }}
           >
             <ListMusic size={28} color="var(--accent-light)" />
             <span>Playlists</span>
@@ -37,7 +37,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
             style={{
               color: "var(--text-dim)",
               fontSize: "var(--fs-14)",
-              marginTop: "4px",
+              marginTop: "var(--space-4)",
             }}
           >
             Your custom playlists and imported collections
@@ -46,7 +46,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
       )}
 
       {c.viewMode !== "smart_mixes" && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-10)" }}>
           {c.onRefreshPlaylists && <button className="btn btn-secondary" disabled={c.refreshingPlaylists} onClick={async () => {
             c.setRefreshingPlaylists(true); c.setRefreshError(null);
             try { await c.onRefreshPlaylists?.(); }
@@ -56,7 +56,7 @@ export function PlaylistsHeader({ c }: { c: PlaylistsViewContext }) {
           <button
             className="btn btn-secondary"
             onClick={() => c.setShowJioSaavnModal(true)}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}
           >
             <Share2 size={16} color="var(--accent-secondary)" />
             <span>Import playlist</span>

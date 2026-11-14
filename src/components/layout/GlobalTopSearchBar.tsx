@@ -35,11 +35,11 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
     <div
       className="content-card global-search"
       style={{
-        marginBottom: "24px",
-        padding: "16px 20px",
+        marginBottom: "var(--space-24)",
+        padding: "var(--space-16) var(--space-20)",
         display: "flex",
         flexDirection: "column",
-        gap: "12px",
+        gap: "var(--space-12)",
         backgroundColor: "var(--bg-card)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
@@ -53,18 +53,18 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
             setSearchQuery(draft);
             onSearch(draft);
         }}
-        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%",
+        style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", width: "100%",
           }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
+            gap: "var(--space-10)",
             backgroundColor: "var(--bg-main)",
             border: "1px solid var(--border)",
             borderRadius: "8px",
-            padding: "9px 14px",
+            padding: "var(--space-10) var(--space-14)",
             flex: 1,
             transition: "border-color 0.15s ease",
           }}
@@ -103,7 +103,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
                 border: "none",
                 color: "var(--text-muted)",
                 cursor: "pointer",
-                padding: "2px",
+                padding: "var(--space-2)",
                 display: "flex",
                 alignItems: "center",
               }}
@@ -120,7 +120,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
           disabled={isSearching}
           title="Search Online"
           style={{
-            padding: "9px 12px",
+            padding: "var(--space-10) var(--space-12)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

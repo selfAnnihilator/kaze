@@ -202,8 +202,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        padding: "8px 12px",
+                        gap: "var(--space-12)",
+                        padding: "var(--space-8) var(--space-12)",
                         borderRadius: "8px",
                         backgroundColor:
                           isPlaying || isLoading
@@ -276,7 +276,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
-                            marginTop: "2px",
+                            marginTop: "var(--space-2)",
                           }}
                         >
                           {rec.artist} {rec.album ? `• ${rec.album}` : ""}
@@ -297,7 +297,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                               ? "var(--accent-secondary)"
                               : "var(--text-dim)",
                             cursor: "pointer",
-                            padding: "6px",
+                            padding: "var(--space-6)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -342,14 +342,14 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "18px",
+        gap: "var(--space-18)",
         minHeight: 0,
         flex: "1 1 0",
         overflow: "hidden",
         backgroundColor: "var(--palette-slate-900-a75)",
         border: "1px solid var(--overlay-8)",
         borderRadius: "14px",
-        padding: "20px 24px",
+        padding: "var(--space-20) var(--space-24)",
         boxShadow: "0 8px 32px var(--shade-35)",
       }}
     >
@@ -358,16 +358,16 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
 
       {/* Empty State if 0 Results */}
       {isSearching ? (
-        <p role="status" style={{ padding: "32px 24px", textAlign: "center", color: "var(--text-muted)" }}>Searching music…</p>
+        <p role="status" style={{ padding: "var(--space-32) var(--space-24)", textAlign: "center", color: "var(--text-muted)" }}>Searching music…</p>
       ) : searchResults.length === 0 ? (
         <div
           style={{
-            padding: "48px 24px",
+            padding: "var(--space-48) var(--space-24)",
             textAlign: "center",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: "12px",
+            gap: "var(--space-12)",
           }}
         >
           <Music size={40} color="var(--text-dim)" />

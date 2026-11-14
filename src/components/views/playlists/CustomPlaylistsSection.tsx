@@ -13,7 +13,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               <h2 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-semibold)" }}>
@@ -29,7 +29,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
           {!c.currentUser ? (
             <div
               style={{
-                padding: "50px 20px",
+                padding: "var(--space-48) var(--space-20)",
                 borderRadius: "10px",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
@@ -40,19 +40,19 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
               <ListMusic
                 size={40}
                 color="var(--text-dim)"
-                style={{ margin: "0 auto 12px" }}
+                style={{ margin: "0 auto var(--space-12)" }}
               />
               <div
                 style={{
                   fontWeight: "var(--weight-semibold)",
                   fontSize: "var(--fs-16)",
                   color: "var(--text-main)",
-                  marginBottom: "6px",
+                  marginBottom: "var(--space-6)",
                 }}
               >
                 Sign In to Manage Playlists
               </div>
-              <p style={{ fontSize: "var(--fs-14)", marginBottom: "20px" }}>
+              <p style={{ fontSize: "var(--fs-14)", marginBottom: "var(--space-20)" }}>
                 Sign in to your account to create, customize, and synchronize
                 your personal playlists across devices.
               </p>
@@ -61,7 +61,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                   style={{
                     display: "flex",
                     justifyContent: "center",
-                    gap: "12px",
+                    gap: "var(--space-12)",
                   }}
                 >
                   <button className="btn btn-primary" onClick={c.onOpenAuthModal}>
@@ -73,7 +73,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
           ) : c.customPlaylists.length === 0 ? (
             <div
               style={{
-                padding: "50px 20px",
+                padding: "var(--space-48) var(--space-20)",
                 borderRadius: "10px",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
@@ -84,19 +84,19 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
               <ListMusic
                 size={40}
                 color="var(--text-dim)"
-                style={{ margin: "0 auto 12px" }}
+                style={{ margin: "0 auto var(--space-12)" }}
               />
               <div
                 style={{
                   fontWeight: "var(--weight-semibold)",
                   fontSize: "var(--fs-16)",
                   color: "var(--text-main)",
-                  marginBottom: "6px",
+                  marginBottom: "var(--space-6)",
                 }}
               >
                 No custom playlists yet
               </div>
-              <p style={{ fontSize: "var(--fs-14)", marginBottom: "20px" }}>
+              <p style={{ fontSize: "var(--fs-14)", marginBottom: "var(--space-20)" }}>
                 Create custom playlists manually, save a Smart Mix as a
                 permanent playlist, or import a playlist link.
               </p>
@@ -104,7 +104,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                 style={{
                   display: "flex",
                   justifyContent: "center",
-                  gap: "12px",
+                  gap: "var(--space-12)",
                 }}
               >
                 <button
@@ -128,7 +128,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: "18px",
+                gap: "var(--space-18)",
               }}
             >
               <WindowedGallery
@@ -150,7 +150,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                     style={{
                       backgroundColor: "var(--bg-card)",
                       borderRadius: "12px",
-                      padding: "16px",
+                      padding: "var(--space-16)",
                       border: "1px solid var(--border)",
                       cursor: "pointer",
                       display: "flex",
@@ -182,7 +182,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          marginBottom: "12px",
+                          marginBottom: "var(--space-12)",
                           overflow: "hidden",
                         }}
                       >
@@ -219,7 +219,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                               top: "38px",
                               right: 0,
                               minWidth: "150px",
-                              padding: "6px",
+                              padding: "var(--space-6)",
                               borderRadius: "8px",
                               border: "1px solid var(--border)",
                               background: "var(--bg-sidebar)",
@@ -229,7 +229,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                             {pl.name === "Liked Songs" ? (
                               <div
                                 style={{
-                                  padding: "8px 10px",
+                                  padding: "var(--space-8) var(--space-10)",
                                   color: "var(--text-dim)",
                                   fontSize: "var(--fs-12)",
                                 }}
@@ -329,7 +329,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                         style={{
                           fontSize: "var(--fs-13)",
                           color: "var(--text-dim)",
-                          marginTop: "4px",
+                          marginTop: "var(--space-4)",
                         }}
                       >
                         {pl.description || "User Playlist"}
@@ -341,19 +341,19 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginTop: "14px",
+                        marginTop: "var(--space-14)",
                         borderTop: "1px solid var(--border)",
-                        paddingTop: "10px",
+                        paddingTop: "var(--space-10)",
                       }}
                     >
                       <button
                         className="btn btn-primary"
                         style={{
                           fontSize: "var(--fs-13)",
-                          padding: "6px 12px",
+                          padding: "var(--space-6) var(--space-12)",
                           display: "flex",
                           alignItems: "center",
-                          gap: "6px",
+                          gap: "var(--space-6)",
                         }}
                         onClick={(e) => {
                           e.stopPropagation();

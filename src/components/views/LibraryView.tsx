@@ -101,9 +101,9 @@ const LibraryRow = ({
         ...style,
         display: "grid",
         gridTemplateColumns: libraryGridColumns(downloadControls),
-        columnGap: "12px",
+        columnGap: "var(--space-12)",
         alignItems: "center",
-        padding: "0 14px",
+        padding: "0 var(--space-14)",
         fontSize: "var(--fs-14)",
         color: "var(--text-muted)",
         backgroundColor: isLoading ? "var(--accent-a12)" : undefined,
@@ -121,7 +121,7 @@ const LibraryRow = ({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "var(--space-8)",
           overflow: "hidden",
         }}
       >
@@ -176,7 +176,7 @@ const LibraryRow = ({
             backgroundColor: "var(--border)",
             color: "var(--text-muted)",
             fontSize: "var(--fs-12)",
-            padding: "2px 6px",
+            padding: "var(--space-2) var(--space-6)",
             borderRadius: "4px",
           }}
         >
@@ -186,7 +186,7 @@ const LibraryRow = ({
       <div style={{ textAlign: "right" }}>
         {formatSeconds(track.duration_secs)}
       </div>
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "var(--space-8)" }}>
         {downloadControls && <DownloadButton trackId={track.id} title={track.title} compact />}
         <button
           className="player-icon-btn"
@@ -327,13 +327,13 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
         }}
       >
         <div className="view-header" style={{ flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "var(--space-8)", alignItems: "center" }}>
             <button
               className="btn btn-primary"
               onClick={onPlayAll}
               disabled={!onPlayAll || (total === 0 && listState === "idle")}
               title={listState === "playing" ? "Pause" : listState === "paused" ? "Resume" : "Play all tracks in order"}
-              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              style={{ display: "flex", alignItems: "center", gap: "var(--space-6)" }}
             >
               {listState === "playing" ? <Pause size={16} /> : <Play size={16} />}
               {listState === "playing" ? "Pause" : listState === "paused" ? "Resume" : "Play all"}
@@ -345,22 +345,22 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               aria-pressed={shuffleEnabled}
               aria-label={shuffleEnabled ? "Shuffle on" : "Shuffle off"}
               title={shuffleEnabled ? "Shuffle on (applies after the current song)" : "Shuffle off"}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", aspectRatio: "1 / 1" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--space-8)", aspectRatio: "1 / 1" }}
             >
               <Shuffle size={16} />
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "var(--space-12)", alignItems: "center" }}>
             {onSearch && <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "var(--space-8)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 borderRadius: "8px",
-                padding: "6px 12px",
+                padding: "var(--space-6) var(--space-12)",
                 width: "260px",
               }}
             >
@@ -397,11 +397,11 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
           <div
             style={{
               textAlign: "center",
-              padding: "60px 0",
+              padding: "var(--space-60) 0",
               color: "var(--text-dim)",
             }}
           >
-            <p style={{ fontSize: "var(--fs-18)", marginBottom: "8px" }}>
+            <p style={{ fontSize: "var(--fs-18)", marginBottom: "var(--space-8)" }}>
               {emptyTitle}
             </p>
             <p style={{ fontSize: "var(--fs-14)" }}>
@@ -428,8 +428,8 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               style={{
                 display: "grid",
                 gridTemplateColumns: libraryGridColumns(downloadControls),
-                columnGap: "12px",
-                padding: "10px 14px",
+                columnGap: "var(--space-12)",
+                padding: "var(--space-10) var(--space-14)",
                 color: "var(--text-dim)",
                 fontSize: "var(--fs-13)",
                 fontWeight: "var(--weight-semibold)",

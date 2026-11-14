@@ -100,7 +100,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                 background: "var(--bg-card, var(--bg-card))",
                 border: "1px solid var(--text-main-a20)",
                 borderRadius: "14px",
-                padding: "24px",
+                padding: "var(--space-24)",
                 maxWidth: "420px",
                 width: "90%",
                 boxShadow: "0 20px 40px var(--shade-60)",
@@ -112,11 +112,11 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "14px",
+                  marginBottom: "var(--space-14)",
                 }}
               >
                 <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}
                 >
                   <Info size={18} color="var(--accent, var(--accent))" />
                   <h4
@@ -137,14 +137,14 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                     border: "none",
                     color: "var(--text-dim)",
                     cursor: "pointer",
-                    padding: "4px",
+                    padding: "var(--space-4)",
                   }}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div style={{ marginBottom: "12px" }}>
+              <div style={{ marginBottom: "var(--space-12)" }}>
                 <div
                   style={{
                     fontWeight: "var(--weight-demibold)",
@@ -166,7 +166,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                   background: "var(--palette-sand-900-a60)",
                   border: "1px solid var(--border)",
                   borderRadius: "8px",
-                  padding: "12px 14px",
+                  padding: "var(--space-12) var(--space-14)",
                   fontSize: "var(--fs-14)",
                   color: "var(--accent-light, var(--accent-light))",
                   lineHeight: 1.45,
@@ -177,14 +177,14 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
 
               <div
                 style={{
-                  marginTop: "18px",
+                  marginTop: "var(--space-18)",
                   display: "flex",
                   justifyContent: "flex-end",
                 }}
               >
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: "6px 16px", borderRadius: "6px" }}
+                  style={{ padding: "var(--space-6) var(--space-16)", borderRadius: "6px" }}
                   onClick={() => setWhyModalTrack(null)}
                 >
                   Close

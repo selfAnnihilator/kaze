@@ -28,11 +28,11 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               <div
-                style={{ display: "flex", alignItems: "center", gap: "14px" }}
+                style={{ display: "flex", alignItems: "center", gap: "var(--space-14)" }}
               >
                 {selectedPlaylist.cover_art_url && (
                   <img decoding="async"
@@ -52,7 +52,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
+                      gap: "var(--space-8)",
                     }}
                   >
                     <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)" }}>
@@ -66,7 +66,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                     style={{
                       fontSize: "var(--fs-14)",
                       color: "var(--text-dim)",
-                      marginTop: "4px",
+                      marginTop: "var(--space-4)",
                     }}
                   >
                     {selectedPlaylist.description ||
@@ -83,7 +83,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                   border: "none",
                   color: "var(--text-muted)",
                   cursor: "pointer",
-                  padding: "4px",
+                  padding: "var(--space-4)",
                 }}
               >
                 <X size={20} />
@@ -93,9 +93,9 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
             <div
               style={{
                 display: "flex",
-                gap: "10px",
+                gap: "var(--space-10)",
                 alignItems: "center",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               <button
@@ -115,7 +115,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "6px",
+                    gap: "var(--space-6)",
                     backgroundColor: c.savedMixIds.has(selectedPlaylist.id)
                       ? "var(--accent-secondary-a15)"
                       : undefined,
@@ -161,7 +161,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
             {c.loadingTracks ? (
               <div
                 style={{
-                  padding: "40px 0",
+                  padding: "var(--space-40) 0",
                   textAlign: "center",
                   color: "var(--text-muted)",
                 }}
@@ -171,7 +171,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
             ) : c.playlistTracks.length === 0 ? (
               <div
                 style={{
-                  padding: "40px 0",
+                  padding: "var(--space-40) 0",
                   textAlign: "center",
                   color: "var(--text-dim)",
                 }}
@@ -217,7 +217,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                           style={{
                             display: "flex",
                             justifyContent: "center",
-                            gap: "6px",
+                            gap: "var(--space-6)",
                           }}
                         >
                           <button

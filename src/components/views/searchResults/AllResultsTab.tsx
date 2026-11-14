@@ -21,7 +21,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                     fontSize: "var(--fs-20)",
                     fontWeight: "var(--weight-bold)",
                     color: "var(--text-main)",
-                    marginBottom: "14px",
+                    marginBottom: "var(--space-14)",
                   }}
                 >
                   Top result
@@ -38,11 +38,11 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         ? "1.5px solid var(--accent-secondary)"
                         : "1px solid var(--border)",
                     borderRadius: "12px",
-                    padding: "20px",
+                    padding: "var(--space-20)",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "12px",
+                    gap: "var(--space-12)",
                     position: "relative",
                     transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     boxShadow: "0 6px 20px var(--shade-25)",
@@ -75,7 +75,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      marginTop: "6px",
+                      marginTop: "var(--space-6)",
                     }}
                     title={topResult.title}
                   >
@@ -87,14 +87,14 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
+                      gap: "var(--space-8)",
                       fontSize: "var(--fs-14)",
                       color: "var(--text-muted)",
                     }}
                   >
                     <span
                       style={{
-                        padding: "2px 8px",
+                        padding: "var(--space-2) var(--space-8)",
                         borderRadius: "10px",
                         backgroundColor: "var(--overlay-10)",
                         color: "var(--text-main)",
@@ -132,14 +132,14 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      marginTop: "12px",
+                      marginTop: "var(--space-12)",
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
+                        gap: "var(--space-8)",
                       }}
                     >
                       {c.onAddToPlaylist && (
@@ -212,7 +212,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         <Play
                           size={22}
                           fill="var(--text-main)"
-                          style={{ marginLeft: "2px" }}
+                          style={{ marginLeft: "var(--space-2)" }}
                         />
                       )}
                     </button>

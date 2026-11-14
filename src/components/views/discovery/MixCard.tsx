@@ -31,7 +31,7 @@ export const MixCard: React.FC<{
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
         borderRadius: "12px",
-        padding: "10px",
+        padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
@@ -56,7 +56,7 @@ export const MixCard: React.FC<{
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "16px",
+          padding: "var(--space-16)",
           textAlign: "center",
         }}
       >
@@ -100,13 +100,13 @@ export const MixCard: React.FC<{
           }}
           title={`Play ${mix.name}`}
         >
-          <Play size={17} fill="var(--text-main)" style={{ marginLeft: "2px" }} />
+          <Play size={17} fill="var(--text-main)" style={{ marginLeft: "var(--space-2)" }} />
         </button>
       </div>
 
       <div
         style={{
-          marginTop: "10px",
+          marginTop: "var(--space-10)",
           fontWeight: "var(--weight-bold)",
           fontSize: "var(--fs-14)",
           color: "var(--text-main)",
@@ -122,7 +122,7 @@ export const MixCard: React.FC<{
 
       <div
         style={{
-          marginTop: "3px",
+          marginTop: "var(--space-4)",
           fontWeight: "var(--weight-regular)",
           fontSize: "var(--fs-12)",
           color: "var(--text-muted)",

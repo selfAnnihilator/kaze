@@ -11,7 +11,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
         >
           <div
             className="modal-content"
-            style={{ maxWidth: "440px", width: "90%", padding: "24px" }}
+            style={{ maxWidth: "440px", width: "90%", padding: "var(--space-24)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -19,11 +19,11 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "18px",
+                marginBottom: "var(--space-18)",
               }}
             >
               <div
-                style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                style={{ display: "flex", alignItems: "center", gap: "var(--space-10)" }}
               >
                 <Pencil size={20} color="var(--accent-light, var(--text-main))" />
                 <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)", margin: 0 }}>
@@ -45,13 +45,13 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
             </div>
 
             <form onSubmit={c.handleConfirmRename}>
-              <div style={{ marginBottom: "16px" }}>
+              <div style={{ marginBottom: "var(--space-16)" }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: "var(--fs-13)",
                     color: "var(--text-dim)",
-                    marginBottom: "8px",
+                    marginBottom: "var(--space-8)",
                   }}
                 >
                   Playlist Name
@@ -73,7 +73,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                     style={{
                       color: "var(--danger, var(--danger))",
                       fontSize: "var(--fs-13)",
-                      marginTop: "6px",
+                      marginTop: "var(--space-6)",
                     }}
                   >
                     {c.renameError}
@@ -84,7 +84,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
               <div
                 style={{
                   display: "flex",
-                  gap: "10px",
+                  gap: "var(--space-10)",
                   justifyContent: "flex-end",
                 }}
               >

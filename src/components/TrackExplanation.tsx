@@ -6,10 +6,10 @@ export const TrackExplanation = React.memo(({ evidence }: { evidence?: FlowExpla
   const copy = presentFlowExplanation(evidence);
   return <div>
     <strong>{copy.title}</strong>
-    <p style={{ margin: "6px 0 0" }}>{copy.body}</p>
+    <p style={{ margin: "var(--space-6) 0 0" }}>{copy.body}</p>
     {copy.secondary.length > 0 && <>
-      <div style={{ marginTop: "12px", color: "var(--text-muted)", fontSize: "var(--fs-13)" }}>Also considered</div>
-      <ul style={{ margin: "4px 0 0", paddingLeft: "18px" }}>{copy.secondary.map(text => <li key={text}>{text}</li>)}</ul>
+      <div style={{ marginTop: "var(--space-12)", color: "var(--text-muted)", fontSize: "var(--fs-13)" }}>Also considered</div>
+      <ul style={{ margin: "var(--space-4) 0 0", paddingLeft: "var(--space-18)" }}>{copy.secondary.map(text => <li key={text}>{text}</li>)}</ul>
     </>}
   </div>;
 });

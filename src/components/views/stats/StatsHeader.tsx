@@ -9,8 +9,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
         justifyContent: "space-between",
         alignItems: "flex-start",
         flexWrap: "wrap",
-        gap: "20px",
-        marginBottom: "32px",
+        gap: "var(--space-20)",
+        marginBottom: "var(--space-32)",
       }}
     >
       <div>
@@ -18,8 +18,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            marginBottom: "8px",
+            gap: "var(--space-10)",
+            marginBottom: "var(--space-8)",
           }}
         >
           <h1
@@ -37,7 +37,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
               background: "linear-gradient(135deg, var(--accent-a20), var(--accent-a20))",
               border: "1px solid var(--accent-a40)",
               color: "var(--accent-light)",
-              padding: "2px 10px",
+              padding: "var(--space-2) var(--space-10)",
               borderRadius: "9999px",
               fontSize: "var(--fs-12)",
               fontWeight: "var(--weight-bold)",
@@ -58,14 +58,14 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
       </div>
 
       {/* Header Right: Year Selector Tabs & Manual Refresh */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", flexWrap: "wrap" }}>
         {c.stats && c.stats.available_years && c.stats.available_years.length > 0 && (
           <div
             style={{
               display: "flex",
-              gap: "6px",
+              gap: "var(--space-6)",
               background: "var(--overlay-5)",
-              padding: "4px",
+              padding: "var(--space-4)",
               borderRadius: "12px",
               border: "1px solid var(--overlay-8)",
             }}
@@ -77,7 +77,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                   key={year}
                   onClick={() => c.setSelectedYear(year === c.currentYear ? undefined : year)}
                   style={{
-                    padding: "6px 14px",
+                    padding: "var(--space-6) var(--space-14)",
                     borderRadius: "8px",
                     border: "none",
                     background: isActive
@@ -90,7 +90,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                     transition: "transform 0.15s ease, opacity 0.15s ease",
                     display: "flex",
                     alignItems: "center",
-                    gap: "6px",
+                    gap: "var(--space-6)",
                   }}
                 >
                   {year < c.currentYear && <Archive size={14} />}
@@ -105,7 +105,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
           onClick={() => c.loadStats(true)}
           disabled={c.isLoading || c.isRefreshing}
           style={{
-            padding: "7px 14px",
+            padding: "var(--space-8) var(--space-14)",
             borderRadius: "10px",
             border: "1px solid var(--overlay-12)",
             background: "var(--overlay-5)",
@@ -115,7 +115,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: "7px",
+            gap: "var(--space-8)",
             transition: "transform 0.15s ease, opacity 0.15s ease",
           }}
           title="Refresh listening stats"

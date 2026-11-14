@@ -14,7 +14,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
             style={{
               maxWidth: "420px",
               width: "90%",
-              padding: "24px",
+              padding: "var(--space-24)",
               border: "1px solid var(--danger-a25)",
               boxShadow: "0 20px 45px var(--shade-60)",
             }}
@@ -24,8 +24,8 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: "14px",
-                marginBottom: "16px",
+                gap: "var(--space-14)",
+                marginBottom: "var(--space-16)",
               }}
             >
               <div
@@ -48,7 +48,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                   style={{
                     fontSize: "var(--fs-18)",
                     fontWeight: "var(--weight-bold)",
-                    margin: "0 0 6px 0",
+                    margin: "0 0 var(--space-6) 0",
                     color: "var(--palette-red-200)",
                   }}
                 >
@@ -74,9 +74,9 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
             <div
               style={{
                 display: "flex",
-                gap: "10px",
+                gap: "var(--space-10)",
                 justifyContent: "flex-end",
-                marginTop: "20px",
+                marginTop: "var(--space-20)",
               }}
             >
               <button
@@ -97,7 +97,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                   border: "none",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: "var(--space-6)",
                 }}
                 onClick={c.handleConfirmDelete}
                 disabled={c.isDeleting}

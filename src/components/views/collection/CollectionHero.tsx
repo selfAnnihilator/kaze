@@ -24,11 +24,11 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
           borderRadius: "14px",
           overflow: "hidden",
           background: c.bgGradient,
-          padding: "28px 32px 36px 32px",
+          padding: "var(--space-28) var(--space-32) var(--space-36) var(--space-32)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          gap: "24px",
+          gap: "var(--space-24)",
           boxShadow: "0 8px 32px var(--shade-40)",
           minHeight: "260px",
         }}
@@ -43,12 +43,12 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             left: "16px",
             display: "inline-flex",
             alignItems: "center",
-            gap: "6px",
+            gap: "var(--space-6)",
             backgroundColor: "var(--shade-65)",
             border: "1px solid var(--overlay-15)",
             color: "var(--text-main)",
             borderRadius: "20px",
-            padding: "6px 14px",
+            padding: "var(--space-6) var(--space-14)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
@@ -69,7 +69,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
         </button>
 
         {/* Left: Text Metadata */}
-        <div className="collection-copy" style={{ flex: 1, marginTop: "24px", zIndex: 2 }}>
+        <div className="collection-copy" style={{ flex: 1, marginTop: "var(--space-24)", zIndex: 2 }}>
           <div
             style={{
               fontSize: "var(--fs-13)",
@@ -77,7 +77,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               letterSpacing: "1.2px",
               color: "var(--overlay-85)",
               textTransform: "uppercase",
-              marginBottom: "8px",
+              marginBottom: "var(--space-8)",
             }}
           >
             {c.collection.tag || "PUBLIC PLAYLIST"}
@@ -90,7 +90,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               color: "var(--text-main)",
               lineHeight: 1.1,
               letterSpacing: "-0.5px",
-              marginBottom: "12px",
+              marginBottom: "var(--space-12)",
               textShadow: "0 3px 12px var(--shade-40)",
             }}
           >
@@ -103,7 +103,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               color: "var(--overlay-90)",
               maxWidth: "600px",
               lineHeight: 1.4,
-              marginBottom: "14px",
+              marginBottom: "var(--space-14)",
               textShadow: "0 1px 4px var(--shade-40)",
             }}
           >
@@ -114,7 +114,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "var(--space-8)",
               fontSize: "var(--fs-14)",
               color: "var(--overlay-85)",
               flexWrap: "wrap",

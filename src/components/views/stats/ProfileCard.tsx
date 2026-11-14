@@ -8,17 +8,17 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
         background: "linear-gradient(135deg, var(--palette-indigo-800-a45) 0%, var(--palette-blue-900-a65) 100%)",
         border: "1px solid var(--overlay-8)",
         borderRadius: "20px",
-        padding: "24px 28px",
-        marginBottom: "36px",
+        padding: "var(--space-24) var(--space-28)",
+        marginBottom: "var(--space-36)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
-        gap: "20px",
+        gap: "var(--space-20)",
         boxShadow: "0 8px 32px -8px var(--shade-50)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-20)", flexWrap: "wrap" }}>
         {/* Profile Photo / Avatar with Bottom-Left Pencil Edit Trigger */}
         <div style={{ position: "relative", width: "72px", height: "72px" }} ref={c.avatarContainerRef}>
           <div
@@ -142,17 +142,17 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 position: "absolute",
                 top: "100%",
                 left: 0,
-                marginTop: "8px",
+                marginTop: "var(--space-8)",
                 background: "var(--bg-card)",
                 border: "1px solid var(--text-main-a35)",
                 borderRadius: "12px",
-                padding: "6px",
+                padding: "var(--space-6)",
                 zIndex: 50,
                 minWidth: "160px",
                 boxShadow: "0 10px 25px -5px var(--shade-60)",
                 display: "flex",
                 flexDirection: "column",
-                gap: "4px",
+                gap: "var(--space-4)",
               }}
             >
               <button
@@ -165,11 +165,11 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  gap: "var(--space-8)",
                   background: "transparent",
                   border: "none",
                   color: "var(--text-main)",
-                  padding: "8px 10px",
+                  padding: "var(--space-8) var(--space-10)",
                   borderRadius: "8px",
                   fontSize: "var(--fs-12)",
                   fontWeight: "var(--weight-semibold)",
@@ -193,11 +193,11 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  gap: "var(--space-8)",
                   background: "transparent",
                   border: "none",
                   color: "var(--palette-red-300)",
-                  padding: "8px 10px",
+                  padding: "var(--space-8) var(--space-10)",
                   borderRadius: "8px",
                   fontSize: "var(--fs-12)",
                   fontWeight: "var(--weight-semibold)",
@@ -217,7 +217,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
 
         {/* User Details */}
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-12)", marginBottom: "var(--space-6)" }}>
             <h2
               style={{
                 fontSize: "var(--fs-28)",
@@ -237,7 +237,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
               color: "var(--overlay-65)",
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "var(--space-8)",
               flexWrap: "wrap",
             }}
           >
@@ -273,12 +273,12 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
           {c.avatarError && (
             <div
               style={{
-                marginTop: "8px",
+                marginTop: "var(--space-8)",
                 color: "var(--palette-red-300)",
                 fontSize: "var(--fs-12)",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "var(--space-6)",
               }}
             >
               <AlertCircle size={14} />
@@ -295,7 +295,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             background: "linear-gradient(135deg, var(--accent), var(--accent-slate))",
             border: "none",
             color: "var(--text-main)",
-            padding: "8px 16px",
+            padding: "var(--space-8) var(--space-16)",
             borderRadius: "10px",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",

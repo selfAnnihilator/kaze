@@ -12,7 +12,7 @@ export function CreatePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               <h3 style={{ fontSize: "var(--fs-20)", fontWeight: "var(--weight-bold)" }}>
@@ -41,13 +41,13 @@ export function CreatePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 value={c.playlistName}
                 onChange={(e) => c.setPlaylistName(e.target.value)}
                 className="input-field"
-                style={{ width: "100%", marginBottom: "20px" }}
+                style={{ width: "100%", marginBottom: "var(--space-20)" }}
                 autoFocus
               />
               <div
                 style={{
                   display: "flex",
-                  gap: "12px",
+                  gap: "var(--space-12)",
                   justifyContent: "flex-end",
                 }}
               >

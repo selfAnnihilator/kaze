@@ -32,7 +32,7 @@ export const ChartCard: React.FC<{
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
         borderRadius: "12px",
-        padding: "10px",
+        padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
@@ -58,7 +58,7 @@ export const ChartCard: React.FC<{
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "12px",
+          padding: "var(--space-12)",
           textAlign: "center",
         }}
       >
@@ -67,13 +67,13 @@ export const ChartCard: React.FC<{
           className="chart-card-badge"
           style={{
             backgroundColor: "var(--shade-60)",
-            padding: "3px 8px",
+            padding: "var(--space-4) var(--space-8)",
             borderRadius: "6px",
             fontSize: "var(--fs-11)",
             fontWeight: "var(--weight-extrabold)",
             letterSpacing: "1.5px",
             color: "var(--text-main)",
-            marginBottom: "6px",
+            marginBottom: "var(--space-6)",
           }}
         >
           CHART
@@ -120,13 +120,13 @@ export const ChartCard: React.FC<{
           }}
           title={`Play ${chart.title}`}
         >
-          <Play size={17} fill="var(--text-main)" style={{ marginLeft: "2px" }} />
+          <Play size={17} fill="var(--text-main)" style={{ marginLeft: "var(--space-2)" }} />
         </button>
       </div>
 
       <div
         style={{
-          marginTop: "10px",
+          marginTop: "var(--space-10)",
           fontWeight: "var(--weight-bold)",
           fontSize: "var(--fs-14)",
           color: "var(--text-main)",
@@ -142,7 +142,7 @@ export const ChartCard: React.FC<{
 
       <div
         style={{
-          marginTop: "3px",
+          marginTop: "var(--space-4)",
           fontWeight: "var(--weight-regular)",
           fontSize: "var(--fs-12)",
           color: "var(--text-muted)",

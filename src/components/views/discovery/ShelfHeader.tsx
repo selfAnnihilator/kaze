@@ -30,17 +30,17 @@ export function ShelfHeader({ icon, title, subtitle, onScroll, arrowGap = "6px",
   return (
     <div
       className="discovery-shelf-header"
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-12)" }}
     >
       <div>
         <h2
           id={headingId}
-          style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}
+          style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "var(--space-8)" }}
         >
           {icon}
           <span>{title}</span>
         </h2>
-        <p style={{ fontSize: "var(--fs-13)", color: "var(--text-muted)", marginTop: "2px" }}>{subtitle}</p>
+        <p style={{ fontSize: "var(--fs-13)", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>{subtitle}</p>
       </div>
       {showArrows && (
         <div style={{ display: "flex", alignItems: "center", gap: arrowGap }}>

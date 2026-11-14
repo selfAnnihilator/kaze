@@ -39,10 +39,10 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${accentColor}`,
         borderRadius: "10px",
-        padding: "14px 16px",
+        padding: "var(--space-14) var(--space-16)",
         display: "flex",
         alignItems: "flex-start",
-        gap: "12px",
+        gap: "var(--space-12)",
         boxShadow: "0 10px 30px var(--shade-60)",
         animation: "toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         transition: "transform 0.2s ease, opacity 0.2s ease",
@@ -50,7 +50,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         overflow: "hidden",
       }}
     >
-      <div style={{ flexShrink: 0, marginTop: "2px" }}>
+      <div style={{ flexShrink: 0, marginTop: "var(--space-2)" }}>
         {isError ? (
           <AlertTriangle size={18} color="var(--danger)" />
         ) : isSuccess ? (
@@ -66,7 +66,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
             fontSize: "var(--fs-14)",
             fontWeight: "var(--weight-bold)",
             color: "var(--text-main)",
-            marginBottom: "2px",
+            marginBottom: "var(--space-2)",
           }}
         >
           {toast.title}
@@ -91,11 +91,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           border: "none",
           color: "var(--text-dim)",
           cursor: "pointer",
-          padding: "2px",
+          padding: "var(--space-2)",
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
-          marginTop: "2px",
+          marginTop: "var(--space-2)",
           transition: "color 0.15s ease",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-main)")}
@@ -135,7 +135,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
         zIndex: 99999,
         display: "flex",
         flexDirection: "column",
-        gap: "10px",
+        gap: "var(--space-10)",
         maxWidth: "380px",
         width: "100%",
         pointerEvents: "none",

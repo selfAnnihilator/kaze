@@ -32,26 +32,26 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", marginBottom: "var(--space-16)" }}>
           <img className="kage-logo" src="/kaze-icon.png" alt="" />
           <h2 style={{ fontSize: "var(--fs-22)", fontWeight: "var(--weight-bold)" }}>Welcome to Kaze</h2>
         </div>
 
-        <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-15)", lineHeight: 1.5, marginBottom: "20px" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-15)", lineHeight: 1.5, marginBottom: "var(--space-20)" }}>
           Kaze is a local-first, privacy-respecting music player. To get started, confirm your
           music directory. Kaze stays strictly within this folder and never scans outside your
           approved roots.
         </p>
 
         {error && <p role="alert">Couldn’t save your music folder. {error}</p>}
-        <form aria-busy={pending} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form aria-busy={pending} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "var(--space-16)" }}>
           {/* Default Folder Option */}
           <div
             onClick={() => {
               setUseDefault(true);
             }}
             style={{
-              padding: "14px",
+              padding: "var(--space-14)",
               borderRadius: "8px",
               border: useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
               backgroundColor: useDefault ? "var(--accent-a8)" : "var(--bg-card)",
@@ -61,7 +61,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-12)" }}>
               <Folder size={20} color={useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
               <div>
                 <div style={{ fontWeight: "var(--weight-semibold)", fontSize: "var(--fs-14)" }}>Use Default System Music Directory</div>
@@ -77,15 +77,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           <div
             onClick={() => setUseDefault(false)}
             style={{
-              padding: "14px",
+              padding: "var(--space-14)",
               borderRadius: "8px",
               border: !useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
               backgroundColor: !useDefault ? "var(--accent-a8)" : "var(--bg-card)",
               cursor: "pointer",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-8)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-12)" }}>
                 <Folder size={20} color={!useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
                 <span style={{ fontWeight: "var(--weight-semibold)", fontSize: "var(--fs-14)" }}>Choose Custom Music Directory</span>
               </div>
@@ -100,13 +100,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 onChange={(e) => setCustomPath(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
+                  padding: "var(--space-8) var(--space-12)",
                   borderRadius: "6px",
                   backgroundColor: "var(--bg-sidebar)",
                   border: "1px solid var(--border-light)",
                   color: "var(--text-main)",
                   fontSize: "var(--fs-14)",
-                  marginTop: "8px",
+                  marginTop: "var(--space-8)",
                 }}
                 autoFocus
               />
@@ -114,7 +114,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </div>
 
           {/* Start Scan Checkbox */}
-          <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "var(--fs-14)", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", fontSize: "var(--fs-14)", cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={startScan}
@@ -127,7 +127,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ padding: "12px", justifyContent: "center", marginTop: "8px" }}
+            style={{ padding: "var(--space-12)", justifyContent: "center", marginTop: "var(--space-8)" }}
             disabled={pending || (!useDefault && !customPath.trim())}
           >
             Confirm & Start Kaze

@@ -54,8 +54,8 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "10px",
-        padding: "8px 16px",
+        gap: "var(--space-10)",
+        padding: "var(--space-8) var(--space-16)",
         background: "var(--palette-gray-850-a95)",
         borderBottom: "1px solid var(--overlay-8)",
         fontSize: "var(--fs-13)",
@@ -87,7 +87,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
           cursor: "pointer",
           fontSize: "var(--fs-16)",
           lineHeight: 1,
-          padding: "0 4px",
+          padding: "0 var(--space-4)",
         }}
         aria-label="Dismiss update notification"
       >

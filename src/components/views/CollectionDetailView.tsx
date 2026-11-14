@@ -143,7 +143,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
         display: "flex",
         flexDirection: "column",
         gap: "0px",
-        paddingBottom: "40px",
+        paddingBottom: "var(--space-40)",
         minHeight: "100%",
       }}
     >

@@ -20,7 +20,7 @@ export function ForYouShelf({ c }: { c: DiscoveryViewContext }) {
         <div
           className="content-card"
           style={{
-            padding: "24px",
+            padding: "var(--space-24)",
             color: "var(--text-muted)",
             borderStyle: "dashed",
           }}

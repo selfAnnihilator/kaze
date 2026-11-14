@@ -13,7 +13,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
           key="collection-search-loading"
           style={{
             textAlign: "center",
-            padding: "60px 20px",
+            padding: "var(--space-60) var(--space-20)",
             color: "var(--text-dim)",
           }}
         >
@@ -21,7 +21,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             size={36}
             className="animate-spin"
             color="var(--accent-light)"
-            style={{ margin: "0 auto 12px" }}
+            style={{ margin: "0 auto var(--space-12)" }}
           />
           <p
             style={{
@@ -40,7 +40,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             className="content-card"
             style={{
               textAlign: "center",
-              padding: "50px 20px",
+              padding: "var(--space-48) var(--space-20)",
               color: "var(--text-dim)",
               borderStyle: "dashed",
             }}
@@ -48,14 +48,14 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             <Search
               size={36}
               color="var(--accent-light)"
-              style={{ margin: "0 auto 12px" }}
+              style={{ margin: "0 auto var(--space-12)" }}
             />
             <p
               style={{
                 fontSize: "var(--fs-16)",
                 fontWeight: "var(--weight-semibold)",
                 color: "var(--text-main)",
-                marginBottom: "6px",
+                marginBottom: "var(--space-6)",
               }}
             >
               No songs found matching "{c.searchQuery}"
@@ -64,7 +64,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
               style={{
                 fontSize: "var(--fs-13)",
                 color: "var(--text-muted)",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               Check your spelling or try searching for a different track title
@@ -85,7 +85,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             className="content-card"
             style={{
               textAlign: "center",
-              padding: "50px 20px",
+              padding: "var(--space-48) var(--space-20)",
               color: "var(--text-dim)",
               borderStyle: "dashed",
             }}
@@ -93,14 +93,14 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             <Music2
               size={36}
               color="var(--accent-light)"
-              style={{ marginBottom: "12px" }}
+              style={{ marginBottom: "var(--space-12)" }}
             />
             <p
               style={{
                 fontSize: "var(--fs-16)",
                 fontWeight: "var(--weight-semibold)",
                 color: "var(--text-main)",
-                marginBottom: "6px",
+                marginBottom: "var(--space-6)",
               }}
             >
               No songs in this collection yet
@@ -124,8 +124,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
             style={{
               display: "grid",
               gridTemplateColumns: "48px 1fr 1fr 64px 184px",
-              columnGap: "12px",
-              padding: "12px 18px",
+              columnGap: "var(--space-12)",
+              padding: "var(--space-12) var(--space-18)",
               borderBottom: "1px solid var(--border)",
               fontSize: "var(--fs-12)",
               fontWeight: "var(--weight-semibold)",
@@ -177,8 +177,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                     height: "100%",
                     display: "grid",
                     gridTemplateColumns: "48px 1fr 1fr 64px 184px",
-                    columnGap: "12px",
-                    padding: "10px 18px",
+                    columnGap: "var(--space-12)",
+                    padding: "var(--space-10) var(--space-18)",
                     alignItems: "center",
                     fontSize: "var(--fs-14)",
                     color:
@@ -256,7 +256,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
+                      gap: "var(--space-12)",
                       minWidth: 0,
                     }}
                   >
@@ -295,7 +295,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          marginTop: "2px",
+                          marginTop: "var(--space-2)",
                         }}
                       >
                         {track.artist}
@@ -311,7 +311,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      paddingRight: "16px",
+                      paddingRight: "var(--space-16)",
                     }}
                   >
                     {track.album || "—"}
@@ -334,7 +334,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "flex-end",
-                      gap: "6px",
+                      gap: "var(--space-6)",
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -359,7 +359,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                           ? "var(--accent-secondary)"
                           : "var(--text-dim)",
                         cursor: "pointer",
-                        padding: "4px",
+                        padding: "var(--space-4)",
                         display: "flex",
                       }}
                       title={isQueued ? "Already in queue" : "Add to queue"}
@@ -379,7 +379,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         border: "none",
                         color: isLiked ? "var(--palette-pink-400)" : "var(--text-dim)",
                         cursor: "pointer",
-                        padding: "4px",
+                        padding: "var(--space-4)",
                         display: "flex",
                       }}
                       title={isLiked ? "Unlike track" : "Like track"}
@@ -418,7 +418,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                               ? "var(--accent-secondary)"
                               : "var(--text-dim)",
                             cursor: "pointer",
-                            padding: "4px",
+                            padding: "var(--space-4)",
                             display: "flex",
                           }}
                           title={

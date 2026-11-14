@@ -13,7 +13,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "16px",
+                marginBottom: "var(--space-16)",
               }}
             >
               <h2
@@ -22,7 +22,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                   fontWeight: "var(--weight-semibold)",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  gap: "var(--space-8)",
                 }}
               >
                 <Sparkles size={18} color="var(--accent-light)" />
@@ -37,7 +37,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
           {c.smartMixes.length === 0 ? (
             <div
               style={{
-                padding: "40px 20px",
+                padding: "var(--space-40) var(--space-20)",
                 borderRadius: "10px",
                 backgroundColor: "var(--bg-card)",
                 border: "1px dashed var(--border)",
@@ -48,13 +48,13 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
               <Sparkles
                 size={36}
                 color="var(--accent-light)"
-                style={{ margin: "0 auto 12px" }}
+                style={{ margin: "0 auto var(--space-12)" }}
               />
               <div
                 style={{
                   fontWeight: "var(--weight-semibold)",
                   color: "var(--text-main)",
-                  marginBottom: "4px",
+                  marginBottom: "var(--space-4)",
                 }}
               >
                 Generating Smart Mixes...
@@ -69,7 +69,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-                gap: "18px",
+                gap: "var(--space-18)",
               }}
             >
               <WindowedGallery
@@ -86,7 +86,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                       style={{
                         backgroundColor: "var(--bg-card)",
                         borderRadius: "12px",
-                        padding: "18px",
+                        padding: "var(--space-18)",
                         border: "1px solid var(--border)",
                         cursor: "pointer",
                         display: "flex",
@@ -114,7 +114,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "flex-start",
-                            marginBottom: "12px",
+                            marginBottom: "var(--space-12)",
                           }}
                         >
                           <div
@@ -152,7 +152,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             fontWeight: "var(--weight-bold)",
                             fontSize: "var(--fs-16)",
                             color: "var(--text-main)",
-                            marginBottom: "6px",
+                            marginBottom: "var(--space-6)",
                           }}
                         >
                           {mix.name}
@@ -162,7 +162,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             fontSize: "var(--fs-13)",
                             color: "var(--text-dim)",
                             lineHeight: 1.4,
-                            marginBottom: "16px",
+                            marginBottom: "var(--space-16)",
                           }}
                         >
                           {mix.description ||
@@ -174,9 +174,9 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                       <div
                         style={{
                           display: "flex",
-                          gap: "8px",
+                          gap: "var(--space-8)",
                           borderTop: "1px solid var(--border)",
-                          paddingTop: "14px",
+                          paddingTop: "var(--space-14)",
                         }}
                       >
                         <button
@@ -185,7 +185,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             flex: 1,
                             justifyContent: "center",
                             fontSize: "var(--fs-14)",
-                            padding: "8px 12px",
+                            padding: "var(--space-8) var(--space-12)",
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -200,10 +200,10 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                           className="btn btn-secondary"
                           style={{
                             fontSize: "var(--fs-13)",
-                            padding: "8px 12px",
+                            padding: "var(--space-8) var(--space-12)",
                             display: "flex",
                             alignItems: "center",
-                            gap: "6px",
+                            gap: "var(--space-6)",
                             backgroundColor: isSaved
                               ? "var(--accent-secondary-a15)"
                               : undefined,

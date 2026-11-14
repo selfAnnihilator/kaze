@@ -8,13 +8,13 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         background: "linear-gradient(135deg, var(--palette-taupe-850) 0%, var(--bg-card) 100%)",
         border: "1px solid var(--text-main-a30)",
         borderRadius: "20px",
-        padding: "32px",
-        marginBottom: "36px",
+        padding: "var(--space-32)",
+        marginBottom: "var(--space-36)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
-        gap: "20px",
+        gap: "var(--space-20)",
       }}
     >
       <div>
@@ -22,13 +22,13 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "var(--space-8)",
             color: "var(--text-main)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-bold)",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
-            marginBottom: "6px",
+            marginBottom: "var(--space-6)",
           }}
         >
           <Archive size={16} />
@@ -38,7 +38,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
           style={{
             fontSize: "var(--fs-36)",
             fontWeight: "var(--weight-extrabold)",
-            margin: "0 0 8px 0",
+            margin: "0 0 var(--space-8) 0",
             letterSpacing: "-0.5px",
           }}
         >
@@ -60,7 +60,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
           background: "var(--shade-40)",
           border: "1px solid var(--overlay-10)",
           borderRadius: "16px",
-          padding: "16px 24px",
+          padding: "var(--space-16) var(--space-24)",
           textAlign: "center",
         }}
       >
@@ -70,7 +70,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
             color: "var(--overlay-50)",
             fontWeight: "var(--weight-semibold)",
             textTransform: "uppercase",
-            marginBottom: "4px",
+            marginBottom: "var(--space-4)",
           }}
         >
           {c.isPastYear ? `Total Listening Time (${c.viewingYear})` : `Tracked in ${c.viewingYear}`}
@@ -88,7 +88,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
           style={{
             fontSize: "var(--fs-11)",
             color: "var(--overlay-40)",
-            marginTop: "4px",
+            marginTop: "var(--space-4)",
           }}
         >
           {`Daily listening totals for ${c.viewingYear}`}

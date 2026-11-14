@@ -9,7 +9,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-            gap: "20px",
+            gap: "var(--space-20)",
           }}
         >
           {c.distinctArtists.map((a) => (
@@ -20,7 +20,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 borderRadius: "12px",
-                padding: "16px",
+                padding: "var(--space-16)",
                 textAlign: "center",
                 cursor: "pointer",
                 transition: "transform 0.18s ease",
@@ -38,7 +38,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   height: "88px",
                   borderRadius: "50%",
                   overflow: "hidden",
-                  margin: "0 auto 12px auto",
+                  margin: "0 auto var(--space-12) auto",
                   backgroundColor: "var(--accent-a15)",
                   display: "flex",
                   alignItems: "center",
@@ -75,7 +75,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontSize: "var(--fs-12)",
                   color: "var(--text-muted)",
-                  marginTop: "4px",
+                  marginTop: "var(--space-4)",
                 }}
               >
                 Artist • {a.count} track{a.count === 1 ? "" : "s"}

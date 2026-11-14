@@ -9,9 +9,9 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
         alignItems: "center",
         justifyContent: "space-between",
         flexWrap: "wrap",
-        gap: "12px",
+        gap: "var(--space-12)",
         borderBottom: "1px solid var(--overlay-8)",
-        paddingBottom: "14px",
+        paddingBottom: "var(--space-14)",
       }}
     >
       {/* Category Filter Pills (Spotify Desktop style) */}
@@ -19,7 +19,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "var(--space-8)",
           flexWrap: "wrap",
         }}
       >
@@ -27,7 +27,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           type="button"
           onClick={() => c.setActiveTab("all")}
           style={{
-            padding: "6px 14px",
+            padding: "var(--space-6) var(--space-14)",
             borderRadius: "9999px",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
@@ -45,7 +45,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           type="button"
           onClick={() => c.setActiveTab("songs")}
           style={{
-            padding: "6px 14px",
+            padding: "var(--space-6) var(--space-14)",
             borderRadius: "9999px",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
@@ -64,7 +64,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             type="button"
             onClick={() => c.setActiveTab("artists")}
             style={{
-              padding: "6px 14px",
+              padding: "var(--space-6) var(--space-14)",
               borderRadius: "9999px",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
@@ -86,7 +86,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             type="button"
             onClick={() => c.setActiveTab("albums")}
             style={{
-              padding: "6px 14px",
+              padding: "var(--space-6) var(--space-14)",
               borderRadius: "9999px",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
@@ -108,7 +108,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             type="button"
             onClick={() => c.setActiveTab("playlists")}
             style={{
-              padding: "6px 14px",
+              padding: "var(--space-6) var(--space-14)",
               borderRadius: "9999px",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
@@ -128,7 +128,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
       </div>
 
       {/* Clear Search & Results info */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-12)" }}>
         <span style={{ fontSize: "var(--fs-13)", color: "var(--text-dim)" }}>
           Search results for &ldquo;
           <span style={{ color: "var(--text-main)" }}>{c.searchQuery}</span>&rdquo;
@@ -138,11 +138,11 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           onClick={c.onClearSearch}
           className="btn btn-secondary"
           style={{
-            padding: "5px 12px",
+            padding: "var(--space-6) var(--space-12)",
             fontSize: "var(--fs-13)",
             display: "inline-flex",
             alignItems: "center",
-            gap: "6px",
+            gap: "var(--space-6)",
             borderRadius: "8px",
           }}
           title="Clear search results"

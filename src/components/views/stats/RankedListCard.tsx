@@ -24,13 +24,13 @@ export const RankedListCard: React.FC<{
       background: "var(--bg-card)",
       border: "1px solid var(--overlay-8)",
       borderRadius: "16px",
-      padding: "24px",
+      padding: "var(--space-24)",
       display: "flex",
       flexDirection: "column",
       minHeight: 0,
     }}
   >
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", marginBottom: "var(--space-16)" }}>
       <div
         style={{
           width: "32px",
@@ -55,7 +55,7 @@ export const RankedListCard: React.FC<{
     {rows.length === 0 ? (
       <div
         style={{
-          padding: "24px 0",
+          padding: "var(--space-24) 0",
           textAlign: "center",
           color: "var(--overlay-40)",
           fontSize: "var(--fs-13)",
@@ -64,7 +64,7 @@ export const RankedListCard: React.FC<{
         {emptyText}
       </div>
     ) : (
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
         {rows.slice(0, 5).map((row, idx) => {
           const rank = idx + 1;
           const rankColor =
@@ -75,7 +75,7 @@ export const RankedListCard: React.FC<{
               style={{
                 display: "flex",
                 alignItems: "center",
-                padding: "8px 14px",
+                padding: "var(--space-8) var(--space-14)",
                 borderRadius: "10px",
                 background: rank <= 3 ? "var(--overlay-3)" : "transparent",
                 border: rank <= 3 ? "1px solid var(--overlay-5)" : "none",
@@ -93,7 +93,7 @@ export const RankedListCard: React.FC<{
               >
                 {rank}
               </span>
-              <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
+              <div style={{ flex: 1, minWidth: 0, margin: "0 var(--space-14)" }}>
                 <div
                   style={{
                     fontSize: "var(--fs-14)",

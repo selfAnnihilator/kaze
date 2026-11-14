@@ -30,7 +30,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
         style={{
           maxWidth: "420px",
           width: "90%",
-          padding: "24px",
+          padding: "var(--space-24)",
           borderRadius: "14px",
           backgroundColor: "var(--bg-card, var(--bg-main))",
           border: "1px solid var(--border, var(--text-main-a15))",
@@ -42,11 +42,11 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "16px",
+            marginBottom: "var(--space-16)",
           }}
         >
           <div
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}
           >
             <Sparkles
               size={18}
@@ -70,14 +70,14 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
               border: "none",
               color: "var(--text-muted)",
               cursor: "pointer",
-              padding: "4px",
+              padding: "var(--space-4)",
             }}
           >
             <X size={18} />
           </button>
         </div>
 
-        <div style={{ marginBottom: "12px" }}>
+        <div style={{ marginBottom: "var(--space-12)" }}>
           <div
             style={{
               fontSize: "var(--fs-15)",
@@ -99,7 +99,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
 
         <div
           style={{
-            padding: "12px 14px",
+            padding: "var(--space-12) var(--space-14)",
             borderRadius: "8px",
             backgroundColor: "var(--accent-a8)",
             border: "1px solid var(--accent-a20)",
@@ -113,7 +113,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
 
         <div
           style={{
-            marginTop: "18px",
+            marginTop: "var(--space-18)",
             display: "flex",
             justifyContent: "flex-end",
           }}
@@ -121,7 +121,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           <button
             className="btn btn-secondary"
             onClick={() => onClose()}
-            style={{ fontSize: "var(--fs-14)", padding: "6px 16px" }}
+            style={{ fontSize: "var(--fs-14)", padding: "var(--space-6) var(--space-16)" }}
           >
             Got it
           </button>

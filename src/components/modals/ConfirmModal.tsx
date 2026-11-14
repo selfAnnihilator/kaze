@@ -25,7 +25,7 @@ export function ConfirmModal() {
         style={{
           maxWidth: "440px",
           width: "92%",
-          padding: "24px",
+          padding: "var(--space-24)",
           borderRadius: "14px",
           backgroundColor: "var(--bg-card, var(--bg-main))",
           border: "1px solid var(--border, var(--text-main-a15))",
@@ -33,16 +33,16 @@ export function ConfirmModal() {
         }}
         onClick={event => event.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)", marginBottom: "var(--space-12)" }}>
           <AlertTriangle size={20} color="var(--accent-secondary, var(--accent))" />
           <h3 id="confirm-modal-title" style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: 0, color: "var(--text-main)" }}>
             {request.title}
           </h3>
         </div>
-        <p id="confirm-modal-message" style={{ fontSize: "var(--fs-14)", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+        <p id="confirm-modal-message" style={{ fontSize: "var(--fs-14)", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 var(--space-20) 0", lineHeight: 1.5 }}>
           {request.message}
         </p>
-        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: "var(--space-10)", justifyContent: "flex-end" }}>
           <button type="button" className="btn btn-secondary" onClick={() => answerConfirm(false)}>
             {request.cancelLabel || "No"}
           </button>

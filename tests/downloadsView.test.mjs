@@ -33,7 +33,7 @@ test("library tracks view has no indexed/loaded text and offers play all + shuff
   assert.match(css, /\.library-view\[data-download-controls\] \{\s*--library-actions-width: 156px;/);
   // Refreshing with rows on screen shows no "Loading music…" line (no jump).
   assert.match(view, /<PagingFeedback loading=\{loading && tracks\.length === 0\}/);
-  assert.match(view, /columnGap: "12px"/);
+  assert.match(view, /columnGap: "var\(--space-12\)"/);
 });
 
 test("library playback dispatches ordered PlayTrackList", () => {

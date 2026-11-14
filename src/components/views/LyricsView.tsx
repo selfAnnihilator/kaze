@@ -336,7 +336,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: "14px",
+            gap: "var(--space-14)",
             color: "var(--text-muted)",
           }}
         >
@@ -347,13 +347,13 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
         <div
           style={{
             textAlign: "center",
-            padding: "40px 20px",
+            padding: "var(--space-40) var(--space-20)",
             color: "var(--text-muted)",
             maxWidth: "400px",
           }}
         >
-          <Mic2 size={42} color="var(--text-dim)" style={{ marginBottom: "16px" }} />
-          <h3 style={{ color: "var(--text-main)", fontSize: "var(--fs-18)", marginBottom: "8px" }}>
+          <Mic2 size={42} color="var(--text-dim)" style={{ marginBottom: "var(--space-16)" }} />
+          <h3 style={{ color: "var(--text-main)", fontSize: "var(--fs-18)", marginBottom: "var(--space-8)" }}>
             {lyricsData?.instrumental ? "Instrumental Track" : "No Lyrics Available"}
           </h3>
           <p style={{ fontSize: "var(--fs-14)", lineHeight: 1.5 }}>
@@ -406,13 +406,13 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             transform: "translateX(-50%)",
             backgroundColor: "var(--text-main)",
             color: "var(--palette-blue-900)",
-            padding: "8px 22px",
+            padding: "var(--space-8) var(--space-22)",
             borderRadius: "9999px",
             border: "none",
             boxShadow: "0 6px 22px var(--shade-45)",
             display: "inline-flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "var(--space-8)",
             fontWeight: "var(--weight-bold)",
             fontSize: "var(--fs-14)",
             cursor: "pointer",

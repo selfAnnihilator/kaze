@@ -52,8 +52,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "24px",
-        paddingBottom: "40px",
+        gap: "var(--space-24)",
+        paddingBottom: "var(--space-40)",
       }}
     >
       {/* Header */}
@@ -63,7 +63,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: "12px",
+          gap: "var(--space-12)",
         }}
       >
         <div>
@@ -74,7 +74,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               color: "var(--text-main)",
               display: "flex",
               alignItems: "center",
-              gap: "10px",
+              gap: "var(--space-10)",
             }}
           >
             <Bell size={26} color="var(--accent-light)" />
@@ -84,7 +84,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             style={{
               fontSize: "var(--fs-14)",
               color: "var(--text-muted)",
-              marginTop: "4px",
+              marginTop: "var(--space-4)",
             }}
           >
             History of download events, library updates, and app alerts
@@ -92,7 +92,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
         </div>
 
         {notifications.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)" }}>
             {onMarkAllRead && (
               <button
                 type="button"
@@ -102,7 +102,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                   fontSize: "var(--fs-13)",
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: "var(--space-6)",
                 }}
               >
                 <Check size={14} />
@@ -117,7 +117,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 fontSize: "var(--fs-13)",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "var(--space-6)",
                 color: "var(--danger)",
                 borderColor: "var(--danger-a30)",
               }}
@@ -131,12 +131,12 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
         <button
           type="button"
           onClick={() => setFilter("all")}
           className={`btn ${filter === "all" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
+          style={{ padding: "var(--space-6) var(--space-14)", fontSize: "var(--fs-13)" }}
         >
           All ({notifications.length})
         </button>
@@ -144,7 +144,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           type="button"
           onClick={() => setFilter("downloads")}
           className={`btn ${filter === "downloads" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
+          style={{ padding: "var(--space-6) var(--space-14)", fontSize: "var(--fs-13)" }}
         >
           Downloads (
           {
@@ -160,7 +160,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           type="button"
           onClick={() => setFilter("errors")}
           className={`btn ${filter === "errors" ? "btn-primary" : "btn-secondary"}`}
-          style={{ padding: "6px 14px", fontSize: "var(--fs-13)" }}
+          style={{ padding: "var(--space-6) var(--space-14)", fontSize: "var(--fs-13)" }}
         >
           Errors ({notifications.filter((n) => n.type === "error").length})
         </button>
@@ -172,7 +172,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           className="content-card"
           style={{
             textAlign: "center",
-            padding: "60px 20px",
+            padding: "var(--space-60) var(--space-20)",
             borderStyle: "dashed",
             color: "var(--text-dim)",
           }}
@@ -180,14 +180,14 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           <Bell
             size={42}
             color="var(--accent-light)"
-            style={{ marginBottom: "12px", opacity: 0.6 }}
+            style={{ marginBottom: "var(--space-12)", opacity: 0.6 }}
           />
           <h3
             style={{
               fontSize: "var(--fs-16)",
               fontWeight: "var(--weight-bold)",
               color: "var(--text-main)",
-              marginBottom: "4px",
+              marginBottom: "var(--space-4)",
             }}
           >
             No notifications
@@ -205,7 +205,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
           </p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-10)" }}>
           <WindowedList
             items={filtered}
             label="filtered"
@@ -226,11 +226,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                   className="content-card"
                   style={{
                     margin: 0,
-                    padding: "16px 18px",
+                    padding: "var(--space-16) var(--space-18)",
                     display: "flex",
                     alignItems: "flex-start",
                     justifyContent: "space-between",
-                    gap: "14px",
+                    gap: "var(--space-14)",
                     border: stateBorder,
                     backgroundColor: item.read
                       ? "var(--bg-card)"
@@ -243,11 +243,11 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: "12px",
+                      gap: "var(--space-12)",
                       flex: 1,
                     }}
                   >
-                    <div style={{ marginTop: "2px", flexShrink: 0 }}>
+                    <div style={{ marginTop: "var(--space-2)", flexShrink: 0 }}>
                       {isError ? (
                         <AlertTriangle size={20} color="var(--danger)" />
                       ) : isSuccess ? (
@@ -270,8 +270,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                           color: "var(--text-main)",
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "4px",
+                          gap: "var(--space-8)",
+                          marginBottom: "var(--space-4)",
                         }}
                       >
                         <span>{item.title}</span>
@@ -300,10 +300,10 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "6px",
+                          gap: "var(--space-6)",
                           fontSize: "var(--fs-12)",
                           color: "var(--text-dim)",
-                          marginTop: "8px",
+                          marginTop: "var(--space-8)",
                         }}
                       >
                         <Clock size={12} />
@@ -320,7 +320,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       border: "none",
                       color: "var(--text-dim)",
                       cursor: "pointer",
-                      padding: "6px",
+                      padding: "var(--space-6)",
                       display: "flex",
                       alignItems: "center",
                       borderRadius: "6px",

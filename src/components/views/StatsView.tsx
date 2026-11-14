@@ -162,7 +162,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
     <div
       className="stats-view"
       style={{
-        padding: "32px 40px 100px",
+        padding: "var(--space-32) var(--space-40) calc(100 * var(--space-unit))",
         maxWidth: "1200px",
         margin: "0 auto",
         color: "var(--text-main)",
@@ -177,7 +177,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
       {isLoading ? (
         <div
           style={{
-            padding: "80px 0",
+            padding: "var(--space-80) 0",
             textAlign: "center",
             color: "var(--overlay-50)",
           }}
@@ -190,7 +190,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               border: "3px solid var(--accent-a20)",
               borderTopColor: "var(--accent)",
               borderRadius: "50%",
-              margin: "0 auto 16px",
+              margin: "0 auto var(--space-16)",
               animation: "spin 1s linear infinite",
             }}
           />

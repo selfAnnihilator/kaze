@@ -9,12 +9,12 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "20px 8px 16px 8px",
+        padding: "var(--space-20) var(--space-8) var(--space-16) var(--space-8)",
         flexWrap: "wrap",
-        gap: "14px",
+        gap: "var(--space-14)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-18)" }}>
         {/* Big Green Play / Pause Button */}
         <button
           type="button"
@@ -38,7 +38,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
           {c.isPlaying ? (
             <Pause size={24} fill="var(--text-main)" />
           ) : (
-            <Play size={24} fill="var(--text-main)" style={{ marginLeft: "3px" }} />
+            <Play size={24} fill="var(--text-main)" style={{ marginLeft: "var(--space-4)" }} />
           )}
         </button>
 
@@ -59,7 +59,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                 ? "var(--accent-secondary)"
                 : "var(--text-muted)",
               cursor: "pointer",
-              padding: "8px",
+              padding: "var(--space-8)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -167,7 +167,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                 left: 0,
                 zIndex: 20,
                 minWidth: "160px",
-                padding: "6px",
+                padding: "var(--space-6)",
                 borderRadius: "8px",
                 border: "1px solid var(--border)",
                 background: "var(--bg-sidebar)",
@@ -177,7 +177,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               {c.isLikedSongs ? (
                 <div
                   style={{
-                    padding: "8px 10px",
+                    padding: "var(--space-8) var(--space-10)",
                     color: "var(--text-dim)",
                     fontSize: "var(--fs-12)",
                   }}
@@ -240,7 +240,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             value={c.searchQuery}
             onChange={(e) => c.setSearchQuery(e.target.value)}
             style={{
-              padding: "8px 30px 8px 34px",
+              padding: "var(--space-8) var(--space-30) var(--space-8) var(--space-36)",
               borderRadius: "20px",
               border: "1px solid var(--border)",
               backgroundColor: "var(--overlay-5)",
@@ -262,7 +262,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                 border: "none",
                 color: "var(--text-muted)",
                 cursor: "pointer",
-                padding: "2px",
+                padding: "var(--space-2)",
                 display: "flex",
                 alignItems: "center",
               }}

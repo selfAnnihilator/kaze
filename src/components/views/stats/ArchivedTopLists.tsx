@@ -8,7 +8,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
-        gap: "28px",
+        gap: "var(--space-28)",
       }}
     >
       {/* Top 10 Songs of the Year */}
@@ -17,16 +17,16 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
           background: "var(--bg-card)",
           border: "1px solid var(--overlay-8)",
           borderRadius: "16px",
-          padding: "24px",
+          padding: "var(--space-24)",
         }}
       >
-        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: "0 0 16px 0" }}>
+        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)", margin: "0 0 var(--space-16) 0" }}>
           All-Time Top 10 Songs
         </h3>
         {!c.stats?.top_songs || c.stats.top_songs.length === 0 ? (
           <div
             style={{
-              padding: "36px 0",
+              padding: "var(--space-36) 0",
               textAlign: "center",
               color: "var(--overlay-40)",
               fontSize: "var(--fs-13)",
@@ -35,14 +35,14 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
             No songs recorded yet.
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
             {c.stats.top_songs.map((song, idx) => (
               <div
                 key={song.track_id}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  padding: "10px 14px",
+                  padding: "var(--space-10) var(--space-14)",
                   borderRadius: "10px",
                   background: idx < 3 ? "var(--overlay-3)" : "transparent",
                 }}
@@ -58,7 +58,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
                 >
                   {idx + 1}
                 </span>
-                <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
+                <div style={{ flex: 1, minWidth: 0, margin: "0 var(--space-14)" }}>
                   <div style={{ fontSize: "var(--fs-14)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
                     {song.title}
                   </div>
@@ -81,7 +81,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
       </div>
 
       {/* Top 5 Artists + Top 5 Genres (all-time) */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-28)" }}>
         <RankedListCard
           title="Top 5 Artists"
           subtitle="Your most listened to artists"

@@ -8,7 +8,7 @@
   color: var(--text-muted);
   font-size: var(--fs-10);
   letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-8);
 }
 .familiarity-dial {
   width: 112px;
@@ -63,14 +63,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: var(--space-4);
   font-size: var(--fs-20);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 .dial-value small {
   font-size: var(--fs-10);
-  margin: 5px 0 0 2px;
+  margin: var(--space-6) 0 0 var(--space-2);
   color: var(--text-muted);
 }
 .dial-endpoints {
@@ -79,7 +79,7 @@
   justify-content: space-between;
   font-size: var(--fs-9);
   color: var(--text-muted);
-  margin-top: -4px;
+  margin-top: calc(-1 * var(--space-4));
 }
 .home-steering .familiarity-control {
   margin: 0 auto;

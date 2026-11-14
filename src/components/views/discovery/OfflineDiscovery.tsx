@@ -11,7 +11,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
           justifyContent: "center",
           minHeight: "65vh",
           textAlign: "center",
-          padding: "40px 20px",
+          padding: "var(--space-40) var(--space-20)",
         }}
       >
         <div
@@ -19,13 +19,13 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
             backgroundColor: "var(--palette-gray-900-a95)",
             border: "1px solid var(--danger-a35)",
             borderRadius: "16px",
-            padding: "48px 36px",
+            padding: "var(--space-48) var(--space-36)",
             textAlign: "center",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: "12px",
+            gap: "var(--space-12)",
             maxWidth: "460px",
             width: "100%",
             boxShadow: "0 8px 30px var(--shade-40)",
@@ -40,7 +40,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: "4px",
+              marginBottom: "var(--space-4)",
             }}
           >
             <WifiOff size={28} color="var(--danger)" />
@@ -72,13 +72,13 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
               className="btn btn-primary"
               onClick={onGoToLibrary}
               style={{
-                marginTop: "12px",
-                padding: "9px 20px",
+                marginTop: "var(--space-12)",
+                padding: "var(--space-10) var(--space-20)",
                 fontSize: "var(--fs-14)",
                 borderRadius: "10px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "var(--space-8)",
                 fontWeight: "var(--weight-semibold)",
               }}
             >

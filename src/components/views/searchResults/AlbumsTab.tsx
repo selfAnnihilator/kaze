@@ -9,7 +9,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "20px",
+            gap: "var(--space-20)",
           }}
         >
           {c.distinctAlbums.map((alb) => (
@@ -20,7 +20,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 borderRadius: "12px",
-                padding: "14px",
+                padding: "var(--space-14)",
                 cursor: "pointer",
                 transition: "transform 0.18s ease",
               }}
@@ -38,7 +38,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   borderRadius: "8px",
                   overflow: "hidden",
                   backgroundColor: "var(--overlay-5)",
-                  marginBottom: "10px",
+                  marginBottom: "var(--space-10)",
                 }}
               >
                 <CoverOrDisc src={alb.cover} alt={alb.album} iconSize={36} />
@@ -59,7 +59,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontSize: "var(--fs-13)",
                   color: "var(--text-muted)",
-                  marginTop: "2px",
+                  marginTop: "var(--space-2)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",

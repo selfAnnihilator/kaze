@@ -25,7 +25,7 @@ button, input, select, textarea { font-family: inherit; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: var(--space-18);
   background: var(--startup-substrate);
   color: var(--startup-ink);
   font-size: var(--fs-14);
@@ -50,7 +50,7 @@ button, input, select, textarea { font-family: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: var(--space-24);
 }
 .app-startup-mark {
   position: relative;
@@ -169,7 +169,7 @@ button, input, select, textarea { font-family: inherit; }
   :is([data-startup-style="spatial"], [data-startup-style="brutalist"]) .app-startup-name > span { opacity: 1; }
 }
 .app-startup-retry {
-  padding: 10px 18px;
+  padding: var(--space-10) var(--space-18);
   border: 1px solid var(--palette-gray-550);
   background: var(--palette-gray-850);
   color: var(--palette-gray-50);
@@ -207,7 +207,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 24px 14px 0;
+  padding: var(--space-24) var(--space-14) 0;
   background-image: linear-gradient(140deg, var(--palette-taupe-850-a35), transparent 45%);
 }
 
@@ -217,8 +217,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .nav-button {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--space-12);
+  padding: var(--space-10) var(--space-12);
   border-radius: 8px;
   background: none;
   border: none;
@@ -247,7 +247,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 24px var(--content-gutter);
+  padding: var(--space-24) var(--content-gutter);
   background-color: var(--bg-main);
 }
 
@@ -277,12 +277,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     linear-gradient(90deg, var(--bg-main) 0%, var(--palette-gray-900-a95) 20%, var(--palette-gray-900-a35) 52%, var(--palette-gray-900-a12) 80%, var(--palette-gray-900-a60) 100%),
     url('/kage-landscape.svg') center / cover;
 }
-.discovery-hero-copy { padding: 30px 0; }
-.hero-eyebrow { font-size: var(--fs-9); letter-spacing: 2.8px; color: var(--text-muted); margin-bottom: 14px; }
+.discovery-hero-copy { padding: var(--space-30) 0; }
+.hero-eyebrow { font-size: var(--fs-9); letter-spacing: 2.8px; color: var(--text-muted); margin-bottom: var(--space-14); }
 .discovery-hero h1 { font-size: clamp(var(--fs-32), 3.4vw, var(--fs-48)); letter-spacing: -1.6px; line-height: 1.06; font-weight: var(--weight-heavy); }
 .discovery-hero h1 em { color: var(--accent); font-style: normal; }
-.discovery-hero-copy > p:last-child { font-size: var(--fs-12); line-height: 1.6; margin-top: 16px; color: var(--palette-taupe-300); }
-.hero-signature { align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 25px 0 25px 25px; color: var(--palette-orange-300); }
+.discovery-hero-copy > p:last-child { font-size: var(--fs-12); line-height: 1.6; margin-top: var(--space-16); color: var(--palette-taupe-300); }
+.hero-signature { align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: var(--space-20); padding: var(--space-24) 0 var(--space-24) var(--space-24); color: var(--palette-orange-300); }
 .hero-signature span { writing-mode: vertical-rl; font-family: var(--font-jp); font-size: var(--fs-36); letter-spacing: 9px; }
 .hero-signature small { font-size: var(--fs-8); line-height: 1.8; letter-spacing: 1.5px; }
 
@@ -290,7 +290,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-24);
 }
 
 .view-title {
@@ -306,7 +306,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .track-table th {
   text-align: left;
-  padding: 10px 14px;
+  padding: var(--space-10) var(--space-14);
   color: var(--text-dim);
   font-size: var(--fs-13);
   font-weight: var(--weight-semibold);
@@ -325,7 +325,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .track-row td {
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-14);
   font-size: var(--fs-14);
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
@@ -339,7 +339,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Buttons & Badges */
 .badge {
   display: inline-block;
-  padding: 3px 8px;
+  padding: var(--space-4) var(--space-8);
   border-radius: 6px;
   font-size: var(--fs-12);
   font-weight: var(--weight-semibold);
@@ -351,8 +351,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border-radius: 8px;
   font-size: var(--fs-14);
   font-weight: var(--weight-semibold);
@@ -382,7 +382,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 var(--space-24);
   z-index: 50;
   flex-shrink: 0;
   background-image: linear-gradient(110deg, var(--palette-taupe-850-a25), transparent 60%);
@@ -392,7 +392,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .player-track-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   width: 320px;
   min-width: 0;
 }
@@ -431,7 +431,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex: 1;
   max-width: 600px;
 }
@@ -439,7 +439,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .player-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .player-icon-btn {
@@ -450,7 +450,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: var(--space-6);
   border-radius: 50%;
   transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   position: relative;
@@ -496,7 +496,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .progress-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   width: 100%;
 }
 
@@ -529,7 +529,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .player-volume {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-10);
   width: 220px;
   justify-content: flex-end;
 }
@@ -553,7 +553,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background-color: var(--bg-sidebar);
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 32px;
+  padding: var(--space-32);
   max-width: 520px;
   width: 90%;
   box-shadow: 0 20px 40px var(--shade-50);
@@ -564,8 +564,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background-color: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
+  padding: var(--space-24);
+  margin-bottom: var(--space-20);
 }
 
 .global-search { box-shadow: none !important; background-color: var(--palette-taupe-900) !important; }
@@ -574,12 +574,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .global-search form > div:focus-within { border-color: var(--accent-light) !important; }
 
 @media (max-width: 1000px) {
-  .sidebar { width: 195px; padding-left: 10px; padding-right: 10px; }
-  .nav-button { gap: 9px; font-size: var(--fs-12); }
-  .main-content { --content-gutter: 20px; padding: 20px; }
+  .sidebar { width: 195px; padding-left: var(--space-10); padding-right: var(--space-10); }
+  .nav-button { gap: var(--space-10); font-size: var(--fs-12); }
+  .main-content { --content-gutter: 20px; padding: var(--space-20); }
   .player-track-info { width: 250px; }
   .player-volume { width: 180px; }
-  .discovery-hero-copy { padding: 25px 0; }
+  .discovery-hero-copy { padding: var(--space-24) 0; }
 }
 @media (max-height: 720px) {
 
@@ -592,18 +592,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .tab-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   border-bottom: 1px solid var(--border);
-  padding-bottom: 12px;
-  margin-bottom: 24px;
+  padding-bottom: var(--space-12);
+  margin-bottom: var(--space-24);
   overflow-x: auto;
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border-radius: 8px;
   font-size: var(--fs-14);
   font-weight: var(--weight-semibold);
@@ -631,7 +631,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid var(--border-light);
   color: var(--text-main);
   border-radius: 8px;
-  padding: 8px 14px;
+  padding: var(--space-8) var(--space-14);
   font-size: var(--fs-14);
   outline: none;
   transition: border-color 0.15s ease;
@@ -649,7 +649,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .discovery-eq-container {
   display: flex;
   align-items: flex-end;
-  gap: 2.5px;
+  gap: var(--space-2);
   height: 16px;
 }
 
@@ -673,11 +673,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Sleek Horizontal Scroll Containers (Hidden scrollbar) */
 .horizontal-scroll-row {
   display: flex;
-  gap: 18px;
+  gap: var(--space-18);
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 6px;
-  padding-top: 4px;
+  padding-bottom: var(--space-6);
+  padding-top: var(--space-4);
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none; /* Firefox */
@@ -725,7 +725,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .album-card {
   background-color: var(--bg-card);
   border-radius: 12px;
-  padding: 14px;
+  padding: var(--space-14);
   display: flex;
   flex-direction: column;
   cursor: pointer;

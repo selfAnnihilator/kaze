@@ -8,8 +8,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
-        gap: "28px",
-        marginBottom: "36px",
+        gap: "var(--space-28)",
+        marginBottom: "var(--space-36)",
       }}
     >
       {/* Top 10 Songs */}
@@ -18,15 +18,15 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
           background: "var(--bg-card)",
           border: "1px solid var(--overlay-8)",
           borderRadius: "16px",
-          padding: "24px",
+          padding: "var(--space-24)",
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            marginBottom: "20px",
+            gap: "var(--space-10)",
+            marginBottom: "var(--space-20)",
           }}
         >
           <div
@@ -62,7 +62,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
         {!c.stats?.top_songs || c.stats.top_songs.length === 0 ? (
           <div
             style={{
-              padding: "36px 0",
+              padding: "var(--space-36) 0",
               textAlign: "center",
               color: "var(--overlay-40)",
               fontSize: "var(--fs-13)",
@@ -71,7 +71,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
             No songs listened to yet. Play some music to see your top songs!
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-8)" }}>
             {c.stats.top_songs.map((song, idx) => {
               const rank = idx + 1;
               const rankColor =
@@ -82,7 +82,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    padding: "10px 14px",
+                    padding: "var(--space-10) var(--space-14)",
                     borderRadius: "10px",
                     background: rank <= 3 ? "var(--overlay-3)" : "transparent",
                     border: rank <= 3 ? "1px solid var(--overlay-5)" : "none",
@@ -103,7 +103,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     {rank}
                   </span>
 
-                  <div style={{ flex: 1, minWidth: 0, margin: "0 14px" }}>
+                  <div style={{ flex: 1, minWidth: 0, margin: "0 var(--space-14)" }}>
                     <div
                       style={{
                         fontSize: "var(--fs-14)",
@@ -129,7 +129,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right", marginRight: "12px" }}>
+                  <div style={{ textAlign: "right", marginRight: "var(--space-12)" }}>
                     <div style={{ fontSize: "var(--fs-13)", fontWeight: "var(--weight-semibold)", color: "var(--text-main)" }}>
                       {c.formatSeconds(song.total_seconds)}
                     </div>
@@ -167,7 +167,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
       </div>
 
       {/* Top 5 Artists + Top 5 Genres (stacked to match Top 10 Songs height) */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-28)" }}>
         <RankedListCard
           title="Top 5 Artists"
           subtitle="Your most listened to artists"

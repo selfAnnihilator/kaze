@@ -8,15 +8,15 @@ export function TopDays({ c }: { c: StatsViewContext }) {
         background: "var(--bg-card)",
         border: "1px solid var(--overlay-8)",
         borderRadius: "16px",
-        padding: "24px",
+        padding: "var(--space-24)",
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "10px",
-          marginBottom: "20px",
+          gap: "var(--space-10)",
+          marginBottom: "var(--space-20)",
         }}
       >
         <div
@@ -52,7 +52,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
       {!c.stats?.top_days || c.stats.top_days.length === 0 ? (
         <div
           style={{
-            padding: "36px 0",
+            padding: "var(--space-36) 0",
             textAlign: "center",
             color: "var(--overlay-40)",
             fontSize: "var(--fs-13)",
@@ -65,7 +65,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
-            gap: "14px",
+            gap: "var(--space-14)",
           }}
         >
           {c.stats.top_days.map((day, idx) => {
@@ -85,7 +85,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                   background: "var(--overlay-3)",
                   border: "1px solid var(--overlay-5)",
                   borderRadius: "12px",
-                  padding: "16px",
+                  padding: "var(--space-16)",
                   position: "relative",
                   overflow: "hidden",
                 }}
@@ -116,7 +116,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                     color: "var(--accent-light)",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
-                    marginBottom: "4px",
+                    marginBottom: "var(--space-4)",
                   }}
                 >
                   {day.day_name}
@@ -126,7 +126,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                     fontSize: "var(--fs-14)",
                     fontWeight: "var(--weight-semibold)",
                     color: "var(--text-main)",
-                    marginBottom: "8px",
+                    marginBottom: "var(--space-8)",
                   }}
                 >
                   {day.day_date}

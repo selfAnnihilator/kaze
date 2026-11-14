@@ -13,8 +13,8 @@ export function SongsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: "8px",
-              padding: "0 12px",
+              marginBottom: "var(--space-8)",
+              padding: "0 var(--space-12)",
             }}
           >
             <span

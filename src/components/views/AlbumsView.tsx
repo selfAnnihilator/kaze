@@ -124,7 +124,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: "12px",
+            marginBottom: "var(--space-12)",
             overflow: "hidden",
             position: "relative",
             flexShrink: 0,
@@ -180,7 +180,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
           style={{
             fontSize: "var(--fs-13)",
             color: "var(--text-muted)",
-            marginTop: "2px",
+            marginTop: "var(--space-2)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -193,7 +193,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
           style={{
             fontSize: "var(--fs-12)",
             color: "var(--text-dim)",
-            marginTop: "6px",
+            marginTop: "var(--space-6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -207,7 +207,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
             <span />
           )}
           {album.year && (
-            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
               <Calendar size={12} />
               <span>{album.year}</span>
             </div>
@@ -237,7 +237,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = React.memo(
         <div className="view-header">
           <div>
             <h1 className="view-title">Albums</h1>
-            <p style={{ color: "var(--text-muted)", marginTop: 8 }}>
+            <p style={{ color: "var(--text-muted)", marginTop: "var(--space-8)" }}>
               {total} albums in your library
             </p>
           </div>

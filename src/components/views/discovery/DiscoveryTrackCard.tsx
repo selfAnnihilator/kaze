@@ -90,7 +90,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
         borderRadius: "12px",
-        padding: "10px",
+        padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
@@ -148,10 +148,10 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               left: "7px",
               backgroundColor: "var(--accent-secondary-a95)",
               borderRadius: "20px",
-              padding: "2px 8px",
+              padding: "var(--space-2) var(--space-8)",
               display: "flex",
               alignItems: "center",
-              gap: "5px",
+              gap: "var(--space-6)",
               boxShadow: "0 2px 8px var(--shade-60)",
               zIndex: 2,
             }}
@@ -202,7 +202,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           ) : isPlaying ? (
             <Pause size={17} fill="var(--text-main)" />
           ) : (
-            <Play size={17} fill="var(--text-main)" style={{ marginLeft: "2px" }} />
+            <Play size={17} fill="var(--text-main)" style={{ marginLeft: "var(--space-2)" }} />
           )}
         </button>
 
@@ -240,7 +240,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       {/* 2. Name (Below thumbnail, bold, smaller than thumbnail) */}
       <div className="discovery-card-title"
         style={{
-          marginTop: "10px",
+          marginTop: "var(--space-10)",
           fontWeight: "var(--weight-bold)",
           fontSize: "var(--fs-14)",
           color: isPlaying ? "var(--accent-secondary)" : "var(--text-main)",
@@ -257,7 +257,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       {/* 3. Artist (Below name, even smaller than title, not bold, clickable to search) */}
       <div
         style={{
-          marginTop: "3px",
+          marginTop: "var(--space-4)",
           fontWeight: "var(--weight-regular)",
           fontSize: "var(--fs-12)",
           color: "var(--text-muted)",
@@ -288,7 +288,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       <div
         style={{
           marginTop: "auto",
-          paddingTop: "8px",
+          paddingTop: "var(--space-8)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -298,7 +298,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         {!isLocalTrack && <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} />}
 
         <div
-          style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
         >
           <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
           {isLiked && (
@@ -307,7 +307,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               aria-label="Liked song"
               style={{
                 color: "var(--palette-rose-300)",
-                padding: "4px",
+                padding: "var(--space-4)",
                 display: "inline-flex",
                 alignItems: "center",
               }}
@@ -325,7 +325,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               color: isInPlaylist
                 ? "var(--accent-secondary)"
                 : "var(--text-dim)",
-              padding: "4px",
+              padding: "var(--space-4)",
               display: "flex",
               alignItems: "center",
               transition: "color 0.15s ease",

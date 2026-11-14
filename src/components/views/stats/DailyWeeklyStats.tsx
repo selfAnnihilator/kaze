@@ -7,8 +7,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
-        gap: "20px",
-        marginBottom: "20px",
+        gap: "var(--space-20)",
+        marginBottom: "var(--space-20)",
       }}
     >
       {/* Daily Music Time Card */}
@@ -17,7 +17,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           background: "linear-gradient(135deg, var(--palette-indigo-800-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--accent-a20)",
           borderRadius: "18px",
-          padding: "20px 24px",
+          padding: "var(--space-20) var(--space-24)",
           position: "relative",
           overflow: "hidden",
         }}
@@ -27,7 +27,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "12px",
+            marginBottom: "var(--space-12)",
           }}
         >
           <span
@@ -63,7 +63,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           style={{
             fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
-            marginTop: "4px",
+            marginTop: "var(--space-4)",
           }}
         >
           Today's listening session
@@ -76,7 +76,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           background: "linear-gradient(135deg, var(--palette-blue-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--palette-blue-400-a20)",
           borderRadius: "18px",
-          padding: "20px 24px",
+          padding: "var(--space-20) var(--space-24)",
         }}
       >
         <div
@@ -84,7 +84,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "12px",
+            marginBottom: "var(--space-12)",
           }}
         >
           <span
@@ -120,7 +120,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           style={{
             fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
-            marginTop: "4px",
+            marginTop: "var(--space-4)",
           }}
         >
           Past 7 days
@@ -133,7 +133,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           background: "linear-gradient(135deg, var(--palette-violet-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--palette-violet-350-a25)",
           borderRadius: "18px",
-          padding: "20px 24px",
+          padding: "var(--space-20) var(--space-24)",
         }}
       >
         <div
@@ -141,7 +141,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "12px",
+            marginBottom: "var(--space-12)",
           }}
         >
           <span
@@ -177,7 +177,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           style={{
             fontSize: "var(--fs-12)",
             color: "var(--overlay-40)",
-            marginTop: "4px",
+            marginTop: "var(--space-4)",
           }}
         >
           All-time cumulative history

@@ -9,7 +9,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-            gap: "20px",
+            gap: "var(--space-20)",
           }}
         >
           {c.matchingPlaylists.map((pl) => (
@@ -19,7 +19,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 borderRadius: "12px",
-                padding: "16px",
+                padding: "var(--space-16)",
                 cursor: "pointer",
               }}
             >
@@ -32,7 +32,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: "12px",
+                  marginBottom: "var(--space-12)",
                 }}
               >
                 <ListMusic size={40} color="var(--accent-light)" />
@@ -50,7 +50,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontSize: "var(--fs-13)",
                   color: "var(--text-muted)",
-                  marginTop: "4px",
+                  marginTop: "var(--space-4)",
                 }}
               >
                 {pl.track_count || 0} tracks

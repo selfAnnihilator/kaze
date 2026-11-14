@@ -18,7 +18,7 @@ export function TrendingShelf({ c }: { c: DiscoveryViewContext }) {
           aria-busy={c.isTrendingLoading}
           style={{
             textAlign: "center",
-            padding: "45px 20px",
+            padding: "var(--space-44) var(--space-20)",
             color: "var(--text-dim)",
             borderStyle: "dashed",
           }}
@@ -26,14 +26,14 @@ export function TrendingShelf({ c }: { c: DiscoveryViewContext }) {
           <Sparkles
             size={36}
             color="var(--accent-light)"
-            style={{ marginBottom: "10px" }}
+            style={{ marginBottom: "var(--space-10)" }}
           />
           <p
             style={{
               fontSize: "var(--fs-16)",
               fontWeight: "var(--weight-semibold)",
               color: "var(--text-main)",
-              marginBottom: "4px",
+              marginBottom: "var(--space-4)",
             }}
           >
             {c.isTrendingLoading ? "Loading trending songs…" : c.trendingError ? "Trending songs unavailable" : "No trending songs found"}

@@ -407,8 +407,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "28px",
-        paddingBottom: "40px",
+        gap: "var(--space-28)",
+        paddingBottom: "var(--space-40)",
       }}
     >
       {/* SEPARATE SEARCH SECTION (Displayed exclusively when search results are active) */}

@@ -9,8 +9,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
         background: "linear-gradient(135deg, var(--palette-teal-850-a55) 0%, var(--palette-gray-900-a85) 100%)",
         border: "1px solid var(--accent-secondary-a25)",
         borderRadius: "20px",
-        padding: "24px 28px",
-        marginBottom: "36px",
+        padding: "var(--space-24) var(--space-28)",
+        marginBottom: "var(--space-36)",
         width: "100%",
         boxSizing: "border-box",
         position: "relative",
@@ -23,8 +23,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
           justifyContent: "space-between",
           alignItems: "flex-start",
           flexWrap: "wrap",
-          gap: "16px",
-          marginBottom: "20px",
+          gap: "var(--space-16)",
+          marginBottom: "var(--space-20)",
         }}
       >
         {/* Left: Monthly Music Time Title and Main Time Display */}
@@ -33,8 +33,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              marginBottom: "6px",
+              gap: "var(--space-8)",
+              marginBottom: "var(--space-6)",
             }}
           >
             <div
@@ -64,7 +64,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             </span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-12)", flexWrap: "wrap" }}>
             <span
               style={{
                 fontSize: "var(--fs-36)",
@@ -86,7 +86,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "var(--space-12)",
             flexWrap: "wrap",
           }}
         >
@@ -95,11 +95,11 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
+              gap: "var(--space-6)",
               background: "var(--accent-secondary-a15)",
               border: "1px solid var(--accent-secondary-a35)",
               color: "var(--accent-secondary)",
-              padding: "6px 14px",
+              padding: "var(--space-6) var(--space-14)",
               borderRadius: "9999px",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-bold)",
@@ -123,7 +123,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                 border: "1px solid var(--overlay-20)",
                 borderRadius: "10px",
                 color: "var(--text-main)",
-                padding: "7px 34px 7px 14px",
+                padding: "var(--space-8) var(--space-36) var(--space-8) var(--space-14)",
                 fontSize: "var(--fs-13)",
                 fontWeight: "var(--weight-semibold)",
                 cursor: "pointer",
@@ -164,7 +164,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
         style={{
           background: "var(--shade-25)",
           borderRadius: "14px",
-          padding: "18px 20px 14px",
+          padding: "var(--space-18) var(--space-20) var(--space-14)",
           border: "1px solid var(--overlay-5)",
         }}
       >
@@ -174,7 +174,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "16px",
+            marginBottom: "var(--space-16)",
             fontSize: "var(--fs-12)",
             color: "var(--overlay-60)",
             minHeight: "22px",
@@ -190,7 +190,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               <span>
                 Daily listening activity across {c.activeMonthName} ({c.monthlyGraph.length} days)
                 {c.stats?.history_started_at ? (
-                  <span style={{ fontSize: "var(--fs-11)", color: "var(--overlay-45)", marginLeft: "8px" }}>
+                  <span style={{ fontSize: "var(--fs-11)", color: "var(--overlay-45)", marginLeft: "var(--space-8)" }}>
                     • Detailed timeline history available since {new Date(c.stats.history_started_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 ) : null}
@@ -198,7 +198,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             )}
           </div>
 
-          <div style={{ display: "flex", gap: "16px" }}>
+          <div style={{ display: "flex", gap: "var(--space-16)" }}>
             <span>
               Active days: <strong style={{ color: "var(--text-main)" }}>{c.daysWithMusic}</strong>/{c.monthlyGraph.length}
             </span>
@@ -213,10 +213,10 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
           style={{
             display: "flex",
             alignItems: "flex-end",
-            gap: "4px",
+            gap: "var(--space-4)",
             height: "130px",
             width: "100%",
-            paddingBottom: "8px",
+            paddingBottom: "var(--space-8)",
             borderBottom: "1px solid var(--overlay-10)",
           }}
         >
@@ -252,7 +252,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                       background: "var(--palette-gray-900-a95)",
                       border: "1px solid var(--accent-secondary-a40)",
                       color: "var(--text-main)",
-                      padding: "6px 10px",
+                      padding: "var(--space-6) var(--space-10)",
                       borderRadius: "8px",
                       fontSize: "var(--fs-11)",
                       fontWeight: "var(--weight-semibold)",
@@ -291,7 +291,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            paddingTop: "6px",
+            paddingTop: "var(--space-6)",
             fontSize: "var(--fs-11)",
             color: "var(--overlay-40)",
             fontWeight: "var(--weight-semibold)",

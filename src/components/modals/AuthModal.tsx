@@ -105,7 +105,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           backgroundColor: "var(--palette-gray-900)",
           border: "1px solid var(--overlay-10)",
           borderRadius: "16px",
-          padding: "24px",
+          padding: "var(--space-24)",
           boxShadow: "0 25px 50px -12px var(--shade-70)",
           color: "var(--text-main)",
         }}
@@ -117,10 +117,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "20px",
+            marginBottom: "var(--space-20)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-10)" }}>
             <div
               style={{
                 width: "36px",
@@ -156,7 +156,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               border: "none",
               color: "var(--overlay-50)",
               cursor: "pointer",
-              padding: "4px",
+              padding: "var(--space-4)",
               borderRadius: "6px",
             }}
           >
@@ -170,8 +170,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             display: "flex",
             background: "var(--overlay-5)",
             borderRadius: "10px",
-            padding: "3px",
-            marginBottom: "18px",
+            padding: "var(--space-4)",
+            marginBottom: "var(--space-18)",
           }}
         >
           <button
@@ -182,7 +182,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             style={{
               flex: 1,
-              padding: "8px",
+              padding: "var(--space-8)",
               background: tab === "login" ? "var(--palette-gray-850)" : "transparent",
               color: tab === "login" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
@@ -203,7 +203,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             style={{
               flex: 1,
-              padding: "8px",
+              padding: "var(--space-8)",
               background: tab === "signup" ? "var(--palette-gray-850)" : "transparent",
               color: tab === "signup" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
@@ -224,14 +224,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "var(--space-8)",
               background: "var(--danger-a15)",
               border: "1px solid var(--danger-a30)",
               color: "var(--palette-red-300)",
-              padding: "10px 12px",
+              padding: "var(--space-10) var(--space-12)",
               borderRadius: "8px",
               fontSize: "var(--fs-12)",
-              marginBottom: "16px",
+              marginBottom: "var(--space-16)",
             }}
           >
             <AlertCircle size={16} style={{ flexShrink: 0 }} />
@@ -240,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <form onSubmit={handleSubmit} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "var(--space-14)" }}>
           <div>
             <label
               style={{
@@ -248,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 fontSize: "var(--fs-12)",
                 fontWeight: "var(--weight-semibold)",
                 color: "var(--overlay-70)",
-                marginBottom: "6px",
+                marginBottom: "var(--space-6)",
               }}
             >
               Username
@@ -257,10 +257,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
+                gap: "var(--space-10)",
                 background: "var(--palette-gray-850)",
                 borderRadius: "10px",
-                padding: "0 12px",
+                padding: "0 var(--space-12)",
                 border: "1px solid var(--overlay-10)",
               }}
             >
@@ -277,7 +277,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   flex: 1,
                   background: "transparent",
                   border: "none",
-                  padding: "10px 0",
+                  padding: "var(--space-10) 0",
                   color: "var(--text-main)",
                   fontSize: "var(--fs-14)",
                   outline: "none",
@@ -293,7 +293,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 fontSize: "var(--fs-12)",
                 fontWeight: "var(--weight-semibold)",
                 color: "var(--overlay-70)",
-                marginBottom: "6px",
+                marginBottom: "var(--space-6)",
               }}
             >
               Password
@@ -302,10 +302,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
+                gap: "var(--space-10)",
                 background: "var(--palette-gray-850)",
                 borderRadius: "10px",
-                padding: "0 12px",
+                padding: "0 var(--space-12)",
                 border: "1px solid var(--overlay-10)",
               }}
             >
@@ -321,7 +321,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   flex: 1,
                   background: "transparent",
                   border: "none",
-                  padding: "10px 0",
+                  padding: "var(--space-10) 0",
                   color: "var(--text-main)",
                   fontSize: "var(--fs-14)",
                   outline: "none",
@@ -338,7 +338,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   fontSize: "var(--fs-12)",
                   fontWeight: "var(--weight-semibold)",
                   color: "var(--overlay-70)",
-                  marginBottom: "6px",
+                  marginBottom: "var(--space-6)",
                 }}
               >
                 Confirm Password
@@ -347,10 +347,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "10px",
+                  gap: "var(--space-10)",
                   background: "var(--palette-gray-850)",
                   borderRadius: "10px",
-                  padding: "0 12px",
+                  padding: "0 var(--space-12)",
                   border: "1px solid var(--overlay-10)",
                 }}
               >
@@ -366,7 +366,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     flex: 1,
                     background: "transparent",
                     border: "none",
-                    padding: "10px 0",
+                    padding: "var(--space-10) 0",
                     color: "var(--text-main)",
                     fontSize: "var(--fs-14)",
                     outline: "none",
@@ -380,8 +380,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             type="submit"
             disabled={isLoading}
             style={{
-              marginTop: "8px",
-              padding: "11px",
+              marginTop: "var(--space-8)",
+              padding: "var(--space-12)",
               background: "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))",
               color: "var(--text-main)",
               border: "none",
@@ -392,7 +392,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: "8px",
+              gap: "var(--space-8)",
               opacity: isLoading ? 0.7 : 1,
               boxShadow: "0 4px 12px var(--accent-a30)",
               transition: "transform 0.1s ease",
