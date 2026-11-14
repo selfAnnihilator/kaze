@@ -30,6 +30,9 @@
 }
 .song-download-fill { position: absolute; inset: 0; background: var(--accent); opacity: .3; transform-origin: left; transition: transform .2s linear; pointer-events: none; }
 .song-download-label { position: relative; display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; }
+.song-download-button.is-failed { color: var(--accent); }
+.song-download-button.is-compact .song-download-percent { min-width: 3ch; font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .song-download-error { position: absolute; z-index: 5; bottom: 100%; padding: 6px; min-width: 160px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--accent); font-size: .75rem; }
 .not-interested-button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .not-interested-button[aria-pressed="true"] svg { fill: currentColor; }

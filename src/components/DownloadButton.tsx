@@ -1,5 +1,5 @@
-import { memo, useState } from "react";
-import { CheckCircle2, Download, RotateCw } from "lucide-react";
+import { memo, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Download, RotateCw } from "lucide-react";
 import { dispatchCommand, executeQuery } from "../services/api";
 import { downloadProgress, useDownloadProgress, useSongDownload } from "../services/downloadProgress";
 import type { DownloadTask } from "../types";
@@ -14,9 +14,18 @@ export const DownloadButton = memo(function DownloadButton({ trackId, sourceId, 
   const transferring = task?.status === "DOWNLOADING" || task?.status === "QUEUED";
   const active = !complete && (busy || transferring);
   const percent = complete ? 100 : active && progress.file_size && progress.file_size > 0 ? Math.min(99, Math.floor(100 * progress.bytes_downloaded / progress.file_size)) : 0;
-  const label = complete ? `Downloaded ${title}` : active ? `Downloading ${title}: ${percent}%` : `Download ${title}`;
+  const failed = !!error && !complete && !active;
+  const label = complete ? `Downloaded ${title}` : active ? `Downloading ${title}: ${percent}%` : failed ? `Retry download of ${title}` : `Download ${title}`;
+  // A stale failure must never outlive the attempt it describes: drop it once the
+  // song finishes (e.g. it was already downloaded) and auto-dismiss it otherwise.
+  useEffect(() => {
+    if (!error) return;
+    if (complete) { setError(""); return; }
+    const timer = window.setTimeout(() => setError(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [error, complete]);
   return <span className="song-download-control">
-    <button data-track-id={trackId} type="button" className={`song-download-button ${compact ? "is-compact" : ""} ${complete ? "is-complete" : ""}`} title={error || label} aria-label={label} disabled={active || complete} onClick={async event => {
+    <button data-track-id={trackId} type="button" className={`song-download-button ${compact ? "is-compact" : ""} ${complete ? "is-complete" : ""} ${failed ? "is-failed" : ""}`} title={failed ? error : label} aria-label={label} disabled={active || complete} onClick={async event => {
       event.stopPropagation(); setError(""); setBusy(true);
       const key = sourceId || trackId;
       let request = starting.get(key);
@@ -30,12 +39,17 @@ export const DownloadButton = memo(function DownloadButton({ trackId, sourceId, 
         })();
         starting.set(key, request);
       }
-      try { await request; } catch { setError("Couldn’t download this song. Click to retry."); }
+      try { await request; } catch {
+        setError("Couldn’t download this song. Click to retry.");
+        // Resync: the song may already be downloaded, in which case the check replaces the error.
+        executeQuery({ query: "GetDownloads", payload: { limit: 10000 } }).then(result => { if (Array.isArray(result.data)) downloadProgress.replace(result.data); }).catch(() => {});
+      }
       finally { starting.delete(key); setBusy(false); }
     }}>
       {!complete && <span className="song-download-fill" style={{ transform: `scaleX(${percent / 100})` }} />}
-      <span className="song-download-label">{complete ? <CheckCircle2 size={16} /> : active ? <RotateCw size={14} className="spin-animation" /> : <Download size={16} />}{active ? <span>{percent}%</span> : !compact && !complete && <span>Download</span>}</span>
+      <span className="song-download-label">{complete ? <CheckCircle2 size={16} /> : active ? <RotateCw size={14} className="spin-animation" /> : failed ? <AlertCircle size={16} /> : <Download size={16} />}{active ? <span className="song-download-percent">{percent}%</span> : !compact && !complete && <span>{failed ? "Retry" : "Download"}</span>}</span>
     </button>
-    {error && <span className="song-download-error" role="alert">{error}</span>}
+    {failed && !compact && <span className="song-download-error" role="alert">{error}</span>}
+    {failed && compact && <span className="sr-only" role="alert">{error}</span>}
   </span>;
 });
