@@ -48,12 +48,13 @@ import { useLibrary, useLibraryPlayback } from "./hooks/app/useLibrary";
 import { usePlaylists } from "./hooks/app/usePlaylists";
 import { useWishlist } from "./hooks/app/useWishlist";
 import { useDownloads } from "./hooks/app/useDownloads";
+import { useDiscoveryFeeds } from "./hooks/app/useDiscoveryFeeds";
 import {
   CollectionDetailView,
   CollectionData,
   CollectionTrackItem,
 } from "./components/views/CollectionDetailView";
-import { StatsOverview, type EntityFeedbackRow } from "./types";
+import type { EntityFeedbackRow } from "./types";
 import { X, Sparkles } from "lucide-react";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
@@ -149,8 +150,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   const [isHomeLoading, setIsHomeLoading] = useState<boolean>(false);
   const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | null>(null);
   const flowCommandPendingRef = useRef(false);
-  const [isTrendingLoading, setIsTrendingLoading] = useState(true);
-  const [trendingError, setTrendingError] = useState<string | null>(null);
   const [flowSteering, setFlowSteering] = useState<number>(0.5);
   const [whyTrackModal, setWhyTrackModal] = useState<{
     title: string;
@@ -199,12 +198,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     fetchTracks, fetchAlbums, fetchSettings, handleAddFolder, handleRemoveFolder, handleRescanLibrary,
   } = useLibrary({ userId: currentUser?.id || "default", destination, initialSettings, fetchOnboardingStatus });
   const [queuedTrackIds, setQueuedTrackIds] = useState<Set<string>>(new Set());
-  const [discoveryRecs, setDiscoveryRecs] = useState<DiscoveryRecommendation[]>([],
-  );
-  const [worldTrending, setWorldTrending] = useState<DiscoveryRecommendation[]>([],
-  );
-  const discoveryRecsRef = useRef<DiscoveryRecommendation[]>([]);
-  discoveryRecsRef.current = discoveryRecs;
   const interfacePreference = useInterfacePreference(settings);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const previousTrackRef = useRef<Track | undefined>(undefined);
@@ -429,50 +422,9 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview,
   ]);
 
-  const discoveryRequestRef = useRef(0);
-  const chartRequestRef = useRef(0);
-  const fetchPersonalRecommendations = useCallback(async (forceRefresh = false) => {
-    const request = ++discoveryRequestRef.current;
-    const userId = currentUserIdRef.current;
-    const res = await executeQuery({
-      query: "GetDiscoveryRecommendations",
-      payload: { limit: 100, force_refresh: forceRefresh },
-    });
-    if (request === discoveryRequestRef.current && userId === currentUserIdRef.current && Array.isArray(res.data)) {
-      setDiscoveryRecs(res.data);
-    }
-  }, []);
-
-  const fetchTrending = useCallback(async (forceRefresh = false) => {
-    const request = ++chartRequestRef.current;
-    const user = currentUserIdRef.current;
-    const current = () => request === chartRequestRef.current && user === currentUserIdRef.current;
-    setIsTrendingLoading(true);
-    setTrendingError(null);
-    try {
-      if (!forceRefresh) {
-        try {
-          const cached = await executeQuery({ query: "GetCachedWorldTrending", payload: { limit: 50 } });
-          if (current() && Array.isArray(cached.data) && cached.data.length) setWorldTrending(cached.data);
-        } catch (error) { console.error("Failed to read saved trending songs:", error); }
-      }
-      const res = await executeQuery({ query: "GetWorldTrending", payload: { limit: 50, force_refresh: forceRefresh } });
-      if (current() && Array.isArray(res.data)) setWorldTrending(res.data);
-    } catch (error) {
-      if (current()) setTrendingError("Couldn't update trending songs. Try Refresh again.");
-      console.error("Failed to fetch world charts:", error);
-    } finally {
-      if (current()) setIsTrendingLoading(false);
-    }
-  }, []);
-  const refreshTrending = useCallback(() => fetchTrending(true), [fetchTrending]);
-  const refreshPersonalRecommendations = useCallback((forceRefresh = false) => fetchPersonalRecommendations(forceRefresh), [fetchPersonalRecommendations]);
-  const fetchDiscovery = useCallback(async (forceRefresh = false, refreshCharts = false) => {
-    const results = await Promise.allSettled([
-      fetchPersonalRecommendations(forceRefresh), fetchTrending(refreshCharts),
-    ]);
-    for (const result of results) if (result.status === "rejected") console.error("Failed to refresh discovery:", result.reason);
-  }, [fetchPersonalRecommendations, fetchTrending]);
+  const {
+    discoveryRequestRef, chartRequestRef, discoveryRecs, setDiscoveryRecs, worldTrending, setWorldTrending, isTrendingLoading, setIsTrendingLoading, trendingError, setTrendingError, fetchPersonalRecommendations, refreshTrending, refreshPersonalRecommendations, fetchDiscovery, fetchStatsOverview,
+  } = useDiscoveryFeeds({ currentUserIdRef });
 
   useEffect(() => {
     const userId = currentUser?.id || "default";
@@ -499,27 +451,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     await fetchPlaylists();
     await fetchDiscovery(true);
   };
-
-  const fetchStatsOverview = useCallback(
-    async (year?: number, month?: number): Promise<StatsOverview | null> => {
-      try {
-        const payload: { year?: number; month?: number } = {};
-        if (year !== undefined) payload.year = year;
-        if (month !== undefined) payload.month = month;
-        const res = await executeQuery({
-          query: "GetStatsOverview",
-          payload,
-        });
-        if (res && res.data) {
-          return res.data as StatsOverview;
-        }
-      } catch (err) {
-        console.error("Failed to fetch stats overview:", err);
-      }
-      return null;
-    },
-    [],
-  );
 
   // Initial load
   useEffect(() => {
