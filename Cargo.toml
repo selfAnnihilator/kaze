@@ -1,3 +1,9 @@
 [workspace]
 members = ["src-tauri"]
 resolver = "2"
+
+# Whole-program optimisation for shipped builds: smaller, faster code. Panics
+# still unwind (background tasks rely on it) and symbols stay for backtraces.
+[profile.release]
+lto = "thin"
+codegen-units = 1

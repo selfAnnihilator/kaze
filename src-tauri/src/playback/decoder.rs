@@ -144,29 +144,40 @@ impl Iterator for SymphoniaSource {
     #[inline]
     fn next(&mut self) -> Option<i16> {
         if self.current_frame_offset >= self.buffer.len() {
-            let mut new_buffer = None;
-            for _ in 0..5 {
-                let packet = self.format.next_packet().ok()?;
-                if packet.track_id() != self.track_id {
-                    continue;
-                }
-                if let Ok(decoded) = self.decoder.decode(&packet) {
-                    decoded.spec().clone_into(&mut self.spec);
-                    let duration = units::Duration::from(decoded.capacity() as u64);
-                    let mut buffer = SampleBuffer::<i16>::new(duration, self.spec);
-                    buffer.copy_interleaved_ref(decoded);
-                    new_buffer = Some(buffer);
-                    break;
-                }
-            }
-
-            self.buffer = new_buffer?;
+            self.refill()?;
             self.current_frame_offset = 0;
         }
 
         let sample = *self.buffer.samples().get(self.current_frame_offset)?;
         self.current_frame_offset += 1;
         Some(sample)
+    }
+}
+
+impl SymphoniaSource {
+    /// Decodes the next packet of this track into the sample buffer.
+    fn refill(&mut self) -> Option<()> {
+        for _ in 0..5 {
+            let packet = self.format.next_packet().ok()?;
+            if packet.track_id() != self.track_id {
+                continue;
+            }
+            let Ok(decoded) = self.decoder.decode(&packet) else {
+                continue;
+            };
+            let spec = *decoded.spec();
+            let samples = decoded.capacity() * spec.channels.count();
+            // Packets are usually the same size: reuse the buffer instead of
+            // allocating one per packet.
+            if spec != self.spec || self.buffer.capacity() < samples {
+                let duration = units::Duration::from(decoded.capacity() as u64);
+                self.buffer = SampleBuffer::<i16>::new(duration, spec);
+            }
+            self.spec = spec;
+            self.buffer.copy_interleaved_ref(decoded);
+            return Some(());
+        }
+        None
     }
 }
 

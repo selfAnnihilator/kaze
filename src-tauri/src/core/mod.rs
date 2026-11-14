@@ -2,6 +2,7 @@ pub mod command;
 pub mod error;
 pub mod event;
 pub mod event_bus;
+pub mod http;
 pub mod processor;
 pub mod query;
 pub mod sync;

@@ -318,12 +318,9 @@ impl GapEnrichmentService {
             if parsed.scheme() != "https" {
                 return Ok(None);
             }
-            let client = reqwest::Client::builder()
-                .timeout(Duration::from_secs(12))
-                .build()
-                .map_err(|e| AppError::Network(e.to_string()))?;
-            let mut response = client
+            let mut response = crate::core::http::shared_client()
                 .get(url)
+                .timeout(Duration::from_secs(12))
                 .send()
                 .await
                 .map_err(|e| AppError::Network(e.without_url().to_string()))?

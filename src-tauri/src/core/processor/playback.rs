@@ -249,10 +249,7 @@ impl CoreProcessor {
                 }
 
                 // 2. Query LRCLIB API for time-synced or plain lyrics
-                let client = reqwest::Client::builder()
-                    .timeout(std::time::Duration::from_secs(6))
-                    .build()
-                    .unwrap_or_default();
+                let client = crate::core::http::shared_client();
 
                 let mut params = vec![
                     ("artist_name", artist.clone()),
@@ -269,6 +266,7 @@ impl CoreProcessor {
                 match client
                     .get("https://lrclib.net/api/get")
                     .query(&params)
+                    .timeout(std::time::Duration::from_secs(6))
                     .send()
                     .await
                 {

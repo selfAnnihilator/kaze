@@ -67,6 +67,17 @@ async fn execute_query(
 pub fn run() {
     init_logging();
     info!("Starting Intelligent Music Player Desktop Shell");
+    // A music player's async work is I/O-bound; a worker per core (Tokio's
+    // default) only adds idle threads. Heavy work uses spawn_blocking.
+    match tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(4)
+        .thread_name("kaze-async")
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => tauri::async_runtime::set(Box::leak(Box::new(runtime)).handle().clone()),
+        Err(error) => tracing::warn!(%error, "Using the default async runtime"),
+    }
 
     let config = AppConfig::default_with_dirs();
     let db_path = config.database_path.clone();

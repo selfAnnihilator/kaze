@@ -85,6 +85,9 @@ impl DownloadService {
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+            // A stalled or queued transfer reports the same bytes every tick;
+            // only real progress is written to the database.
+            let mut last_bytes = None;
             loop {
                 interval.tick().await;
                 let current_task = match repo.get_task_by_id(&task_id_clone).await {
@@ -103,9 +106,12 @@ impl DownloadService {
 
                 match provider.get_progress(pt_id).await {
                     Ok(Some(progress)) => {
-                        let _ = repo
-                            .update_progress(&task_id_clone, progress.bytes_downloaded)
-                            .await;
+                        if last_bytes.replace(progress.bytes_downloaded) != Some(progress.bytes_downloaded) {
+                            let _ = repo
+                                .update_progress(&task_id_clone, progress.bytes_downloaded)
+                                .await;
+                        }
+                        // Still published: a stalled transfer's speed drops to 0.
                         let _ = event_bus.publish(Event::DownloadProgressChanged {
                             task_id: task_id_clone.clone(),
                             bytes_downloaded: progress.bytes_downloaded,
