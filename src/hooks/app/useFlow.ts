@@ -17,12 +17,12 @@ type PlayingOrigin = {
  * debounced steering with revision guards), and the "why this track" modal.
  */
 export function useFlow({
-  libraryAccountRef, playbackState, fetchPlaybackState, playPauseRef, addAppNotification, setPlayingOrigin,
+  libraryAccountRef, playbackState, fetchPlaybackState, onPlayPause, addAppNotification, setPlayingOrigin,
 }: {
   libraryAccountRef: MutableRefObject<string>;
   playbackState: PlaybackState;
   fetchPlaybackState: () => Promise<unknown>;
-  playPauseRef: MutableRefObject<() => Promise<void>>;
+  onPlayPause: () => Promise<void>;
   addAppNotification: Notify;
   setPlayingOrigin: Dispatch<SetStateAction<PlayingOrigin>>;
 }) {
@@ -114,7 +114,7 @@ export function useFlow({
     flowCommandPendingRef.current = true;
     setFlowPendingAction(playbackState.is_playing ? "pause" : "resume");
     try {
-      if (playbackState.is_playing) await playPauseRef.current();
+      if (playbackState.is_playing) await onPlayPause();
       else {
         await dispatchCommand({ command: "ContinueFlow" });
         void fetchPlaybackState();
@@ -125,7 +125,7 @@ export function useFlow({
       flowCommandPendingRef.current = false;
       setFlowPendingAction(null);
     }
-  }, [playbackState.is_playing, playPauseRef, fetchPlaybackState, addAppNotification]);
+  }, [playbackState.is_playing, onPlayPause, fetchPlaybackState, addAppNotification]);
 
   const steeringDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
