@@ -2,13 +2,20 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { executeQuery } from "../services/api";
 
 /** Paging owns catalogue state; progress ticks never enter this hook. */
+export interface LibraryPageOptions {
+  /** Rows per page. */
+  size: number;
+  /** Whose library (resets paging when it changes). */
+  identity: string;
+  /** Navigation key (resets paging when it changes). */
+  navigation: string;
+  /** "local" (your folders) or "downloads" (Kaze folder); omitted = everything. */
+  scope?: "local" | "downloads";
+}
+
 export function useLibraryPage<T extends { id: string }>(
   query: "GetLibraryTracksPage" | "GetLibraryAlbumsPage",
-  size: number,
-  identity: string,
-  navigation: string,
-  /** "local" (your folders) or "downloads" (Kaze folder); omitted = everything. */
-  scope?: "local" | "downloads",
+  { size, identity, navigation, scope }: LibraryPageOptions,
 ) {
   const [items, setItems] = useState<T[]>([]);
   const [total, setTotal] = useState(0);

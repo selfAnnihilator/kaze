@@ -67,9 +67,9 @@ test("download controls follow only Kaze's own downloads; local songs have none"
 
 test("Local and Downloads lists request their own section from the backend", () => {
   const library = read("src/hooks/app/useLibrary.ts");
-  assert.match(library, /useLibraryPage<Track>\("GetLibraryTracksPage", 200, [^\n]*"local"\)/);
-  assert.match(library, /useLibraryPage<Album>\("GetLibraryAlbumsPage", 100, [^\n]*"local"\)/);
-  assert.match(read("src/App.tsx"), /useLibraryPage<Track>\("GetLibraryTracksPage", 200, [^\n]*"downloads"\)/);
+  assert.match(library, /useLibraryPage<Track>\("GetLibraryTracksPage", \{ size: 200, [^\n]*scope: "local" \}\)/);
+  assert.match(library, /useLibraryPage<Album>\("GetLibraryAlbumsPage", \{ size: 100, [^\n]*scope: "local" \}\)/);
+  assert.match(read("src/hooks/app/useDownloadsSection.ts"), /useLibraryPage<Track>\("GetLibraryTracksPage", \{ size: 200, [^\n]*scope: "downloads" \}\)/);
   assert.match(read("src/hooks/useLibraryPage.ts"), /\.\.\.\(scope \? \{ scope \} : \{\}\)/);
   // Local search/album rows also leave out Kaze's folder.
   assert.match(read("src/hooks/useScopedTracks.ts"), /!inDownloadsFolder\(t, downloadsDir\)/);

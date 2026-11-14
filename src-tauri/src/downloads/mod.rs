@@ -1,4 +1,5 @@
 pub mod mock_provider;
+pub mod rows;
 pub mod service;
 pub mod traits;
 pub mod types;

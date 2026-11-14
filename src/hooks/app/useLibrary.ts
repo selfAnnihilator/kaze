@@ -20,8 +20,8 @@ export function useLibrary({ userId, destination, initialSettings, fetchOnboardi
 }) {
   const [settings, setSettings] = useState<AppSettings>(initialSettings);
   // The Library section is your own folders; Kaze's downloads have their own section.
-  const trackPage = useLibraryPage<Track>("GetLibraryTracksPage", 200, userId, `${destination.view}:${destination.libraryAlbumId || ""}:${destination.libraryQuery || ""}`, "local");
-  const albumPage = useLibraryPage<Album>("GetLibraryAlbumsPage", 100, userId, destination.view, "local");
+  const trackPage = useLibraryPage<Track>("GetLibraryTracksPage", { size: 200, identity: userId, navigation: `${destination.view}:${destination.libraryAlbumId || ""}:${destination.libraryQuery || ""}`, scope: "local" });
+  const albumPage = useLibraryPage<Album>("GetLibraryAlbumsPage", { size: 100, identity: userId, navigation: destination.view, scope: "local" });
   const scoped = useScopedTracks(userId, destination.libraryAlbumId, destination.libraryQuery, destination.view === "library" && !destination.collection && !destination.lyrics, settings.downloads?.resolved_dir);
   const scopedRefreshRef = useRef(scoped.refresh);
   scopedRefreshRef.current = scoped.refresh;

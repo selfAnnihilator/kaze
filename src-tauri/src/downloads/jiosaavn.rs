@@ -212,12 +212,7 @@ impl DownloadProvider for JioSaavnDownloadProvider {
                     .map_err(|e| AppError::Io(e.to_string()))?;
                 drop(file);
                 if let Some(tags) = tags {
-                    let path = partial.clone();
-                    match tokio::task::spawn_blocking(move || super::write_tags(&path, &tags)).await {
-                        Ok(Ok(())) => {}
-                        Ok(Err(error)) => tracing::warn!(%error, "Could not tag downloaded song"),
-                        Err(error) => tracing::warn!(%error, "Tagging task failed"),
-                    }
+                    tag_partial(partial.clone(), tags).await;
                 }
                 // Create the final name without overwriting a concurrently saved file.
                 tokio::fs::hard_link(&partial, &destination)
@@ -251,6 +246,16 @@ impl DownloadProvider for JioSaavnDownloadProvider {
             task.progress.status = DownloadStatus::Cancelled;
         }
         Ok(())
+    }
+}
+
+/// Writes the song's tags into the partial file before it gets its final name.
+/// Tagging is best effort: an untagged download still plays.
+async fn tag_partial(path: std::path::PathBuf, tags: super::DownloadTags) {
+    match tokio::task::spawn_blocking(move || super::write_tags(&path, &tags)).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => tracing::warn!(%error, "Could not tag downloaded song"),
+        Err(error) => tracing::warn!(%error, "Tagging task failed"),
     }
 }
 

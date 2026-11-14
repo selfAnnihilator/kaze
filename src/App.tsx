@@ -45,8 +45,8 @@ import { PromptModal } from "./components/modals/PromptModal";
 import { ConfirmModal } from "./components/modals/ConfirmModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useAuth } from "./hooks/app/useAuth";
-import { useLibrary, useLibraryPlayback, type ListScope } from "./hooks/app/useLibrary";
-import { useLibraryPage } from "./hooks/useLibraryPage";
+import { useLibrary } from "./hooks/app/useLibrary";
+import { useDownloadsSection } from "./hooks/app/useDownloadsSection";
 import { usePlaylists } from "./hooks/app/usePlaylists";
 import { useWishlist } from "./hooks/app/useWishlist";
 import { useDownloads } from "./hooks/app/useDownloads";
@@ -952,20 +952,12 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
   // --- Actions & Commands ---
 
-  // Local Library and Downloads each play as an ordered list; this records which one started.
-  const [activeListScope, setActiveListScope] = useState<ListScope | null>(null);
-  const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle,
-  } = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope: "local", activeListScope, setActiveListScope });
-  const kazeDownloadsPlayback = useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope: "downloads", activeListScope, setActiveListScope });
-  // Songs Kaze downloaded (its own folder), refreshed whenever a download finishes,
-  // is removed or a file in the folder changes.
-  const downloadsPage = useLibraryPage<Track>("GetLibraryTracksPage", 200, currentUser?.id || "default", destination.view, "downloads");
-  const savedDownloadsKey = useMemo(
-    () => downloads.filter((task) => task.status === "COMPLETED").map((task) => `${task.id}:${task.destination_path}`).join("|"),
-    [downloads],
-  );
-  const refreshDownloadsPage = downloadsPage.refresh;
-  useEffect(() => { void refreshDownloadsPage(); }, [savedDownloadsKey, refreshDownloadsPage]);
+  // Local Library and Kaze Downloads: each plays as its own ordered list.
+  const { localPlayback, downloadsPlayback: kazeDownloadsPlayback, downloadsPage, downloadsListState } = useDownloadsSection({
+    playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads,
+    userId: currentUser?.id || "default", navigation: destination.view,
+  });
+  const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle } = localPlayback;
 
   const dismissRecommendationNotice = useCallback((notice: RecommendationNoticeValue) => {
     setRecommendationNotice(previous => previous === notice ? null : previous);
@@ -2032,7 +2024,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
                           queuedTrackIds={queuedTrackIds}
                           onPlayTrack={kazeDownloadsPlayback.handleLibraryRowPlay}
                           onPlayAll={kazeDownloadsPlayback.handleLibraryPlayAll}
-                          listState={kazeDownloadsPlayback.downloadsListActive ? (playbackState.is_playing ? "playing" : "paused") : "idle"}
+                          listState={downloadsListState}
                           shuffleEnabled={kazeDownloadsPlayback.libraryShuffle}
                           onToggleShuffle={kazeDownloadsPlayback.handleLibraryToggleShuffle}
                           loadingTrackId={loadingTrackId}
