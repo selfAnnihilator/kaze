@@ -25,10 +25,6 @@
       "lines": 387,
       "smells": 2
     },
-    "src-tauri/src/database/repositories/track_repo.rs": {
-      "lines": 587,
-      "smells": 8
-    },
     "src-tauri/src/database/repositories/user_repo.rs": {
       "lines": 329,
       "smells": 1
@@ -452,6 +448,10 @@
     "src-tauri/src/downloads/service/transfers.rs": {
       "lines": 205,
       "smells": 1
+    },
+    "src-tauri/src/database/repositories/track_repo/writes.rs": {
+      "lines": 290,
+      "smells": 8
     }
   }
 }
