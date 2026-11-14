@@ -207,9 +207,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         borderRadius: "8px",
                         backgroundColor:
                           isPlaying || isLoading
-                            ? "rgba(139, 124, 246, 0.1)"
+                            ? "var(--accent-secondary-a10)"
                             : isHovered
-                              ? "rgba(255, 255, 255, 0.06)"
+                              ? "var(--overlay-5)"
                               : "transparent",
                         cursor: "pointer",
 
@@ -221,7 +221,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                           height: "40px",
                           borderRadius: "6px",
                           overflow: "hidden",
-                          backgroundColor: "rgba(255, 255, 255, 0.05)",
+                          backgroundColor: "var(--overlay-5)",
                           position: "relative",
                           flexShrink: 0,
                         }}
@@ -233,7 +233,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             style={{
                               position: "absolute",
                               inset: 0,
-                              backgroundColor: "rgba(0, 0, 0, 0.55)",
+                              backgroundColor: "var(--shade-55)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -248,7 +248,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                                 color="var(--accent-secondary)"
                               />
                             ) : (
-                              <Play size={16} fill="#e8d8c9" color="#e8d8c9" />
+                              <Play size={16} fill="var(--text-main)" color="var(--text-main)" />
                             )}
                           </div>
                         )}
@@ -261,7 +261,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                             fontWeight: 600,
                             color: isPlaying
                               ? "var(--accent-secondary)"
-                              : "#e8d8c9",
+                              : "var(--text-main)",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -346,11 +346,11 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         minHeight: 0,
         flex: "1 1 0",
         overflow: "hidden",
-        backgroundColor: "rgba(18, 20, 28, 0.75)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        backgroundColor: "var(--palette-slate-900-a75)",
+        border: "1px solid var(--overlay-8)",
         borderRadius: "14px",
         padding: "20px 24px",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.35)",
+        boxShadow: "0 8px 32px var(--shade-35)",
       }}
     >
       {/* Top Header: Category Filter Pills + Clear Button */}
@@ -371,7 +371,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
           }}
         >
           <Music size={40} color="var(--text-dim)" />
-          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#e8d8c9" }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-main)" }}>
             No songs found for “{searchQuery}”
           </h3>
           <p

@@ -206,11 +206,11 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
     })
     .map((p, idx) => {
       const gradients = [
-        "linear-gradient(135deg, #4b607f 0%, #8b7cf6 100%)",
-        "linear-gradient(135deg, #2a211b 0%, #f3701e 100%)",
-        "linear-gradient(135deg, #1a1714 0%, #4b607f 100%)",
-        "linear-gradient(135deg, #2a211b 0%, #8b7cf6 100%)",
-        "linear-gradient(135deg, #f3701e 0%, #8b7cf6 100%)",
+        "linear-gradient(135deg, var(--accent-slate) 0%, var(--accent-secondary) 100%)",
+        "linear-gradient(135deg, var(--bg-card) 0%, var(--accent) 100%)",
+        "linear-gradient(135deg, var(--bg-main) 0%, var(--accent-slate) 100%)",
+        "linear-gradient(135deg, var(--bg-card) 0%, var(--accent-secondary) 100%)",
+        "linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%)",
       ];
       return {
         id: p.id,

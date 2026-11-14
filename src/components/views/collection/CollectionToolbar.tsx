@@ -25,20 +25,20 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             borderRadius: "50%",
             backgroundColor: "var(--accent-secondary)",
             border: "none",
-            color: "#e8d8c9",
+            color: "var(--text-main)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(139, 124, 246, 0.4)",
+            boxShadow: "0 6px 20px var(--accent-secondary-a40)",
             transition: "transform 0.15s ease, background-color 0.15s ease",
           }}
           title={c.isPlaying ? "Pause Collection" : "Play Collection"}
         >
           {c.isPlaying ? (
-            <Pause size={24} fill="#e8d8c9" />
+            <Pause size={24} fill="var(--text-main)" />
           ) : (
-            <Play size={24} fill="#e8d8c9" style={{ marginLeft: "3px" }} />
+            <Play size={24} fill="var(--text-main)" style={{ marginLeft: "3px" }} />
           )}
         </button>
 
@@ -48,9 +48,9 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             type="button"
             onClick={c.onShuffleAll}
             style={{
-              background: c.isShuffled ? "rgba(139, 124, 246, 0.15)" : "none",
+              background: c.isShuffled ? "var(--accent-secondary-a15)" : "none",
               border: c.isShuffled
-                ? "1px solid rgba(139, 124, 246, 0.4)"
+                ? "1px solid var(--accent-secondary-a40)"
                 : "1px solid transparent",
               borderRadius: "50%",
               width: "40px",
@@ -67,7 +67,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               position: "relative",
             }}
             onMouseEnter={(e) => {
-              if (!c.isShuffled) e.currentTarget.style.color = "#e8d8c9";
+              if (!c.isShuffled) e.currentTarget.style.color = "var(--text-main)";
             }}
             onMouseLeave={(e) => {
               if (!c.isShuffled)
@@ -102,8 +102,8 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
         {c.isInCollection ? (
           <div
             style={{
-              border: "1px solid rgba(139, 124, 246, 0.45)",
-              backgroundColor: "rgba(139, 124, 246, 0.12)",
+              border: "1px solid var(--accent-secondary-a45)",
+              backgroundColor: "var(--accent-secondary-a12)",
               borderRadius: "50%",
               width: "40px",
               height: "40px",
@@ -124,7 +124,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             onClick={() => c.onSaveToPlaylists?.(c.collection)}
             style={{
               background: "none",
-              border: "1px solid rgba(255, 255, 255, 0.2)",
+              border: "1px solid var(--overlay-20)",
               borderRadius: "50%",
               width: "40px",
               height: "40px",
@@ -147,7 +147,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               aria-label={`Playlist options for ${c.collection.title}`}
               style={{
                 listStyle: "none",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
+                border: "1px solid var(--overlay-20)",
                 borderRadius: "50%",
                 width: "40px",
                 height: "40px",
@@ -171,7 +171,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                 borderRadius: "8px",
                 border: "1px solid var(--border)",
                 background: "var(--bg-sidebar)",
-                boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+                boxShadow: "0 12px 30px var(--shade-45)",
               }}
             >
               {c.isLikedSongs ? (
@@ -203,7 +203,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                       width: "100%",
                       justifyContent: "flex-start",
                       border: 0,
-                      color: "var(--danger, #ef4444)",
+                      color: "var(--danger, var(--danger))",
                     }}
                     onClick={c.handleDeletePlaylist}
                   >
@@ -243,8 +243,8 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               padding: "8px 30px 8px 34px",
               borderRadius: "20px",
               border: "1px solid var(--border)",
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
-              color: "#e8d8c9",
+              backgroundColor: "var(--overlay-5)",
+              color: "var(--text-main)",
               fontSize: "0.82rem",
               outline: "none",
               width: "220px",

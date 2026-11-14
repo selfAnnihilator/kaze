@@ -123,7 +123,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                               height: "48px",
                               borderRadius: "10px",
                               background:
-                                "linear-gradient(135deg, rgba(243, 112, 30, 0.35), rgba(139, 124, 246, 0.15))",
+                                "linear-gradient(135deg, var(--accent-a35), var(--accent-secondary-a15))",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -151,7 +151,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                           style={{
                             fontWeight: 700,
                             fontSize: "1.05rem",
-                            color: "#e8d8c9",
+                            color: "var(--text-main)",
                             marginBottom: "6px",
                           }}
                         >
@@ -205,7 +205,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             alignItems: "center",
                             gap: "6px",
                             backgroundColor: isSaved
-                              ? "rgba(139, 124, 246, 0.15)"
+                              ? "var(--accent-secondary-a15)"
                               : undefined,
                             borderColor: isSaved
                               ? "var(--accent-secondary)"

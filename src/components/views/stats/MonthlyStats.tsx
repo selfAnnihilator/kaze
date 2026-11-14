@@ -6,8 +6,8 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, rgba(16, 50, 40, 0.55) 0%, rgba(24, 24, 27, 0.85) 100%)",
-        border: "1px solid rgba(139, 124, 246, 0.25)",
+        background: "linear-gradient(135deg, var(--palette-teal-850-a55) 0%, var(--palette-gray-900-a85) 100%)",
+        border: "1px solid var(--accent-secondary-a25)",
         borderRadius: "20px",
         padding: "24px 28px",
         marginBottom: "36px",
@@ -42,11 +42,11 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                 width: "32px",
                 height: "32px",
                 borderRadius: "8px",
-                background: "rgba(139, 124, 246, 0.15)",
+                background: "var(--accent-secondary-a15)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#8b7cf6",
+                color: "var(--accent-secondary)",
               }}
             >
               <Activity size={18} />
@@ -55,7 +55,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               style={{
                 fontSize: "13px",
                 fontWeight: 700,
-                color: "rgba(255, 255, 255, 0.7)",
+                color: "var(--overlay-70)",
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
               }}
@@ -69,13 +69,13 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               style={{
                 fontSize: "36px",
                 fontWeight: 800,
-                color: "#e8d8c9",
+                color: "var(--text-main)",
                 letterSpacing: "-0.5px",
               }}
             >
               {c.formatSeconds(c.stats?.monthly_seconds || 0)}
             </span>
-            <span style={{ fontSize: "13px", color: "rgba(255, 255, 255, 0.5)" }}>
+            <span style={{ fontSize: "13px", color: "var(--overlay-50)" }}>
               total in {c.activeMonthName} {c.viewingYear}
             </span>
           </div>
@@ -96,9 +96,9 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: "rgba(139, 124, 246, 0.15)",
-              border: "1px solid rgba(139, 124, 246, 0.35)",
-              color: "#8b7cf6",
+              background: "var(--accent-secondary-a15)",
+              border: "1px solid var(--accent-secondary-a35)",
+              color: "var(--accent-secondary)",
               padding: "6px 14px",
               borderRadius: "9999px",
               fontSize: "13px",
@@ -119,10 +119,10 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               }}
               style={{
                 appearance: "none",
-                backgroundColor: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.18)",
+                backgroundColor: "var(--overlay-8)",
+                border: "1px solid var(--overlay-20)",
                 borderRadius: "10px",
-                color: "#e8d8c9",
+                color: "var(--text-main)",
                 padding: "7px 34px 7px 14px",
                 fontSize: "13px",
                 fontWeight: 600,
@@ -137,7 +137,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                   <option
                     key={mNum}
                     value={mNum}
-                    style={{ backgroundColor: "var(--bg-card)", color: "#e8d8c9" }}
+                    style={{ backgroundColor: "var(--bg-card)", color: "var(--text-main)" }}
                   >
                     {mName}
                   </option>
@@ -151,7 +151,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                 right: "12px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "rgba(255, 255, 255, 0.6)",
+                color: "var(--overlay-60)",
                 pointerEvents: "none",
               }}
             />
@@ -162,10 +162,10 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
       {/* 30-Day Listening Activity Graph */}
       <div
         style={{
-          background: "rgba(0, 0, 0, 0.25)",
+          background: "var(--shade-25)",
           borderRadius: "14px",
           padding: "18px 20px 14px",
-          border: "1px solid rgba(255, 255, 255, 0.06)",
+          border: "1px solid var(--overlay-5)",
         }}
       >
         {/* Summary line above graph */}
@@ -176,21 +176,21 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             alignItems: "center",
             marginBottom: "16px",
             fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.6)",
+            color: "var(--overlay-60)",
             minHeight: "22px",
           }}
         >
           <div>
             {c.hoveredDay ? (
-              <span style={{ color: "#e8d8c9" }}>
-                📅 <strong style={{ color: "#8b7cf6" }}>{c.hoveredDay.date}</strong> (Day {c.hoveredDay.day}):{" "}
+              <span style={{ color: "var(--text-main)" }}>
+                📅 <strong style={{ color: "var(--accent-secondary)" }}>{c.hoveredDay.date}</strong> (Day {c.hoveredDay.day}):{" "}
                 <strong>{c.formatSeconds(c.hoveredDay.total_seconds)}</strong>
               </span>
             ) : (
               <span>
                 Daily listening activity across {c.activeMonthName} ({c.monthlyGraph.length} days)
                 {c.stats?.history_started_at ? (
-                  <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.45)", marginLeft: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--overlay-45)", marginLeft: "8px" }}>
                     • Detailed timeline history available since {new Date(c.stats.history_started_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 ) : null}
@@ -200,10 +200,10 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
 
           <div style={{ display: "flex", gap: "16px" }}>
             <span>
-              Active days: <strong style={{ color: "#e8d8c9" }}>{c.daysWithMusic}</strong>/{c.monthlyGraph.length}
+              Active days: <strong style={{ color: "var(--text-main)" }}>{c.daysWithMusic}</strong>/{c.monthlyGraph.length}
             </span>
             <span>
-              Daily avg: <strong style={{ color: "#e8d8c9" }}>{c.formatSeconds(c.dailyAvgSecs)}</strong>
+              Daily avg: <strong style={{ color: "var(--text-main)" }}>{c.formatSeconds(c.dailyAvgSecs)}</strong>
             </span>
           </div>
         </div>
@@ -217,7 +217,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             height: "130px",
             width: "100%",
             paddingBottom: "8px",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            borderBottom: "1px solid var(--overlay-10)",
           }}
         >
           {c.monthlyGraph.map((point) => {
@@ -249,16 +249,16 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                     style={{
                       position: "absolute",
                       bottom: "calc(100% + 8px)",
-                      background: "rgba(24, 24, 27, 0.95)",
-                      border: "1px solid rgba(139, 124, 246, 0.4)",
-                      color: "#e8d8c9",
+                      background: "var(--palette-gray-900-a95)",
+                      border: "1px solid var(--accent-secondary-a40)",
+                      color: "var(--text-main)",
                       padding: "6px 10px",
                       borderRadius: "8px",
                       fontSize: "11px",
                       fontWeight: 600,
                       whiteSpace: "nowrap",
                       zIndex: 20,
-                      boxShadow: "0 8px 20px rgba(0, 0, 0, 0.5)",
+                      boxShadow: "0 8px 20px var(--shade-50)",
                       pointerEvents: "none",
                     }}
                   >
@@ -293,7 +293,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
             justifyContent: "space-between",
             paddingTop: "6px",
             fontSize: "11px",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             fontWeight: 600,
           }}
         >

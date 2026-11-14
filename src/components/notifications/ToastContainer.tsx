@@ -24,18 +24,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const isSuccess = toast.type === "success";
 
   const borderColor = isError
-    ? "rgba(239, 68, 68, 0.4)"
+    ? "var(--danger-a40)"
     : isSuccess
-    ? "rgba(139, 124, 246, 0.4)"
-    : "rgba(243, 112, 30, 0.4)";
+    ? "var(--accent-secondary-a40)"
+    : "var(--accent-a40)";
 
-  const accentColor = isError ? "#ef4444" : isSuccess ? "var(--accent-secondary)" : "var(--accent)";
+  const accentColor = isError ? "var(--danger)" : isSuccess ? "var(--accent-secondary)" : "var(--accent)";
 
   return (
     <div
       style={{
         pointerEvents: "auto",
-        backgroundColor: "rgba(22, 24, 34, 0.98)",
+        backgroundColor: "var(--palette-slate-900-a95)",
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${accentColor}`,
         borderRadius: "10px",
@@ -43,7 +43,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         display: "flex",
         alignItems: "flex-start",
         gap: "12px",
-        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6)",
+        boxShadow: "0 10px 30px var(--shade-60)",
         animation: "toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         transition: "transform 0.2s ease, opacity 0.2s ease",
         position: "relative",
@@ -52,7 +52,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     >
       <div style={{ flexShrink: 0, marginTop: "2px" }}>
         {isError ? (
-          <AlertTriangle size={18} color="#ef4444" />
+          <AlertTriangle size={18} color="var(--danger)" />
         ) : isSuccess ? (
           <CheckCircle2 size={18} color="var(--accent-secondary)" />
         ) : (
@@ -65,7 +65,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           style={{
             fontSize: "0.88rem",
             fontWeight: 700,
-            color: "#e8d8c9",
+            color: "var(--text-main)",
             marginBottom: "2px",
           }}
         >
@@ -98,7 +98,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           marginTop: "2px",
           transition: "color 0.15s ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "#e8d8c9")}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-main)")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
         title="Dismiss notification"
       >

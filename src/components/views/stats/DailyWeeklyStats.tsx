@@ -14,8 +14,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
       {/* Daily Music Time Card */}
       <div
         style={{
-          background: "linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%)",
-          border: "1px solid rgba(243, 112, 30, 0.2)",
+          background: "linear-gradient(135deg, var(--palette-indigo-800-a60) 0%, var(--palette-gray-900-a80) 100%)",
+          border: "1px solid var(--accent-a20)",
           borderRadius: "18px",
           padding: "20px 24px",
           position: "relative",
@@ -34,7 +34,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              color: "rgba(255, 255, 255, 0.6)",
+              color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
@@ -46,23 +46,23 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
               width: "36px",
               height: "36px",
               borderRadius: "10px",
-              background: "rgba(236, 72, 153, 0.15)",
+              background: "var(--palette-pink-400-a15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#f472b6",
+              color: "var(--palette-pink-300)",
             }}
           >
             <Flame size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
+        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.daily_seconds || 0)}
         </div>
         <div
           style={{
             fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             marginTop: "4px",
           }}
         >
@@ -73,8 +73,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
       {/* Weekly Music Time Card */}
       <div
         style={{
-          background: "linear-gradient(135deg, rgba(20, 35, 60, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%)",
-          border: "1px solid rgba(59, 130, 246, 0.2)",
+          background: "linear-gradient(135deg, var(--palette-blue-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
+          border: "1px solid var(--palette-blue-400-a20)",
           borderRadius: "18px",
           padding: "20px 24px",
         }}
@@ -91,7 +91,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              color: "rgba(255, 255, 255, 0.6)",
+              color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
@@ -103,23 +103,23 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
               width: "36px",
               height: "36px",
               borderRadius: "10px",
-              background: "rgba(59, 130, 246, 0.15)",
+              background: "var(--palette-blue-400-a15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#60a5fa",
+              color: "var(--palette-blue-300)",
             }}
           >
             <Calendar size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
+        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.weekly_seconds || 0)}
         </div>
         <div
           style={{
             fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             marginTop: "4px",
           }}
         >
@@ -130,8 +130,8 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
       {/* Lifetime Listening Card */}
       <div
         style={{
-          background: "linear-gradient(135deg, rgba(40, 25, 60, 0.6) 0%, rgba(24, 24, 27, 0.8) 100%)",
-          border: "1px solid rgba(168, 85, 247, 0.25)",
+          background: "linear-gradient(135deg, var(--palette-violet-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
+          border: "1px solid var(--palette-violet-350-a25)",
           borderRadius: "18px",
           padding: "20px 24px",
         }}
@@ -148,7 +148,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              color: "rgba(255, 255, 255, 0.6)",
+              color: "var(--overlay-60)",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
@@ -160,23 +160,23 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
               width: "36px",
               height: "36px",
               borderRadius: "10px",
-              background: "rgba(168, 85, 247, 0.15)",
+              background: "var(--palette-violet-350-a15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#c084fc",
+              color: "var(--palette-violet-250)",
             }}
           >
             <Award size={20} />
           </div>
         </div>
-        <div style={{ fontSize: "32px", fontWeight: 800, color: "#e8d8c9" }}>
+        <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--text-main)" }}>
           {c.formatSeconds(c.stats?.lifetime_seconds || 0)}
         </div>
         <div
           style={{
             fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             marginTop: "4px",
           }}
         >

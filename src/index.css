@@ -62,9 +62,9 @@ button, input, select, textarea { font-family: inherit; }
 .app-startup-ring {
   position: absolute;
   inset: 0;
-  border: 1px solid oklch(58% 0.012 65 / 0.22);
+  border: 1px solid var(--palette-gray-400-a20);
   border-top-color: var(--startup-ink);
-  border-right-color: oklch(75% 0.018 65 / 0.55);
+  border-right-color: var(--palette-sand-250-a55);
   border-radius: 50%;
   animation: startup-ring 2800ms linear infinite;
 }
@@ -99,8 +99,8 @@ button, input, select, textarea { font-family: inherit; }
 .app-startup-frame {
   position: absolute;
   inset: 0;
-  border: 2px solid oklch(48% 0.004 55);
-  box-shadow: 6px 6px 0 oklch(8% 0.004 55);
+  border: 2px solid var(--palette-gray-500);
+  box-shadow: 6px 6px 0 var(--palette-warmgray-900);
 }
 .app-startup-frame::before,
 .app-startup-frame::after {
@@ -128,7 +128,7 @@ button, input, select, textarea { font-family: inherit; }
   width: 164px;
   height: 4px;
   overflow: hidden;
-  background: oklch(33% 0.004 55);
+  background: var(--palette-gray-650);
 }
 .app-startup-rail > span {
   display: block;
@@ -170,16 +170,16 @@ button, input, select, textarea { font-family: inherit; }
 }
 .app-startup-retry {
   padding: 10px 18px;
-  border: 1px solid #777;
-  background: #222;
-  color: #eee;
+  border: 1px solid var(--palette-gray-550);
+  background: var(--palette-gray-850);
+  color: var(--palette-gray-50);
   cursor: pointer;
 }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: 3px;
 }
-::selection { background: #784721; color: #fff4e8; }
+::selection { background: var(--palette-orange-700); color: var(--palette-orange-50); }
 ::-webkit-scrollbar { width: 7px; height: 7px; }
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -208,7 +208,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   flex-direction: column;
   padding: 24px 14px 0;
-  background-image: linear-gradient(140deg, #30261c55, transparent 45%);
+  background-image: linear-gradient(140deg, var(--palette-taupe-850-a35), transparent 45%);
 }
 
 .kage-logo { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; }
@@ -236,7 +236,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .nav-button.active {
-  background-color: #302a23;
+  background-color: var(--palette-taupe-850);
   color: var(--text-main);
   box-shadow: inset 0 0 0 1px var(--border-light);
 }
@@ -274,15 +274,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   pointer-events: none;
   background:
     linear-gradient(180deg, var(--bg-main) 0%, transparent 18%, transparent 60%, var(--bg-main) 100%),
-    linear-gradient(90deg, var(--bg-main) 0%, #1c1c1ced 20%, #1c1c1c55 52%, #1c1c1c22 80%, #1c1c1c99 100%),
+    linear-gradient(90deg, var(--bg-main) 0%, var(--palette-gray-900-a95) 20%, var(--palette-gray-900-a35) 52%, var(--palette-gray-900-a12) 80%, var(--palette-gray-900-a60) 100%),
     url('/kage-landscape.svg') center / cover;
 }
 .discovery-hero-copy { padding: 30px 0; }
 .hero-eyebrow { font-size: 9px; letter-spacing: 2.8px; color: var(--text-muted); margin-bottom: 14px; }
 .discovery-hero h1 { font-size: clamp(30px, 3.4vw, 48px); letter-spacing: -1.6px; line-height: 1.06; font-weight: 750; }
 .discovery-hero h1 em { color: var(--accent); font-style: normal; }
-.discovery-hero-copy > p:last-child { font-size: 12px; line-height: 1.6; margin-top: 16px; color: #c1b09f; }
-.hero-signature { align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 25px 0 25px 25px; color: #d4ae86; }
+.discovery-hero-copy > p:last-child { font-size: 12px; line-height: 1.6; margin-top: 16px; color: var(--palette-taupe-300); }
+.hero-signature { align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 25px 0 25px 25px; color: var(--palette-orange-300); }
 .hero-signature span { writing-mode: vertical-rl; font-family: 'Noto Sans JP', serif; font-size: 35px; letter-spacing: 9px; }
 .hero-signature small { font-size: 7px; line-height: 1.8; letter-spacing: 1.5px; }
 
@@ -346,7 +346,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-transform: uppercase;
 }
 
-.badge-exact { background-color: rgba(139, 124, 246, 0.15); color: var(--accent-secondary); }
+.badge-exact { background-color: var(--accent-secondary-a15); color: var(--accent-secondary); }
 
 .btn {
   display: inline-flex;
@@ -363,7 +363,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .btn-primary {
   background-color: var(--accent);
-  color: #21150d;
+  color: var(--palette-orange-900);
 }
 .btn-primary:hover { background-color: var(--accent-hover); }
 
@@ -385,8 +385,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 0 24px;
   z-index: 50;
   flex-shrink: 0;
-  background-image: linear-gradient(110deg, #352a203d, transparent 60%);
-  box-shadow: 0 -6px 24px #00000020;
+  background-image: linear-gradient(110deg, var(--palette-taupe-850-a25), transparent 60%);
+  box-shadow: 0 -6px 24px var(--shade-12);
 }
 
 .player-track-info {
@@ -476,7 +476,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .play-pause-btn {
   background-color: var(--text-main);
-  color: #1a1714;
+  color: var(--bg-main);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -541,7 +541,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: var(--shade-75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -556,7 +556,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   padding: 32px;
   max-width: 520px;
   width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 40px var(--shade-50);
 }
 
 /* Settings, Wishlist & Downloads Layout Classes */
@@ -568,7 +568,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   margin-bottom: 20px;
 }
 
-.global-search { box-shadow: none !important; background-color: #201c18 !important; }
+.global-search { box-shadow: none !important; background-color: var(--palette-taupe-900) !important; }
 .global-search form > div { border-radius: 24px !important; }
 .global-search input { font-size: 13px !important; }
 .global-search form > div:focus-within { border-color: var(--accent-light) !important; }
@@ -622,7 +622,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .tab-btn.active {
   background-color: var(--bg-card);
-  color: #e8d8c9;
+  color: var(--text-main);
   border: 1px solid var(--border-light);
 }
 
@@ -655,7 +655,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .discovery-eq-bar {
   width: 3px;
-  background-color: #e8d8c9;
+  background-color: var(--text-main);
   height: 16px;
   border-radius: 2px;
   transform-origin: bottom;
@@ -704,8 +704,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .scroll-arrow-btn:hover {
   background: var(--bg-card-hover);
-  color: #e8d8c9;
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  border-color: var(--overlay-20);
 }
 
 @keyframes spin {
@@ -730,12 +730,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex-direction: column;
   cursor: pointer;
   border: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px var(--shade-15);
 }
 
 .album-card:hover {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
-  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 10px 24px var(--shade-40);
+  border-color: var(--overlay-20);
 }
 
 @keyframes toastSlideIn {

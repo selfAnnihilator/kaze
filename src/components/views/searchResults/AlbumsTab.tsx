@@ -37,7 +37,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   aspectRatio: "1/1",
                   borderRadius: "8px",
                   overflow: "hidden",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backgroundColor: "var(--overlay-5)",
                   marginBottom: "10px",
                 }}
               >
@@ -47,7 +47,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontWeight: 700,
                   fontSize: "0.92rem",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",

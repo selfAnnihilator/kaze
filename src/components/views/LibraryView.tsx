@@ -106,7 +106,7 @@ const LibraryRow = ({
         padding: "0 14px",
         fontSize: "0.9rem",
         color: "var(--text-muted)",
-        backgroundColor: isLoading ? "rgba(243, 112, 30, 0.12)" : undefined,
+        backgroundColor: isLoading ? "var(--accent-a12)" : undefined,
         borderBottom: "1px solid var(--border)",
         boxSizing: "border-box",
       }}
@@ -228,9 +228,9 @@ const LibraryRow = ({
               onLikeTrack(track.id);
             }
           }}
-          style={{ color: isLiked ? "#ef4444" : "var(--text-muted)" }}
+          style={{ color: isLiked ? "var(--danger)" : "var(--text-muted)" }}
         >
-          <Heart size={16} fill={isLiked ? "#ef4444" : "none"} />
+          <Heart size={16} fill={isLiked ? "var(--danger)" : "none"} />
         </button>
       </div>
     </div>
@@ -374,7 +374,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                   background: "none",
                   border: "none",
                   outline: "none",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   fontSize: "0.88rem",
                   width: "100%",
                 }}

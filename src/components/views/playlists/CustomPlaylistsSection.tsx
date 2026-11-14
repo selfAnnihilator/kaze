@@ -206,8 +206,8 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                               alignItems: "center",
                               justifyContent: "center",
                               borderRadius: "50%",
-                              background: "rgba(0, 0, 0, 0.68)",
-                              color: "#e8d8c9",
+                              background: "var(--shade-70)",
+                              color: "var(--text-main)",
                               cursor: "pointer",
                             }}
                           >
@@ -223,7 +223,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                               borderRadius: "8px",
                               border: "1px solid var(--border)",
                               background: "var(--bg-sidebar)",
-                              boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+                              boxShadow: "0 12px 30px var(--shade-45)",
                             }}
                           >
                             {pl.name === "Liked Songs" ? (
@@ -263,7 +263,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                                     width: "100%",
                                     justifyContent: "flex-start",
                                     border: 0,
-                                    color: "var(--danger, #ef4444)",
+                                    color: "var(--danger, var(--danger))",
                                   }}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -290,13 +290,13 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                               alignItems: "center",
                               justifyContent: "center",
                               background:
-                                "linear-gradient(145deg, rgba(236,72,153,0.32), rgba(139,124,246,0.18))",
+                                "linear-gradient(145deg, var(--palette-pink-400-a30), var(--accent-secondary-a20))",
                             }}
                           >
                             <Heart
                               size={82}
-                              color="#f472b6"
-                              fill="#ec4899"
+                              color="var(--palette-pink-300)"
+                              fill="var(--palette-pink-400)"
                               strokeWidth={1.5}
                             />
                           </div>

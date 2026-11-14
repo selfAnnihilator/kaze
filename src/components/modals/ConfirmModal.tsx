@@ -27,19 +27,19 @@ export function ConfirmModal() {
           width: "92%",
           padding: "24px",
           borderRadius: "14px",
-          backgroundColor: "var(--bg-card, #1a1714)",
-          border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
-          boxShadow: "0 24px 50px rgba(0, 0, 0, 0.65)",
+          backgroundColor: "var(--bg-card, var(--bg-main))",
+          border: "1px solid var(--border, var(--text-main-a15))",
+          boxShadow: "0 24px 50px var(--shade-65)",
         }}
         onClick={event => event.stopPropagation()}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-          <AlertTriangle size={20} color="var(--accent-secondary, #f3701e)" />
-          <h3 id="confirm-modal-title" style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#e8d8c9" }}>
+          <AlertTriangle size={20} color="var(--accent-secondary, var(--accent))" />
+          <h3 id="confirm-modal-title" style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "var(--text-main)" }}>
             {request.title}
           </h3>
         </div>
-        <p id="confirm-modal-message" style={{ fontSize: "0.88rem", color: "var(--text-dim, #8c8273)", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+        <p id="confirm-modal-message" style={{ fontSize: "0.88rem", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 20px 0", lineHeight: 1.5 }}>
           {request.message}
         </p>
         <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>

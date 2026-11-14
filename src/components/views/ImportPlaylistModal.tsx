@@ -201,9 +201,9 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
             style={{
               padding: "12px 16px",
               borderRadius: "8px",
-              backgroundColor: "rgba(239, 68, 68, 0.12)",
+              backgroundColor: "var(--danger-a12)",
               border: "1px solid var(--danger)",
-              color: "#fca5a5",
+              color: "var(--palette-red-200)",
               fontSize: "0.85rem",
               marginBottom: "16px",
               display: "flex",
@@ -245,7 +245,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   style={{
                     fontWeight: 700,
                     fontSize: "1.1rem",
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                   }}
                 >
                   {jiosaavnResult.title}
@@ -268,7 +268,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   </span>
                   <span
                     style={{
-                      color: "var(--accent-secondary, #f3701e)",
+                      color: "var(--accent-secondary, var(--accent))",
                       fontWeight: 600,
                     }}
                   >
@@ -358,8 +358,8 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                   padding: "8px 32px 8px 34px",
                   borderRadius: "8px",
                   border: "1px solid var(--border)",
-                  backgroundColor: "rgba(0, 0, 0, 0.25)",
-                  color: "#e8d8c9",
+                  backgroundColor: "var(--shade-25)",
+                  color: "var(--text-main)",
                   fontSize: "0.82rem",
                   outline: "none",
                 }}
@@ -414,8 +414,8 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                         <span
                           className="badge"
                           style={{
-                            backgroundColor: "rgba(243, 112, 30, 0.15)",
-                            color: "var(--accent-secondary, #f3701e)",
+                            backgroundColor: "var(--accent-a15)",
+                            color: "var(--accent-secondary, var(--accent))",
                           }}
                         >
                           Online

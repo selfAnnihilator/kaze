@@ -43,7 +43,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
         backgroundColor: "var(--bg-card)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
+        boxShadow: "0 4px 20px var(--shade-25)",
       }}
     >
       <form
@@ -84,7 +84,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
               background: "transparent",
               border: "none",
               outline: "none",
-              color: "#e8d8c9",
+              color: "var(--text-main)",
               fontSize: "0.95rem",
               width: "100%",
             }}

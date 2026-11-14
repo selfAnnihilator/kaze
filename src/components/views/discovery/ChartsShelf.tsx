@@ -7,7 +7,7 @@ import type { DiscoveryViewContext } from "./context";
 export function ChartsShelf({ c }: { c: DiscoveryViewContext }) {
   return (
     <div>
-      <ShelfHeader icon={<TrendingUp size={18} color="#f3701e" />} title="Top Charts" subtitle="Current world and country top-song charts" onScroll={(d) => c.handleScroll(c.chartsScrollRef, d)} />
+      <ShelfHeader icon={<TrendingUp size={18} color="var(--accent)" />} title="Top Charts" subtitle="Current world and country top-song charts" onScroll={(d) => c.handleScroll(c.chartsScrollRef, d)} />
 
       <div ref={c.chartsScrollRef} className="horizontal-scroll-row">
         {c.topCharts.map((chart) => (

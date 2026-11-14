@@ -86,8 +86,8 @@ export function useCollections({
           tag: "PLAYLIST",
           playlistId: pl.id,
           subtitle: `${pl.track_count || 0} tracks`,
-          bgGradient: "linear-gradient(135deg, #4f46e5 0%, #1e1b4b 100%)",
-          accentColor: "#6366f1",
+          bgGradient: "linear-gradient(135deg, var(--palette-indigo-400) 0%, var(--palette-indigo-800) 100%)",
+          accentColor: "var(--palette-blue-350)",
         });
       }
     }

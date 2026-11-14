@@ -17,7 +17,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.72)",
+        backgroundColor: "var(--shade-70)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -32,9 +32,9 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           width: "90%",
           padding: "24px",
           borderRadius: "14px",
-          backgroundColor: "var(--bg-card, #1a1714)",
-          border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
-          boxShadow: "0 20px 48px rgba(0, 0, 0, 0.65)",
+          backgroundColor: "var(--bg-card, var(--bg-main))",
+          border: "1px solid var(--border, var(--text-main-a15))",
+          boxShadow: "0 20px 48px var(--shade-65)",
         }}
       >
         <div
@@ -50,14 +50,14 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           >
             <Sparkles
               size={18}
-              color="var(--accent-secondary, #f3701e)"
+              color="var(--accent-secondary, var(--accent))"
             />
             <h3
               style={{
                 fontSize: "1.1rem",
                 fontWeight: 700,
                 margin: 0,
-                color: "var(--text-main, #e8d8c9)",
+                color: "var(--text-main, var(--text-main))",
               }}
             >
               Why This Track?
@@ -82,7 +82,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
             style={{
               fontSize: "0.95rem",
               fontWeight: 600,
-              color: "var(--text-main, #e8d8c9)",
+              color: "var(--text-main, var(--text-main))",
             }}
           >
             {explained.title}
@@ -90,7 +90,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           <div
             style={{
               fontSize: "0.82rem",
-              color: "var(--text-dim, #948779)",
+              color: "var(--text-dim, var(--text-dim))",
             }}
           >
             {explained.artist}
@@ -101,10 +101,10 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           style={{
             padding: "12px 14px",
             borderRadius: "8px",
-            backgroundColor: "rgba(243, 112, 30, 0.08)",
-            border: "1px solid rgba(243, 112, 30, 0.2)",
+            backgroundColor: "var(--accent-a8)",
+            border: "1px solid var(--accent-a20)",
             fontSize: "0.88rem",
-            color: "var(--accent-light, #ff9b60)",
+            color: "var(--accent-light, var(--accent-light))",
             lineHeight: 1.45,
           }}
         >

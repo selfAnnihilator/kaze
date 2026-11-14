@@ -28,7 +28,7 @@ export const MixCard: React.FC<{
       style={{
         backgroundColor: "var(--bg-card)",
         border: isHovered
-          ? "1px solid rgba(255, 255, 255, 0.22)"
+          ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
         borderRadius: "12px",
         padding: "10px",
@@ -38,8 +38,8 @@ export const MixCard: React.FC<{
         position: "relative",
         transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isHovered
-          ? "0 10px 24px rgba(0, 0, 0, 0.4)"
-          : "0 2px 8px rgba(0, 0, 0, 0.15)",
+          ? "0 10px 24px var(--shade-40)"
+          : "0 2px 8px var(--shade-15)",
         width: "100%",
         height: "100%",
       }}
@@ -86,11 +86,11 @@ export const MixCard: React.FC<{
             borderRadius: "50%",
             backgroundColor: "var(--accent)",
             border: "none",
-            color: "#e8d8c9",
+            color: "var(--text-main)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.6)",
+            boxShadow: "0 4px 14px var(--shade-60)",
             cursor: "pointer",
             opacity: isHovered ? 1 : 0,
             transform: isHovered ? "scale(1)" : "scale(0.85)",
@@ -100,7 +100,7 @@ export const MixCard: React.FC<{
           }}
           title={`Play ${mix.name}`}
         >
-          <Play size={17} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
+          <Play size={17} fill="var(--text-main)" style={{ marginLeft: "2px" }} />
         </button>
       </div>
 
@@ -109,7 +109,7 @@ export const MixCard: React.FC<{
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: "#e8d8c9",
+          color: "var(--text-main)",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",

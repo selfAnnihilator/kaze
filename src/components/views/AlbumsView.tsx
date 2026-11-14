@@ -120,7 +120,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
             width: "100%",
             aspectRatio: "1/1",
             borderRadius: "8px",
-            backgroundColor: "rgba(255, 255, 255, 0.04)",
+            backgroundColor: "var(--overlay-5)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -139,7 +139,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
               alignItems: "center",
               justifyContent: "center",
               background:
-                "linear-gradient(135deg, rgba(243, 112, 30, 0.15), rgba(232, 216, 201, 0.1))",
+                "linear-gradient(135deg, var(--accent-a15), var(--text-main-a10))",
             }}
           >
             <Disc size={44} color="var(--accent-light)" />

@@ -20,7 +20,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   style={{
                     fontSize: "1.2rem",
                     fontWeight: 700,
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                     marginBottom: "14px",
                   }}
                 >
@@ -31,7 +31,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   style={{
                     backgroundColor:
                       c.isTrackPlaying(topResult) || c.isTrackLoading(topResult)
-                        ? "rgba(139, 124, 246, 0.14)"
+                        ? "var(--accent-secondary-a15)"
                         : "var(--bg-card)",
                     border:
                       c.isTrackPlaying(topResult) || c.isTrackLoading(topResult)
@@ -45,7 +45,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                     gap: "12px",
                     position: "relative",
                     transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                    boxShadow: "0 6px 20px rgba(0, 0, 0, 0.25)",
+                    boxShadow: "0 6px 20px var(--shade-25)",
                   }}
                 >
                   {/* Top Result Artwork */}
@@ -55,13 +55,13 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       height: "96px",
                       borderRadius: "8px",
                       overflow: "hidden",
-                      backgroundColor: "rgba(255, 255, 255, 0.05)",
-                      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
+                      backgroundColor: "var(--overlay-5)",
+                      boxShadow: "0 8px 24px var(--shade-40)",
                       position: "relative",
                       flexShrink: 0,
                     }}
                   >
-                    <CoverOrDisc src={topResult.cover_art_url} alt={topResult.title} iconSize={40} background="linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(232, 216, 201, 0.15))" />
+                    <CoverOrDisc src={topResult.cover_art_url} alt={topResult.title} iconSize={40} background="linear-gradient(135deg, var(--accent-a20), var(--text-main-a15))" />
                   </div>
 
                   {/* Title */}
@@ -71,7 +71,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       fontWeight: 700,
                       color: c.isTrackPlaying(topResult)
                         ? "var(--accent-secondary)"
-                        : "#e8d8c9",
+                        : "var(--text-main)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -96,8 +96,8 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       style={{
                         padding: "2px 8px",
                         borderRadius: "10px",
-                        backgroundColor: "rgba(255, 255, 255, 0.1)",
-                        color: "#e8d8c9",
+                        backgroundColor: "var(--overlay-10)",
+                        color: "var(--text-main)",
                         fontSize: "0.72rem",
                         fontWeight: 600,
                       }}
@@ -153,9 +153,9 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                             width: "34px",
                             height: "34px",
                             borderRadius: "50%",
-                            border: "1px solid rgba(255, 255, 255, 0.15)",
-                            backgroundColor: "rgba(255, 255, 255, 0.06)",
-                            color: "#e8d8c9",
+                            border: "1px solid var(--overlay-15)",
+                            backgroundColor: "var(--overlay-5)",
+                            color: "var(--text-main)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -184,12 +184,12 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         borderRadius: "50%",
                         backgroundColor: "var(--accent-secondary)",
                         border: "none",
-                        color: "#e8d8c9",
+                        color: "var(--text-main)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         cursor: "pointer",
-                        boxShadow: "0 8px 18px rgba(139, 124, 246, 0.35)",
+                        boxShadow: "0 8px 18px var(--accent-secondary-a35)",
                         transition:
                           "transform 0.15s ease",
                       }}
@@ -201,17 +201,17 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                           style={{
                             width: "18px",
                             height: "18px",
-                            border: "2px solid #e8d8c9",
+                            border: "2px solid var(--text-main)",
                             borderTopColor: "transparent",
                             borderRadius: "50%",
                           }}
                         />
                       ) : c.isTrackPlaying(topResult) ? (
-                        <Pause size={22} fill="#e8d8c9" />
+                        <Pause size={22} fill="var(--text-main)" />
                       ) : (
                         <Play
                           size={22}
-                          fill="#e8d8c9"
+                          fill="var(--text-main)"
                           style={{ marginLeft: "2px" }}
                         />
                       )}

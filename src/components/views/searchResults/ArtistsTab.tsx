@@ -39,7 +39,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   borderRadius: "50%",
                   overflow: "hidden",
                   margin: "0 auto 12px auto",
-                  backgroundColor: "rgba(243, 112, 30, 0.15)",
+                  backgroundColor: "var(--accent-a15)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -63,7 +63,7 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontWeight: 700,
                   fontSize: "0.95rem",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",

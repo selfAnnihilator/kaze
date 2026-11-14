@@ -35,7 +35,7 @@ export function ShelfHeader({ icon, title, subtitle, onScroll, arrowGap = "6px",
       <div>
         <h2
           id={headingId}
-          style={{ fontSize: "1.18rem", fontWeight: 700, color: "#e8d8c9", display: "flex", alignItems: "center", gap: "8px" }}
+          style={{ fontSize: "1.18rem", fontWeight: 700, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}
         >
           {icon}
           <span>{title}</span>

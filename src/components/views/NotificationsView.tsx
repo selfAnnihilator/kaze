@@ -71,7 +71,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
             style={{
               fontSize: "1.75rem",
               fontWeight: 800,
-              color: "#e8d8c9",
+              color: "var(--text-main)",
               display: "flex",
               alignItems: "center",
               gap: "10px",
@@ -118,8 +118,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: "#ef4444",
-                borderColor: "rgba(239, 68, 68, 0.3)",
+                color: "var(--danger)",
+                borderColor: "var(--danger-a30)",
               }}
               title="Clear all notifications"
             >
@@ -215,10 +215,10 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               const isSuccess = item.type === "success";
 
               const stateBorder = isError
-                ? "1px solid rgba(239, 68, 68, 0.45)"
+                ? "1px solid var(--danger-a45)"
                 : isSuccess
-                  ? "1px solid rgba(139, 124, 246, 0.45)"
-                  : "1px solid rgba(243, 112, 30, 0.45)";
+                  ? "1px solid var(--accent-secondary-a45)"
+                  : "1px solid var(--accent-a45)";
 
               return (
                 <div
@@ -234,7 +234,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                     border: stateBorder,
                     backgroundColor: item.read
                       ? "var(--bg-card)"
-                      : "rgba(243, 112, 30, 0.05)",
+                      : "var(--accent-a5)",
                     cursor: "pointer",
                   }}
                   onClick={() => onMarkAsRead && onMarkAsRead(item.id)}
@@ -249,7 +249,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                   >
                     <div style={{ marginTop: "2px", flexShrink: 0 }}>
                       {isError ? (
-                        <AlertTriangle size={20} color="#ef4444" />
+                        <AlertTriangle size={20} color="var(--danger)" />
                       ) : isSuccess ? (
                         <CheckCircle2
                           size={20}
@@ -267,7 +267,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                         style={{
                           fontSize: "0.95rem",
                           fontWeight: 700,
-                          color: "#e8d8c9",
+                          color: "var(--text-main)",
                           display: "flex",
                           alignItems: "center",
                           gap: "8px",
@@ -327,9 +327,9 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       transition: "transform 0.15s ease, opacity 0.15s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "#ef4444";
+                      e.currentTarget.style.color = "var(--danger)";
                       e.currentTarget.style.backgroundColor =
-                        "rgba(239, 68, 68, 0.1)";
+                        "var(--danger-a10)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.color = "var(--text-dim)";

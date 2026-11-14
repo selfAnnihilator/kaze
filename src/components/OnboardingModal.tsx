@@ -54,7 +54,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               padding: "14px",
               borderRadius: "8px",
               border: useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
-              backgroundColor: useDefault ? "rgba(243, 112, 30, 0.08)" : "var(--bg-card)",
+              backgroundColor: useDefault ? "var(--accent-a8)" : "var(--bg-card)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -62,7 +62,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Folder size={20} color={useDefault ? "var(--accent-light)" : "#9ca3af"} />
+              <Folder size={20} color={useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>Use Default System Music Directory</div>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", wordBreak: "break-all" }}>
@@ -80,13 +80,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               padding: "14px",
               borderRadius: "8px",
               border: !useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
-              backgroundColor: !useDefault ? "rgba(243, 112, 30, 0.08)" : "var(--bg-card)",
+              backgroundColor: !useDefault ? "var(--accent-a8)" : "var(--bg-card)",
               cursor: "pointer",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <Folder size={20} color={!useDefault ? "var(--accent-light)" : "#9ca3af"} />
+                <Folder size={20} color={!useDefault ? "var(--accent-light)" : "var(--palette-gray-350)"} />
                 <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Choose Custom Music Directory</span>
               </div>
               {!useDefault && <Check size={18} color="var(--accent)" />}
@@ -104,7 +104,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   borderRadius: "6px",
                   backgroundColor: "var(--bg-sidebar)",
                   border: "1px solid var(--border-light)",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   fontSize: "0.88rem",
                   marginTop: "8px",
                 }}

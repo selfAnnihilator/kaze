@@ -10,7 +10,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: "12px",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.07)",
+        borderBottom: "1px solid var(--overlay-8)",
         paddingBottom: "14px",
       }}
     >
@@ -34,8 +34,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             cursor: "pointer",
             border: "none",
             backgroundColor:
-              c.activeTab === "all" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
-            color: c.activeTab === "all" ? "#1a1714" : "#e8d8c9",
+              c.activeTab === "all" ? "var(--text-main)" : "var(--overlay-8)",
+            color: c.activeTab === "all" ? "var(--bg-main)" : "var(--text-main)",
             transition: "opacity 0.15s ease",
           }}
         >
@@ -52,8 +52,8 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             cursor: "pointer",
             border: "none",
             backgroundColor:
-              c.activeTab === "songs" ? "#e8d8c9" : "rgba(255, 255, 255, 0.08)",
-            color: c.activeTab === "songs" ? "#1a1714" : "#e8d8c9",
+              c.activeTab === "songs" ? "var(--text-main)" : "var(--overlay-8)",
+            color: c.activeTab === "songs" ? "var(--bg-main)" : "var(--text-main)",
             transition: "opacity 0.15s ease",
           }}
         >
@@ -72,9 +72,9 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
               border: "none",
               backgroundColor:
                 c.activeTab === "artists"
-                  ? "#e8d8c9"
-                  : "rgba(255, 255, 255, 0.08)",
-              color: c.activeTab === "artists" ? "#1a1714" : "#e8d8c9",
+                  ? "var(--text-main)"
+                  : "var(--overlay-8)",
+              color: c.activeTab === "artists" ? "var(--bg-main)" : "var(--text-main)",
               transition: "opacity 0.15s ease",
             }}
           >
@@ -94,9 +94,9 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
               border: "none",
               backgroundColor:
                 c.activeTab === "albums"
-                  ? "#e8d8c9"
-                  : "rgba(255, 255, 255, 0.08)",
-              color: c.activeTab === "albums" ? "#1a1714" : "#e8d8c9",
+                  ? "var(--text-main)"
+                  : "var(--overlay-8)",
+              color: c.activeTab === "albums" ? "var(--bg-main)" : "var(--text-main)",
               transition: "opacity 0.15s ease",
             }}
           >
@@ -116,9 +116,9 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
               border: "none",
               backgroundColor:
                 c.activeTab === "playlists"
-                  ? "#e8d8c9"
-                  : "rgba(255, 255, 255, 0.08)",
-              color: c.activeTab === "playlists" ? "#1a1714" : "#e8d8c9",
+                  ? "var(--text-main)"
+                  : "var(--overlay-8)",
+              color: c.activeTab === "playlists" ? "var(--bg-main)" : "var(--text-main)",
               transition: "opacity 0.15s ease",
             }}
           >
@@ -131,7 +131,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <span style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
           Search results for &ldquo;
-          <span style={{ color: "#e8d8c9" }}>{c.searchQuery}</span>&rdquo;
+          <span style={{ color: "var(--text-main)" }}>{c.searchQuery}</span>&rdquo;
         </span>
         <button
           type="button"

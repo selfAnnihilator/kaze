@@ -342,7 +342,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   width: 300px;
   transform: rotate(7deg);
   z-index: -1;
-  box-shadow: 0 24px 55px #08060488;
+  box-shadow: 0 24px 55px var(--palette-taupe-950-a55);
 }
 .home-flow-content {
   position: relative;
@@ -632,7 +632,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   z-index: 2;
   width: 310px;
   animation: sleeve-arrives var(--ui-motion) ease-out;
-  box-shadow: 0 28px 65px #08060499;
+  box-shadow: 0 28px 65px var(--palette-taupe-950-a60);
 }
 .stage-past,
 .stage-future {

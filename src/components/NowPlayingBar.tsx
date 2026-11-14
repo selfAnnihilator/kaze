@@ -129,7 +129,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               width: "48px",
               height: "48px",
               borderRadius: "6px",
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              backgroundColor: "var(--overlay-5)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -171,7 +171,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                   cursor: onOpenOrigin ? "pointer" : "default",
                   textDecoration: onOpenOrigin ? "underline" : "none",
                   textDecorationColor: onOpenOrigin
-                    ? "rgba(255, 255, 255, 0.4)"
+                    ? "var(--overlay-40)"
                     : "transparent",
                   transition: "color 0.15s ease",
                   display: "block",
@@ -243,7 +243,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                 style={{
                   color:
                     currentTrack.manual_like === 1 || isOnlineLiked
-                      ? "#ef4444"
+                      ? "var(--danger)"
                       : "var(--text-muted)",
                 }}
               >
@@ -251,7 +251,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                   size={16}
                   fill={
                     currentTrack.manual_like === 1 || isOnlineLiked
-                      ? "#ef4444"
+                      ? "var(--danger)"
                       : "none"
                   }
                 />
@@ -262,7 +262,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                   title="Why this track? (Flow recommendation)"
                   aria-label="Why this track?"
                   onClick={onInspectWhyTrack}
-                  style={{ color: "var(--accent-secondary, #f3701e)" }}
+                  style={{ color: "var(--accent-secondary, var(--accent))" }}
                 >
                   <Sparkles size={16} />
                 </button>
@@ -438,7 +438,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               aria-keyshortcuts="f"
               onClick={onToggleFullscreen}
               style={{
-                color: isFullscreen ? "#e8d8c9" : "var(--text-muted)",
+                color: isFullscreen ? "var(--text-main)" : "var(--text-muted)",
                 marginLeft: "4px",
               }}
             >

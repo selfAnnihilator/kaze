@@ -165,7 +165,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
         padding: "32px 40px 100px",
         maxWidth: "1200px",
         margin: "0 auto",
-        color: "#e8d8c9",
+        color: "var(--text-main)",
       }}
     >
       {/* Profile Section Header Card */}
@@ -179,7 +179,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
           style={{
             padding: "80px 0",
             textAlign: "center",
-            color: "rgba(255, 255, 255, 0.5)",
+            color: "var(--overlay-50)",
           }}
         >
           <div
@@ -187,7 +187,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             style={{
               width: "36px",
               height: "36px",
-              border: "3px solid rgba(243, 112, 30, 0.2)",
+              border: "3px solid var(--accent-a20)",
               borderTopColor: "var(--accent)",
               borderRadius: "50%",
               margin: "0 auto 16px",

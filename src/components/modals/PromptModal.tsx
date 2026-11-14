@@ -33,31 +33,31 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           width: "92%",
           padding: "24px",
           borderRadius: "14px",
-          backgroundColor: "var(--bg-card, #1a1714)",
-          border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
-          boxShadow: "0 24px 50px rgba(0, 0, 0, 0.65)",
+          backgroundColor: "var(--bg-card, var(--bg-main))",
+          border: "1px solid var(--border, var(--text-main-a15))",
+          boxShadow: "0 24px 50px var(--shade-65)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px",
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Sparkles size={20} color="var(--accent-secondary, #f3701e)" />
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#e8d8c9",
+            <Sparkles size={20} color="var(--accent-secondary, var(--accent))" />
+            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "var(--text-main)",
               }}>
               {title}
             </h3>
           </div>
           <button
             onClick={onCancel}
-            style={{ background: "none", border: "none", color: "var(--text-muted, #a89f91)", cursor: "pointer", padding: "4px",
+            style={{ background: "none", border: "none", color: "var(--text-muted, var(--palette-sand-400))", cursor: "pointer", padding: "4px",
             }}
           >
             <X size={18} />
           </button>
         </div>
 
-        <p style={{ fontSize: "0.88rem", color: "var(--text-dim, #8c8273)", margin: "0 0 16px 0", lineHeight: 1.5,
+        <p style={{ fontSize: "0.88rem", color: "var(--text-dim, var(--palette-sand-500))", margin: "0 0 16px 0", lineHeight: 1.5,
           }}>
           {message}
         </p>

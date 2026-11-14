@@ -2817,7 +2817,7 @@
 }
 .kaze-interface[data-interface="brutalist"] .music-artwork--placeholder {
   position: relative;
-  background: oklch(81% 0.018 85);
+  background: var(--palette-sand-200);
   color: var(--press-paper);
   box-shadow: inset 0 0 0 1px var(--press-line);
 }
@@ -2825,7 +2825,7 @@
   content: "";
   position: absolute;
   inset: 7%;
-  border: 1px solid oklch(46% 0.01 85);
+  border: 1px solid var(--palette-warmgray-550);
   pointer-events: none;
 }
 .kaze-interface[data-interface="brutalist"] .music-artwork--placeholder::after {
@@ -2852,14 +2852,14 @@
 
 /* Chart sleeves stay legible against the dark Discovery surface. */
 .kaze-interface[data-interface="brutalist"] .chart-card .chart-card-art {
-  background: oklch(88% 0.018 85) !important;
-  box-shadow: inset 0 0 0 1px oklch(61% 0.014 85);
+  background: var(--palette-sand-100) !important;
+  box-shadow: inset 0 0 0 1px var(--palette-gray-400);
 }
 .kaze-interface[data-interface="brutalist"] .chart-card-art::before {
   content: "";
   position: absolute;
   inset: 8px;
-  border: 1px solid oklch(66% 0.014 85);
+  border: 1px solid var(--palette-warmgray-350);
   pointer-events: none;
 }
 .kaze-interface[data-interface="brutalist"] .chart-card-art::after {
@@ -3878,7 +3878,7 @@
   border-radius: 0;
 }
 .kaze-interface[data-interface="brutalist"] .settings-logout-dialog::backdrop {
-  background: oklch(8% 0.005 55 / 0.78);
+  background: var(--palette-warmgray-900-a80);
 }
 .kaze-interface[data-interface="brutalist"] .settings-logout-dialog h2 {
   margin: 0 0 22px;

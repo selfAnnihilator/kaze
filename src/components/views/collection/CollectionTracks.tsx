@@ -187,11 +187,11 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         : "var(--text-main)",
                     backgroundColor:
                       isPlayingThis || isLoadingThis
-                        ? "rgba(139, 124, 246, 0.08)"
+                        ? "var(--accent-secondary-a8)"
                         : isHovered
-                          ? "rgba(255, 255, 255, 0.04)"
+                          ? "var(--overlay-5)"
                           : "transparent",
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.03)",
+                    borderBottom: "1px solid var(--overlay-3)",
                     cursor: "pointer",
                     transition: "background-color 0.15s ease",
                   }}
@@ -245,7 +245,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         </div>
                       )
                     ) : isHovered ? (
-                      <Play size={15} fill="#e8d8c9" />
+                      <Play size={15} fill="var(--text-main)" />
                     ) : (
                       idx + 1
                     )}
@@ -266,7 +266,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         height: "42px",
                         borderRadius: "6px",
                         overflow: "hidden",
-                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                        backgroundColor: "var(--overlay-5)",
                         flexShrink: 0,
                       }}
                     >
@@ -283,7 +283,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                           textOverflow: "ellipsis",
                           color: isPlayingThis
                             ? "var(--accent-secondary)"
-                            : "#e8d8c9",
+                            : "var(--text-main)",
                         }}
                       >
                         {track.title}
@@ -349,10 +349,10 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       }}
                       style={{
                         background: isQueued
-                          ? "rgba(139,124,246,0.16)"
+                          ? "var(--accent-secondary-a15)"
                           : "none",
                         border: isQueued
-                          ? "1px solid rgba(139,124,246,0.4)"
+                          ? "1px solid var(--accent-secondary-a40)"
                           : "1px solid transparent",
                         borderRadius: "50%",
                         color: isQueued
@@ -377,7 +377,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       style={{
                         background: "none",
                         border: "none",
-                        color: isLiked ? "#ec4899" : "var(--text-dim)",
+                        color: isLiked ? "var(--palette-pink-400)" : "var(--text-dim)",
                         cursor: "pointer",
                         padding: "4px",
                         display: "flex",
@@ -385,7 +385,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       title={isLiked ? "Unlike track" : "Like track"}
                       aria-label={isLiked ? "Unlike track" : "Like track"}
                     >
-                      <Heart size={15} fill={isLiked ? "#ec4899" : "none"} />
+                      <Heart size={15} fill={isLiked ? "var(--palette-pink-400)" : "none"} />
                     </button>
 
                     {(() => {

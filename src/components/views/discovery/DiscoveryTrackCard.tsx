@@ -78,16 +78,16 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
       onClick={handleCardClick}
       style={{
         backgroundColor: isPlaying
-          ? "rgba(139, 124, 246, 0.09)"
+          ? "var(--accent-secondary-a10)"
           : isSelected
-          ? "rgba(243, 112, 30, 0.12)"
+          ? "var(--accent-a12)"
           : "var(--bg-card)",
         border: isPlaying
           ? "1.5px solid var(--accent-secondary)"
           : isSelected
           ? "1px solid var(--accent-light)"
           : isHovered
-          ? "1px solid rgba(255, 255, 255, 0.22)"
+          ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
         borderRadius: "12px",
         padding: "10px",
@@ -97,12 +97,12 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         position: "relative",
         transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: isPlaying
-          ? "0 0 20px rgba(139, 124, 246, 0.35), 0 6px 18px rgba(0, 0, 0, 0.45)"
+          ? "0 0 20px var(--accent-secondary-a35), 0 6px 18px var(--shade-45)"
           : isHovered
-          ? "0 10px 24px rgba(0, 0, 0, 0.4)"
+          ? "0 10px 24px var(--shade-40)"
           : isSelected
-          ? "0 4px 18px rgba(243, 112, 30, 0.2)"
-          : "0 2px 8px rgba(0, 0, 0, 0.15)",
+          ? "0 4px 18px var(--accent-a20)"
+          : "0 2px 8px var(--shade-15)",
       }}
     >
       {/* 1. Thumbnail (Biggest element, passport aspect ratio) */}
@@ -113,7 +113,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           aspectRatio: "1 / 1",
           borderRadius: "8px",
           overflow: "hidden",
-          backgroundColor: "rgba(255, 255, 255, 0.04)",
+          backgroundColor: "var(--overlay-5)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -146,13 +146,13 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               position: "absolute",
               top: "7px",
               left: "7px",
-              backgroundColor: "rgba(139, 124, 246, 0.95)",
+              backgroundColor: "var(--accent-secondary-a95)",
               borderRadius: "20px",
               padding: "2px 8px",
               display: "flex",
               alignItems: "center",
               gap: "5px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              boxShadow: "0 2px 8px var(--shade-60)",
               zIndex: 2,
             }}
             title="Now Playing"
@@ -162,7 +162,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
               <div className="discovery-eq-bar" style={{ width: "2.5px" }} />
             </div>
-            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "#e8d8c9", letterSpacing: "0.4px",
+            <span style={{ fontSize: "0.64rem", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.4px",
               }}>
               PLAYING
             </span>
@@ -184,11 +184,11 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             borderRadius: "50%",
             backgroundColor: isPlaying ? "var(--accent-secondary)" : "var(--accent)",
             border: "none",
-            color: "#e8d8c9",
+            color: "var(--text-main)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.6)",
+            boxShadow: "0 4px 14px var(--shade-60)",
             cursor: "pointer",
             opacity: isHovered || isPlaying || isLoading ? 1 : 0,
             transform: isHovered || isPlaying || isLoading ? "scale(1)" : "scale(0.85)",
@@ -200,9 +200,9 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           {isLoading ? (
             <RefreshCw size={16} className="spin-animation" />
           ) : isPlaying ? (
-            <Pause size={17} fill="#e8d8c9" />
+            <Pause size={17} fill="var(--text-main)" />
           ) : (
-            <Play size={17} fill="#e8d8c9" style={{ marginLeft: "2px" }} />
+            <Play size={17} fill="var(--text-main)" style={{ marginLeft: "2px" }} />
           )}
         </button>
 
@@ -219,9 +219,9 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             width: "38px",
             height: "38px",
             borderRadius: "50%",
-            backgroundColor: isQueued ? "rgba(139,124,246,0.92)" : "rgba(0,0,0,0.72)",
-            border: isQueued ? "1px solid rgba(232,216,201,0.45)" : "1px solid rgba(255,255,255,0.16)",
-            color: isQueued ? "#e8d8c9" : "var(--text-muted)",
+            backgroundColor: isQueued ? "var(--accent-secondary-a90)" : "var(--shade-70)",
+            border: isQueued ? "1px solid var(--text-main-a45)" : "1px solid var(--overlay-15)",
+            color: isQueued ? "var(--text-main)" : "var(--text-muted)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -243,7 +243,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           marginTop: "10px",
           fontWeight: 700,
           fontSize: "0.88rem",
-          color: isPlaying ? "var(--accent-secondary)" : "#e8d8c9",
+          color: isPlaying ? "var(--accent-secondary)" : "var(--text-main)",
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -292,7 +292,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+          borderTop: "1px solid var(--overlay-5)",
         }}
       >
         {!isLocalTrack && <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} />}
@@ -306,7 +306,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               title="Liked song"
               aria-label="Liked song"
               style={{
-                color: "#ff5c8a",
+                color: "var(--palette-rose-300)",
                 padding: "4px",
                 display: "inline-flex",
                 alignItems: "center",

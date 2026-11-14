@@ -15,8 +15,8 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
               maxWidth: "420px",
               width: "90%",
               padding: "24px",
-              border: "1px solid rgba(239, 68, 68, 0.25)",
-              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.6)",
+              border: "1px solid var(--danger-a25)",
+              boxShadow: "0 20px 45px var(--shade-60)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -33,12 +33,12 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                   width: "42px",
                   height: "42px",
                   borderRadius: "10px",
-                  backgroundColor: "rgba(239, 68, 68, 0.12)",
+                  backgroundColor: "var(--danger-a12)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
-                  color: "var(--danger, #ef4444)",
+                  color: "var(--danger, var(--danger))",
                 }}
               >
                 <Trash2 size={22} />
@@ -49,7 +49,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                     fontSize: "1.15rem",
                     fontWeight: 700,
                     margin: "0 0 6px 0",
-                    color: "#fca5a5",
+                    color: "var(--palette-red-200)",
                   }}
                 >
                   Delete Playlist
@@ -63,7 +63,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                   }}
                 >
                   Are you sure you want to delete{" "}
-                  <strong style={{ color: "#fff" }}>
+                  <strong style={{ color: "var(--white)" }}>
                     "{c.playlistToDelete.name}"
                   </strong>
                   ? This action cannot be undone.
@@ -91,8 +91,8 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 type="button"
                 className="btn"
                 style={{
-                  backgroundColor: "var(--danger, #ef4444)",
-                  color: "#fff",
+                  backgroundColor: "var(--danger, var(--danger))",
+                  color: "var(--white)",
                   fontWeight: 600,
                   border: "none",
                   display: "flex",

@@ -89,7 +89,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.75)",
+        backgroundColor: "var(--shade-75)",
         backdropFilter: "blur(6px)",
         display: "flex",
         alignItems: "center",
@@ -102,12 +102,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         style={{
           width: "100%",
           maxWidth: "400px",
-          backgroundColor: "#18181b",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
+          backgroundColor: "var(--palette-gray-900)",
+          border: "1px solid var(--overlay-10)",
           borderRadius: "16px",
           padding: "24px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
-          color: "#e8d8c9",
+          boxShadow: "0 25px 50px -12px var(--shade-70)",
+          color: "var(--text-main)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -126,7 +126,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 width: "36px",
                 height: "36px",
                 borderRadius: "10px",
-                background: "linear-gradient(135deg, var(--accent), #866760)",
+                background: "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -142,7 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 style={{
                   margin: 0,
                   fontSize: "12px",
-                  color: "rgba(255, 255, 255, 0.5)",
+                  color: "var(--overlay-50)",
                 }}
               >
                 Store your playlists and listening stats
@@ -154,7 +154,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               background: "transparent",
               border: "none",
-              color: "rgba(255, 255, 255, 0.5)",
+              color: "var(--overlay-50)",
               cursor: "pointer",
               padding: "4px",
               borderRadius: "6px",
@@ -168,7 +168,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div
           style={{
             display: "flex",
-            background: "rgba(255, 255, 255, 0.05)",
+            background: "var(--overlay-5)",
             borderRadius: "10px",
             padding: "3px",
             marginBottom: "18px",
@@ -183,8 +183,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               flex: 1,
               padding: "8px",
-              background: tab === "login" ? "#27272a" : "transparent",
-              color: tab === "login" ? "#e8d8c9" : "rgba(255, 255, 255, 0.5)",
+              background: tab === "login" ? "var(--palette-gray-850)" : "transparent",
+              color: tab === "login" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
               borderRadius: "8px",
               fontSize: "13px",
@@ -204,8 +204,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               flex: 1,
               padding: "8px",
-              background: tab === "signup" ? "#27272a" : "transparent",
-              color: tab === "signup" ? "#e8d8c9" : "rgba(255, 255, 255, 0.5)",
+              background: tab === "signup" ? "var(--palette-gray-850)" : "transparent",
+              color: tab === "signup" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
               borderRadius: "8px",
               fontSize: "13px",
@@ -225,9 +225,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#f87171",
+              background: "var(--danger-a15)",
+              border: "1px solid var(--danger-a30)",
+              color: "var(--palette-red-300)",
               padding: "10px 12px",
               borderRadius: "8px",
               fontSize: "12px",
@@ -247,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 display: "block",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "rgba(255, 255, 255, 0.7)",
+                color: "var(--overlay-70)",
                 marginBottom: "6px",
               }}
             >
@@ -258,13 +258,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
-                background: "#27272a",
+                background: "var(--palette-gray-850)",
                 borderRadius: "10px",
                 padding: "0 12px",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--overlay-10)",
               }}
             >
-              <User size={16} color="rgba(255, 255, 255, 0.4)" />
+              <User size={16} color="var(--overlay-40)" />
               <input
                 type="text"
                 value={username}
@@ -278,7 +278,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   background: "transparent",
                   border: "none",
                   padding: "10px 0",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   fontSize: "14px",
                   outline: "none",
                 }}
@@ -292,7 +292,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 display: "block",
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "rgba(255, 255, 255, 0.7)",
+                color: "var(--overlay-70)",
                 marginBottom: "6px",
               }}
             >
@@ -303,13 +303,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
-                background: "#27272a",
+                background: "var(--palette-gray-850)",
                 borderRadius: "10px",
                 padding: "0 12px",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--overlay-10)",
               }}
             >
-              <Lock size={16} color="rgba(255, 255, 255, 0.4)" />
+              <Lock size={16} color="var(--overlay-40)" />
               <input
                 type="password"
                 value={password}
@@ -322,7 +322,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   background: "transparent",
                   border: "none",
                   padding: "10px 0",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   fontSize: "14px",
                   outline: "none",
                 }}
@@ -337,7 +337,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   display: "block",
                   fontSize: "12px",
                   fontWeight: 600,
-                  color: "rgba(255, 255, 255, 0.7)",
+                  color: "var(--overlay-70)",
                   marginBottom: "6px",
                 }}
               >
@@ -348,13 +348,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   display: "flex",
                   alignItems: "center",
                   gap: "10px",
-                  background: "#27272a",
+                  background: "var(--palette-gray-850)",
                   borderRadius: "10px",
                   padding: "0 12px",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  border: "1px solid var(--overlay-10)",
                 }}
               >
-                <Lock size={16} color="rgba(255, 255, 255, 0.4)" />
+                <Lock size={16} color="var(--overlay-40)" />
                 <input
                   type="password"
                   value={confirmPassword}
@@ -367,7 +367,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     background: "transparent",
                     border: "none",
                     padding: "10px 0",
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                     fontSize: "14px",
                     outline: "none",
                   }}
@@ -382,8 +382,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               marginTop: "8px",
               padding: "11px",
-              background: "linear-gradient(135deg, var(--accent), #866760)",
-              color: "#e8d8c9",
+              background: "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))",
+              color: "var(--text-main)",
               border: "none",
               borderRadius: "10px",
               fontSize: "14px",
@@ -394,7 +394,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               justifyContent: "center",
               gap: "8px",
               opacity: isLoading ? 0.7 : 1,
-              boxShadow: "0 4px 12px rgba(243, 112, 30, 0.3)",
+              boxShadow: "0 4px 12px var(--accent-a30)",
               transition: "transform 0.1s ease",
             }}
           >

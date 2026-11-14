@@ -25,7 +25,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
               <div
                 style={{ display: "flex", alignItems: "center", gap: "10px" }}
               >
-                <Pencil size={20} color="var(--accent-light, #e8d8c9)" />
+                <Pencil size={20} color="var(--accent-light, var(--text-main))" />
                 <h3 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
                   Rename Playlist
                 </h3>
@@ -71,7 +71,7 @@ export function RenamePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 {c.renameError && (
                   <p
                     style={{
-                      color: "var(--danger, #ef4444)",
+                      color: "var(--danger, var(--danger))",
                       fontSize: "0.8rem",
                       marginTop: "6px",
                     }}

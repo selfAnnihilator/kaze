@@ -135,7 +135,7 @@
 
 /* First-use controls and transient notices share the active theme's vocabulary. */
 .kaze-interface .taste-dialog { width: min(640px, calc(100vw - 32px)); padding: 26px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-light); border-radius: var(--ui-radius); }
-.taste-dialog::backdrop { background: oklch(8% 0.005 55 / .8); }
+.taste-dialog::backdrop { background: var(--palette-warmgray-900-a80); }
 .music-taste { min-width: 0; }
 .music-taste > p { line-height: 1.5; color: var(--text-muted); margin-block: 14px; }
 .music-taste fieldset { border: 0; padding: 0; margin-block: 20px; min-width: 0; }

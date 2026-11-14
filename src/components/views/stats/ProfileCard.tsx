@@ -5,8 +5,8 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, rgba(30, 27, 75, 0.45) 0%, rgba(15, 23, 42, 0.65) 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        background: "linear-gradient(135deg, var(--palette-indigo-800-a45) 0%, var(--palette-blue-900-a65) 100%)",
+        border: "1px solid var(--overlay-8)",
         borderRadius: "20px",
         padding: "24px 28px",
         marginBottom: "36px",
@@ -15,7 +15,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: "20px",
-        boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.5)",
+        boxShadow: "0 8px 32px -8px var(--shade-50)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
@@ -40,15 +40,15 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
               borderRadius: "50%",
               background: c.currentUser?.avatar_data_url
                 ? "transparent"
-                : "linear-gradient(135deg, #f3701e 0%, #4b607f 100%)",
+                : "linear-gradient(135deg, var(--accent) 0%, var(--accent-slate) 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "28px",
               fontWeight: 800,
-              color: "#e8d8c9",
-              border: "3px solid rgba(232, 216, 201, 0.5)",
-              boxShadow: "0 0 20px rgba(232, 216, 201, 0.25)",
+              color: "var(--text-main)",
+              border: "3px solid var(--text-main-a50)",
+              boxShadow: "0 0 20px var(--text-main-a25)",
               overflow: "hidden",
               cursor: c.currentUser ? "pointer" : "default",
               position: "relative",
@@ -68,7 +68,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             ) : c.currentUser ? (
               <span>{c.currentUser.username[0].toUpperCase()}</span>
             ) : (
-              <User size={36} color="rgba(255, 255, 255, 0.5)" />
+              <User size={36} color="var(--overlay-50)" />
             )}
 
             {/* Uploading overlay */}
@@ -77,7 +77,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background: "rgba(0, 0, 0, 0.75)",
+                  background: "var(--shade-75)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -114,14 +114,14 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: c.isUploadingAvatar ? "not-allowed" : "pointer",
-                color: "#e8d8c9",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
+                color: "var(--text-main)",
+                boxShadow: "0 2px 8px var(--shade-50)",
                 transition: "transform 0.15s ease, opacity 0.15s ease",
                 padding: 0,
                 zIndex: 10,
               }}
               onMouseEnter={(e) => {
-                if (!c.isUploadingAvatar) e.currentTarget.style.background = "#f3701e";
+                if (!c.isUploadingAvatar) e.currentTarget.style.background = "var(--accent)";
               }}
               onMouseLeave={(e) => {
                 if (!c.isUploadingAvatar) e.currentTarget.style.background = "var(--accent)";
@@ -144,12 +144,12 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 left: 0,
                 marginTop: "8px",
                 background: "var(--bg-card)",
-                border: "1px solid rgba(232, 216, 201, 0.35)",
+                border: "1px solid var(--text-main-a35)",
                 borderRadius: "12px",
                 padding: "6px",
                 zIndex: 50,
                 minWidth: "160px",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6)",
+                boxShadow: "0 10px 25px -5px var(--shade-60)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "4px",
@@ -168,7 +168,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   gap: "8px",
                   background: "transparent",
                   border: "none",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                   padding: "8px 10px",
                   borderRadius: "8px",
                   fontSize: "12px",
@@ -177,7 +177,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   textAlign: "left",
                   transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232, 216, 201, 0.2)")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--text-main-a20)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 <Camera size={14} color="var(--accent-light)" />
@@ -196,7 +196,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   gap: "8px",
                   background: "transparent",
                   border: "none",
-                  color: "#f87171",
+                  color: "var(--palette-red-300)",
                   padding: "8px 10px",
                   borderRadius: "8px",
                   fontSize: "12px",
@@ -205,10 +205,10 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   textAlign: "left",
                   transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--danger-a15)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <Trash2 size={14} color="#f87171" />
+                <Trash2 size={14} color="var(--palette-red-300)" />
                 <span>Remove photo</span>
               </button>
             </div>
@@ -223,7 +223,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 fontSize: "26px",
                 fontWeight: 800,
                 margin: 0,
-                color: "#e8d8c9",
+                color: "var(--text-main)",
                 letterSpacing: "-0.5px",
               }}
             >
@@ -234,7 +234,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
           <div
             style={{
               fontSize: "13px",
-              color: "rgba(255, 255, 255, 0.65)",
+              color: "var(--overlay-65)",
               display: "flex",
               alignItems: "center",
               gap: "8px",
@@ -244,7 +244,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             {c.currentUser ? (
               <span>
                 Member since{" "}
-                <strong style={{ color: "#e8d8c9" }}>
+                <strong style={{ color: "var(--text-main)" }}>
                   {c.formatDate(c.currentUser.created_at)}
                 </strong>
               </span>
@@ -274,7 +274,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             <div
               style={{
                 marginTop: "8px",
-                color: "#f87171",
+                color: "var(--palette-red-300)",
                 fontSize: "12px",
                 display: "flex",
                 alignItems: "center",
@@ -292,9 +292,9 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
         <button
           onClick={c.onOpenAuthModal}
           style={{
-            background: "linear-gradient(135deg, #f3701e, #4b607f)",
+            background: "linear-gradient(135deg, var(--accent), var(--accent-slate))",
             border: "none",
-            color: "#e8d8c9",
+            color: "var(--text-main)",
             padding: "8px 16px",
             borderRadius: "10px",
             fontSize: "13px",

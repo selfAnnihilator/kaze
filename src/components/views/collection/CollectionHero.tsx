@@ -29,7 +29,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
           justifyContent: "space-between",
           alignItems: "center",
           gap: "24px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          boxShadow: "0 8px 32px var(--shade-40)",
           minHeight: "260px",
         }}
       >
@@ -44,9 +44,9 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             display: "inline-flex",
             alignItems: "center",
             gap: "6px",
-            backgroundColor: "rgba(0,0,0,0.65)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#e8d8c9",
+            backgroundColor: "var(--shade-65)",
+            border: "1px solid var(--overlay-15)",
+            color: "var(--text-main)",
             borderRadius: "20px",
             padding: "6px 14px",
             fontSize: "0.82rem",
@@ -56,12 +56,12 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             transition: "transform 0.15s ease, opacity 0.15s ease",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.7)";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
+            e.currentTarget.style.backgroundColor = "var(--shade-70)";
+            e.currentTarget.style.borderColor = "var(--overlay-30)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.45)";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+            e.currentTarget.style.backgroundColor = "var(--shade-45)";
+            e.currentTarget.style.borderColor = "var(--overlay-15)";
           }}
         >
           <ArrowLeft size={16} />
@@ -75,7 +75,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               fontSize: "0.8rem",
               fontWeight: 700,
               letterSpacing: "1.2px",
-              color: "rgba(255, 255, 255, 0.85)",
+              color: "var(--overlay-85)",
               textTransform: "uppercase",
               marginBottom: "8px",
             }}
@@ -87,11 +87,11 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             style={{
               fontSize: "clamp(2rem, 4vw, 3.2rem)",
               fontWeight: 900,
-              color: "#e8d8c9",
+              color: "var(--text-main)",
               lineHeight: 1.1,
               letterSpacing: "-0.5px",
               marginBottom: "12px",
-              textShadow: "0 3px 12px rgba(0,0,0,0.4)",
+              textShadow: "0 3px 12px var(--shade-40)",
             }}
           >
             {c.collection.title}
@@ -100,11 +100,11 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
           <p
             style={{
               fontSize: "0.95rem",
-              color: "rgba(255, 255, 255, 0.9)",
+              color: "var(--overlay-90)",
               maxWidth: "600px",
               lineHeight: 1.4,
               marginBottom: "14px",
-              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+              textShadow: "0 1px 4px var(--shade-40)",
             }}
           >
             {c.collection.subtitle}
@@ -116,11 +116,11 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
               alignItems: "center",
               gap: "8px",
               fontSize: "0.85rem",
-              color: "rgba(255, 255, 255, 0.85)",
+              color: "var(--overlay-85)",
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontWeight: 700, color: "#e8d8c9" }}>Kaze</span>
+            <span style={{ fontWeight: 700, color: "var(--text-main)" }}>Kaze</span>
             <span>•</span>
             <span>
               {c.searchQuery.trim()

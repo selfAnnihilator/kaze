@@ -28,7 +28,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                   width: "100%",
                   aspectRatio: "1/1",
                   borderRadius: "8px",
-                  backgroundColor: "rgba(243, 112, 30, 0.15)",
+                  backgroundColor: "var(--accent-a15)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -41,7 +41,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   fontWeight: 700,
                   fontSize: "0.95rem",
-                  color: "#e8d8c9",
+                  color: "var(--text-main)",
                 }}
               >
                 {pl.name}

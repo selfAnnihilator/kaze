@@ -5,8 +5,8 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #3b2a1d 0%, var(--bg-card) 100%)",
-        border: "1px solid rgba(232, 216, 201, 0.3)",
+        background: "linear-gradient(135deg, var(--palette-taupe-850) 0%, var(--bg-card) 100%)",
+        border: "1px solid var(--text-main-a30)",
         borderRadius: "20px",
         padding: "32px",
         marginBottom: "36px",
@@ -47,7 +47,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         <p
           style={{
             margin: 0,
-            color: "rgba(255, 255, 255, 0.6)",
+            color: "var(--overlay-60)",
             fontSize: "14px",
           }}
         >
@@ -57,8 +57,8 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
 
       <div
         style={{
-          background: "rgba(0, 0, 0, 0.4)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
+          background: "var(--shade-40)",
+          border: "1px solid var(--overlay-10)",
           borderRadius: "16px",
           padding: "16px 24px",
           textAlign: "center",
@@ -67,7 +67,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         <div
           style={{
             fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.5)",
+            color: "var(--overlay-50)",
             fontWeight: 600,
             textTransform: "uppercase",
             marginBottom: "4px",
@@ -87,7 +87,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         <div
           style={{
             fontSize: "11px",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             marginTop: "4px",
           }}
         >

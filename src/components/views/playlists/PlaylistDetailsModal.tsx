@@ -117,7 +117,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                     alignItems: "center",
                     gap: "6px",
                     backgroundColor: c.savedMixIds.has(selectedPlaylist.id)
-                      ? "rgba(139, 124, 246, 0.15)"
+                      ? "var(--accent-secondary-a15)"
                       : undefined,
                     borderColor: c.savedMixIds.has(selectedPlaylist.id)
                       ? "var(--accent-secondary)"
@@ -193,7 +193,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                       style={{
                         backgroundColor:
                           c.loadingTrackId === tr.id
-                            ? "rgba(243, 112, 30, 0.12)"
+                            ? "var(--accent-a12)"
                             : undefined,
                       }}
                     >

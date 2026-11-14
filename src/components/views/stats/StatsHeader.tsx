@@ -34,8 +34,8 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
           </h1>
           <span
             style={{
-              background: "linear-gradient(135deg, rgba(243, 112, 30, 0.2), rgba(243, 112, 30, 0.2))",
-              border: "1px solid rgba(243, 112, 30, 0.4)",
+              background: "linear-gradient(135deg, var(--accent-a20), var(--accent-a20))",
+              border: "1px solid var(--accent-a40)",
               color: "var(--accent-light)",
               padding: "2px 10px",
               borderRadius: "9999px",
@@ -50,7 +50,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
         <div
           style={{
             fontSize: "13px",
-            color: "rgba(255, 255, 255, 0.6)",
+            color: "var(--overlay-60)",
           }}
         >
           Overview of your listening activity, trends, and top records
@@ -64,10 +64,10 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
             style={{
               display: "flex",
               gap: "6px",
-              background: "rgba(255, 255, 255, 0.05)",
+              background: "var(--overlay-5)",
               padding: "4px",
               borderRadius: "12px",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              border: "1px solid var(--overlay-8)",
             }}
           >
             {c.stats.available_years.map((year) => {
@@ -81,9 +81,9 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                     borderRadius: "8px",
                     border: "none",
                     background: isActive
-                      ? "linear-gradient(135deg, var(--accent), #866760)"
+                      ? "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))"
                       : "transparent",
-                    color: isActive ? "#e8d8c9" : "rgba(255, 255, 255, 0.6)",
+                    color: isActive ? "var(--text-main)" : "var(--overlay-60)",
                     fontWeight: isActive ? 700 : 500,
                     fontSize: "13px",
                     cursor: "pointer",
@@ -107,9 +107,9 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
           style={{
             padding: "7px 14px",
             borderRadius: "10px",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            background: "rgba(255, 255, 255, 0.06)",
-            color: "#e8d8c9",
+            border: "1px solid var(--overlay-12)",
+            background: "var(--overlay-5)",
+            color: "var(--text-main)",
             fontSize: "12px",
             fontWeight: 600,
             cursor: "pointer",

@@ -44,9 +44,9 @@ function parseLrc(lrcText: string): LyricLine[] {
 
 const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
 
-const LINE_COLOR_PAST = "rgba(255, 255, 255, 0.45)";
-const LINE_COLOR_FUTURE = "rgba(255, 255, 255, 0.3)";
-const LINE_COLOR_HOVER = "rgba(255, 255, 255, 0.85)";
+const LINE_COLOR_PAST = "var(--overlay-45)";
+const LINE_COLOR_FUTURE = "var(--overlay-30)";
+const LINE_COLOR_HOVER = "var(--overlay-85)";
 
 /** Index of the last line with `timeSecs <= time`, or -1 before the first line. */
 function findActiveLine(lines: LyricLine[], time: number): number {
@@ -89,7 +89,7 @@ function SyncedLyricRow({
   const lineIndex = index - 1;
   const line = lines[lineIndex];
   const isActive = lineIndex === activeLineIndex;
-  const restColor = isActive ? "#e8d8c9" : lineIndex < activeLineIndex ? LINE_COLOR_PAST : LINE_COLOR_FUTURE;
+  const restColor = isActive ? "var(--text-main)" : lineIndex < activeLineIndex ? LINE_COLOR_PAST : LINE_COLOR_FUTURE;
 
   return (
     <div
@@ -118,7 +118,7 @@ function SyncedLyricRow({
           transformOrigin: "center center",
           transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
           textAlign: "center",
-          textShadow: isActive ? "0 2px 14px rgba(0,0,0,0.6)" : "none",
+          textShadow: isActive ? "0 2px 14px var(--shade-60)" : "none",
           userSelect: "none",
           maxWidth: "960px",
           margin: "0 auto",
@@ -155,7 +155,7 @@ function PlainLyricRow({ index, style, ariaAttributes, lines, isFullScreen }: Ro
           fontSize: isFullScreen ? "1.8rem" : "1.3rem",
           fontWeight: 600,
           lineHeight: 1.6,
-          color: "rgba(255, 255, 255, 0.75)",
+          color: "var(--overlay-75)",
           textAlign: "center",
           maxWidth: "960px",
           margin: "0 auto",
@@ -353,7 +353,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
           }}
         >
           <Mic2 size={42} color="var(--text-dim)" style={{ marginBottom: "16px" }} />
-          <h3 style={{ color: "#e8d8c9", fontSize: "1.1rem", marginBottom: "8px" }}>
+          <h3 style={{ color: "var(--text-main)", fontSize: "1.1rem", marginBottom: "8px" }}>
             {lyricsData?.instrumental ? "Instrumental Track" : "No Lyrics Available"}
           </h3>
           <p style={{ fontSize: "0.88rem", lineHeight: 1.5 }}>
@@ -404,12 +404,12 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             bottom: "24px",
             left: "50%",
             transform: "translateX(-50%)",
-            backgroundColor: "#e8d8c9",
-            color: "#0f172a",
+            backgroundColor: "var(--text-main)",
+            color: "var(--palette-blue-900)",
             padding: "8px 22px",
             borderRadius: "9999px",
             border: "none",
-            boxShadow: "0 6px 22px rgba(0, 0, 0, 0.45)",
+            boxShadow: "0 6px 22px var(--shade-45)",
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
@@ -420,7 +420,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             zIndex: 10,
           }}
         >
-          <Radio size={15} color="#0f172a" />
+          <Radio size={15} color="var(--palette-blue-900)" />
           <span>Sync lyrics</span>
         </button>
       )}

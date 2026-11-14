@@ -124,7 +124,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   const heroImage1 = collection.cover_art_url || tracks[0]?.cover_art_url;
   const bgGradient =
     collection.bgGradient ||
-    "linear-gradient(180deg, rgba(180, 130, 40, 0.85) 0%, rgba(18, 20, 28, 0.98) 100%)";
+    "linear-gradient(180deg, var(--palette-orange-550-a85) 0%, var(--palette-slate-900-a95) 100%)";
 
   const c: CollectionDetailViewContext = {
     withinArchive, collection, isLoadingTracks, rawTracks, bgGradient, onBack, searchQuery, tracks,

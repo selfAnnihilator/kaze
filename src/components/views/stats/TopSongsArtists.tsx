@@ -16,7 +16,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
       <div
         style={{
           background: "var(--bg-card)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
+          border: "1px solid var(--overlay-8)",
           borderRadius: "16px",
           padding: "24px",
         }}
@@ -34,7 +34,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
               width: "32px",
               height: "32px",
               borderRadius: "8px",
-              background: "rgba(243, 112, 30, 0.15)",
+              background: "var(--accent-a15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -51,7 +51,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
               style={{
                 margin: 0,
                 fontSize: "12px",
-                color: "rgba(255, 255, 255, 0.4)",
+                color: "var(--overlay-40)",
               }}
             >
               Ranked by play score and listen duration
@@ -64,7 +64,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
             style={{
               padding: "36px 0",
               textAlign: "center",
-              color: "rgba(255, 255, 255, 0.4)",
+              color: "var(--overlay-40)",
               fontSize: "13px",
             }}
           >
@@ -75,7 +75,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
             {c.stats.top_songs.map((song, idx) => {
               const rank = idx + 1;
               const rankColor =
-                rank === 1 ? "#fbbf24" : rank === 2 ? "#e2e8f0" : rank === 3 ? "#d97706" : "rgba(255, 255, 255, 0.5)";
+                rank === 1 ? "var(--palette-amber-450)" : rank === 2 ? "var(--palette-slate-100)" : rank === 3 ? "var(--palette-orange-550)" : "var(--overlay-50)";
               return (
                 <div
                   key={song.track_id}
@@ -84,8 +84,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     alignItems: "center",
                     padding: "10px 14px",
                     borderRadius: "10px",
-                    background: rank <= 3 ? "rgba(255, 255, 255, 0.03)" : "transparent",
-                    border: rank <= 3 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
+                    background: rank <= 3 ? "var(--overlay-3)" : "transparent",
+                    border: rank <= 3 ? "1px solid var(--overlay-5)" : "none",
                     transition: "background 0.15s ease",
                   }}
                   className="stats-item-row"
@@ -108,7 +108,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                       style={{
                         fontSize: "14px",
                         fontWeight: 600,
-                        color: "#e8d8c9",
+                        color: "var(--text-main)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -119,7 +119,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     <div
                       style={{
                         fontSize: "12px",
-                        color: "rgba(255, 255, 255, 0.5)",
+                        color: "var(--overlay-50)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -130,10 +130,10 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                   </div>
 
                   <div style={{ textAlign: "right", marginRight: "12px" }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#e8d8c9" }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)" }}>
                       {c.formatSeconds(song.total_seconds)}
                     </div>
-                    <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
+                    <div style={{ fontSize: "11px", color: "var(--overlay-40)" }}>
                       {song.play_count} {song.play_count === 1 ? "play" : "plays"}
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                         width: "32px",
                         height: "32px",
                         borderRadius: "50%",
-                        background: "rgba(243, 112, 30, 0.2)",
+                        background: "var(--accent-a20)",
                         border: "none",
                         color: "var(--accent-light)",
                         display: "flex",
@@ -172,8 +172,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
           title="Top 5 Artists"
           subtitle="Your most listened to artists"
           icon={<Users size={18} />}
-          iconBg="rgba(236, 72, 153, 0.15)"
-          iconColor="#f472b6"
+          iconBg="var(--palette-pink-400-a15)"
+          iconColor="var(--palette-pink-300)"
           rows={(c.stats?.top_artists ?? []).map((a) => ({ key: a.artist_id, name: a.name, total_seconds: a.total_seconds, play_count: a.play_count }))}
           emptyText="No artists recorded yet."
           formatSeconds={c.formatSeconds}
@@ -182,8 +182,8 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
           title="Top 5 Genres"
           subtitle="Your most listened to genres"
           icon={<Tag size={18} />}
-          iconBg="rgba(245, 158, 11, 0.15)"
-          iconColor="#fbbf24"
+          iconBg="var(--palette-orange-500-a15)"
+          iconColor="var(--palette-amber-450)"
           rows={(c.stats?.top_genres ?? []).map((g) => ({ key: g.genre_id, name: g.name, total_seconds: g.total_seconds, play_count: g.play_count }))}
           emptyText="No genres recorded yet."
           formatSeconds={c.formatSeconds}

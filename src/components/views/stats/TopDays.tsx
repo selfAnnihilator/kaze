@@ -6,7 +6,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
     <div
       style={{
         background: "var(--bg-card)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        border: "1px solid var(--overlay-8)",
         borderRadius: "16px",
         padding: "24px",
       }}
@@ -24,11 +24,11 @@ export function TopDays({ c }: { c: StatsViewContext }) {
             width: "32px",
             height: "32px",
             borderRadius: "8px",
-            background: "rgba(243, 112, 30, 0.15)",
+            background: "var(--accent-a15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fbbf24",
+            color: "var(--palette-amber-450)",
           }}
         >
           <Award size={18} />
@@ -41,7 +41,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
             style={{
               margin: 0,
               fontSize: "12px",
-              color: "rgba(255, 255, 255, 0.4)",
+              color: "var(--overlay-40)",
             }}
           >
             Ranked by peak listening time in a single day
@@ -54,7 +54,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
           style={{
             padding: "36px 0",
             textAlign: "center",
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "var(--overlay-40)",
             fontSize: "13px",
           }}
         >
@@ -72,18 +72,18 @@ export function TopDays({ c }: { c: StatsViewContext }) {
             const rank = idx + 1;
             const rankBadgeBg =
               rank === 1
-                ? "linear-gradient(135deg, #fbbf24, #d97706)"
+                ? "linear-gradient(135deg, var(--palette-amber-450), var(--palette-orange-550))"
                 : rank === 2
-                ? "linear-gradient(135deg, #94a3b8, #64748b)"
+                ? "linear-gradient(135deg, var(--palette-slate-350), var(--palette-slate-550))"
                 : rank === 3
-                ? "linear-gradient(135deg, #d97706, #b45309)"
-                : "rgba(255, 255, 255, 0.1)";
+                ? "linear-gradient(135deg, var(--palette-orange-550), var(--palette-orange-650))"
+                : "var(--overlay-10)";
             return (
               <div
                 key={day.day_date}
                 style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  background: "var(--overlay-3)",
+                  border: "1px solid var(--overlay-5)",
                   borderRadius: "12px",
                   padding: "16px",
                   position: "relative",
@@ -99,7 +99,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                     height: "24px",
                     borderRadius: "50%",
                     background: rankBadgeBg,
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                     fontSize: "12px",
                     fontWeight: 800,
                     display: "flex",
@@ -125,7 +125,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                   style={{
                     fontSize: "14px",
                     fontWeight: 600,
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                     marginBottom: "8px",
                   }}
                 >
@@ -135,7 +135,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                   style={{
                     fontSize: "20px",
                     fontWeight: 800,
-                    color: "#8b7cf6",
+                    color: "var(--accent-secondary)",
                   }}
                 >
                   {c.formatSeconds(day.total_seconds)}

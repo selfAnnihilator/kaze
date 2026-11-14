@@ -56,10 +56,10 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
         justifyContent: "center",
         gap: "10px",
         padding: "8px 16px",
-        background: "rgba(30, 30, 36, 0.98)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--palette-gray-850-a95)",
+        borderBottom: "1px solid var(--overlay-8)",
         fontSize: "13px",
-        color: "rgba(255,255,255,0.85)",
+        color: "var(--overlay-85)",
         fontFamily: "inherit",
       }}
     >
@@ -68,13 +68,13 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
           width: 7,
           height: 7,
           borderRadius: "50%",
-          background: "#4ade80",
+          background: "var(--palette-green-400)",
           flexShrink: 0,
           animation: "kaze-pulse 2s infinite",
         }}
       />
       <span>
-        Kaze <strong style={{ color: "#fff" }}>v{updateVersion}</strong> is
+        Kaze <strong style={{ color: "var(--white)" }}>v{updateVersion}</strong> is
         downloading — the app will restart automatically when ready.
       </span>
       <button
@@ -83,7 +83,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
           marginLeft: "auto",
           background: "none",
           border: "none",
-          color: "rgba(255,255,255,0.4)",
+          color: "var(--overlay-40)",
           cursor: "pointer",
           fontSize: "16px",
           lineHeight: 1,

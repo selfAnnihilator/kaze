@@ -87,7 +87,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(0, 0, 0, 0.7)",
+              background: "var(--shade-70)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -97,13 +97,13 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
           >
             <div
               style={{
-                background: "var(--bg-card, #2a211b)",
-                border: "1px solid rgba(232, 216, 201, 0.2)",
+                background: "var(--bg-card, var(--bg-card))",
+                border: "1px solid var(--text-main-a20)",
                 borderRadius: "14px",
                 padding: "24px",
                 maxWidth: "420px",
                 width: "90%",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
+                boxShadow: "0 20px 40px var(--shade-60)",
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -118,13 +118,13 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  <Info size={18} color="var(--accent, #f3701e)" />
+                  <Info size={18} color="var(--accent, var(--accent))" />
                   <h4
                     style={{
                       margin: 0,
                       fontSize: "1.1rem",
                       fontWeight: 700,
-                      color: "#e8d8c9",
+                      color: "var(--text-main)",
                     }}
                   >
                     Why this track?
@@ -149,7 +149,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                   style={{
                     fontWeight: 650,
                     fontSize: "0.95rem",
-                    color: "#e8d8c9",
+                    color: "var(--text-main)",
                   }}
                 >
                   {whyModalTrack.title}
@@ -163,12 +163,12 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
 
               <div
                 style={{
-                  background: "rgba(22, 19, 17, 0.6)",
+                  background: "var(--palette-sand-900-a60)",
                   border: "1px solid var(--border)",
                   borderRadius: "8px",
                   padding: "12px 14px",
                   fontSize: "0.88rem",
-                  color: "var(--accent-light, #ff9b60)",
+                  color: "var(--accent-light, var(--accent-light))",
                   lineHeight: 1.45,
                 }}
               >

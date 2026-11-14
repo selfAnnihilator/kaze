@@ -16,8 +16,8 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
       >
         <div
           style={{
-            backgroundColor: "rgba(24, 24, 27, 0.95)",
-            border: "1px solid rgba(239, 68, 68, 0.35)",
+            backgroundColor: "var(--palette-gray-900-a95)",
+            border: "1px solid var(--danger-a35)",
             borderRadius: "16px",
             padding: "48px 36px",
             textAlign: "center",
@@ -28,7 +28,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
             gap: "12px",
             maxWidth: "460px",
             width: "100%",
-            boxShadow: "0 8px 30px rgba(0, 0, 0, 0.4)",
+            boxShadow: "0 8px 30px var(--shade-40)",
           }}
         >
           <div
@@ -36,20 +36,20 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
               width: "56px",
               height: "56px",
               borderRadius: "50%",
-              backgroundColor: "rgba(239, 68, 68, 0.12)",
+              backgroundColor: "var(--danger-a12)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: "4px",
             }}
           >
-            <WifiOff size={28} color="#ef4444" />
+            <WifiOff size={28} color="var(--danger)" />
           </div>
           <h2
             style={{
               fontSize: "1.25rem",
               fontWeight: 700,
-              color: "#e8d8c9",
+              color: "var(--text-main)",
               margin: 0,
             }}
           >
