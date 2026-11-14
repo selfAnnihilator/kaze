@@ -1,7 +1,6 @@
 import { PlaybackNotice } from "./components/PlaybackNotice";
 import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
 import { RecommendationSetupGate } from "./components/MusicTaste";
-import { recommendationPreferences } from "./services/recommendationPreferences";
 import "./App.css";
 import { useRouteScroll } from "./presentation/useRouteScroll";
 import { ViewMemoryProvider } from "./presentation/ViewMemory";
@@ -21,6 +20,8 @@ import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { ConfirmModal } from "./components/modals/ConfirmModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
+import { useLoadAll } from "./hooks/app/useLoadAll";
+import { useAccountSwitch } from "./hooks/app/useAccountSwitch";
 import { useAuth } from "./hooks/app/useAuth";
 import { useLibrary } from "./hooks/app/useLibrary";
 import { useDownloadsSection } from "./hooks/app/useDownloadsSection";
@@ -65,14 +66,10 @@ const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistM
   })),
 );
 
-export const App: React.FC<{ initialSettings: AppSettings }> = ({
-  initialSettings,
-}) => {
+export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSettings }) => {
   // Navigation
   const { destination, navigate, reset: resetNavigation, updateDestination, back: navigateBack,
-    forward: navigateForward,
-    canGoBack,
-    canGoForward,
+    forward: navigateForward, canGoBack, canGoForward,
   } = useNavigationHistory();
   const mainScrollRef = useRef<HTMLElement>(null);
   useRouteScroll(mainScrollRef, destination);
@@ -157,7 +154,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     isLoadingCollectionTracks, handleOpenCollection, handlePlayDiscoveredCollection, handleOpenPlayingOrigin, handlePlayCollectionTrack, isPlayingThisCollection, isCollectionSaved, handlePlayAllCollection, handleShuffleCollection,
   } = useCollections({ navigate, destinationRef, activeCollection, setActiveCollection, setPlayingPlaylistId, playlists, playingOrigin, setPlayingOrigin, playbackState, setPlaybackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, queuedTrackIds, addAppNotification, handlePlayPause, handlePlayOnlineTrack, handleToggleShuffle, handleStopOnlineAudio });
 
-
   const {
     homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, whyTrackModal, setWhyTrackModal, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange, handleInspectWhyCurrentTrack,
   } = useFlow({ libraryAccountRef, playbackState, fetchPlaybackState, onPlayPause: handlePlayPause, addAppNotification, setPlayingOrigin });
@@ -166,31 +162,20 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     if (currentView !== "home") return;
     const timer = setTimeout(() => { void fetchHomeOverview(); }, 250);
     return () => clearTimeout(timer);
-  }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview,
-  ]);
+  }, [currentView, playbackState.current_track?.id, currentUser?.id, fetchHomeOverview]);
 
   const {
     discoveryRequestRef, chartRequestRef, discoveryRecs, setDiscoveryRecs, worldTrending, setWorldTrending, isTrendingLoading, setIsTrendingLoading, trendingError, setTrendingError, fetchPersonalRecommendations, refreshTrending, refreshPersonalRecommendations, fetchDiscovery, fetchStatsOverview,
   } = useDiscoveryFeeds({ currentUserIdRef });
 
-  useEffect(() => {
-    const userId = currentUser?.id || "default";
-    if (userId === currentUserIdRef.current) return;
-    currentUserIdRef.current = userId;
-    recommendationPreferences.reset();
-    setPlaylists([]); setTrackPlaylistMap({});
-    setWishlist([]); setDownloads([]); setHomeOverview(null);
-    void fetchWishlist(); void fetchDownloads(); void fetchHomeOverview();
-    void fetchPlaylists(); void fetchTrackPlaylistMemberships();
-    setRecommendationNotice(null);
-    void recommendationPreferences.refresh().catch(console.error);
-    ++discoveryRequestRef.current;
-    ++chartRequestRef.current;
-    setDiscoveryRecs([]);
-    setWorldTrending([]);
-    void fetchDiscovery();
-  }, [currentUser?.id, fetchDiscovery]);
-
+  useAccountSwitch(currentUser?.id, fetchDiscovery, {
+    currentUserIdRef, discoveryRequestRef, chartRequestRef,
+    clear: () => {
+      setPlaylists([]); setTrackPlaylistMap({}); setWishlist([]); setDownloads([]); setHomeOverview(null);
+      setRecommendationNotice(null); setDiscoveryRecs([]); setWorldTrending([]);
+    },
+    refetch: [fetchWishlist, fetchDownloads, fetchHomeOverview, fetchPlaylists, fetchTrackPlaylistMemberships],
+  });
 
   afterAuthRef.current = async (title, message) => {
     addAppNotification("success", title, message);
@@ -199,31 +184,10 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     await fetchDiscovery(true);
   };
 
-  // Initial load
-  useEffect(() => {
-    fetchOnboardingStatus();
-    fetchPlaybackState();
-    fetchTracks();
-    fetchAlbums();
-    fetchPlaylists();
-    fetchTrackPlaylistMemberships();
-    fetchWishlist();
-    fetchDownloads();
-    fetchDiscovery();
-    fetchHomeOverview();
-    fetchCurrentUser();
-  }, [
-    fetchOnboardingStatus,
-    fetchPlaybackState,
-    fetchTracks,
-    fetchAlbums,
-    fetchPlaylists,
-    fetchTrackPlaylistMemberships,
-    fetchWishlist,
-    fetchDownloads,
-    fetchDiscovery,
-    fetchHomeOverview,
-    fetchCurrentUser,
+  // Initial load, in this order (again if a fetcher changes identity).
+  useLoadAll([
+    fetchOnboardingStatus, fetchPlaybackState, fetchTracks, fetchAlbums, fetchPlaylists, fetchTrackPlaylistMemberships,
+    fetchWishlist, fetchDownloads, fetchDiscovery, fetchHomeOverview, fetchCurrentUser,
   ]);
 
   const { connectionError, retryConnection } = useBackendEvents({
@@ -291,7 +255,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
     }
   };
 
-
   const activePlayingTitle =
     playbackState.current_track?.title || "No Track Selected";
   const nextQueuedTrack = useMemo<PlaybackArtworkTrack | undefined>(() => {
@@ -337,6 +300,31 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
   }, [homeOverview?.flow_session?.is_active, handleToggleFlowPlayback, handleStartFlow, flowSteering]);
   // Playlist, mix, chart and Flow origins can be reopened from the player.
   const openableOrigin = playingOrigin && ["playlist", "mix", "chart", "flow"].includes(playingOrigin.type) ? playingOrigin : null;
+  // Props both players share (the bar/deck and the full-screen view).
+  const playerProps = {
+    playbackState,
+    isLoading: loadingTrackId !== null || !!playbackState.is_buffering,
+    currentTrack: playbackState.current_track,
+    coverArtUrl: activePlayingArtwork,
+    onOpenQueue: handleOpenQueue,
+    onPlayPause: handleUnifiedPlayPause,
+    onNext: handleNextTrack,
+    onPrevious: handlePreviousTrack,
+    onSeek: handleUnifiedSeek,
+    onVolumeChange: handleVolumeChange,
+    onToggleMute: handleToggleMute,
+    onToggleRepeat: handleToggleRepeat,
+    onToggleShuffle: handleToggleShuffle,
+    onLike: handleLike,
+    onLikeOnline: handleLikeOnline,
+    isOnlineLiked: isCurrentTrackLiked,
+    onRemoveFeedback: handleRemoveFeedback,
+    isInPlaylist: isCurrentTrackInPlaylist,
+    onOpenAddToPlaylist: handleOpenAddToPlaylistModal,
+    originName: openableOrigin?.name,
+    isLyricsActive,
+    onToggleLyrics: () => setIsLyricsActive((prev) => !prev),
+  };
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
     <InterfaceContext.Provider value={interfacePreference.style}>
@@ -405,6 +393,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
         {/* Bottom Sticky Player Bar (Unified for local music & online streams) */}
         <MainPlayer
+          {...playerProps}
           flowActive={!!homeOverview?.flow_session?.is_active}
           onToggleFlow={handleDeckFlow}
           entries={queueEntries}
@@ -413,35 +402,13 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
           currentUser={currentUser}
           view={currentView}
           onNavigate={handleSelectView}
-          playbackState={playbackState}
-          isLoading={loadingTrackId !== null || !!playbackState.is_buffering}
-          currentTrack={playbackState.current_track}
-          coverArtUrl={activePlayingArtwork}
-          onOpenQueue={handleOpenQueue}
           onOpenNowPlaying={handleOpenNowPlaying}
-          onPlayPause={handleUnifiedPlayPause}
-          onNext={handleNextTrack}
-          onPrevious={handlePreviousTrack}
-          onSeek={handleUnifiedSeek}
-          onVolumeChange={handleVolumeChange}
-          onToggleMute={handleToggleMute}
-          onToggleRepeat={handleToggleRepeat}
-          onToggleShuffle={handleToggleShuffle}
-          onLike={handleLike}
-          onLikeOnline={handleLikeOnline}
-          isOnlineLiked={isCurrentTrackLiked}
-          onRemoveFeedback={handleRemoveFeedback}
-          isInPlaylist={isCurrentTrackInPlaylist}
-          onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
           onOpenOrigin={openableOrigin ? handleOpenPlayingOrigin : undefined}
-          originName={openableOrigin?.name}
           onInspectWhyTrack={
             playingOrigin?.type === "flow" && playbackState.current_track
               ? handleInspectWhyCurrentTrack
               : undefined
           }
-          isLyricsActive={isLyricsActive}
-          onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => handleToggleFullscreen()}
         />
@@ -450,41 +417,18 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         <Suspense fallback={null}>
           {isFullscreen && (
             <FullScreenPlayerView
+              {...playerProps}
               brutalist={interfacePreference.style === "brutalist" ? { entries: queueEntries, tracks, onPlayIndex: handlePlayQueueIndex, currentUser, view: currentView, onNavigate: handleSelectView, flowActive: !!homeOverview?.flow_session?.is_active, onToggleFlow: handleDeckFlow, albumId: albums.find(a => a.title === playbackState.current_track?.album_title && a.artist_name === playbackState.current_track?.artist_name)?.id, onOpenAlbum: handleSelectAlbum } : undefined}
               onOpenNowPlaying={() => { handleToggleFullscreen(false); handleOpenNowPlaying(); }}
-              playbackState={playbackState}
               previousTrack={previousTrackRef.current}
               nextTrack={nextQueuedTrack}
-              onOpenQueue={handleOpenQueue}
               onInspectWhyTrack={
                 playingOrigin?.type === "flow"
                   ? handleInspectWhyCurrentTrack
                   : undefined
               }
-              isLoading={
-                loadingTrackId !== null || !!playbackState.is_buffering
-              }
-              currentTrack={playbackState.current_track}
-              coverArtUrl={activePlayingArtwork}
-              isInPlaylist={isCurrentTrackInPlaylist}
-              onOpenAddToPlaylist={handleOpenAddToPlaylistModal}
-              isLyricsActive={isLyricsActive}
-              onToggleLyrics={() => setIsLyricsActive((prev) => !prev)}
               onToggleFullscreen={() => handleToggleFullscreen(false)}
-              onPlayPause={handleUnifiedPlayPause}
-              onNext={handleNextTrack}
-              onPrevious={handlePreviousTrack}
-              onSeek={handleUnifiedSeek}
-              onVolumeChange={handleVolumeChange}
-              onToggleMute={handleToggleMute}
-              onToggleRepeat={handleToggleRepeat}
-              onToggleShuffle={handleToggleShuffle}
-              onLike={handleLike}
-              onLikeOnline={handleLikeOnline}
-              isOnlineLiked={isCurrentTrackLiked}
-              onRemoveFeedback={handleRemoveFeedback}
               onOpenOrigin={openableOrigin ? () => { handleToggleFullscreen(false); handleOpenPlayingOrigin(); } : undefined}
-              originName={openableOrigin?.name}
             />
           )}
 
