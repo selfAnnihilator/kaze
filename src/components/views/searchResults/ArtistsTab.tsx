@@ -19,11 +19,11 @@ export function ArtistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               style={{
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
-                borderRadius: "12px",
+                borderRadius: "var(--radius-12)",
                 padding: "var(--space-16)",
                 textAlign: "center",
                 cursor: "pointer",
-                transition: "transform 0.18s ease",
+                transition: "transform var(--duration-quick) ease",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = "var(--accent-light)";

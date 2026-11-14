@@ -200,7 +200,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
           <div
             style={{
               padding: "var(--space-12) var(--space-16)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               backgroundColor: "var(--danger-a12)",
               border: "1px solid var(--danger)",
               color: "var(--palette-red-200)",
@@ -232,7 +232,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: "var(--space-14)",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-8)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 marginBottom: "var(--space-16)",
@@ -356,7 +356,7 @@ export const ImportPlaylistModal: React.FC<ImportPlaylistModalProps> = ({
                 style={{
                   width: "100%",
                   padding: "var(--space-8) var(--space-32) var(--space-8) var(--space-36)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   border: "1px solid var(--border)",
                   backgroundColor: "var(--shade-25)",
                   color: "var(--text-main)",

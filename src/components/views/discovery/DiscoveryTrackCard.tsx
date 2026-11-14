@@ -89,13 +89,13 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           : isHovered
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-12)",
         padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard)",
         boxShadow: isPlaying
           ? "0 0 20px var(--accent-secondary-a35), 0 6px 18px var(--shade-45)"
           : isHovered
@@ -111,7 +111,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           position: "relative",
           width: "100%",
           aspectRatio: "1 / 1",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-8)",
           overflow: "hidden",
           backgroundColor: "var(--overlay-5)",
           display: "flex",
@@ -147,7 +147,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               top: "7px",
               left: "7px",
               backgroundColor: "var(--accent-secondary-a95)",
-              borderRadius: "20px",
+              borderRadius: "var(--radius-20)",
               padding: "var(--space-2) var(--space-8)",
               display: "flex",
               alignItems: "center",
@@ -192,7 +192,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             cursor: "pointer",
             opacity: isHovered || isPlaying || isLoading ? 1 : 0,
             transform: isHovered || isPlaying || isLoading ? "scale(1)" : "scale(0.85)",
-            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            transition: "opacity var(--duration-base) ease, transform var(--duration-base) ease, background-color var(--duration-base) ease",
             zIndex: 3,
           }}
           title={isPlaying ? "Pause / Stop playback" : "Play"}
@@ -228,7 +228,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
             cursor: "pointer",
             opacity: isHovered || isQueued ? 1 : 0,
             transform: isHovered || isQueued ? "scale(1)" : "scale(0.85)",
-            transition: "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+            transition: "opacity var(--duration-base) ease, transform var(--duration-base) ease, background-color var(--duration-base) ease",
             zIndex: 3,
           }}
           title={isQueued ? "Already in queue" : "Add to queue"}
@@ -265,7 +265,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           overflow: "hidden",
           textOverflow: "ellipsis",
           cursor: "pointer",
-          transition: "color 0.15s ease",
+          transition: "color var(--duration-fast) ease",
         }}
         title={`Search other songs by ${rec.artist}`}
         onClick={(e) => {
@@ -328,7 +328,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
               padding: "var(--space-4)",
               display: "flex",
               alignItems: "center",
-              transition: "color 0.15s ease",
+              transition: "color var(--duration-fast) ease",
             }}
             onClick={(e) => {
               e.stopPropagation();

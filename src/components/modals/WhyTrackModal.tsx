@@ -21,7 +21,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: "var(--z-modal)",
       }}
     >
       <div
@@ -31,7 +31,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
           maxWidth: "420px",
           width: "90%",
           padding: "var(--space-24)",
-          borderRadius: "14px",
+          borderRadius: "var(--radius-14)",
           backgroundColor: "var(--bg-card, var(--bg-main))",
           border: "1px solid var(--border, var(--text-main-a15))",
           boxShadow: "0 20px 48px var(--shade-65)",
@@ -100,7 +100,7 @@ export function WhyTrackModal({ explained, onClose }: { explained: ExplainedTrac
         <div
           style={{
             padding: "var(--space-12) var(--space-14)",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-8)",
             backgroundColor: "var(--accent-a8)",
             border: "1px solid var(--accent-a20)",
             fontSize: "var(--fs-14)",

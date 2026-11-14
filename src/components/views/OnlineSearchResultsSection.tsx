@@ -204,7 +204,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         alignItems: "center",
                         gap: "var(--space-12)",
                         padding: "var(--space-8) var(--space-12)",
-                        borderRadius: "8px",
+                        borderRadius: "var(--radius-8)",
                         backgroundColor:
                           isPlaying || isLoading
                             ? "var(--accent-secondary-a10)"
@@ -219,7 +219,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         style={{
                           width: "40px",
                           height: "40px",
-                          borderRadius: "6px",
+                          borderRadius: "var(--radius-6)",
                           overflow: "hidden",
                           backgroundColor: "var(--overlay-5)",
                           position: "relative",
@@ -348,7 +348,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
         overflow: "hidden",
         backgroundColor: "var(--palette-slate-900-a75)",
         border: "1px solid var(--overlay-8)",
-        borderRadius: "14px",
+        borderRadius: "var(--radius-14)",
         padding: "var(--space-20) var(--space-24)",
         boxShadow: "0 8px 32px var(--shade-35)",
       }}

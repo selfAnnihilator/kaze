@@ -54,7 +54,7 @@
   height: 12px;
   top: 7px;
   left: calc(50% - 1px);
-  border-radius: 2px;
+  border-radius: var(--radius-2);
   background: var(--accent);
 }
 .dial-value {

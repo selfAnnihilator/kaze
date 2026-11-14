@@ -147,4 +147,4 @@
 .taste-choices button { max-width: 100%; overflow-wrap: anywhere; padding: var(--space-8) var(--space-12); border: 1px solid var(--border); border-radius: var(--ui-radius); color: var(--text-main); background: var(--bg-main); }
 .taste-choices button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .taste-choices button:disabled { opacity: .5; }
-.playback-notice, .taste-retry { position: fixed; z-index: 2000; bottom: 120px; left: 24px; padding: var(--space-14) var(--space-18); max-width: calc(100vw - 48px); background: var(--bg-card); color: var(--text-main); border: 1px solid var(--accent); }
+.playback-notice, .taste-retry { position: fixed; z-index: var(--z-notice); bottom: 120px; left: 24px; padding: var(--space-14) var(--space-18); max-width: calc(100vw - 48px); background: var(--bg-card); color: var(--text-main); border: 1px solid var(--accent); }

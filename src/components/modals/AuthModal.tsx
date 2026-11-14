@@ -94,7 +94,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 9999,
+        zIndex: "var(--z-dialog)",
       }}
       onClick={handleClose}
     >
@@ -104,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           maxWidth: "400px",
           backgroundColor: "var(--palette-gray-900)",
           border: "1px solid var(--overlay-10)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-16)",
           padding: "var(--space-24)",
           boxShadow: "0 25px 50px -12px var(--shade-70)",
           color: "var(--text-main)",
@@ -125,14 +125,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               style={{
                 width: "36px",
                 height: "36px",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 background: "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <img src="/kaze-icon.png" alt="Kaze" style={{ width: "36px", height: "36px", borderRadius: "10px" }} />
+              <img src="/kaze-icon.png" alt="Kaze" style={{ width: "36px", height: "36px", borderRadius: "var(--radius-10)" }} />
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: "var(--fs-18)", fontWeight: "var(--weight-bold)" }}>
@@ -157,7 +157,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               color: "var(--overlay-50)",
               cursor: "pointer",
               padding: "var(--space-4)",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-6)",
             }}
           >
             <X size={20} />
@@ -169,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           style={{
             display: "flex",
             background: "var(--overlay-5)",
-            borderRadius: "10px",
+            borderRadius: "var(--radius-10)",
             padding: "var(--space-4)",
             marginBottom: "var(--space-18)",
           }}
@@ -186,11 +186,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               background: tab === "login" ? "var(--palette-gray-850)" : "transparent",
               color: tab === "login" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
-              transition: "transform 0.15s ease, opacity 0.15s ease",
+              transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
             }}
           >
             Sign In
@@ -207,11 +207,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               background: tab === "signup" ? "var(--palette-gray-850)" : "transparent",
               color: tab === "signup" ? "var(--text-main)" : "var(--overlay-50)",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
-              transition: "transform 0.15s ease, opacity 0.15s ease",
+              transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
             }}
           >
             Sign Up
@@ -229,7 +229,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               border: "1px solid var(--danger-a30)",
               color: "var(--palette-red-300)",
               padding: "var(--space-10) var(--space-12)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               fontSize: "var(--fs-12)",
               marginBottom: "var(--space-16)",
             }}
@@ -259,7 +259,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 alignItems: "center",
                 gap: "var(--space-10)",
                 background: "var(--palette-gray-850)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 padding: "0 var(--space-12)",
                 border: "1px solid var(--overlay-10)",
               }}
@@ -304,7 +304,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 alignItems: "center",
                 gap: "var(--space-10)",
                 background: "var(--palette-gray-850)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 padding: "0 var(--space-12)",
                 border: "1px solid var(--overlay-10)",
               }}
@@ -349,7 +349,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   alignItems: "center",
                   gap: "var(--space-10)",
                   background: "var(--palette-gray-850)",
-                  borderRadius: "10px",
+                  borderRadius: "var(--radius-10)",
                   padding: "0 var(--space-12)",
                   border: "1px solid var(--overlay-10)",
                 }}
@@ -385,7 +385,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               background: "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))",
               color: "var(--text-main)",
               border: "none",
-              borderRadius: "10px",
+              borderRadius: "var(--radius-10)",
               fontSize: "var(--fs-14)",
               fontWeight: "var(--weight-semibold)",
               cursor: isLoading ? "not-allowed" : "pointer",
@@ -395,7 +395,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               gap: "var(--space-8)",
               opacity: isLoading ? 0.7 : 1,
               boxShadow: "0 4px 12px var(--accent-a30)",
-              transition: "transform 0.1s ease",
+              transition: "transform var(--duration-instant) ease",
             }}
           >
             <span>{tab === "login" ? "Sign In" : "Create Account"}</span>

@@ -105,7 +105,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 9999,
+        zIndex: "var(--z-dialog)",
         padding: "var(--space-20)",
       }}
       onClick={() => { if (!isSubmitting && !togglingIds.size) onClose(); }}
@@ -115,7 +115,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         style={{
           backgroundColor: "var(--palette-gray-900)",
           border: "1px solid var(--overlay-12)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-16)",
           width: "100%",
           maxWidth: "460px",
           maxHeight: "85vh",
@@ -168,7 +168,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 style={{
                   fontSize: "var(--fs-12)",
                   padding: "var(--space-6) var(--space-12)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "var(--space-6)",
@@ -192,7 +192,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 cursor: "pointer",
                 padding: "var(--space-6)",
                 display: "flex",
-                borderRadius: "6px",
+                borderRadius: "var(--radius-6)",
               }}
               title="Close modal"
             >
@@ -228,7 +228,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                   border: createError
                     ? "1px solid var(--danger)"
                     : "1px solid var(--overlay-15)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   padding: "var(--space-8) var(--space-12)",
                   color: "var(--text-main)",
                   fontSize: "var(--fs-14)",
@@ -339,7 +339,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       alignItems: "center",
                       gap: "var(--space-14)",
                       padding: "var(--space-8) var(--space-12)",
-                      borderRadius: "10px",
+                      borderRadius: "var(--radius-10)",
                       cursor: "pointer",
                       backgroundColor: isMember
                         ? "var(--accent-a8)"
@@ -347,7 +347,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       border: isMember
                         ? "1px solid var(--accent-a30)"
                         : "1px solid transparent",
-                      transition: "transform 0.15s ease, opacity 0.15s ease",
+                      transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
                     }}
                     onMouseEnter={(e) => {
                       if (!isMember) {
@@ -366,7 +366,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                       style={{
                         width: "22px",
                         height: "22px",
-                        borderRadius: "6px",
+                        borderRadius: "var(--radius-6)",
                         border: isMember
                           ? "2px solid var(--accent-secondary)"
                           : "2px solid var(--overlay-30)",
@@ -377,7 +377,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        transition: "transform 0.15s ease, opacity 0.15s ease",
+                        transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
                       }}
                     >
                       {isMember && (
@@ -455,7 +455,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             style={{
               padding: "var(--space-6) var(--space-14)",
               fontSize: "var(--fs-13)",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-6)",
             }}
           >
             Done

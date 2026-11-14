@@ -38,7 +38,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
               border: "1px solid var(--accent-a40)",
               color: "var(--accent-light)",
               padding: "var(--space-2) var(--space-10)",
-              borderRadius: "9999px",
+              borderRadius: "var(--radius-pill)",
               fontSize: "var(--fs-12)",
               fontWeight: "var(--weight-bold)",
             }}
@@ -66,7 +66,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
               gap: "var(--space-6)",
               background: "var(--overlay-5)",
               padding: "var(--space-4)",
-              borderRadius: "12px",
+              borderRadius: "var(--radius-12)",
               border: "1px solid var(--overlay-8)",
             }}
           >
@@ -78,7 +78,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                   onClick={() => c.setSelectedYear(year === c.currentYear ? undefined : year)}
                   style={{
                     padding: "var(--space-6) var(--space-14)",
-                    borderRadius: "8px",
+                    borderRadius: "var(--radius-8)",
                     border: "none",
                     background: isActive
                       ? "linear-gradient(135deg, var(--accent), var(--palette-taupe-550))"
@@ -87,7 +87,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
                     fontWeight: isActive ? 700 : 500,
                     fontSize: "var(--fs-13)",
                     cursor: "pointer",
-                    transition: "transform 0.15s ease, opacity 0.15s ease",
+                    transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
                     display: "flex",
                     alignItems: "center",
                     gap: "var(--space-6)",
@@ -106,7 +106,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
           disabled={c.isLoading || c.isRefreshing}
           style={{
             padding: "var(--space-8) var(--space-14)",
-            borderRadius: "10px",
+            borderRadius: "var(--radius-10)",
             border: "1px solid var(--overlay-12)",
             background: "var(--overlay-5)",
             color: "var(--text-main)",
@@ -116,7 +116,7 @@ export function StatsHeader({ c }: { c: StatsViewContext }) {
             display: "flex",
             alignItems: "center",
             gap: "var(--space-8)",
-            transition: "transform 0.15s ease, opacity 0.15s ease",
+            transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
           }}
           title="Refresh listening stats"
         >

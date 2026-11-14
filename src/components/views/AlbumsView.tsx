@@ -119,7 +119,7 @@ const AlbumCard: React.FC<AlbumCardProps> = React.memo(
           style={{
             width: "100%",
             aspectRatio: "1/1",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-8)",
             backgroundColor: "var(--overlay-5)",
             display: "flex",
             alignItems: "center",

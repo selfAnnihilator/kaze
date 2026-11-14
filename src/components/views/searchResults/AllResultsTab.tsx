@@ -37,14 +37,14 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                       c.isTrackPlaying(topResult) || c.isTrackLoading(topResult)
                         ? "1.5px solid var(--accent-secondary)"
                         : "1px solid var(--border)",
-                    borderRadius: "12px",
+                    borderRadius: "var(--radius-12)",
                     padding: "var(--space-20)",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
                     gap: "var(--space-12)",
                     position: "relative",
-                    transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition: "transform var(--duration-base) var(--ease-standard)",
                     boxShadow: "0 6px 20px var(--shade-25)",
                   }}
                 >
@@ -53,7 +53,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                     style={{
                       width: "96px",
                       height: "96px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--radius-8)",
                       overflow: "hidden",
                       backgroundColor: "var(--overlay-5)",
                       boxShadow: "0 8px 24px var(--shade-40)",
@@ -95,7 +95,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                     <span
                       style={{
                         padding: "var(--space-2) var(--space-8)",
-                        borderRadius: "10px",
+                        borderRadius: "var(--radius-10)",
                         backgroundColor: "var(--overlay-10)",
                         color: "var(--text-main)",
                         fontSize: "var(--fs-12)",
@@ -160,7 +160,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
-                            transition: "opacity 0.15s ease",
+                            transition: "opacity var(--duration-fast) ease",
                           }}
                           title="Add to playlist"
                         >
@@ -191,7 +191,7 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         cursor: "pointer",
                         boxShadow: "0 8px 18px var(--accent-secondary-a35)",
                         transition:
-                          "transform 0.15s ease",
+                          "transform var(--duration-fast) ease",
                       }}
                       title={c.isTrackPlaying(topResult) ? "Pause" : "Play"}
                     >

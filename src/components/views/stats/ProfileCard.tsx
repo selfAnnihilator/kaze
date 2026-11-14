@@ -7,7 +7,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
       style={{
         background: "linear-gradient(135deg, var(--palette-indigo-800-a45) 0%, var(--palette-blue-900-a65) 100%)",
         border: "1px solid var(--overlay-8)",
-        borderRadius: "20px",
+        borderRadius: "var(--radius-20)",
         padding: "var(--space-24) var(--space-28)",
         marginBottom: "var(--space-36)",
         display: "flex",
@@ -116,9 +116,9 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 cursor: c.isUploadingAvatar ? "not-allowed" : "pointer",
                 color: "var(--text-main)",
                 boxShadow: "0 2px 8px var(--shade-50)",
-                transition: "transform 0.15s ease, opacity 0.15s ease",
+                transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
                 padding: 0,
-                zIndex: 10,
+                zIndex: "var(--z-raised)",
               }}
               onMouseEnter={(e) => {
                 if (!c.isUploadingAvatar) e.currentTarget.style.background = "var(--accent)";
@@ -145,9 +145,9 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                 marginTop: "var(--space-8)",
                 background: "var(--bg-card)",
                 border: "1px solid var(--text-main-a35)",
-                borderRadius: "12px",
+                borderRadius: "var(--radius-12)",
                 padding: "var(--space-6)",
-                zIndex: 50,
+                zIndex: "var(--z-player)",
                 minWidth: "160px",
                 boxShadow: "0 10px 25px -5px var(--shade-60)",
                 display: "flex",
@@ -170,12 +170,12 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   border: "none",
                   color: "var(--text-main)",
                   padding: "var(--space-8) var(--space-10)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   fontSize: "var(--fs-12)",
                   fontWeight: "var(--weight-semibold)",
                   cursor: "pointer",
                   textAlign: "left",
-                  transition: "background 0.15s ease",
+                  transition: "background var(--duration-fast) ease",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--text-main-a20)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -198,12 +198,12 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
                   border: "none",
                   color: "var(--palette-red-300)",
                   padding: "var(--space-8) var(--space-10)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   fontSize: "var(--fs-12)",
                   fontWeight: "var(--weight-semibold)",
                   cursor: "pointer",
                   textAlign: "left",
-                  transition: "background 0.15s ease",
+                  transition: "background var(--duration-fast) ease",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--danger-a15)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -296,7 +296,7 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             border: "none",
             color: "var(--text-main)",
             padding: "var(--space-8) var(--space-16)",
-            borderRadius: "10px",
+            borderRadius: "var(--radius-10)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
             cursor: "pointer",

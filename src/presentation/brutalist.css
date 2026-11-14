@@ -107,7 +107,7 @@
 .press-skip {
   position: absolute;
   transform: translateY(-200%);
-  z-index: 20;
+  z-index: var(--z-dropdown);
   padding: var(--space-12) var(--space-20);
   background: var(--press-paper);
 }
@@ -304,8 +304,8 @@
   opacity: 0;
   transform: translateY(6px);
   transition:
-    transform 160ms ease-out,
-    opacity 160ms ease-out;
+    transform var(--duration-fast) ease-out,
+    opacity var(--duration-fast) ease-out;
 }
 .press-poster-cover:hover .press-cover-open,
 .press-poster-cover:focus-visible .press-cover-open {
@@ -728,7 +728,7 @@
   overflow: hidden;
 }
 .press-sleeve-art img {
-  transition: transform 180ms ease-out;
+  transition: transform var(--duration-quick) ease-out;
 }
 .press-sleeve-art:hover img,
 .press-sleeve-art:focus-visible img {
@@ -745,7 +745,7 @@
   background: var(--press-paper);
   border: var(--press-rule);
   opacity: 0;
-  transition: opacity 150ms ease-out;
+  transition: opacity var(--duration-fast) ease-out;
 }
 .press-sleeve-art:hover .press-sleeve-play,
 .press-sleeve-art:focus-visible .press-sleeve-play {
@@ -846,7 +846,7 @@
   height: 125px;
   object-fit: cover;
   margin-bottom: var(--space-14);
-  transition: transform 180ms ease-out;
+  transition: transform var(--duration-quick) ease-out;
 }
 .press-record-spine strong {
   font-size: var(--fs-18);
@@ -1830,7 +1830,7 @@
   background: var(--press-paper);
   position: sticky;
   top: 0;
-  z-index: 15;
+  z-index: var(--z-sticky);
 }
 .kaze-interface[data-interface="brutalist"] .interface-name {
   display: none;
@@ -1906,7 +1906,7 @@
   padding: var(--space-8);
   background: var(--press-paper);
   border: var(--press-rule);
-  z-index: 30;
+  z-index: var(--z-menu);
 }
 .kaze-interface[data-interface="brutalist"] .spatial-utilities-menu button {
   display: flex;
@@ -2131,7 +2131,7 @@
 }
 .press-home-adjacent .music-artwork {
   pointer-events: none;
-  transition: transform 200ms ease-out;
+  transition: transform var(--duration-base) ease-out;
 }
 .press-home-adjacent:not(:disabled):is(:hover, :focus-visible) .music-artwork {
   transform: scale(1.04);
@@ -2432,7 +2432,7 @@
   margin-bottom: var(--space-14);
 }
 .press-record-spine .music-artwork img {
-  transition: transform 200ms ease-out;
+  transition: transform var(--duration-base) ease-out;
 }
 .press-albums .press-archive-footer {
   margin: var(--space-16) 0 0;
@@ -3363,7 +3363,7 @@
     position: sticky;
     top: 0;
     background: var(--press-paper);
-    z-index: 10;
+    z-index: var(--z-raised);
   }
   .press-fullscreen .fullscreen-main {
     height: 560px;

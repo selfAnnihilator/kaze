@@ -32,7 +32,7 @@ export function DeletePlaylistModal({ c }: { c: PlaylistsViewContext }) {
                 style={{
                   width: "42px",
                   height: "42px",
-                  borderRadius: "10px",
+                  borderRadius: "var(--radius-10)",
                   backgroundColor: "var(--danger-a12)",
                   display: "flex",
                   alignItems: "center",

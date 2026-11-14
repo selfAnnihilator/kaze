@@ -42,7 +42,7 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
         gap: "var(--space-12)",
         backgroundColor: "var(--bg-card)",
         border: "1px solid var(--border)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-12)",
         boxShadow: "0 4px 20px var(--shade-25)",
       }}
     >
@@ -63,10 +63,10 @@ export const GlobalTopSearchBar: React.FC<GlobalTopSearchBarProps> = React.memo(
             gap: "var(--space-10)",
             backgroundColor: "var(--bg-main)",
             border: "1px solid var(--border)",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-8)",
             padding: "var(--space-10) var(--space-14)",
             flex: 1,
-            transition: "border-color 0.15s ease",
+            transition: "border-color var(--duration-fast) ease",
           }}
         >
           <input

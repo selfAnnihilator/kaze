@@ -89,7 +89,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-label
 .overflow-title[data-overflow="true"]:is(:hover, :focus-within) .overflow-title-reveal,
 button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-reveal {
   opacity: 1;
-  animation: reveal-title var(--title-duration) linear 400ms infinite alternate;
+  animation: reveal-title var(--title-duration) linear var(--duration-slow) infinite alternate;
 }
 @keyframes reveal-title {
   0%, 12% { transform: translateX(0); }
@@ -98,13 +98,13 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .listening-graph-bar {
   background: var(--accent);
   opacity: 0.8;
-  transition: opacity 150ms ease;
+  transition: opacity var(--duration-fast) ease;
 }
 .listening-graph-bar[data-hovered="true"] { opacity: 1; }
 .listening-graph-bar[data-has-time="false"] { background: var(--border); }
 .discovery-card-art > .music-artwork,
 .album-card > div:first-child > img {
-  transition: transform 200ms ease-out;
+  transition: transform var(--duration-base) ease-out;
 }
 .discovery-card-body:is(:hover, :focus-within) .discovery-card-art > .music-artwork,
 .album-card:is(:hover, :focus-within) > div:first-child > img {
@@ -365,7 +365,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   min-width: 240px !important;
   margin-top: calc(120 * var(--space-unit));
   padding: var(--space-18) !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-8) !important;
 }
 .home-secondary {
   gap: var(--space-48) !important;
@@ -553,7 +553,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   box-shadow: none !important;
 }
 .kaze-interface .discovery-track-card > div > div:first-child {
-  border-radius: 3px !important;
+  border-radius: var(--radius-4) !important;
 }
 .kaze-interface .discovery-track-card img {
   border-radius: 0 !important;
@@ -582,7 +582,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   border-radius: 0 !important;
 }
 .kaze-interface .album-card > div:first-child {
-  border-radius: 2px !important;
+  border-radius: var(--radius-2) !important;
 }
 .kaze-interface .album-card:focus-visible {
   outline-offset: 5px;
@@ -591,7 +591,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   background: var(--bg-card) !important;
   min-height: 270px !important;
   box-shadow: none !important;
-  border-radius: 4px !important;
+  border-radius: var(--radius-4) !important;
 }
 .kaze-interface .collection-view > .collection-hero h1 {
   font-size: calc(44 * var(--fs-unit)) !important;
@@ -784,7 +784,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .kaze-interface > .player-bar {
   margin: 0 var(--space-18) var(--space-14) calc(188 * var(--space-unit));
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-12);
   padding: var(--space-14) var(--space-18);
   min-height: 106px;
   background: var(--bg-player);
@@ -827,7 +827,7 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
 .fullscreen-player {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-overlay);
   background: var(--bg-main);
   color: var(--text-main);
   display: flex;
@@ -1319,8 +1319,8 @@ button:focus-visible .overflow-title[data-overflow="true"] .overflow-title-revea
   left: 50%;
   width: 310px;
   transition:
-    transform 240ms ease-out,
-    opacity 240ms ease-out;
+    transform var(--duration-moderate) ease-out,
+    opacity var(--duration-moderate) ease-out;
   cursor: pointer;
 }
 [data-interface="spatial"] .stage-current {

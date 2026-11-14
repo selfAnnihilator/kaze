@@ -28,7 +28,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           onClick={() => c.setActiveTab("all")}
           style={{
             padding: "var(--space-6) var(--space-14)",
-            borderRadius: "9999px",
+            borderRadius: "var(--radius-pill)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
@@ -36,7 +36,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             backgroundColor:
               c.activeTab === "all" ? "var(--text-main)" : "var(--overlay-8)",
             color: c.activeTab === "all" ? "var(--bg-main)" : "var(--text-main)",
-            transition: "opacity 0.15s ease",
+            transition: "opacity var(--duration-fast) ease",
           }}
         >
           All
@@ -46,7 +46,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
           onClick={() => c.setActiveTab("songs")}
           style={{
             padding: "var(--space-6) var(--space-14)",
-            borderRadius: "9999px",
+            borderRadius: "var(--radius-pill)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
@@ -54,7 +54,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             backgroundColor:
               c.activeTab === "songs" ? "var(--text-main)" : "var(--overlay-8)",
             color: c.activeTab === "songs" ? "var(--bg-main)" : "var(--text-main)",
-            transition: "opacity 0.15s ease",
+            transition: "opacity var(--duration-fast) ease",
           }}
         >
           Songs ({c.searchResults.length})
@@ -65,7 +65,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             onClick={() => c.setActiveTab("artists")}
             style={{
               padding: "var(--space-6) var(--space-14)",
-              borderRadius: "9999px",
+              borderRadius: "var(--radius-pill)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
@@ -75,7 +75,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
                   ? "var(--text-main)"
                   : "var(--overlay-8)",
               color: c.activeTab === "artists" ? "var(--bg-main)" : "var(--text-main)",
-              transition: "opacity 0.15s ease",
+              transition: "opacity var(--duration-fast) ease",
             }}
           >
             Artists ({c.distinctArtists.length})
@@ -87,7 +87,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             onClick={() => c.setActiveTab("albums")}
             style={{
               padding: "var(--space-6) var(--space-14)",
-              borderRadius: "9999px",
+              borderRadius: "var(--radius-pill)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
@@ -97,7 +97,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
                   ? "var(--text-main)"
                   : "var(--overlay-8)",
               color: c.activeTab === "albums" ? "var(--bg-main)" : "var(--text-main)",
-              transition: "opacity 0.15s ease",
+              transition: "opacity var(--duration-fast) ease",
             }}
           >
             Albums ({c.distinctAlbums.length})
@@ -109,7 +109,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             onClick={() => c.setActiveTab("playlists")}
             style={{
               padding: "var(--space-6) var(--space-14)",
-              borderRadius: "9999px",
+              borderRadius: "var(--radius-pill)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-semibold)",
               cursor: "pointer",
@@ -119,7 +119,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
                   ? "var(--text-main)"
                   : "var(--overlay-8)",
               color: c.activeTab === "playlists" ? "var(--bg-main)" : "var(--text-main)",
-              transition: "opacity 0.15s ease",
+              transition: "opacity var(--duration-fast) ease",
             }}
           >
             Playlists ({c.matchingPlaylists.length})
@@ -143,7 +143,7 @@ export function SearchResultsHeader({ c }: { c: OnlineSearchResultsSectionContex
             display: "inline-flex",
             alignItems: "center",
             gap: "var(--space-6)",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-8)",
           }}
           title="Clear search results"
         >

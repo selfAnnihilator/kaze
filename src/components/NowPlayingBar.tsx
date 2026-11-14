@@ -128,7 +128,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
               position: "relative",
               width: "48px",
               height: "48px",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-6)",
               backgroundColor: "var(--overlay-5)",
               display: "flex",
               alignItems: "center",
@@ -173,7 +173,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                   textDecorationColor: onOpenOrigin
                     ? "var(--overlay-40)"
                     : "transparent",
-                  transition: "color 0.15s ease",
+                  transition: "color var(--duration-fast) ease",
                   display: "block",
                 }}
                 title={
@@ -392,7 +392,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                 color: isLyricsActive
                   ? "var(--accent-secondary)"
                   : "var(--text-muted)",
-                transition: "opacity 0.15s ease",
+                transition: "opacity var(--duration-fast) ease",
               }}
             >
               <Mic2

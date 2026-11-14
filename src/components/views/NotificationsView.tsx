@@ -323,8 +323,8 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                       padding: "var(--space-6)",
                       display: "flex",
                       alignItems: "center",
-                      borderRadius: "6px",
-                      transition: "transform 0.15s ease, opacity 0.15s ease",
+                      borderRadius: "var(--radius-6)",
+                      transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = "var(--danger)";

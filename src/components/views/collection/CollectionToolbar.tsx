@@ -31,7 +31,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             justifyContent: "center",
             cursor: "pointer",
             boxShadow: "0 6px 20px var(--accent-secondary-a40)",
-            transition: "transform 0.15s ease, background-color 0.15s ease",
+            transition: "transform var(--duration-fast) ease, background-color var(--duration-fast) ease",
           }}
           title={c.isPlaying ? "Pause Collection" : "Play Collection"}
         >
@@ -63,7 +63,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "transform 0.15s ease, opacity 0.15s ease",
+              transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
               position: "relative",
             }}
             onMouseEnter={(e) => {
@@ -133,7 +133,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "transform 0.15s ease, opacity 0.15s ease",
+              transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
             }}
             title="Save collection to your library"
           >
@@ -165,10 +165,10 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
                 position: "absolute",
                 top: "46px",
                 left: 0,
-                zIndex: 20,
+                zIndex: "var(--z-dropdown)",
                 minWidth: "160px",
                 padding: "var(--space-6)",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-8)",
                 border: "1px solid var(--border)",
                 background: "var(--bg-sidebar)",
                 boxShadow: "0 12px 30px var(--shade-45)",
@@ -241,14 +241,14 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
             onChange={(e) => c.setSearchQuery(e.target.value)}
             style={{
               padding: "var(--space-8) var(--space-30) var(--space-8) var(--space-36)",
-              borderRadius: "20px",
+              borderRadius: "var(--radius-20)",
               border: "1px solid var(--border)",
               backgroundColor: "var(--overlay-5)",
               color: "var(--text-main)",
               fontSize: "var(--fs-13)",
               outline: "none",
               width: "220px",
-              transition: "transform 0.2s ease, opacity 0.2s ease",
+              transition: "transform var(--duration-base) ease, opacity var(--duration-base) ease",
             }}
           />
           {c.searchQuery && (

@@ -99,7 +99,7 @@
 }
 .spatial-flow-artwork > button > .music-artwork {
   pointer-events: none;
-  transition: transform 240ms ease-out;
+  transition: transform var(--duration-moderate) ease-out;
 }
 .spatial-flow-artwork > button:not(:disabled):is(:hover, :focus-visible) > .music-artwork {
   transform: translateY(-6px);
@@ -420,9 +420,9 @@
   width: 230px;
   padding: var(--space-8);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   background: var(--bg-card);
-  z-index: 30;
+  z-index: var(--z-menu);
 }
 .spatial-utilities-menu button {
   display: flex;
@@ -433,7 +433,7 @@
   background: transparent;
   border: 0;
   padding: var(--space-12);
-  border-radius: 4px;
+  border-radius: var(--radius-4);
   text-align: left;
   font-size: var(--fs-12);
 }
@@ -1352,7 +1352,7 @@
   padding: var(--space-12) var(--space-16);
   min-height: 52px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-8);
   background: var(--bg-card);
   text-align: left;
   color: var(--text-muted);
@@ -1390,7 +1390,7 @@
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-main);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   padding: var(--space-10) var(--space-12);
   width: 100%;
   max-width: 100%;
@@ -1414,7 +1414,7 @@
   width: 100%;
   margin-top: var(--space-10);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   background: var(--bg-card);
   color: var(--text-main);
 }
@@ -1460,7 +1460,7 @@
   min-height: 44px;
   padding: var(--space-10) var(--space-16);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   background: var(--bg-card);
   color: var(--text-main);
   font-size: var(--fs-13);
@@ -1545,7 +1545,7 @@
   padding: var(--space-28);
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-8);
 }
 :root[data-interface="spatial"] .settings-storage-summary > strong {
   display: block;
@@ -1675,7 +1675,7 @@
   background: var(--bg-main);
   color: var(--text-main);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: var(--radius-10);
 }
 :root[data-interface="spatial"] .settings-logout-dialog::backdrop {
   background: var(--palette-gray-900-a75);
@@ -1697,7 +1697,7 @@
   padding: var(--space-16);
   min-height: 70px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-6);
   color: var(--text-main);
   background: var(--bg-card);
 }

@@ -19,10 +19,10 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               style={{
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
-                borderRadius: "12px",
+                borderRadius: "var(--radius-12)",
                 padding: "var(--space-14)",
                 cursor: "pointer",
-                transition: "transform 0.18s ease",
+                transition: "transform var(--duration-quick) ease",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = "var(--accent-light)";
@@ -35,7 +35,7 @@ export function AlbumsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   width: "100%",
                   aspectRatio: "1/1",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   overflow: "hidden",
                   backgroundColor: "var(--overlay-5)",
                   marginBottom: "var(--space-10)",

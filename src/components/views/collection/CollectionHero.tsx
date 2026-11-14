@@ -21,7 +21,7 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
         className="collection-hero"
         style={{
           position: "relative",
-          borderRadius: "14px",
+          borderRadius: "var(--radius-14)",
           overflow: "hidden",
           background: c.bgGradient,
           padding: "var(--space-28) var(--space-32) var(--space-36) var(--space-32)",
@@ -47,13 +47,13 @@ export function CollectionHero({ c }: { c: CollectionDetailViewContext }) {
             backgroundColor: "var(--shade-65)",
             border: "1px solid var(--overlay-15)",
             color: "var(--text-main)",
-            borderRadius: "20px",
+            borderRadius: "var(--radius-20)",
             padding: "var(--space-6) var(--space-14)",
             fontSize: "var(--fs-13)",
             fontWeight: "var(--weight-semibold)",
             cursor: "pointer",
-            zIndex: 10,
-            transition: "transform 0.15s ease, opacity 0.15s ease",
+            zIndex: "var(--z-raised)",
+            transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "var(--shade-70)";

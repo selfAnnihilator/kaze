@@ -16,7 +16,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         style={{
           background: "linear-gradient(135deg, var(--palette-indigo-800-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--accent-a20)",
-          borderRadius: "18px",
+          borderRadius: "var(--radius-20)",
           padding: "var(--space-20) var(--space-24)",
           position: "relative",
           overflow: "hidden",
@@ -45,7 +45,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "10px",
+              borderRadius: "var(--radius-10)",
               background: "var(--palette-pink-400-a15)",
               display: "flex",
               alignItems: "center",
@@ -75,7 +75,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         style={{
           background: "linear-gradient(135deg, var(--palette-blue-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--palette-blue-400-a20)",
-          borderRadius: "18px",
+          borderRadius: "var(--radius-20)",
           padding: "var(--space-20) var(--space-24)",
         }}
       >
@@ -102,7 +102,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "10px",
+              borderRadius: "var(--radius-10)",
               background: "var(--palette-blue-400-a15)",
               display: "flex",
               alignItems: "center",
@@ -132,7 +132,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         style={{
           background: "linear-gradient(135deg, var(--palette-violet-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
           border: "1px solid var(--palette-violet-350-a25)",
-          borderRadius: "18px",
+          borderRadius: "var(--radius-20)",
           padding: "var(--space-20) var(--space-24)",
         }}
       >
@@ -159,7 +159,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             style={{
               width: "36px",
               height: "36px",
-              borderRadius: "10px",
+              borderRadius: "var(--radius-10)",
               background: "var(--palette-violet-350-a15)",
               display: "flex",
               alignItems: "center",

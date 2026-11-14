@@ -31,13 +31,13 @@ export const ChartCard: React.FC<{
         border: isHovered
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-12)",
         padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard)",
         boxShadow: isHovered
           ? "0 10px 24px var(--shade-40)"
           : "0 2px 8px var(--shade-15)",
@@ -51,7 +51,7 @@ export const ChartCard: React.FC<{
           position: "relative",
           width: "100%",
           aspectRatio: "1 / 1",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-8)",
           overflow: "hidden",
           background: chart.bgGradient,
           display: "flex",
@@ -68,7 +68,7 @@ export const ChartCard: React.FC<{
           style={{
             backgroundColor: "var(--shade-60)",
             padding: "var(--space-4) var(--space-8)",
-            borderRadius: "6px",
+            borderRadius: "var(--radius-6)",
             fontSize: "var(--fs-11)",
             fontWeight: "var(--weight-extrabold)",
             letterSpacing: "1.5px",
@@ -115,7 +115,7 @@ export const ChartCard: React.FC<{
             opacity: isHovered ? 1 : 0,
             transform: isHovered ? "scale(1)" : "scale(0.85)",
             transition:
-              "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+              "opacity var(--duration-base) ease, transform var(--duration-base) ease, background-color var(--duration-base) ease",
             zIndex: 3,
           }}
           title={`Play ${chart.title}`}

@@ -8,7 +8,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
       style={{
         background: "linear-gradient(135deg, var(--palette-teal-850-a55) 0%, var(--palette-gray-900-a85) 100%)",
         border: "1px solid var(--accent-secondary-a25)",
-        borderRadius: "20px",
+        borderRadius: "var(--radius-20)",
         padding: "var(--space-24) var(--space-28)",
         marginBottom: "var(--space-36)",
         width: "100%",
@@ -41,7 +41,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               style={{
                 width: "32px",
                 height: "32px",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-8)",
                 background: "var(--accent-secondary-a15)",
                 display: "flex",
                 alignItems: "center",
@@ -100,7 +100,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
               border: "1px solid var(--accent-secondary-a35)",
               color: "var(--accent-secondary)",
               padding: "var(--space-6) var(--space-14)",
-              borderRadius: "9999px",
+              borderRadius: "var(--radius-pill)",
               fontSize: "var(--fs-13)",
               fontWeight: "var(--weight-bold)",
             }}
@@ -121,14 +121,14 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                 appearance: "none",
                 backgroundColor: "var(--overlay-8)",
                 border: "1px solid var(--overlay-20)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 color: "var(--text-main)",
                 padding: "var(--space-8) var(--space-36) var(--space-8) var(--space-14)",
                 fontSize: "var(--fs-13)",
                 fontWeight: "var(--weight-semibold)",
                 cursor: "pointer",
                 outline: "none",
-                transition: "border-color 0.15s ease",
+                transition: "border-color var(--duration-fast) ease",
               }}
             >
               {MONTH_NAMES.map((mName, idx) => {
@@ -163,7 +163,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
       <div
         style={{
           background: "var(--shade-25)",
-          borderRadius: "14px",
+          borderRadius: "var(--radius-14)",
           padding: "var(--space-18) var(--space-20) var(--space-14)",
           border: "1px solid var(--overlay-5)",
         }}
@@ -253,11 +253,11 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                       border: "1px solid var(--accent-secondary-a40)",
                       color: "var(--text-main)",
                       padding: "var(--space-6) var(--space-10)",
-                      borderRadius: "8px",
+                      borderRadius: "var(--radius-8)",
                       fontSize: "var(--fs-11)",
                       fontWeight: "var(--weight-semibold)",
                       whiteSpace: "nowrap",
-                      zIndex: 20,
+                      zIndex: "var(--z-dropdown)",
                       boxShadow: "0 8px 20px var(--shade-50)",
                       pointerEvents: "none",
                     }}
@@ -278,7 +278,7 @@ export function MonthlyStats({ c }: { c: StatsViewContext }) {
                     width: "100%",
                     maxWidth: "24px",
                     height: `${heightPct}%`,
-                    borderRadius: "4px 4px 0 0",
+                    borderRadius: "var(--radius-4) var(--radius-4) 0 0",
                   }}
                 />
               </div>

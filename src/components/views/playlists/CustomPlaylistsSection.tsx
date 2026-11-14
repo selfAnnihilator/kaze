@@ -30,7 +30,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
             <div
               style={{
                 padding: "var(--space-48) var(--space-20)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 textAlign: "center",
@@ -74,7 +74,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
             <div
               style={{
                 padding: "var(--space-48) var(--space-20)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 textAlign: "center",
@@ -149,7 +149,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                     onClick={() => c.handleOpenPlaylistDetails(pl)}
                     style={{
                       backgroundColor: "var(--bg-card)",
-                      borderRadius: "12px",
+                      borderRadius: "var(--radius-12)",
                       padding: "var(--space-16)",
                       border: "1px solid var(--border)",
                       cursor: "pointer",
@@ -157,7 +157,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                       flexDirection: "column",
                       justifyContent: "space-between",
                       transition:
-                        "background-color 0.15s, border-color 0.15s, transform 0.15s",
+                        "background-color var(--duration-fast), border-color var(--duration-fast), transform var(--duration-fast)",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor =
@@ -177,7 +177,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                           position: "relative",
                           width: "100%",
                           aspectRatio: "1/1",
-                          borderRadius: "8px",
+                          borderRadius: "var(--radius-8)",
                           backgroundColor: "var(--bg-sidebar)",
                           display: "flex",
                           alignItems: "center",
@@ -220,7 +220,7 @@ export function CustomPlaylistsSection({ c }: { c: PlaylistsViewContext }) {
                               right: 0,
                               minWidth: "150px",
                               padding: "var(--space-6)",
-                              borderRadius: "8px",
+                              borderRadius: "var(--radius-8)",
                               border: "1px solid var(--border)",
                               background: "var(--bg-sidebar)",
                               boxShadow: "0 12px 30px var(--shade-45)",

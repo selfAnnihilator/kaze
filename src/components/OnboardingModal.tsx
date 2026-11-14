@@ -52,7 +52,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             }}
             style={{
               padding: "var(--space-14)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               border: useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
               backgroundColor: useDefault ? "var(--accent-a8)" : "var(--bg-card)",
               cursor: "pointer",
@@ -78,7 +78,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             onClick={() => setUseDefault(false)}
             style={{
               padding: "var(--space-14)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               border: !useDefault ? "2px solid var(--accent)" : "1px solid var(--border)",
               backgroundColor: !useDefault ? "var(--accent-a8)" : "var(--bg-card)",
               cursor: "pointer",
@@ -101,7 +101,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 style={{
                   width: "100%",
                   padding: "var(--space-8) var(--space-12)",
-                  borderRadius: "6px",
+                  borderRadius: "var(--radius-6)",
                   backgroundColor: "var(--bg-sidebar)",
                   border: "1px solid var(--border-light)",
                   color: "var(--text-main)",

@@ -18,7 +18,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
               style={{
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
-                borderRadius: "12px",
+                borderRadius: "var(--radius-12)",
                 padding: "var(--space-16)",
                 cursor: "pointer",
               }}
@@ -27,7 +27,7 @@ export function PlaylistsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                 style={{
                   width: "100%",
                   aspectRatio: "1/1",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   backgroundColor: "var(--accent-a15)",
                   display: "flex",
                   alignItems: "center",

@@ -7,7 +7,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
       style={{
         background: "linear-gradient(135deg, var(--palette-taupe-850) 0%, var(--bg-card) 100%)",
         border: "1px solid var(--text-main-a30)",
-        borderRadius: "20px",
+        borderRadius: "var(--radius-20)",
         padding: "var(--space-32)",
         marginBottom: "var(--space-36)",
         display: "flex",
@@ -59,7 +59,7 @@ export function ArchivedYearHero({ c }: { c: StatsViewContext }) {
         style={{
           background: "var(--shade-40)",
           border: "1px solid var(--overlay-10)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-16)",
           padding: "var(--space-16) var(--space-24)",
           textAlign: "center",
         }}

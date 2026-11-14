@@ -26,7 +26,7 @@ export function ConfirmModal() {
           maxWidth: "440px",
           width: "92%",
           padding: "var(--space-24)",
-          borderRadius: "14px",
+          borderRadius: "var(--radius-14)",
           backgroundColor: "var(--bg-card, var(--bg-main))",
           border: "1px solid var(--border, var(--text-main-a15))",
           boxShadow: "0 24px 50px var(--shade-65)",

@@ -101,7 +101,7 @@ Shared styling values are never hardcoded. They live in **one file**,
 | Font sizes | `--fs-8` … `--fs-48` | `fontSize: "var(--fs-13)"` |
 | Spacing | `--space-2` … `--space-80` (padding, margin, gap) | `padding: var(--space-8) var(--space-12)` |
 | Corners | `--radius-2` … `--radius-24`, `--radius-pill`, `--ui-radius` (per interface) | `border-radius: var(--radius-8)` |
-| Motion | `--duration-instant` … `--duration-loop-slow`, `--ui-motion` | `transition: opacity var(--duration-fast)` |
+| Motion | `--duration-instant` … `--duration-loop-slow`, `--ui-motion`; easings `--ease-standard`, `--ease-emphasized`, `--ease-out`, `--ease-flow` | `transition: opacity var(--duration-fast) var(--ease-standard)` |
 | Layers | `--z-raised` … `--z-toast` (z-index 10 and up) | `zIndex: "var(--z-modal)"` |
 
 - **Use a token, in CSS and inline styles alike** (TSX uses the same `"var(--token)"` strings). Pick the nearest step. A size that is truly one-off uses a unit multiple, such as `calc(188 * var(--space-unit))`, so it still follows the knobs.

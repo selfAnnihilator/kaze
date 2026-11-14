@@ -116,7 +116,7 @@ function SyncedLyricRow({
           color: restColor,
           transform: isActive ? "scale(1.04)" : "none",
           transformOrigin: "center center",
-          transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "transform var(--duration-moderate) var(--ease-standard)",
           textAlign: "center",
           textShadow: isActive ? "0 2px 14px var(--shade-60)" : "none",
           userSelect: "none",
@@ -407,7 +407,7 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             backgroundColor: "var(--text-main)",
             color: "var(--palette-blue-900)",
             padding: "var(--space-8) var(--space-22)",
-            borderRadius: "9999px",
+            borderRadius: "var(--radius-pill)",
             border: "none",
             boxShadow: "0 6px 22px var(--shade-45)",
             display: "inline-flex",
@@ -416,8 +416,8 @@ export const LyricsView: React.FC<LyricsViewProps> = ({
             fontWeight: "var(--weight-bold)",
             fontSize: "var(--fs-14)",
             cursor: "pointer",
-            transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-            zIndex: 10,
+            transition: "transform var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard)",
+            zIndex: "var(--z-raised)",
           }}
         >
           <Radio size={15} color="var(--palette-blue-900)" />

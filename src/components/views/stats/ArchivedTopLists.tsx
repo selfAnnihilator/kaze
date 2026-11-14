@@ -16,7 +16,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--overlay-8)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-16)",
           padding: "var(--space-24)",
         }}
       >
@@ -43,7 +43,7 @@ export function ArchivedTopLists({ c }: { c: StatsViewContext }) {
                   display: "flex",
                   alignItems: "center",
                   padding: "var(--space-10) var(--space-14)",
-                  borderRadius: "10px",
+                  borderRadius: "var(--radius-10)",
                   background: idx < 3 ? "var(--overlay-3)" : "transparent",
                 }}
               >

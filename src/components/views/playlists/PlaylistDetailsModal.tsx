@@ -41,7 +41,7 @@ export function PlaylistDetailsModal({ c }: { c: PlaylistsViewContext }) {
                     style={{
                       width: "56px",
                       height: "56px",
-                      borderRadius: "8px",
+                      borderRadius: "var(--radius-8)",
                       objectFit: "cover",
                       flexShrink: 0,
                     }}

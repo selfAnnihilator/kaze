@@ -38,7 +38,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
             <div
               style={{
                 padding: "var(--space-40) var(--space-20)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px dashed var(--border)",
                 textAlign: "center",
@@ -85,7 +85,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                       onClick={() => c.handleOpenPlaylistDetails(mix)}
                       style={{
                         backgroundColor: "var(--bg-card)",
-                        borderRadius: "12px",
+                        borderRadius: "var(--radius-12)",
                         padding: "var(--space-18)",
                         border: "1px solid var(--border)",
                         cursor: "pointer",
@@ -93,7 +93,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                         flexDirection: "column",
                         justifyContent: "space-between",
                         transition:
-                          "transform 0.15s, background-color 0.15s, border-color 0.15s",
+                          "transform var(--duration-fast), background-color var(--duration-fast), border-color var(--duration-fast)",
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor =
@@ -121,7 +121,7 @@ export function SmartMixesSection({ c }: { c: PlaylistsViewContext }) {
                             style={{
                               width: "48px",
                               height: "48px",
-                              borderRadius: "10px",
+                              borderRadius: "var(--radius-10)",
                               background:
                                 "linear-gradient(135deg, var(--accent-a35), var(--accent-secondary-a15))",
                               display: "flex",

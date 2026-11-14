@@ -23,7 +23,7 @@ export const RankedListCard: React.FC<{
       flex: 1,
       background: "var(--bg-card)",
       border: "1px solid var(--overlay-8)",
-      borderRadius: "16px",
+      borderRadius: "var(--radius-16)",
       padding: "var(--space-24)",
       display: "flex",
       flexDirection: "column",
@@ -35,7 +35,7 @@ export const RankedListCard: React.FC<{
         style={{
           width: "32px",
           height: "32px",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-8)",
           background: iconBg,
           display: "flex",
           alignItems: "center",
@@ -76,7 +76,7 @@ export const RankedListCard: React.FC<{
                 display: "flex",
                 alignItems: "center",
                 padding: "var(--space-8) var(--space-14)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 background: rank <= 3 ? "var(--overlay-3)" : "transparent",
                 border: rank <= 3 ? "1px solid var(--overlay-5)" : "none",
               }}

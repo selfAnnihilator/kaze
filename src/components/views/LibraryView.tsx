@@ -177,7 +177,7 @@ const LibraryRow = ({
             color: "var(--text-muted)",
             fontSize: "var(--fs-12)",
             padding: "var(--space-2) var(--space-6)",
-            borderRadius: "4px",
+            borderRadius: "var(--radius-4)",
           }}
         >
           {track.format.toUpperCase()}
@@ -359,7 +359,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
                 gap: "var(--space-8)",
                 backgroundColor: "var(--bg-card)",
                 border: "1px solid var(--border)",
-                borderRadius: "8px",
+                borderRadius: "var(--radius-8)",
                 padding: "var(--space-6) var(--space-12)",
                 width: "260px",
               }}
@@ -417,7 +417,7 @@ export const LibraryView: React.FC<LibraryViewProps> = React.memo(
               display: "flex",
               flexDirection: "column",
               border: "1px solid var(--border)",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               backgroundColor: "var(--bg-main)",
               overflow: "hidden",
             }}

@@ -8,7 +8,7 @@ button { font-weight: var(--weight-book); }
   content: '';
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: var(--z-grain);
   pointer-events: none;
   opacity: .075;
   mix-blend-mode: soft-light;
@@ -18,9 +18,9 @@ button { font-weight: var(--weight-book); }
   background-size: 180px 180px, 7px 7px;
 }
 .sidebar { width: 216px; padding-top: var(--space-32); background-image: linear-gradient(var(--bg-main-a95), var(--bg-main-a95)), url('/kaze-orange-backdrop.webp'); background-size: cover; }
-.kage-logo { width: 36px; height: 36px; border-radius: 10px; opacity: .92; transition: opacity 0.15s; }
+.kage-logo { width: 36px; height: 36px; border-radius: var(--radius-10); opacity: .92; transition: opacity var(--duration-fast); }
 .kage-logo:hover { opacity: 1; }
-.nav-button { padding: var(--space-12); font-size: var(--fs-12); border-radius: 9px; }
+.nav-button { padding: var(--space-12); font-size: var(--fs-12); border-radius: var(--radius-10); }
 .nav-button.active { background: var(--accent-a10); box-shadow: inset 0 0 0 1px var(--accent-a40); }
 .nav-button.active svg { color: var(--accent-light); }
 
@@ -29,7 +29,7 @@ button { font-weight: var(--weight-book); }
 .global-search form { justify-content: flex-end; }
 .global-search form > div { background: var(--bg-main-a85) !important; max-width: 480px; padding: var(--space-10) var(--space-14) !important; }
 .global-search input { font-size: var(--fs-11) !important; }
-.global-search form > .btn { font-size: var(--fs-10) !important; background: var(--accent-a10); color: var(--accent-light); border: 1px solid var(--accent-a35); border-radius: 24px; padding: var(--space-10) var(--space-14) !important; }
+.global-search form > .btn { font-size: var(--fs-10) !important; background: var(--accent-a10); color: var(--accent-light); border: 1px solid var(--accent-a35); border-radius: var(--radius-24); padding: var(--space-10) var(--space-14) !important; }
 .discovery-hero { min-height: 420px; height: min(44vh, 460px); align-items: stretch; }
 .discovery-hero::before {
   inset: -110px 0 -28px;
@@ -44,10 +44,10 @@ button { font-weight: var(--weight-book); }
 .hero-japanese { font-size: var(--fs-12); letter-spacing: .28em; color: var(--accent-light); margin-top: var(--space-16); }
 .hero-signature { padding: var(--space-30) 0; justify-content: center; color: var(--accent-light); }
 .hero-signature span { font-size: var(--fs-15); letter-spacing: .55em; }
-.album-card { border-radius: 7px; background: transparent; border-color: transparent; padding: var(--space-8); box-shadow: none; }
+.album-card { border-radius: var(--radius-8); background: transparent; border-color: transparent; padding: var(--space-8); box-shadow: none; }
 .mix-card { background: transparent !important; border-color: transparent !important; padding: 0 !important; box-shadow: none !important; }
 .mix-card > div:nth-child(2) { font: var(--fs-20) var(--font-heading) !important; font-weight: var(--weight-medium) !important; color: var(--text-main) !important; }
-.content-card { border-radius: 8px; }
+.content-card { border-radius: var(--radius-8); }
 .btn { font-weight: var(--weight-medium); }
 .btn-primary { color: var(--bg-main); }
 .tab-btn.active { color: var(--accent-light); }

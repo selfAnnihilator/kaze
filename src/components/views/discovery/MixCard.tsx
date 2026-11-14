@@ -30,13 +30,13 @@ export const MixCard: React.FC<{
         border: isHovered
           ? "1px solid var(--overlay-20)"
           : "1px solid var(--border)",
-        borderRadius: "12px",
+        borderRadius: "var(--radius-12)",
         padding: "var(--space-10)",
         display: "flex",
         flexDirection: "column",
         cursor: "pointer",
         position: "relative",
-        transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: "transform var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard)",
         boxShadow: isHovered
           ? "0 10px 24px var(--shade-40)"
           : "0 2px 8px var(--shade-15)",
@@ -49,7 +49,7 @@ export const MixCard: React.FC<{
           position: "relative",
           width: "100%",
           aspectRatio: "1 / 1",
-          borderRadius: "8px",
+          borderRadius: "var(--radius-8)",
           overflow: "hidden",
           background: "var(--bg-card)",
           display: "flex",
@@ -95,7 +95,7 @@ export const MixCard: React.FC<{
             opacity: isHovered ? 1 : 0,
             transform: isHovered ? "scale(1)" : "scale(0.85)",
             transition:
-              "opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease",
+              "opacity var(--duration-base) ease, transform var(--duration-base) ease, background-color var(--duration-base) ease",
             zIndex: 3,
           }}
           title={`Play ${mix.name}`}

@@ -38,14 +38,14 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         backgroundColor: "var(--palette-slate-900-a95)",
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${accentColor}`,
-        borderRadius: "10px",
+        borderRadius: "var(--radius-10)",
         padding: "var(--space-14) var(--space-16)",
         display: "flex",
         alignItems: "flex-start",
         gap: "var(--space-12)",
         boxShadow: "0 10px 30px var(--shade-60)",
-        animation: "toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        transition: "transform 0.2s ease, opacity 0.2s ease",
+        animation: "toastSlideIn var(--duration-moderate) var(--ease-emphasized)",
+        transition: "transform var(--duration-base) ease, opacity var(--duration-base) ease",
         position: "relative",
         overflow: "hidden",
       }}
@@ -96,7 +96,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           alignItems: "center",
           flexShrink: 0,
           marginTop: "var(--space-2)",
-          transition: "color 0.15s ease",
+          transition: "color var(--duration-fast) ease",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-main)")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
@@ -115,7 +115,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           backgroundColor: accentColor,
           opacity: 0.6,
           width: "100%",
-          animation: "toastProgressBar 3s linear forwards",
+          animation: "toastProgressBar var(--duration-loop-slow) linear forwards",
           transformOrigin: "left",
         }}
       />
@@ -132,7 +132,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
         position: "fixed",
         top: "24px",
         right: "24px",
-        zIndex: 99999,
+        zIndex: "var(--z-toast)",
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-10)",

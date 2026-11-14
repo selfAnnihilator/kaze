@@ -18,7 +18,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
           style={{
             backgroundColor: "var(--palette-gray-900-a95)",
             border: "1px solid var(--danger-a35)",
-            borderRadius: "16px",
+            borderRadius: "var(--radius-16)",
             padding: "var(--space-48) var(--space-36)",
             textAlign: "center",
             display: "flex",
@@ -75,7 +75,7 @@ export function OfflineDiscovery({ onGoToLibrary }: { onGoToLibrary?: () => void
                 marginTop: "var(--space-12)",
                 padding: "var(--space-10) var(--space-20)",
                 fontSize: "var(--fs-14)",
-                borderRadius: "10px",
+                borderRadius: "var(--radius-10)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "var(--space-8)",

@@ -117,6 +117,10 @@
   --duration-long: calc(1000 * var(--duration-unit));
   --duration-loop: calc(2000 * var(--duration-unit));
   --duration-loop-slow: calc(3000 * var(--duration-unit));
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-flow: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Stacking layers, lowest first (local stacking below 10 stays in components). */
   --z-raised: 10;

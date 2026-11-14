@@ -50,7 +50,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 9999,
+        zIndex: "var(--z-dialog)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -70,7 +70,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
           borderRadius: "50%",
           background: "var(--palette-green-400)",
           flexShrink: 0,
-          animation: "kaze-pulse 2s infinite",
+          animation: "kaze-pulse var(--duration-loop) infinite",
         }}
       />
       <span>

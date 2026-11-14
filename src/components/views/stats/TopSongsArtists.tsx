@@ -17,7 +17,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--overlay-8)",
-          borderRadius: "16px",
+          borderRadius: "var(--radius-16)",
           padding: "var(--space-24)",
         }}
       >
@@ -33,7 +33,7 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
             style={{
               width: "32px",
               height: "32px",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-8)",
               background: "var(--accent-a15)",
               display: "flex",
               alignItems: "center",
@@ -83,10 +83,10 @@ export function TopSongsArtists({ c }: { c: StatsViewContext }) {
                     display: "flex",
                     alignItems: "center",
                     padding: "var(--space-10) var(--space-14)",
-                    borderRadius: "10px",
+                    borderRadius: "var(--radius-10)",
                     background: rank <= 3 ? "var(--overlay-3)" : "transparent",
                     border: rank <= 3 ? "1px solid var(--overlay-5)" : "none",
-                    transition: "background 0.15s ease",
+                    transition: "background var(--duration-fast) ease",
                   }}
                   className="stats-item-row"
                 >

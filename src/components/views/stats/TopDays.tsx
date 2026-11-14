@@ -7,7 +7,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--overlay-8)",
-        borderRadius: "16px",
+        borderRadius: "var(--radius-16)",
         padding: "var(--space-24)",
       }}
     >
@@ -23,7 +23,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
           style={{
             width: "32px",
             height: "32px",
-            borderRadius: "8px",
+            borderRadius: "var(--radius-8)",
             background: "var(--accent-a15)",
             display: "flex",
             alignItems: "center",
@@ -84,7 +84,7 @@ export function TopDays({ c }: { c: StatsViewContext }) {
                 style={{
                   background: "var(--overlay-3)",
                   border: "1px solid var(--overlay-5)",
-                  borderRadius: "12px",
+                  borderRadius: "var(--radius-12)",
                   padding: "var(--space-16)",
                   position: "relative",
                   overflow: "hidden",

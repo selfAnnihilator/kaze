@@ -113,7 +113,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
           className="collection-track-sheet"
           style={{
             backgroundColor: "var(--bg-card)",
-            borderRadius: "12px",
+            borderRadius: "var(--radius-12)",
             border: "1px solid var(--border)",
             overflow: "hidden",
           }}
@@ -193,7 +193,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                           : "transparent",
                     borderBottom: "1px solid var(--overlay-3)",
                     cursor: "pointer",
-                    transition: "background-color 0.15s ease",
+                    transition: "background-color var(--duration-fast) ease",
                   }}
                 >
                   {/* Index / Play icon */}
@@ -264,7 +264,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       style={{
                         width: "42px",
                         height: "42px",
-                        borderRadius: "6px",
+                        borderRadius: "var(--radius-6)",
                         overflow: "hidden",
                         backgroundColor: "var(--overlay-5)",
                         flexShrink: 0,

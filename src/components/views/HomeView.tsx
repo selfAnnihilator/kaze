@@ -91,7 +91,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 1000,
+              zIndex: "var(--z-modal)",
             }}
             onClick={() => setWhyModalTrack(null)}
           >
@@ -99,7 +99,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
               style={{
                 background: "var(--bg-card, var(--bg-card))",
                 border: "1px solid var(--text-main-a20)",
-                borderRadius: "14px",
+                borderRadius: "var(--radius-14)",
                 padding: "var(--space-24)",
                 maxWidth: "420px",
                 width: "90%",
@@ -165,7 +165,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
                 style={{
                   background: "var(--palette-sand-900-a60)",
                   border: "1px solid var(--border)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-8)",
                   padding: "var(--space-12) var(--space-14)",
                   fontSize: "var(--fs-14)",
                   color: "var(--accent-light, var(--accent-light))",
@@ -184,7 +184,7 @@ export const HomeView: React.FC<HomeViewProps> = React.memo(({
               >
                 <button
                   className="btn btn-secondary"
-                  style={{ padding: "var(--space-6) var(--space-16)", borderRadius: "6px" }}
+                  style={{ padding: "var(--space-6) var(--space-16)", borderRadius: "var(--radius-6)" }}
                   onClick={() => setWhyModalTrack(null)}
                 >
                   Close

@@ -191,7 +191,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               borderTopColor: "var(--accent)",
               borderRadius: "50%",
               margin: "0 auto var(--space-16)",
-              animation: "spin 1s linear infinite",
+              animation: "spin var(--duration-long) linear infinite",
             }}
           />
           <p>Loading your listening records...</p>
