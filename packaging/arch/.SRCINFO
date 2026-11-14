@@ -19,7 +19,7 @@ pkgbase = kaze
 	options = !lto
 	source = kaze-2.1.0.tar.gz::https://github.com/selfAnnihilator/kaze/archive/refs/tags/v2.1.0.tar.gz
 	source = kaze.desktop
-	sha256sums = 10be11232899533b18dacd52f11e26da2b3b92ad1e7298abd26646f274b54407
+	sha256sums = 26b5e95a790a2e92ee9e6b6a8864bdd1dcf592dedf6b2bd49fffd9407a474a42
 	sha256sums = eaf39dc7d4a05cefeb1543018e5a2ae84148343e3b5a8de50ba365087d43dd0c
 
 pkgname = kaze
