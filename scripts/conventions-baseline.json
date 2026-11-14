@@ -114,8 +114,8 @@
       "smells": 1
     },
     "src-tauri/src/recommendations/flow.rs": {
-      "lines": 1307,
-      "smells": 6
+      "lines": 263,
+      "smells": 3
     },
     "src-tauri/src/recommendations/mixes.rs": {
       "lines": 1221,
@@ -424,6 +424,14 @@
     "src/components/views/collection/CollectionTracks.tsx": {
       "lines": 451,
       "smells": 4
+    },
+    "src-tauri/src/recommendations/flow/candidates.rs": {
+      "lines": 555,
+      "smells": 2
+    },
+    "src-tauri/src/recommendations/flow/home.rs": {
+      "lines": 235,
+      "smells": 1
     }
   }
 }
