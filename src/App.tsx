@@ -27,12 +27,7 @@ import { useNavigationHistory } from "./hooks/useNavigationHistory";
 import { SpatialNavigation } from "./presentation/SpatialNavigation";
 import { NowPlayingBar } from "./components/NowPlayingBar";
 import { OnboardingModal } from "./components/OnboardingModal";
-import { TrackExplanation } from "./components/TrackExplanation";
-import { HomeView } from "./components/views/HomeView";
-import { LibraryView } from "./components/views/LibraryView";
-import { AlbumsView } from "./components/views/AlbumsView";
-import { PlaylistsView } from "./components/views/PlaylistsView";
-import { SettingsView } from "./components/views/SettingsView";
+import { WhyTrackModal } from "./components/modals/WhyTrackModal";
 import { GlobalTopSearchBar } from "./components/layout/GlobalTopSearchBar";
 import { ToastContainer } from "./components/notifications/ToastContainer";
 import { UpdateBanner } from "./components/UpdateBanner";
@@ -45,6 +40,7 @@ import { useLibrary } from "./hooks/app/useLibrary";
 import { useDownloadsSection } from "./hooks/app/useDownloadsSection";
 import { useBackendEvents } from "./hooks/app/useBackendEvents";
 import { useLikes } from "./hooks/app/useLikes";
+import { AppViews } from "./components/layout/AppViews";
 import { usePlaylists } from "./hooks/app/usePlaylists";
 import { useWishlist } from "./hooks/app/useWishlist";
 import { useDownloads } from "./hooks/app/useDownloads";
@@ -53,15 +49,9 @@ import { usePlaybackControls } from "./hooks/app/usePlaybackControls";
 import { useFlow } from "./hooks/app/useFlow";
 import { useCollections } from "./hooks/app/useCollections";
 import { useQueue } from "./hooks/app/useQueue";
-import {
-  CollectionDetailView,
-  CollectionData,
-} from "./components/views/CollectionDetailView";
-import { X, Sparkles } from "lucide-react";
+import type { CollectionData } from "./components/views/CollectionDetailView";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
-import { PlaybackStage } from "./presentation/PlaybackStage";
-import { QueueView } from "./presentation/QueueView";
 import {
   upcomingFromPlayback,
   withKnownMetadata,
@@ -77,33 +67,10 @@ import "./presentation/brutalist.css";
 import "./presentation/responsive.css";
 import { BrutalistNavigation, BrutalistLibraryHeader } from "./presentation/BrutalistNavigation";
 import { BrutalistDeck } from "./presentation/BrutalistDeck";
-import { BrutalistPoster } from "./presentation/BrutalistPoster";
 import { SpatialUtilities, SpatialLibraryHeader } from "./presentation/SpatialUtilities";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
-const DownloadsView = lazy(() =>
-  import("./components/views/DownloadsView").then((m) => ({
-    default: m.DownloadsView,
-  })),
-);
-const WishlistView = lazy(() =>
-  import("./components/views/WishlistView").then((m) => ({
-    default: m.WishlistView,
-  })),
-);
-const DiscoveryView = lazy(() => import("./components/views/DiscoveryView").then((m) => ({ default: m.DiscoveryView,
-  })),
-);
-const NotificationsView = lazy(() => import("./components/views/NotificationsView").then((m) => ({ default: m.NotificationsView,
-  })),
-);
-const StatsView = lazy(() => import("./components/views/StatsView").then((m) => ({ default: m.StatsView,
-  })),
-);
 const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then((m) => ({ default: m.FullScreenPlayerView,
-  })),
-);
-const LyricsView = lazy(() => import("./components/views/LyricsView").then((m) => ({ default: m.LyricsView,
   })),
 );
 const AuthModal = lazy(() => import("./components/modals/AuthModal").then((m) => ({ default: m.AuthModal,
@@ -941,396 +908,33 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
 
             <ViewMemoryProvider>
             <Suspense fallback={null}>
-              {isLyricsActive ? (
-                <div className="lyrics-stage">
-                  <LyricsView
-                    trackId={activePlayingTrackId}
-                    artist={activePlayingArtist}
-                    title={activePlayingTitle}
-                    durationSecs={activePlayingDuration}
-                    onSeek={handleUnifiedSeek}
-                    isFullScreen={false}
-                  />
-                </div>
-              ) : activeCollection ? (
-                <CollectionDetailView
-                  key={`${activeCollection.type}:${activeCollection.id}`}
-                  collection={activeCollection}
-                  withinArchive={isArchiveLiked}
-                  isLoadingTracks={isLoadingCollectionTracks}
-                  loadingTrackId={loadingTrackId}
-                  onBack={() => {
-                    if (!navigateBack())
-                      navigate({ ...destination, collection: null });
-                  }}
-                  onPlayTrack={handlePlayCollectionTrack}
-                  onPlayAll={handlePlayAllCollection}
-                  onShuffleAll={handleShuffleCollection}
-                  onAddToWishlist={(track) =>
-                    handleAddToWishlist(track.title, track.artist, track.album)
-                  }
-                  onSaveToPlaylists={handleSaveCollectionToPlaylists}
-                  currentPlayingTrackId={
-                    playbackState.is_playing
-                      ? playbackState.current_track?.id
-                      : undefined
-                  }
-                  isPlaying={isPlayingThisCollection}
-                  isSaved={isCollectionSaved}
-                  isShuffled={playbackState.is_shuffled}
-                  trackPlaylistMap={regularTrackPlaylistMap}
-                  userPlaylistIds={regularPlaylistIds}
-                  onAddToPlaylist={(track) =>
-                    handleOpenAddToPlaylistModal({
-                      id:
-                        track.matched_local_track_id &&
-                        !track.matched_local_track_id.startsWith("online:") &&
-                        !track.matched_local_track_id.startsWith("itunes:")
-                          ? track.matched_local_track_id
-                          : track.id,
-                      title: track.title,
-                      artist: track.artist,
-                      album: track.album,
-                      cover_art_url: track.cover_art_url,
-                    })
-                  }
-                  onRenamePlaylist={handleRenamePlaylist}
-                  onDeletePlaylist={handleDeletePlaylist}
-                  likedTrackIds={likedTrackIds}
-                  onToggleLike={handleToggleCollectionLike}
-                  queuedTrackIds={queuedTrackIds}
-                  onEnqueueTrack={(track) =>
-                    handleEnqueueRecommendation(
-                      track.rawRecommendation || {
-                        external_track_id: track.id,
-                        provider: track.matched_local_track_id
-                          ? "library"
-                          : "online",
-                        provider_id: track.id,
-                        title: track.title,
-                        artist: track.artist,
-                        album: track.album,
-                        duration_secs: track.duration_secs,
-                        cover_art_url: track.cover_art_url,
-                        preview_url: track.preview_url,
-                        matched_local_track_id: track.matched_local_track_id,
-                        match_status: track.matched_local_track_id
-                          ? "EXACT_MATCH"
-                          : "NOT_FOUND",
-                        recommendation_reason: "From collection",
-                        in_wishlist: false,
-                      },
-                    )
-                  }
-                />
-              ) : (
-                <>
-                  {currentView === "home" && (
-                    <HomeView
-                      overview={homeOverview}
-                      isLoading={isHomeLoading}
-                      flowPendingAction={flowPendingAction}
-                      onRefresh={fetchHomeOverview}
-                      onStartFlow={handleStartFlow}
-                      onTogglePlayback={handleUnifiedPlayPause}
-                      onToggleFlowPlayback={handleToggleFlowPlayback}
-                      currentTrack={playbackState.current_track}
-                      currentCover={activePlayingArtwork}
-                      previousTrack={previousTrackRef.current}
-                      nextTrack={nextQueuedTrack}
-                      onPreviousTrack={handlePreviousTrack}
-                      onNextTrack={handleNextTrack}
-                      onPlayTrack={handlePlayTrack}
-                      onEnqueueTrack={handleEnqueueTrack}
-                      onOpenAlbum={handleSelectAlbum}
-                      loadingTrackId={loadingTrackId}
-                      isPlaying={playbackState.is_playing}
-                      flowSteering={flowSteering}
-                      onFlowSteeringChange={handleFlowSteeringChange}
-                      onDiscover={handleHomeDiscover}
-                      queuedTrackIds={queuedTrackIds}
-                    />
-                  )}
-
-                  {currentView === "library" && (
-                    <LibraryView
-                      tracks={tracks}
-                      total={libraryScoped ? tracks.length : trackPage.total}
-                      onEndReached={libraryScoped ? undefined : trackPage.next}
-                      loading={libraryScoped ? scoped.loading : trackPage.loading}
-                      pagingError={libraryScoped ? scoped.error : trackPage.error}
-                      onRetry={libraryScoped ? scoped.refresh : trackPage.retry}
-                      currentTrackId={playbackState.current_track?.id}
-                      isPlaying={playbackState.is_playing}
-                      queuedTrackIds={queuedTrackIds}
-                      onPlayTrack={handleLibraryRowPlay}
-                      onPlayAll={handleLibraryPlayAll}
-                      listState={downloadsListActive ? (playbackState.is_playing ? "playing" : "paused") : "idle"}
-                      shuffleEnabled={libraryShuffle}
-                      onToggleShuffle={handleLibraryToggleShuffle}
-                      loadingTrackId={loadingTrackId}
-                      onEnqueueTrack={handleEnqueueTrack}
-                      onLikeTrack={handleLike}
-                      onRemoveFeedback={handleRemoveFeedback}
-                      onRescan={handleRescanLibrary}
-                      onSearch={handleSearchLibrary}
-                      searchQuery={destination.libraryQuery}
-                      trackPlaylistMap={regularTrackPlaylistMap}
-                      likedTrackIds={likedTrackIds}
-                      onOpenAddToPlaylistModal={(t) =>
-                        handleOpenAddToPlaylistModal({
-                          id: t.id,
-                          title: t.title,
-                          artist: t.artist_name,
-                          album: t.album_title,
-                        })
-                      }
-                    />
-                  )}
-
-                  {currentView === "albums" && (
-                    <AlbumsView
-                      albums={albums}
-                      total={albumPage.total}
-                      onEndReached={albumPage.next}
-                      loading={albumPage.loading}
-                      pagingError={albumPage.error}
-                      onRetry={albumPage.retry}
-                      onSelectAlbum={handleSelectAlbum}
-                    />
-                  )}
-
-                  {currentView === "playlists" && (
-                    <PlaylistsView
-                      viewMode="playlists"
-                      playlists={playlists}
-                      currentUser={currentUser}
-                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                      activePlaylistId={playingPlaylistId}
-                      onPlayPlaylist={handlePlayPlaylist}
-                      onCreatePlaylist={handleCreatePlaylist}
-                      onRefreshPlaylists={handleRefreshPlaylists}
-                      onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
-                      onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                      onAddMissingToWishlist={handleAddMissingToWishlist}
-                      onSearchDirect={handleInitiateDirectDownloadSearch}
-                      onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                      onPlayTrack={handlePlayTrack}
-                      loadingTrackId={loadingTrackId}
-                      queuedTrackIds={queuedTrackIds}
-                      onEnqueueTrack={handleEnqueueTrack}
-                      onOpenCollection={handleOpenCollection}
-                      onRenamePlaylist={handleRenamePlaylist}
-                      onDeletePlaylist={handleDeletePlaylist}
-                    />
-                  )}
-
-                  {currentView === "smart_mixes" && (
-                    <PlaylistsView
-                      viewMode="smart_mixes"
-                      playlists={playlists}
-                      currentUser={currentUser}
-                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                      activePlaylistId={playingPlaylistId}
-                      onPlayPlaylist={handlePlayPlaylist}
-                      onCreatePlaylist={handleCreatePlaylist}
-                      onRefreshPlaylists={handleRefreshPlaylists}
-                      onInspectJioSaavnPlaylist={handleInspectJioSaavnPlaylist}
-                      onSaveImportedPlaylist={handleSaveImportedPlaylist}
-                      onAddMissingToWishlist={handleAddMissingToWishlist}
-                      onSearchDirect={handleInitiateDirectDownloadSearch}
-                      onFetchPlaylistTracks={handleFetchPlaylistTracks}
-                      onPlayTrack={handlePlayTrack}
-                      loadingTrackId={loadingTrackId}
-                      queuedTrackIds={queuedTrackIds}
-                      onEnqueueTrack={handleEnqueueTrack}
-                      onOpenCollection={handleOpenCollection}
-                      onRenamePlaylist={handleRenamePlaylist}
-                      onDeletePlaylist={handleDeletePlaylist}
-                    />
-                  )}
-
-                  {currentView === "discovery" && (
-                    <DiscoveryView
-                      recommendations={discoveryRecs}
-                      worldTrending={worldTrending}
-                      localTracks={tracks}
-                      playlists={playlists}
-                      onPlayPlaylist={handlePlayPlaylist}
-                      onAddToWishlist={(rec) =>
-                        handleAddToWishlist(rec.title, rec.artist, rec.album)
-                      }
-                      onSearchDirect={(artist, title) =>
-                        handleInitiateDirectDownloadSearch(artist, title)
-                      }
-                      isTrendingLoading={isTrendingLoading}
-                      trendingError={trendingError}
-                      onRefreshTrending={refreshTrending}
-                      onRefresh={refreshPersonalRecommendations}
-                      onPlayOnlineTrack={handlePlayOnlineTrack}
-                      onStopTrack={handleStopTrack}
-                      activeOnlineTrackId={
-                        playbackState.current_track?.id || null
-                      }
-                      isOnlinePlaying={playbackState.is_playing}
-                      loadingTrackId={loadingTrackId}
-                      currentLocalTrack={playbackState.current_track}
-                      isLocalPlaying={playbackState.is_playing}
-                      onOpenCollection={handleOpenCollection}
-                      onPlayCollection={handlePlayDiscoveredCollection}
-                      downloads={downloads}
-                      searchQuery={globalSearchQuery}
-                      setSearchQuery={setGlobalSearchQuery}
-                      searchResults={currentSearchResults}
-                      setSearchResults={setGlobalSearchResults}
-                      isSearchingOnline={isGlobalSearching}
-                      onSearchOnline={handleGlobalOnlineSearch}
-                      onClearSearch={handleGlobalClearSearch}
-                      trackPlaylistMap={regularTrackPlaylistMap}
-                      onAddToPlaylist={(rec) =>
-                        handleOpenAddToPlaylistModal({
-                          id:
-                            rec.matched_local_track_id &&
-                            !rec.matched_local_track_id.startsWith("online:") &&
-                            !rec.matched_local_track_id.startsWith("itunes:")
-                              ? rec.matched_local_track_id
-                              : rec.external_track_id,
-                          title: rec.title,
-                          artist: rec.artist,
-                          album: rec.album,
-                          cover_art_url: rec.cover_art_url,
-                        })
-                      }
-                      onGoToLibrary={() => navigate(viewDestination("library"))}
-                      queuedTrackIds={queuedTrackIds}
-                      onEnqueueTrack={handleEnqueueRecommendation}
-                      likedTrackIds={likedTrackIds}
-                    />
-                  )}
-
-                  {currentView === "now_playing" && (interfacePreference.style === "brutalist" ? <BrutalistPoster albumId={albums.find(a => a.title === playbackState.current_track?.album_title && a.artist_name === playbackState.current_track?.artist_name)?.id} track={playbackState.current_track} cover={activePlayingArtwork} index={playbackState.current_queue_index} playing={playbackState.is_playing} loading={loadingTrackId !== null || playbackState.is_buffering} entries={queueEntries} tracks={tracks} onPlayIndex={handlePlayQueueIndex} onOpenAlbum={handleSelectAlbum} /> :
-                    <PlaybackStage
-                      track={playbackState.current_track}
-                      cover={activePlayingArtwork}
-                      previous={previousTrackRef.current}
-                      next={nextQueuedTrack}
-                      index={playbackState.current_queue_index}
-                      playing={playbackState.is_playing}
-                      loading={
-                        loadingTrackId !== null || playbackState.is_buffering
-                      }
-                      onPrevious={handlePreviousTrack}
-                      onNext={handleNextTrack}
-                    />
-                  )}
-                  {currentView === "queue" && (
-                    <QueueView
-                      entries={queueEntries}
-                      tracks={tracks}
-                      currentTrack={playbackState.current_track}
-                      onPlayIndex={handlePlayQueueIndex}
-                      onRemove={handleDequeueTrack}
-                      onClear={handleClearQueue}
-                    />
-                  )}
-                  {currentView === "downloads" && (
-                    <DownloadsView
-                      downloads={downloads}
-                      onSearchDownloads={handleSearchDownloads}
-                      onStartDownload={handleStartDownload}
-                      onCancelDownload={handleCancelDownload}
-                      onRefreshDownloads={fetchDownloads}
-                      folder={settings.downloads?.resolved_dir}
-                      songs={
-                        <LibraryView
-                          tracks={downloadsPage.items}
-                          total={downloadsPage.total}
-                          onEndReached={downloadsPage.next}
-                          loading={downloadsPage.loading}
-                          pagingError={downloadsPage.error}
-                          onRetry={downloadsPage.retry}
-                          currentTrackId={playbackState.current_track?.id}
-                          isPlaying={playbackState.is_playing}
-                          queuedTrackIds={queuedTrackIds}
-                          onPlayTrack={kazeDownloadsPlayback.handleLibraryRowPlay}
-                          onPlayAll={kazeDownloadsPlayback.handleLibraryPlayAll}
-                          listState={downloadsListState}
-                          shuffleEnabled={kazeDownloadsPlayback.libraryShuffle}
-                          onToggleShuffle={kazeDownloadsPlayback.handleLibraryToggleShuffle}
-                          loadingTrackId={loadingTrackId}
-                          onEnqueueTrack={handleEnqueueTrack}
-                          onLikeTrack={handleLike}
-                          onRemoveFeedback={handleRemoveFeedback}
-                          trackPlaylistMap={regularTrackPlaylistMap}
-                          likedTrackIds={likedTrackIds}
-                          downloadControls
-                          emptyTitle="No downloaded songs yet"
-                          emptyHint="Use the download button on any online song. It is saved to Kaze's folder and appears here."
-                          onOpenAddToPlaylistModal={(t) =>
-                            handleOpenAddToPlaylistModal({
-                              id: t.id,
-                              title: t.title,
-                              artist: t.artist_name,
-                              album: t.album_title,
-                            })
-                          }
-                        />
-                      }
-                    />
-                  )}
-                  {currentView === "wishlist" && (
-                    <WishlistView
-                      wishlist={wishlist}
-                      onAddToWishlist={handleAddToWishlist}
-                      onUpdateStatus={handleUpdateWishlistStatus}
-                      onSearchDirect={handleInitiateDirectDownloadSearch}
-                    />
-                  )}
-
-                  {currentView === "notifications" && (
-                    <NotificationsView
-                      notifications={notifications}
-                      onClearAll={clearAllNotifications}
-                      onRemoveNotification={deleteNotification}
-                      onMarkAllRead={markAllNotificationsAsRead}
-                      onMarkAsRead={markNotificationAsRead}
-                    />
-                  )}
-
-                  {currentView === "stats" && (
-                    <StatsView
-                      currentUser={currentUser}
-                      onPlayTrack={handlePlayTrack}
-                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                      fetchStatsOverview={fetchStatsOverview}
-                      refreshTrigger={statsRefreshTrigger}
-                      onUpdateUser={(u) => setCurrentUser(u)}
-                    />
-                  )}
-
-                  {currentView === "settings" && (
-                    <SettingsView
-                      onRecommendationSetupSaved={handleTasteSaved}
-                      settings={settings}
-                      currentUser={currentUser}
-                      onLogout={handleLogout}
-                      onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                      interfaceStyle={interfacePreference.style}
-                      onSelectInterfaceStyle={interfacePreference.select}
-                      isSavingInterfaceStyle={interfacePreference.saving}
-                      interfaceStyleError={interfacePreference.error}
-                      configuredFolders={
-                        onboardingStatus?.configured_folders || []
-                      }
-                      onAddFolder={handleAddFolder}
-                      onRemoveFolder={handleRemoveFolder}
-                      onRescanLibrary={handleRescanLibrary}
-                      onReloadSettings={fetchSettings}
-                      isScanning={isScanning}
-                    />
-                  )}
-                </>
-              )}
+              <AppViews c={{
+                isLyricsActive, activePlayingTrackId, activePlayingArtist, activePlayingTitle, activePlayingDuration,
+                handleUnifiedSeek, activeCollection, isArchiveLiked, isLoadingCollectionTracks, loadingTrackId, navigateBack,
+                navigate, destination, handlePlayCollectionTrack, handlePlayAllCollection, handleShuffleCollection,
+                handleAddToWishlist, handleSaveCollectionToPlaylists, playbackState, isPlayingThisCollection,
+                isCollectionSaved, regularTrackPlaylistMap, regularPlaylistIds, handleOpenAddToPlaylistModal,
+                handleRenamePlaylist, handleDeletePlaylist, likedTrackIds, handleToggleCollectionLike, queuedTrackIds,
+                handleEnqueueRecommendation, currentView, homeOverview, isHomeLoading, flowPendingAction, fetchHomeOverview,
+                handleStartFlow, handleUnifiedPlayPause, handleToggleFlowPlayback, activePlayingArtwork, previousTrackRef,
+                nextQueuedTrack, handlePreviousTrack, handleNextTrack, handlePlayTrack, handleEnqueueTrack,
+                handleSelectAlbum, flowSteering, handleFlowSteeringChange, handleHomeDiscover, tracks, libraryScoped,
+                trackPage, scoped, handleLibraryRowPlay, handleLibraryPlayAll, downloadsListActive, libraryShuffle,
+                handleLibraryToggleShuffle, handleLike, handleRemoveFeedback, handleRescanLibrary, handleSearchLibrary,
+                albums, albumPage, playlists, currentUser, setIsAuthModalOpen, playingPlaylistId, handlePlayPlaylist,
+                handleCreatePlaylist, handleRefreshPlaylists, handleInspectJioSaavnPlaylist, handleSaveImportedPlaylist,
+                handleAddMissingToWishlist, handleInitiateDirectDownloadSearch, handleFetchPlaylistTracks,
+                handleOpenCollection, discoveryRecs, worldTrending, isTrendingLoading, trendingError, refreshTrending,
+                refreshPersonalRecommendations, handlePlayOnlineTrack, handleStopTrack, handlePlayDiscoveredCollection,
+                downloads, globalSearchQuery, setGlobalSearchQuery, currentSearchResults, setGlobalSearchResults,
+                isGlobalSearching, handleGlobalOnlineSearch, handleGlobalClearSearch, interfacePreference, queueEntries,
+                handlePlayQueueIndex, handleDequeueTrack, handleClearQueue, handleSearchDownloads, handleStartDownload,
+                handleCancelDownload, fetchDownloads, settings, downloadsPage, kazeDownloadsPlayback, downloadsListState,
+                wishlist, handleUpdateWishlistStatus, notifications, clearAllNotifications, deleteNotification,
+                markAllNotificationsAsRead, markNotificationAsRead, fetchStatsOverview, statsRefreshTrigger, setCurrentUser,
+                handleTasteSaved, handleLogout, onboardingStatus, handleAddFolder, handleRemoveFolder, fetchSettings,
+                isScanning,
+              }} />
             </Suspense>
             </ViewMemoryProvider>
           </main>
@@ -1523,126 +1127,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({
         {/* Yes/No questions (e.g. removing a download); store-driven, no App state */}
         <ConfirmModal />
 
-        {/* Flow Why This Track Modal */}
-        {whyTrackModal && (
-          <div
-            className="modal-overlay"
-            onClick={() => setWhyTrackModal(null)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.72)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-          >
-            <div
-              className="modal-content"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                maxWidth: "420px",
-                width: "90%",
-                padding: "24px",
-                borderRadius: "14px",
-                backgroundColor: "var(--bg-card, #1a1714)",
-                border: "1px solid var(--border, rgba(232, 216, 201, 0.15))",
-                boxShadow: "0 20px 48px rgba(0, 0, 0, 0.65)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "16px",
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <Sparkles
-                    size={18}
-                    color="var(--accent-secondary, #f3701e)"
-                  />
-                  <h3
-                    style={{
-                      fontSize: "1.1rem",
-                      fontWeight: 700,
-                      margin: 0,
-                      color: "var(--text-main, #e8d8c9)",
-                    }}
-                  >
-                    Why This Track?
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setWhyTrackModal(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    padding: "4px",
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <div
-                  style={{
-                    fontSize: "0.95rem",
-                    fontWeight: 600,
-                    color: "var(--text-main, #e8d8c9)",
-                  }}
-                >
-                  {whyTrackModal.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.82rem",
-                    color: "var(--text-dim, #948779)",
-                  }}
-                >
-                  {whyTrackModal.artist}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "8px",
-                  backgroundColor: "rgba(243, 112, 30, 0.08)",
-                  border: "1px solid rgba(243, 112, 30, 0.2)",
-                  fontSize: "0.88rem",
-                  color: "var(--accent-light, #ff9b60)",
-                  lineHeight: 1.45,
-                }}
-              >
-                <TrackExplanation evidence={whyTrackModal.explanation} />
-              </div>
-
-              <div
-                style={{
-                  marginTop: "18px",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setWhyTrackModal(null)}
-                  style={{ fontSize: "0.85rem", padding: "6px 16px" }}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {whyTrackModal && <WhyTrackModal explained={whyTrackModal} onClose={() => setWhyTrackModal(null)} />}
       </div>
     </InterfaceContext.Provider>
   );
