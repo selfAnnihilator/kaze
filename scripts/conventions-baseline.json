@@ -81,10 +81,6 @@
       "lines": 633,
       "smells": 0
     },
-    "src-tauri/src/playback/service.rs": {
-      "lines": 2335,
-      "smells": 5
-    },
     "src-tauri/src/playback/stream.rs": {
       "lines": 960,
       "smells": 10
@@ -384,6 +380,18 @@
     "src/hooks/app/useLikes.ts": {
       "lines": 314,
       "smells": 6
+    },
+    "src-tauri/src/playback/service/flow.rs": {
+      "lines": 344,
+      "smells": 2
+    },
+    "src-tauri/src/playback/service/monitor.rs": {
+      "lines": 125,
+      "smells": 1
+    },
+    "src-tauri/src/playback/service/play.rs": {
+      "lines": 413,
+      "smells": 2
     }
   }
 }
