@@ -2801,6 +2801,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "walkdir",
+ "webkit2gtk",
  "zbus",
 ]
 

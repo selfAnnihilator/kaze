@@ -81,6 +81,7 @@ tempfile = "3.12"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+webkit2gtk = { version = "2.0", features = ["v2_38"] }
 libloading = "0.8"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 

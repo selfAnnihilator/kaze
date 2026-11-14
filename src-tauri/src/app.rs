@@ -20,6 +20,8 @@ mod tray;
 mod startup;
 #[cfg(target_os = "linux")]
 mod window_chrome;
+#[cfg(target_os = "linux")]
+mod webview_tuning;
 
 #[tauri::command]
 async fn execute_command(
@@ -150,6 +152,10 @@ pub fn run() {
                 let mut rx = processor.event_bus().subscribe();
                 let emit_handle = handle.clone();
                 let hidden_ticks = watch_visibility(&handle);
+                #[cfg(target_os = "linux")]
+                if let Some(window) = handle.get_webview_window("main") {
+                    webview_tuning::apply(&window);
+                }
                 handle.state::<lifecycle::DesktopLifecycle>().spawn(async move {
                     loop {
                         match rx.recv().await {
