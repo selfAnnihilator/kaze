@@ -141,6 +141,7 @@ async fn not_interested_blocks_aliases_future_releases_mixes_and_queue_but_prese
     core.dispatch_command(Command::EnqueueTrack {
         track_id: "jiosaavn:single".into(),
         play_next: false,
+        manual: false,
     })
     .await
     .unwrap();

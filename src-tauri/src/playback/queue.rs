@@ -12,6 +12,9 @@ pub struct PlaybackQueue {
     shuffle_indices: Vec<usize>,
     shuffle_enabled: bool,
     repeat_mode: RepeatMode,
+    /// Queue ids of songs the user added, which play before the app's own queue.
+    #[serde(default)]
+    manual_ids: Vec<String>,
 }
 
 impl PlaybackQueue {
@@ -54,6 +57,7 @@ impl PlaybackQueue {
         self.items = items;
         self.current_index = current.and_then(|id| self.items.iter().position(|item| item.queue_id == id));
         self.shuffle_indices = shuffled.iter().filter_map(|id| self.items.iter().position(|item| &item.queue_id == id)).collect();
+        self.prune_manual();
     }
 
     /// Replaces the current queue with new items, optionally starting at a specific index.
@@ -159,6 +163,7 @@ impl PlaybackQueue {
         self.items.clear();
         self.current_index = None;
         self.shuffle_indices.clear();
+        self.manual_ids.clear();
     }
 
     /// Returns the currently active QueueItem.
@@ -175,6 +180,7 @@ impl PlaybackQueue {
     pub fn set_current_index(&mut self, index: usize) -> Option<&QueueItem> {
         if index < self.items.len() {
             self.current_index = Some(index);
+            self.unflag_current();
             self.items.get(index)
         } else {
             None
@@ -233,12 +239,19 @@ impl PlaybackQueue {
     /// Advances to the next track for an explicit user action. Repeat-one does not
     /// trap the Next button on the current track.
     pub fn skip_forward(&mut self) -> Option<&QueueItem> {
-        self.advance(false)
+        self.advance_and_unflag(false)
     }
 
     /// Advances after natural completion, honoring repeat-one.
     pub fn next_after_finish(&mut self) -> Option<&QueueItem> {
-        self.advance(true)
+        self.advance_and_unflag(true)
+    }
+
+    /// Advances, and a queued song that starts playing stops counting as waiting.
+    fn advance_and_unflag(&mut self, honor_repeat_one: bool) -> Option<&QueueItem> {
+        self.advance(honor_repeat_one)?;
+        self.unflag_current();
+        self.current()
     }
 
     fn advance(&mut self, honor_repeat_one: bool) -> Option<&QueueItem> {
@@ -333,6 +346,8 @@ impl PlaybackQueue {
         let split_at = self.current_index.map_or(0, |index| index + 1).min(self.items.len());
         let mut upcoming = self.items.split_off(split_at);
         reorder(&mut upcoming);
+        // The user's queued songs stay ahead of any reorder.
+        upcoming.sort_by_key(|item| !self.manual_ids.contains(&item.queue_id));
         self.items.append(&mut upcoming);
         self.rebuild_shuffle_indices();
     }
@@ -372,6 +387,7 @@ impl PlaybackQueue {
     }
 
     fn rebuild_shuffle_indices(&mut self) {
+        self.prune_manual();
         let mut indices: Vec<usize> = (0..self.items.len()).collect();
         if self.shuffle_enabled {
             let mut rng = thread_rng();
@@ -383,13 +399,19 @@ impl PlaybackQueue {
                     indices.swap(0, pos);
                 }
             }
+            self.manual_first(&mut indices);
         }
         self.shuffle_indices = indices;
     }
 }
 
+mod priority;
+
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod priority_tests;
 
 #[cfg(test)]
 mod upcoming_reset_tests;

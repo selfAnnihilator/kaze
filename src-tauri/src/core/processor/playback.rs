@@ -115,10 +115,11 @@ impl CoreProcessor {
             Command::EnqueueTrack {
                 track_id,
                 play_next,
+                manual,
             } => {
                 if self
                     .playback_service
-                    .enqueue_track(&track_id, play_next)
+                    .enqueue_track_as(&track_id, play_next, manual)
                     .await?
                 {
                     Ok(CommandResponse::Ok)
@@ -135,6 +136,7 @@ impl CoreProcessor {
                 cover_art_url,
                 preview_url,
                 play_next,
+                manual,
             } => {
                 crate::recommendations::mixes::ensure_online_track(
                     &self.db_pool,
@@ -151,7 +153,7 @@ impl CoreProcessor {
                 .await?;
                 if self
                     .playback_service
-                    .enqueue_track(&track_id, play_next)
+                    .enqueue_track_as(&track_id, play_next, manual)
                     .await?
                 {
                     Ok(CommandResponse::Ok)

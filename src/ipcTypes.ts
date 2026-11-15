@@ -51,7 +51,7 @@ export type Command =
   | { command: "ToggleMute" }
   | { command: "SetRepeatMode"; payload: { mode: "off" | "one" | "all" } }
   | { command: "SetShuffle"; payload: { enabled: boolean } }
-  | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean };
+  | { command: "EnqueueTrack"; payload: { track_id: string; play_next: boolean; /** The user picked it: plays before the app's queue. */ manual?: boolean };
     }
   | {
       command: "PlayOnlineTrack";
@@ -77,6 +77,8 @@ export type Command =
         cover_art_url?: string;
         preview_url?: string;
         play_next: boolean;
+        /** The user picked it: plays before the app's queue. */
+        manual?: boolean;
       };
     }
   | { command: "DequeueTrack"; payload: { track_id: string } }

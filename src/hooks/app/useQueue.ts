@@ -24,7 +24,7 @@ export function useQueue({ queuedTrackIds, setQueuedTrackIds, addAppNotification
     try {
       await dispatchCommand({
         command: "EnqueueTrack",
-        payload: { track_id: trackId, play_next: false },
+        payload: { track_id: trackId, play_next: false, manual: true },
       });
       setQueuedTrackIds((prev) => new Set(prev).add(trackId));
     } catch (err: any) {
@@ -73,6 +73,7 @@ export function useQueue({ queuedTrackIds, setQueuedTrackIds, addAppNotification
             cover_art_url: rec.cover_art_url,
             preview_url: rec.preview_url,
             play_next: false,
+            manual: true,
           },
         });
         setQueuedTrackIds((prev) => new Set(prev).add(trackId));

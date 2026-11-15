@@ -414,6 +414,7 @@ async fn flow_stop_and_manual_selection_preserve_manual_queue() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: manual.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .unwrap();

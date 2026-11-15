@@ -42,6 +42,7 @@ async fn seed(processor: &CoreProcessor) {
             .dispatch_command(Command::EnqueueTrack {
                 track_id: id.into(),
                 play_next: false,
+                manual: false,
             })
             .await
             .unwrap();

@@ -98,7 +98,7 @@ fn fixture_child() {
                 match mode.as_str() {
                     "stop" => { core.dispatch_command(Command::Stop).await.unwrap(); },
                     "next" => {
-                        core.dispatch_command(Command::EnqueueTrack { track_id: "local".into(), play_next: false }).await.unwrap();
+                        core.dispatch_command(Command::EnqueueTrack { track_id: "local".into(), play_next: false, manual: false}).await.unwrap();
                         core.dispatch_command(Command::NextTrack).await.unwrap();
                     }
                     "replace" => { core.dispatch_command(Command::PlayTrack { track_id: "local".into(), source: None }).await.unwrap(); },

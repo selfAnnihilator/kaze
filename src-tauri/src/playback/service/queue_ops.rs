@@ -2,7 +2,14 @@
 use super::*;
 
 impl PlaybackService {
+    /// Queues a song for the app (collection remainders): after everything queued.
     pub async fn enqueue_track(&self, track_id: &str, play_next: bool) -> AppResult<bool> {
+        self.enqueue_track_as(track_id, play_next, false).await
+    }
+
+    /// Queues a song. A `manual` song (picked by the user) plays before the
+    /// app's own queue, after songs the user queued earlier.
+    pub async fn enqueue_track_as(&self, track_id: &str, play_next: bool, manual: bool) -> AppResult<bool> {
         self.prepare_track_source(track_id).await?;
         let track = self.find_or_register_track(track_id).await?;
 
@@ -18,9 +25,14 @@ impl PlaybackService {
         let queue_id = queue_item.queue_id.clone();
         let added = {
             let mut q_guard = self.queue.write().await;
-            q_guard.enqueue(queue_item, play_next)
+            if manual && !play_next {
+                q_guard.enqueue_manual(queue_item)
+            } else {
+                q_guard.enqueue(queue_item, play_next)
+            }
         };
-        if added {
+        // "Play next" is always the user's choice, so Flow treats it as theirs too.
+        if added && (manual || play_next) {
             if let Some(flow) = self.active_flow.write().await.as_mut() {
                 flow.manual_queue_ids.insert(queue_id);
             }

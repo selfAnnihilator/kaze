@@ -76,3 +76,11 @@ test("search rows and the top result offer the queue; the players have no shuffl
   assert.match(read("src/presentation/BrutalistDeck.tsx"), /title="Open Queue"[\s\S]{0,120}onClick=\{p\.onOpenQueue\}/);
   assert.match(read("src/components/views/collection/CollectionToolbar.tsx"), /if \(c\.isLikedSongs\) return null;/);
 });
+
+test("songs the user queues are marked manual, so they play before the app's queue", () => {
+  const queue = read("src/hooks/app/useQueue.ts");
+  assert.equal(queue.match(/manual: true/g)?.length, 2, "local and online enqueue");
+  for (const app of ["src/hooks/app/useCollections.ts", "src/hooks/app/usePlaybackControls.ts", "src/hooks/app/usePlayDiscoveredCollection.ts"]) {
+    assert.doesNotMatch(read(app), /manual: true/, `${app} queues for the app`);
+  }
+});

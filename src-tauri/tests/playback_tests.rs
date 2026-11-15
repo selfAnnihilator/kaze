@@ -179,6 +179,7 @@ async fn test_playback_queue_and_navigation() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue track2");
@@ -187,6 +188,7 @@ async fn test_playback_queue_and_navigation() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await;
     assert!(duplicate.is_err(), "the same track must not appear twice in the upcoming queue");
@@ -275,6 +277,7 @@ async fn test_queue_refills_randomly_after_the_planned_tracks_finish() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue second track");
@@ -341,6 +344,7 @@ async fn test_online_tracks_can_be_queued_and_played_through_unified_backend() {
             cover_art_url: None,
             preview_url: Some("https://example.invalid/preview".into()),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue online track");
@@ -377,6 +381,7 @@ async fn test_repeat_modes() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue");
@@ -445,6 +450,7 @@ async fn test_queue_enqueue_dequeue_and_playback_state_enrichment() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue track 2");
@@ -486,6 +492,7 @@ async fn test_queue_enqueue_dequeue_and_playback_state_enrichment() {
         .dispatch_command(Command::EnqueueTrack {
             track_id: track2_id.clone(),
             play_next: false,
+            manual: false,
         })
         .await
         .expect("enqueue track 2 again");

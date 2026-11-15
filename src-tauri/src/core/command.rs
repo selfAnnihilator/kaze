@@ -95,6 +95,9 @@ pub enum Command {
     EnqueueTrack {
         track_id: String,
         play_next: bool,
+        /// The user picked this song: it plays before the app's own queue.
+        #[serde(default)]
+        manual: bool,
     },
     EnqueueOnlineTrack {
         track_id: String,
@@ -105,6 +108,9 @@ pub enum Command {
         cover_art_url: Option<String>,
         preview_url: Option<String>,
         play_next: bool,
+        /// The user picked this song: it plays before the app's own queue.
+        #[serde(default)]
+        manual: bool,
     },
     DequeueTrack {
         track_id: String,
