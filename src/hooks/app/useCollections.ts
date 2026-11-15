@@ -12,12 +12,8 @@ import { usePlayDiscoveredCollection } from "./usePlayDiscoveredCollection";
 type Controls = ReturnType<typeof usePlaybackControls>;
 
 export type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
-export type PlayingOrigin = {
-  type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
-  id?: string;
-  name?: string;
-  collectionData?: CollectionData;
-} | null;
+import type { PlayingOrigin } from "../../playingOrigin";
+export type { PlayingOrigin } from "../../playingOrigin";
 
 /**
  * Collection detail (mixes, charts, albums, playlists): open, load tracks,
@@ -70,8 +66,8 @@ export function useCollections({
 
   const handleOpenPlayingOrigin = useCallback(() => {
     if (!playingOrigin) return;
-    if (playingOrigin.type === "flow") {
-      navigate(viewDestination("home"));
+    if (playingOrigin.type === "library") {
+      navigate(viewDestination(playingOrigin.scope === "downloads" ? "downloads" : "library"));
       return;
     }
     if (playingOrigin.collectionData) {

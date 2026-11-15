@@ -40,6 +40,7 @@ import type { CollectionData } from "./components/views/CollectionDetailView";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
 import type { PlaybackArtworkTrack } from "./presentation/queuePresentation";
+import { linkableOrigin, type PlayingOrigin } from "./playingOrigin";
 import { usePlaybackState } from "./hooks/app/usePlaybackState";
 import { useNotifications } from "./hooks/app/useNotifications";
 import { usePromptDialog } from "./hooks/app/usePromptDialog";
@@ -129,12 +130,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
   const { isOnline, isFullscreen, handleToggleFullscreen, handlePlayPauseRef } = useWindowShortcuts();
 
   // Playing Origin state: identifies where the current track is playing from
-  const [playingOrigin, setPlayingOrigin] = useState<{
-    type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
-    id?: string;
-    name?: string;
-    collectionData?: CollectionData;
-  } | null>(null);
+  const [playingOrigin, setPlayingOrigin] = useState<PlayingOrigin>(null);
 
   const {
     playlistRequest, membershipRequest, playlists, setPlaylists, playingPlaylistId, setPlayingPlaylistId, trackPlaylistMap, setTrackPlaylistMap, isPlaylistModalOpen, setIsPlaylistModalOpen, playlistModalTrack, setPlaylistModalTrack, fetchPlaylists, handleRefreshPlaylists, fetchTrackPlaylistMemberships, handleRenamePlaylist, handleDeletePlaylist, handleCreatePlaylist, handleToggleTrackInPlaylist, handleOpenAddToPlaylistModal, handleFetchPlaylistTracks, handleInspectJioSaavnPlaylist, handleSaveImportedPlaylist, handleSaveCollectionToPlaylists,
@@ -198,7 +194,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
 
   // Local Library and Kaze Downloads: each plays as its own ordered list.
   const { localPlayback, downloadsPlayback: kazeDownloadsPlayback, downloadsPage, downloadsListState } = useDownloadsSection({
-    playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads,
+    playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads, setPlayingOrigin,
     userId: currentUser?.id || "default", navigation: destination.view, query: destination.libraryQuery, downloadsDir: settings.downloads?.resolved_dir,
   });
   const { libraryShuffle, downloadsListActive, handleLibraryRowPlay, handleLibraryPlayAll, handleLibraryToggleShuffle } = localPlayback;
@@ -298,8 +294,8 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     if (homeOverview?.flow_session?.is_active) void handleToggleFlowPlayback();
     else void handleStartFlow(flowSteering);
   }, [homeOverview?.flow_session?.is_active, handleToggleFlowPlayback, handleStartFlow, flowSteering]);
-  // Playlist, mix, chart and Flow origins can be reopened from the player.
-  const openableOrigin = playingOrigin && ["playlist", "mix", "chart", "flow"].includes(playingOrigin.type) ? playingOrigin : null;
+  // The player links back only to the collection the playing song came from.
+  const openableOrigin = linkableOrigin(playingOrigin, playbackState.current_track, settings.downloads?.resolved_dir);
   const toggleLyrics = useCallback(() => setIsLyricsActive((prev) => !prev), [setIsLyricsActive]);
   const toggleFullscreen = useCallback(() => handleToggleFullscreen(), [handleToggleFullscreen]);
   const closeFullscreen = useCallback(() => handleToggleFullscreen(false), [handleToggleFullscreen]);
@@ -317,7 +313,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     onVolumeChange: handleVolumeChange,
     onToggleMute: handleToggleMute,
     onToggleRepeat: handleToggleRepeat,
-    onToggleShuffle: handleToggleShuffle,
     onLike: handleLike,
     onLikeOnline: handleLikeOnline,
     isOnlineLiked: isCurrentTrackLiked,

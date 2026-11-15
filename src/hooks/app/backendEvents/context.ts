@@ -1,7 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { AddToPlaylistModalTrack } from "../../../components/modals/AddToPlaylistModal";
 import type { RecommendationNoticeValue } from "../../../components/RecommendationNotice";
-import type { CollectionData } from "../../../components/views/CollectionDetailView";
 import type { QueueEntry } from "../../../presentation/queuePresentation";
 import type { DiscoveryRecommendation, DownloadTask, HomeOverview, PlaybackState, Playlist, Track, UserProfile, WishlistItem } from "../../../types";
 
@@ -11,12 +10,7 @@ export type BackendEvent = { event: string; payload?: any };
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 type Fetcher = () => unknown;
-type PlayingOrigin = {
-  type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
-  id?: string;
-  name?: string;
-  collectionData?: CollectionData;
-} | null;
+import type { PlayingOrigin } from "../../../playingOrigin";
 
 /** Timers shared by event handlers for one subscription (cleared on unsubscribe). */
 export interface EventTimers { taste?: ReturnType<typeof setTimeout> }

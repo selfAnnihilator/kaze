@@ -5,15 +5,9 @@ import { dispatchCommand, executeQuery } from "../../services/api";
 import { playbackProgress } from "../../services/playbackProgress";
 import { showEmptyPlaybackNotice } from "../../components/PlaybackNotice";
 import type { DiscoveryRecommendation, PlaybackState, Playlist, Track } from "../../types";
-import type { CollectionData } from "../../components/views/CollectionDetailView";
 
 type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
-type PlayingOrigin = {
-  type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
-  id?: string;
-  name?: string;
-  collectionData?: CollectionData;
-} | null;
+import type { PlayingOrigin } from "../../playingOrigin";
 
 /**
  * Playback commands sent to the Rust PlaybackService: play local/online tracks,
@@ -242,6 +236,7 @@ export function usePlaybackControls({
       const plTracks: Track[] = (res.data as any) || [];
       if (plTracks.length > 0) {
         const playlistTrackIds = new Set(plTracks.map((track) => track.id));
+        setPlayingOrigin({ type: "playlist", id: playlistId, name: pl?.name || "Playlist", trackIds: [...playlistTrackIds] });
         const preservedQueue = Array.from(queuedTrackIds).filter(
           (trackId) => !playlistTrackIds.has(trackId),
         );

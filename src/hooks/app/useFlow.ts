@@ -2,15 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { dispatchCommand, executeQuery } from "../../services/api";
 import type { FlowExplanation, HomeOverview, PlaybackState } from "../../types";
-import type { CollectionData } from "../../components/views/CollectionDetailView";
 
 type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
-type PlayingOrigin = {
-  type: "playlist" | "mix" | "chart" | "album" | "discovery" | "flow";
-  id?: string;
-  name?: string;
-  collectionData?: CollectionData;
-} | null;
+import type { PlayingOrigin } from "../../playingOrigin";
 
 /**
  * Home overview + Flow: the home feed, the Flow session (start, continue/pause,

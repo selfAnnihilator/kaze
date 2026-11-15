@@ -1963,6 +1963,10 @@
   button:disabled {
   opacity: 1;
 }
+/* The title links back to the collection playing; a plain title has no link. */
+.press-deck-track h2 button:not(:disabled):is(:hover, :focus-visible) {
+  text-decoration: underline;
+}
 .press-deck-cover {
   width: 42px;
   height: 42px;

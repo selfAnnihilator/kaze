@@ -3,6 +3,7 @@ import type { DownloadTask, PlaybackState, Track } from "../../types";
 import { useLibraryPage } from "../useLibraryPage";
 import { useScopedTracks } from "../useScopedTracks";
 import { useLibraryPlayback, type ListScope } from "./useLibrary";
+import type { PlayingOrigin } from "../../playingOrigin";
 
 interface Options {
   playbackState: PlaybackState;
@@ -16,6 +17,8 @@ interface Options {
   query: string;
   /** Kaze's download folder. */
   downloadsDir?: string;
+  /** Records the section as the playing song's origin when its list starts. */
+  setPlayingOrigin?: (origin: PlayingOrigin) => void;
 }
 
 /**
@@ -23,10 +26,10 @@ interface Options {
  * and Kaze Downloads (Kaze's own folder). Only gathers existing hooks, so the
  * caller gains no state beyond which section started the playing list.
  */
-export function useDownloadsSection({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads, userId, navigation, query, downloadsDir }: Options) {
+export function useDownloadsSection({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, downloads, userId, navigation, query, downloadsDir, setPlayingOrigin }: Options) {
   // Both sections use the "archive" source; this records which one started it.
   const [activeListScope, setActiveListScope] = useState<ListScope | null>(null);
-  const shared = { playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, activeListScope, setActiveListScope };
+  const shared = { playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, activeListScope, setActiveListScope, setPlayingOrigin };
   const localPlayback = useLibraryPlayback({ ...shared, scope: "local" });
   const downloadsPlayback = useLibraryPlayback({ ...shared, scope: "downloads" });
 

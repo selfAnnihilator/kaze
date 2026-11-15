@@ -4,6 +4,7 @@ import type { Album, AppSettings, PlaybackState, Track } from "../../types";
 import { useLibraryPage } from "../useLibraryPage";
 import { useScopedTracks } from "../useScopedTracks";
 import type { NavigationDestination } from "../../navigationHistory";
+import type { PlayingOrigin } from "../../playingOrigin";
 
 // Downloads section shuffle toggle, persisted per device ("1" on, "0" off).
 const DOWNLOADS_SHUFFLE_KEY = "kaze.downloads.shuffle";
@@ -95,7 +96,7 @@ export function useLibrary({ userId, destination, initialSettings, fetchOnboardi
 export type ListScope = "local" | "downloads";
 
 /** Ordered list playback for one section: Local Library or Kaze Downloads. */
-export function useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope = "local", activeListScope, setActiveListScope }: {
+export function useLibraryPlayback({ playbackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope = "local", activeListScope, setActiveListScope, setPlayingOrigin }: {
   playbackState: PlaybackState;
   fetchPlaybackState: () => Promise<void>;
   beginPlaybackLoading: (trackId: string) => number;
@@ -104,6 +105,8 @@ export function useLibraryPlayback({ playbackState, fetchPlaybackState, beginPla
   /** Which section started the list currently playing (both use the "archive" source). */
   activeListScope: ListScope | null;
   setActiveListScope: (scope: ListScope) => void;
+  /** Records this list as the playing song's origin, so the player can link back to it. */
+  setPlayingOrigin?: (origin: PlayingOrigin) => void;
 }) {
   // The Local list keeps its original storage key so the saved toggle survives.
   const shuffleKey = scope === "local" ? DOWNLOADS_SHUFFLE_KEY : "kaze.kazeDownloads.shuffle";
@@ -124,6 +127,7 @@ export function useLibraryPlayback({ playbackState, fetchPlaybackState, beginPla
     async (startId?: string) => {
       const requestId = beginPlaybackLoading(startId ?? "library-list");
       setActiveListScope(scope);
+      setPlayingOrigin?.({ type: "library", scope, name: scope === "downloads" ? "Downloads" : "Local" });
       try {
         await dispatchCommand({
           command: "PlayTrackList",
@@ -143,7 +147,7 @@ export function useLibraryPlayback({ playbackState, fetchPlaybackState, beginPla
         endPlaybackLoading(requestId);
       }
     },
-    [libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope, setActiveListScope],
+    [libraryShuffle, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, scope, setActiveListScope, setPlayingOrigin],
   );
   const handleLibraryRowPlay = useCallback(
     async (trackId: string) => {
