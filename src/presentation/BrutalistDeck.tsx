@@ -17,7 +17,6 @@ import {
   Repeat,
   Repeat1,
   Settings,
-  Shuffle,
   SkipBack,
   SkipForward,
   Volume2,
@@ -177,12 +176,12 @@ export const BrutalistDeck = memo(function BrutalistDeck(
           <div className="press-deck-options">
             <button
               className="press-icon"
-              title="Toggle Shuffle"
-              aria-label="Toggle Shuffle"
-              aria-pressed={state.is_shuffled}
-              onClick={p.onToggleShuffle}
+              title="Open Queue"
+              aria-label="Open Queue"
+              aria-pressed={p.view === "queue"}
+              onClick={p.onOpenQueue}
             >
-              <Shuffle size={20} />
+              <ListMusic size={20} />
             </button>
             <button
               className="press-icon"

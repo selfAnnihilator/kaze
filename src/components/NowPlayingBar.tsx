@@ -10,7 +10,6 @@ import {
   SkipForward,
   Repeat,
   Repeat1,
-  Shuffle,
   Volume2,
   VolumeX,
   Heart,
@@ -41,7 +40,6 @@ export interface NowPlayingBarProps {
   onVolumeChange: (volume: number) => void;
   onToggleMute: () => void;
   onToggleRepeat: () => void;
-  onToggleShuffle: () => void;
   onLike: (trackId: string) => void;
   onLikeOnline?: (track: { id: string; title: string; artist: string; album?: string; cover_art_url?: string; preview_url?: string; duration_secs?: number;
   }) => void;
@@ -79,7 +77,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
     onVolumeChange,
     onToggleMute,
     onToggleRepeat,
-    onToggleShuffle,
     onLike,
     onLikeOnline,
     isOnlineLiked = false,
@@ -306,13 +303,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
         {/* Center: Controls & Scrubber */}
         <div className="player-controls">
           <div className="player-buttons">
-            <button
-              className={`player-icon-btn ${playbackState.is_shuffled ? "active" : ""}`}
-              title="Toggle Shuffle"
-              onClick={onToggleShuffle}
-            >
-              <Shuffle size={16} />
-            </button>
             <button
               className="player-icon-btn"
               title="Previous Track"

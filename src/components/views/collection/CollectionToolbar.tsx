@@ -98,48 +98,7 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
           </button>
         )}
 
-        {/* Already in Collection Bookmarked Icon (non-clickable) OR Save Button */}
-        {c.isInCollection ? (
-          <div
-            style={{
-              border: "1px solid var(--accent-secondary-a45)",
-              backgroundColor: "var(--accent-secondary-a12)",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              color: "var(--accent-secondary)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "default",
-              userSelect: "none",
-            }}
-            title="Already in collection"
-          >
-            <BookmarkCheck size={20} />
-          </div>
-        ) : c.onSaveToPlaylists ? (
-          <button
-            type="button"
-            onClick={() => c.onSaveToPlaylists?.(c.collection)}
-            style={{
-              background: "none",
-              border: "1px solid var(--overlay-20)",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
-            }}
-            title="Save collection to your library"
-          >
-            <Plus size={18} />
-          </button>
-        ) : null}
+        <SaveBadge c={c} />
 
         {c.collection.type === "playlist" && c.collection.playlistId && (
           <details style={{ position: "relative" }}>
@@ -275,4 +234,50 @@ export function CollectionToolbar({ c }: { c: CollectionDetailViewContext }) {
       )}
     </div>
   );
+}
+
+/** The save button, or a badge when the collection is already yours. Liked Songs is always yours, so it shows neither. */
+function SaveBadge({ c }: { c: CollectionDetailViewContext }) {
+  if (c.isLikedSongs) return null;
+  return c.isInCollection ? (
+    <div
+      style={{
+        border: "1px solid var(--accent-secondary-a45)",
+        backgroundColor: "var(--accent-secondary-a12)",
+        borderRadius: "50%",
+        width: "40px",
+        height: "40px",
+        color: "var(--accent-secondary)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "default",
+        userSelect: "none",
+      }}
+      title="Already in collection"
+    >
+      <BookmarkCheck size={20} />
+    </div>
+  ) : c.onSaveToPlaylists ? (
+    <button
+      type="button"
+      onClick={() => c.onSaveToPlaylists?.(c.collection)}
+      style={{
+        background: "none",
+        border: "1px solid var(--overlay-20)",
+        borderRadius: "50%",
+        width: "40px",
+        height: "40px",
+        color: "var(--text-muted)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "transform var(--duration-fast) ease, opacity var(--duration-fast) ease",
+      }}
+      title="Save collection to your library"
+    >
+      <Plus size={18} />
+    </button>
+  ) : null;
 }

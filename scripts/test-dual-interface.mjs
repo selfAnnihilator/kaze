@@ -328,10 +328,9 @@ try {
           .locator(".player-bar, .press-deck-controls")
           .getByRole("button", { name: "Play", exact: true })
           .click();
-        await page
-          .locator(".player-bar, .press-deck-controls")
-          .getByRole("button", { name: "Toggle Shuffle", exact: true })
-          .click();
+        // Shuffle lives on collection screens only; the player offers the queue instead.
+        assert.equal(await page.locator(".player-bar, .press-deck-controls").getByRole("button", { name: "Toggle Shuffle", exact: true }).count(), 0);
+        assert.ok(await page.locator(".player-bar, .press-deck-controls").getByRole("button", { name: "Open Queue", exact: true }).count() >= 1);
         await page
           .locator(".player-bar, .press-deck-controls")
           .getByRole("button", { name: /Loop current song|Turn off song loop/ })
