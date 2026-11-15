@@ -7,3 +7,25 @@ resolver = "2"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# Cover-art decoding and resizing are far too slow unoptimised: in `tauri dev`
+# a 1024px cover took seconds and covers appeared blank for a minute. Only
+# these crates are optimised, so dev rebuilds of the app itself stay fast.
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-core]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.moxcms]
+opt-level = 3
