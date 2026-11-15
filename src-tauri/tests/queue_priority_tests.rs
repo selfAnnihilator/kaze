@@ -107,6 +107,34 @@ async fn queuing_a_song_the_app_already_queued_plays_it_next() {
     assert_eq!(current_track(&processor).await, ids[2]);
 }
 
+#[tokio::test]
+async fn clear_queue_keeps_the_playing_song() {
+    let pool = create_in_memory_pool().await.expect("DB pool");
+    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), Box::new(MockAudioBackend::new()));
+    let repo = processor.library_service().track_repo();
+    let playing = repo.save_scanned_track(song("playing")).await.expect("save");
+    let queued = repo.save_scanned_track(song("queued")).await.expect("save");
+    processor
+        .dispatch_command(Command::PlayTrack { track_id: playing.clone(), source: None })
+        .await
+        .expect("play");
+    processor
+        .dispatch_command(Command::EnqueueTrack { track_id: queued, play_next: false, manual: true })
+        .await
+        .expect("enqueue");
+    processor.dispatch_command(Command::ClearQueue).await.expect("clear");
+
+    assert_eq!(current_track(&processor).await, playing, "the active song keeps playing");
+    match processor.execute_query(Query::GetPlaybackState).await.expect("state") {
+        QueryResponse::PlaybackState(state) => {
+            assert_eq!(state["queue_track_ids"], serde_json::json!([]));
+            assert_eq!(state["user_queue_track_ids"], serde_json::json!([]));
+            assert_eq!(state["is_playing"], true);
+        }
+        _ => panic!("expected playback state"),
+    }
+}
+
 #[test]
 fn the_manual_flag_is_optional_in_ipc() {
     let command: Command = serde_json::from_str(r#"{"command":"EnqueueTrack","payload":{"track_id":"a","play_next":false}}"#)

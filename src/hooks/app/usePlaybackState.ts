@@ -34,7 +34,10 @@ function resolvePending(prev: PlaybackState, resolved: Track): PlaybackState {
   return prev.current_track?.pending && prev.current_track.id === resolved.id ? { ...prev, current_track: resolved } : prev;
 }
 
-/** The song played before the current one (ignoring buffering placeholders). */
+/**
+ * The song played before the current one (ignoring buffering placeholders).
+ * The first song of the queue has none, as Previous has nothing to go back to.
+ */
 function usePreviousTrack(playbackState: PlaybackState) {
   const previousTrackRef = useRef<Track | undefined>(undefined);
   const observedTrackRef = useRef<Track | undefined>(undefined);
@@ -43,7 +46,10 @@ function usePreviousTrack(playbackState: PlaybackState) {
     previousTrackRef.current = observedTrackRef.current;
     observedTrackRef.current = current;
   }
-  return previousTrackRef;
+  // Shown separately, so the remembered song survives updates that arrive in either order.
+  const shownRef = useRef<Track | undefined>(undefined);
+  shownRef.current = (playbackState.current_queue_index ?? 0) > 0 ? previousTrackRef.current : undefined;
+  return shownRef;
 }
 
 /**

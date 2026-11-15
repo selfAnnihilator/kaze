@@ -92,3 +92,7 @@ test("a new playlist starts a fresh queue, and ✓ means the user queued it", ()
   assert.match(read("src/hooks/app/backendEvents/playbackEvents.ts"), /setQueuedTrackIds\(new Set\(event\.payload\?\.user_queue_track_ids \?\? \[\]\)\)/);
   assert.match(read("src/hooks/app/usePlaybackState.ts"), /user_queue_track_ids/);
 });
+
+test("the first song of the queue shows no previous sleeve", () => {
+  assert.match(read("src/hooks/app/usePlaybackState.ts"), /\(playbackState\.current_queue_index \?\? 0\) > 0 \? previousTrackRef\.current : undefined/);
+});

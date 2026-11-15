@@ -214,8 +214,9 @@ async fn source_linked_online_and_missing_local_media_restore_without_audio() {
     second.shutdown().await.unwrap();
     let (third, _) = open(&dir).await;
     let cleared = state(&third).await;
-    assert!(cleared["current_track_id"].is_null());
-    assert_eq!(cleared["queue_length"], 0);
+    assert_eq!(cleared["current_track"]["format"], "online", "Clear queue keeps the active song");
+    assert_eq!(cleared["queue_track_ids"], serde_json::json!([]));
+    assert_eq!(cleared["queue_length"], 1);
     third.shutdown().await.unwrap();
 }
 

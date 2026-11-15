@@ -166,7 +166,7 @@ impl CoreProcessor {
                 Ok(CommandResponse::Ok)
             }
             Command::ClearQueue => {
-                self.playback_service.clear_queue().await;
+                self.playback_service.clear_upcoming_queue().await;
                 Ok(CommandResponse::Ok)
             }
             Command::ClearRemoteAudioCache => {

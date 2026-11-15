@@ -79,6 +79,19 @@ impl PlaybackService {
         }
     }
 
+    /// The Clear queue button: removes every song after the playing one. The
+    /// playing (or paused) song and its history stay, so playback continues.
+    pub async fn clear_upcoming_queue(&self) {
+        let _operation = self.flow_operation.lock().await;
+        self.stop_flow_inner().await;
+        self.queue.write().await.clear_upcoming();
+        self.emit_queue_updated().await;
+        if let Err(error) = self.save_playback_bookmark().await {
+            tracing::warn!(%error, "Could not save cleared queue");
+        }
+    }
+
+    /// Empties the queue entirely, including the current song (sign-out).
     pub async fn clear_queue(&self) {
         let _operation = self.flow_operation.lock().await;
         *self.restored_track.write().await = None;
