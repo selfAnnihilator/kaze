@@ -131,7 +131,7 @@ impl PlaybackService {
                 );
             }
         }
-        let (items, current_index, queue_track_ids) = {
+        let (items, current_index, queue_track_ids, user_queue_track_ids) = {
             let q_guard = self.queue.read().await;
             let has_active_track = q_guard.current_index().is_some();
 
@@ -154,6 +154,7 @@ impl PlaybackService {
                 q_guard.items().to_vec(),
                 q_guard.current_index(),
                 queue_track_ids,
+                q_guard.waiting_manual_track_ids(),
             )
         };
 
@@ -161,6 +162,7 @@ impl PlaybackService {
             items: Arc::new(items),
             current_index,
             queue_track_ids: Arc::new(queue_track_ids),
+            user_queue_track_ids: Arc::new(user_queue_track_ids),
             source,
         });
 

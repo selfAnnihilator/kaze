@@ -7,10 +7,9 @@ import type { usePlaybackControls } from "./usePlaybackControls";
 import type { Notify, PlayingOrigin } from "./useCollections";
 
 /** Plays a chart or searched collection found in Discover: resolve its songs, then queue them. */
-export function usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackState, queuedTrackIds, addAppNotification, handleStopOnlineAudio }: {
+export function usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackState, addAppNotification, handleStopOnlineAudio }: {
   setPlayingOrigin: Dispatch<SetStateAction<PlayingOrigin>>;
   fetchPlaybackState: () => Promise<unknown>;
-  queuedTrackIds: Set<string>;
   addAppNotification: Notify;
   handleStopOnlineAudio: ReturnType<typeof usePlaybackControls>["handleStopOnlineAudio"];
 }) {
@@ -68,10 +67,6 @@ export function usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackSta
           localIdFor(track) || track.external_track_id;
         const isLocal = (track: DiscoveryRecommendation) =>
           localIdFor(track) !== null;
-        const collectionIds = new Set(results.map(resolvedId));
-        const preservedQueue = Array.from(queuedTrackIds).filter(
-          (trackId) => !collectionIds.has(trackId),
-        );
         const first = results[0];
         const firstId = resolvedId(first);
 
@@ -157,17 +152,6 @@ export function usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackSta
           }
         }
 
-        for (const trackId of preservedQueue) {
-          try {
-            await dispatchCommand({
-              command: "EnqueueTrack",
-              payload: { track_id: trackId, play_next: false },
-            });
-          } catch (error) {
-            console.warn("Could not preserve queued track after chart:", error);
-          }
-        }
-
         fetchPlaybackState();
       } catch (error: any) {
         console.error("Failed to play discovered collection:", error);
@@ -179,7 +163,6 @@ export function usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackSta
       }
     },
     [
-      queuedTrackIds,
       addAppNotification,
       handleStopOnlineAudio,
       fetchPlaybackState,

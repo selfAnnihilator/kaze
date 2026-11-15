@@ -16,7 +16,7 @@ import type { PlayingOrigin } from "../../playingOrigin";
  */
 export function usePlaybackControls({
   playbackState, setPlaybackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, tracks,
-  addAppNotification, playlists, setPlayingPlaylistId, setPlayingOrigin, queuedTrackIds,
+  addAppNotification, playlists, setPlayingPlaylistId, setPlayingOrigin,
 }: {
   playbackState: PlaybackState;
   setPlaybackState: Dispatch<SetStateAction<PlaybackState>>;
@@ -28,7 +28,6 @@ export function usePlaybackControls({
   playlists: Playlist[];
   setPlayingPlaylistId: Dispatch<SetStateAction<string | null>>;
   setPlayingOrigin: Dispatch<SetStateAction<PlayingOrigin>>;
-  queuedTrackIds: Set<string>;
 }) {
   const handleStopOnlineAudio = useCallback(() => {}, []);
 
@@ -237,9 +236,6 @@ export function usePlaybackControls({
       if (plTracks.length > 0) {
         const playlistTrackIds = new Set(plTracks.map((track) => track.id));
         setPlayingOrigin({ type: "playlist", id: playlistId, name: pl?.name || "Playlist", trackIds: [...playlistTrackIds] });
-        const preservedQueue = Array.from(queuedTrackIds).filter(
-          (trackId) => !playlistTrackIds.has(trackId),
-        );
         const first = plTracks[0];
         const isOnline = !!isOnlineTrack(first);
 
@@ -325,24 +321,11 @@ export function usePlaybackControls({
           }
           fetchPlaybackState();
         }
-        for (const queuedId of preservedQueue) {
-          try {
-            await dispatchCommand({
-              command: "EnqueueTrack",
-              payload: { track_id: queuedId, play_next: false },
-            });
-          } catch (err) {
-            console.warn(
-              "Could not preserve queued track after playlist:",
-              err,
-            );
-          }
-        }
       }
     } catch (err) {
       console.error("Failed to play playlist:", err);
     }
-  }, [setPlayingPlaylistId, playlists, setPlayingOrigin, queuedTrackIds, addAppNotification, handlePlayOnlineTrack, fetchPlaybackState]);
+  }, [setPlayingPlaylistId, playlists, setPlayingOrigin, addAppNotification, handlePlayOnlineTrack, fetchPlaybackState]);
 
   return useMemo(() => ({
     handleStopOnlineAudio, handleStopTrack, handlePlayTrack, handlePlayOnlineTrack, handlePlayPause, handleNextTrack, handlePreviousTrack, handleSeek, handleVolumeChange, handleToggleMute, handleToggleRepeat, handleToggleShuffle, handlePlayPlaylist,

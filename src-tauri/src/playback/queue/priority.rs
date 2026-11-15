@@ -6,12 +6,25 @@ use super::*;
 impl PlaybackQueue {
     /// Queues a song the user picked: after the playing song and any songs the
     /// user queued before it, ahead of everything the app queued.
+    /// A song the app already queued further down moves up instead of repeating.
     pub fn enqueue_manual(&mut self, item: QueueItem) -> bool {
-        let upcoming_start = self.current_index.map_or(0, |index| index + 1);
-        if self.items.iter().skip(upcoming_start).any(|queued| queued.track_id == item.track_id) {
-            return false;
-        }
         self.prune_manual();
+        let upcoming_start = self.current_index.map_or(0, |index| index + 1);
+        let already = self
+            .items
+            .iter()
+            .enumerate()
+            .skip(upcoming_start)
+            .find(|(_, queued)| queued.track_id == item.track_id)
+            .map(|(index, queued)| (index, self.is_manual(&queued.queue_id)));
+        match already {
+            Some((_, true)) => return false,
+            Some((index, false)) => {
+                self.remove(index);
+            }
+            None => {}
+        }
+        let upcoming_start = self.current_index.map_or(0, |index| index + 1);
         let mut at = upcoming_start.min(self.items.len());
         while self.items.get(at).is_some_and(|queued| self.is_manual(&queued.queue_id)) {
             at += 1;
@@ -22,12 +35,23 @@ impl PlaybackQueue {
         true
     }
 
+    /// Track ids of the user's songs still waiting to play, in the order they
+    /// were added (a song stops waiting once it starts playing).
+    pub fn waiting_manual_track_ids(&self) -> Vec<String> {
+        self.manual_ids
+            .iter()
+            .filter_map(|id| self.items.iter().find(|item| &item.queue_id == id))
+            .filter(|item| self.current().map(|current| &current.queue_id) != Some(&item.queue_id))
+            .map(|item| item.track_id.clone())
+            .collect()
+    }
+
     pub(super) fn is_manual(&self, queue_id: &str) -> bool {
         self.manual_ids.iter().any(|id| id == queue_id)
     }
 
     /// Forgets songs that left the queue or are playing now. Starting a new
-    /// list replaces every queue id, so the user's waiting songs fall behind it.
+    /// playlist replaces every queue id, so it starts with an empty user queue.
     pub(super) fn prune_manual(&mut self) {
         if self.manual_ids.is_empty() {
             return;

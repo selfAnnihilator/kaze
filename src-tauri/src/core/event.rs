@@ -79,6 +79,9 @@ pub enum Event {
         items: std::sync::Arc<Vec<QueueItem>>,
         current_index: Option<usize>,
         queue_track_ids: std::sync::Arc<Vec<String>>,
+        /// Songs the user queued that are still waiting, in the order they were added.
+        #[serde(default)]
+        user_queue_track_ids: std::sync::Arc<Vec<String>>,
         /// Playback source that owns the queue ("library", "flow", "archive", ...).
         #[serde(default)]
         source: String,

@@ -97,7 +97,7 @@ export function usePlaybackState({ libraryAccountRef, tracksRef }: {
         playbackProgress.update(res.data.position_secs ?? 0, res.data.duration_secs ?? 0);
         setPlaybackState((prev) => mergePlaybackResponse(prev, res.data, tracksRef.current));
         if (Array.isArray(res.data.queue_track_ids)) {
-          setQueuedTrackIds(new Set(res.data.queue_track_ids));
+          setQueuedTrackIds(new Set(res.data.user_queue_track_ids ?? []));
           setQueueEntries((prev) => withKnownMetadata(upcomingFromPlayback(res.data), prev));
         }
       }

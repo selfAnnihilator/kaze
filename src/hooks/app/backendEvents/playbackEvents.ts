@@ -204,17 +204,9 @@ export function handlePlaybackEvent(event: BackendEvent, ctx: BackendEventContex
           source: event.payload.source || prev.source,
         }));
       }
-      if (Array.isArray(event.payload?.queue_track_ids)) {
-        setQueuedTrackIds(new Set(event.payload.queue_track_ids));
-      } else {
-        const items: any[] = event.payload?.items || [];
-        const curr = event.payload?.current_index;
-        const upcoming =
-          curr !== null && curr !== undefined
-            ? items.slice(curr + 1)
-            : items;
-        setQueuedTrackIds(new Set(upcoming.map((i: any) => i.track_id)));
-      }
+      // Queue buttons show ✓ only for songs the user queued; a song the app
+      // queued can still be queued, which moves it up to play next.
+      setQueuedTrackIds(new Set(event.payload?.user_queue_track_ids ?? []));
       break;
     }
 

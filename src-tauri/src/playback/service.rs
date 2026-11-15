@@ -55,6 +55,9 @@ pub struct PlaybackStateDto {
     pub queue_length: usize,
     pub current_queue_index: Option<usize>,
     pub queue_track_ids: Vec<String>,
+    /// Songs the user queued that are still waiting, in the order they were added.
+    #[serde(default)]
+    pub user_queue_track_ids: Vec<String>,
     /// Which source owns the queue: "library", "flow", "archive" (Downloads list), ...
     #[serde(default)]
     pub source: String,

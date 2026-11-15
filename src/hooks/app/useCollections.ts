@@ -21,7 +21,7 @@ export type { PlayingOrigin } from "../../playingOrigin";
  * jump back to whatever is currently playing.
  */
 export function useCollections({
-  navigate, destinationRef, activeCollection, setActiveCollection, setPlayingPlaylistId, playlists, playingOrigin, setPlayingOrigin, playbackState, setPlaybackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, queuedTrackIds, addAppNotification, handlePlayPause, handlePlayOnlineTrack, handleToggleShuffle, handleStopOnlineAudio,
+  navigate, destinationRef, activeCollection, setActiveCollection, setPlayingPlaylistId, playlists, playingOrigin, setPlayingOrigin, playbackState, setPlaybackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, addAppNotification, handlePlayPause, handlePlayOnlineTrack, handleToggleShuffle, handleStopOnlineAudio,
 }: {
   navigate: (destination: NavigationDestination) => boolean;
   destinationRef: MutableRefObject<NavigationDestination>;
@@ -36,7 +36,6 @@ export function useCollections({
   fetchPlaybackState: () => Promise<unknown>;
   beginPlaybackLoading: (trackId: string) => number;
   endPlaybackLoading: (requestId: number) => void;
-  queuedTrackIds: Set<string>;
   addAppNotification: Notify;
   handlePlayPause: Controls["handlePlayPause"];
   handlePlayOnlineTrack: Controls["handlePlayOnlineTrack"];
@@ -62,7 +61,7 @@ export function useCollections({
 
   const isLoadingCollectionTracks = useCollectionTracksLoader(activeCollection, setActiveCollection);
 
-  const handlePlayDiscoveredCollection = usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackState, queuedTrackIds, addAppNotification, handleStopOnlineAudio });
+  const handlePlayDiscoveredCollection = usePlayDiscoveredCollection({ setPlayingOrigin, fetchPlaybackState, addAppNotification, handleStopOnlineAudio });
 
   const handleOpenPlayingOrigin = useCallback(() => {
     if (!playingOrigin) return;
@@ -122,11 +121,6 @@ export function useCollections({
         const itemIdx = collectionTracks.findIndex(
           (track) => track.id === item.id,
         );
-        const collectionIds = new Set(
-          collectionTracks.map(
-            (track) => track.matched_local_track_id || track.id,
-          ),
-        );
         for (let i = itemIdx + 1; i < collectionTracks.length; i++) {
           const queuedTrack = collectionTracks[i];
           const queuedId = queuedTrack.matched_local_track_id || queuedTrack.id;
@@ -161,20 +155,6 @@ export function useCollections({
             } catch (err) {
               console.warn("Could not enqueue collection track:", err);
             }
-          }
-        }
-        for (const queuedId of queuedTrackIds) {
-          if (collectionIds.has(queuedId)) continue;
-          try {
-            await dispatchCommand({
-              command: "EnqueueTrack",
-              payload: { track_id: queuedId, play_next: false },
-            });
-          } catch (err) {
-            console.warn(
-              "Could not preserve queued track after collection:",
-              err,
-            );
           }
         }
       };
@@ -242,7 +222,6 @@ export function useCollections({
       playbackState.is_paused,
       playbackState.current_track,
       activeCollection,
-      queuedTrackIds,
       handlePlayPause,
       handlePlayOnlineTrack,
       fetchPlaybackState,

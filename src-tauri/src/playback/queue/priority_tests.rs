@@ -53,7 +53,8 @@ fn a_song_already_waiting_is_not_queued_twice() {
     let mut queue = playlist();
     assert!(queue.enqueue_manual(item("x")));
     assert!(!queue.enqueue_manual(item("x")));
-    assert!(!queue.enqueue_manual(item("b")), "already upcoming in the playlist");
+    assert!(queue.enqueue_manual(item("c")), "a playlist song moves up to play next");
+    assert_eq!(order(&queue), ["a", "x", "c", "b"]);
 }
 
 #[test]
@@ -120,4 +121,26 @@ fn old_saved_queues_without_the_field_still_load() {
 
     let saved: PlaybackQueue = serde_json::from_value(serde_json::to_value(&queue).unwrap()).unwrap();
     assert!(saved.is_manual("queue-x"), "the flag survives a restart");
+}
+
+#[test]
+fn queuing_a_song_the_app_already_queued_moves_it_up() {
+    let mut queue = playlist();
+    queue.enqueue(item("recommended"), false);
+    assert!(queue.enqueue_manual(item("recommended")));
+    assert_eq!(order(&queue), ["a", "recommended", "b", "c"], "moved, not repeated");
+    assert_eq!(queue.peek_next().unwrap().track_id, "recommended");
+    assert!(!queue.enqueue_manual(item("recommended")), "already waiting in the user's queue");
+}
+
+#[test]
+fn the_users_waiting_songs_are_listed_in_order_until_they_play() {
+    let mut queue = playlist();
+    queue.enqueue_manual(item("x"));
+    queue.enqueue_manual(item("y"));
+    assert_eq!(queue.waiting_manual_track_ids(), ["x", "y"]);
+    queue.skip_forward();
+    assert_eq!(queue.waiting_manual_track_ids(), ["y"]);
+    queue.set_queue(vec![item("p1"), item("p2")], Some(0));
+    assert!(queue.waiting_manual_track_ids().is_empty(), "a new playlist starts fresh");
 }

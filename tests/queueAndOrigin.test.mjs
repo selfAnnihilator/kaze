@@ -84,3 +84,11 @@ test("songs the user queues are marked manual, so they play before the app's que
     assert.doesNotMatch(read(app), /manual: true/, `${app} queues for the app`);
   }
 });
+
+test("a new playlist starts a fresh queue, and ✓ means the user queued it", () => {
+  for (const hook of ["src/hooks/app/useCollections.ts", "src/hooks/app/usePlaybackControls.ts", "src/hooks/app/usePlayDiscoveredCollection.ts"]) {
+    assert.doesNotMatch(read(hook), /preservedQueue|preserve queued track/, `${hook} does not re-add the old queue`);
+  }
+  assert.match(read("src/hooks/app/backendEvents/playbackEvents.ts"), /setQueuedTrackIds\(new Set\(event\.payload\?\.user_queue_track_ids \?\? \[\]\)\)/);
+  assert.match(read("src/hooks/app/usePlaybackState.ts"), /user_queue_track_ids/);
+});

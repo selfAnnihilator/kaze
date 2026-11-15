@@ -77,6 +77,7 @@ impl PlaybackService {
             queue_length: q_guard.len(),
             current_queue_index: q_guard.current_index(),
             queue_track_ids,
+            user_queue_track_ids: q_guard.waiting_manual_track_ids(),
             source: self.current_source.read().await.clone(),
         }
     }

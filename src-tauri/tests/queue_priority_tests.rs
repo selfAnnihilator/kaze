@@ -72,6 +72,41 @@ async fn a_song_the_user_queues_plays_before_the_rest_of_the_playlist() {
     }
 }
 
+#[tokio::test]
+async fn queuing_a_song_the_app_already_queued_plays_it_next() {
+    let pool = create_in_memory_pool().await.expect("DB pool");
+    let processor = CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), Box::new(MockAudioBackend::new()));
+    let repo = processor.library_service().track_repo();
+    let mut ids = Vec::new();
+    for name in ["playing", "recommended-1", "recommended-2"] {
+        ids.push(repo.save_scanned_track(song(name)).await.expect("save"));
+    }
+    processor
+        .dispatch_command(Command::PlayTrack { track_id: ids[0].clone(), source: None })
+        .await
+        .expect("play");
+    for id in &ids[1..] {
+        processor
+            .dispatch_command(Command::EnqueueTrack { track_id: id.clone(), play_next: false, manual: false })
+            .await
+            .expect("app enqueue");
+    }
+    processor
+        .dispatch_command(Command::EnqueueTrack { track_id: ids[2].clone(), play_next: false, manual: true })
+        .await
+        .expect("the user may queue a song the app queued");
+
+    match processor.execute_query(Query::GetPlaybackState).await.expect("state") {
+        QueryResponse::PlaybackState(state) => {
+            assert_eq!(state["queue_track_ids"], serde_json::json!([ids[2], ids[1]]));
+            assert_eq!(state["user_queue_track_ids"], serde_json::json!([ids[2]]), "only the user's songs");
+        }
+        _ => panic!("expected playback state"),
+    }
+    processor.dispatch_command(Command::NextTrack).await.expect("next");
+    assert_eq!(current_track(&processor).await, ids[2]);
+}
+
 #[test]
 fn the_manual_flag_is_optional_in_ipc() {
     let command: Command = serde_json::from_str(r#"{"command":"EnqueueTrack","payload":{"track_id":"a","play_next":false}}"#)
