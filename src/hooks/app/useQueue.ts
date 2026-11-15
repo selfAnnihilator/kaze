@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { dispatchCommand } from "../../services/api";
 import type { DiscoveryRecommendation } from "../../types";
+import { queueIdOf } from "../../trackKind";
 
 type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
 
@@ -49,13 +50,8 @@ export function useQueue({ queuedTrackIds, setQueuedTrackIds, addAppNotification
   }, [queuedTrackIds, addAppNotification, setQueuedTrackIds]);
 
   const handleEnqueueRecommendation = useCallback(async (rec: DiscoveryRecommendation) => {
-    const hasLocalMatch =
-      !!rec.matched_local_track_id &&
-      !rec.matched_local_track_id.startsWith("online:") &&
-      !rec.matched_local_track_id.startsWith("itunes:");
-    const trackId = hasLocalMatch
-      ? rec.matched_local_track_id!
-      : rec.external_track_id;
+    const trackId = queueIdOf(rec);
+    const hasLocalMatch = trackId === rec.matched_local_track_id;
     if (!hasLocalMatch) {
       if (queuedTrackIds.has(trackId)) {
         addAppNotification(

@@ -20,4 +20,6 @@ export interface OnlineSearchResultsSectionContext {
   onSelectArtist: ((artist: string) => void) | undefined;
   onAddToPlaylist: ((rec: DiscoveryRecommendation) => void) | undefined;
   songList: ReactNode;
+  queuedTrackIds?: Set<string>;
+  onEnqueueTrack?: (rec: DiscoveryRecommendation) => void;
 }

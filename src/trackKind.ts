@@ -16,3 +16,11 @@ export function isOnlineTrack(track: TrackLike | null | undefined): boolean | un
     track.id.startsWith("online:")
   );
 }
+
+type RecommendationLike = { external_track_id: string; matched_local_track_id?: string | null };
+
+/** The id a recommendation is queued under: its local copy when there is one, else its online id. */
+export function queueIdOf(rec: RecommendationLike): string {
+  const local = rec.matched_local_track_id;
+  return local && !local.startsWith("online:") && !local.startsWith("itunes:") ? local : rec.external_track_id;
+}

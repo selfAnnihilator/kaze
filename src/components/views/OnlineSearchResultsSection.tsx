@@ -1,6 +1,8 @@
 import { DownloadButton } from "../DownloadButton";
 import { CoverOrDisc } from "./searchResults/CoverOrDisc";
 import { NotInterestedButton } from "../NotInterestedButton";
+import { QueueButton } from "../QueueButton";
+import { queueIdOf } from "../../trackKind";
 import { WindowedList } from "../../presentation/WindowedList";
 import React, { useState, useMemo } from "react";
 import { Play, Pause, Plus, Check, Music, RefreshCw } from "lucide-react";
@@ -31,6 +33,8 @@ interface OnlineSearchResultsSectionProps {
   trackPlaylistMap?: Record<string, string[]>;
   playlists?: Playlist[];
   onSelectArtist?: (artist: string) => void;
+  queuedTrackIds?: Set<string>;
+  onEnqueueTrack?: (rec: DiscoveryRecommendation) => void;
 }
 
 
@@ -52,6 +56,8 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   trackPlaylistMap,
   playlists = [],
   onSelectArtist,
+  queuedTrackIds,
+  onEnqueueTrack,
 }) => {
   const [activeTab, setActiveTab] = useState<SearchCategoryTab>("all");
 
@@ -305,6 +311,9 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
                         </button>
                       )}
 
+                      {onEnqueueTrack && (
+                        <QueueButton title={rec.title} queued={!!queuedTrackIds?.has(queueIdOf(rec))} onEnqueue={() => onEnqueueTrack(rec)} />
+                      )}
                       <DownloadButton key={rec.external_track_id} trackId={rec.external_track_id} sourceId={rec.playback_source?.track_id} title={rec.title} compact />
                           <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
 
@@ -326,7 +335,7 @@ export const OnlineSearchResultsSection: React.FC<OnlineSearchResultsSectionProp
   const c: OnlineSearchResultsSectionContext = {
     setActiveTab, activeTab, searchResults, distinctArtists, distinctAlbums, matchingPlaylists,
     searchQuery, onClearSearch, topResult, handleTogglePlay, isTrackPlaying, isTrackLoading,
-    onSelectArtist, onAddToPlaylist, songList,
+    onSelectArtist, onAddToPlaylist, songList, queuedTrackIds, onEnqueueTrack,
   };
   return (
     <div className="online-search-results" data-category={activeTab}

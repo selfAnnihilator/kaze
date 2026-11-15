@@ -3,6 +3,7 @@ import { useDiscoveryMemory } from "../../presentation/ViewMemory";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { DiscoveryRecommendation, Track, Playlist, DownloadTask } from "../../types";
 import { executeQuery } from "../../services/api";
+import { queueIdOf } from "../../trackKind";
 import { CollectionData } from "./CollectionDetailView";
 import { OnlineSearchResultsSection } from "./OnlineSearchResultsSection";
 import { splitDiscoveryRecommendations } from "../../forYouRecommendations";
@@ -373,9 +374,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
           downloads={downloads}
           trackPlaylistMap={trackPlaylistMap}
           onAddToPlaylist={onAddToPlaylist}
-          isQueued={queuedTrackIds?.has(
-            rec.matched_local_track_id || rec.external_track_id,
-          )}
+          isQueued={queuedTrackIds?.has(queueIdOf(rec))}
           onEnqueue={onEnqueueTrack}
           isLiked={Boolean(
             (rec.matched_local_track_id &&
@@ -430,6 +429,8 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = React.memo(({
           onAddToWishlist={onAddToWishlist}
           trackPlaylistMap={trackPlaylistMap}
           playlists={playlists}
+          queuedTrackIds={queuedTrackIds}
+          onEnqueueTrack={onEnqueueTrack}
           onSelectArtist={(artist) => {
             setSearchQuery(artist);
             handleSearchOnline(artist);

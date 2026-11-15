@@ -1,5 +1,7 @@
 import { DownloadButton } from "../../DownloadButton";
 import { NotInterestedButton } from "../../NotInterestedButton";
+import { QueueButton } from "../../QueueButton";
+import { queueIdOf } from "../../../trackKind";
 import { CoverOrDisc } from "./CoverOrDisc";
 import { Pause, Play, Plus } from "lucide-react";
 import type { OnlineSearchResultsSectionContext } from "./context";
@@ -166,6 +168,9 @@ export function AllResultsTab({ c }: { c: OnlineSearchResultsSectionContext }) {
                         >
                           <Plus size={16} />
                         </button>
+                      )}
+                      {c.onEnqueueTrack && (
+                        <QueueButton title={topResult.title} queued={!!c.queuedTrackIds?.has(queueIdOf(topResult))} onEnqueue={() => c.onEnqueueTrack?.(topResult)} />
                       )}
                       <DownloadButton key={topResult.external_track_id} trackId={topResult.external_track_id} sourceId={topResult.playback_source?.track_id} title={topResult.title} compact />
                       <NotInterestedButton trackId={topResult.external_track_id} title={topResult.title} />

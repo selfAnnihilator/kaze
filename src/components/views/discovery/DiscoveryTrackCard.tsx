@@ -3,7 +3,8 @@ import { useSongDownloaded } from "../../../services/downloadProgress";
 import { DiscoveryRecommendation, DownloadTask } from "../../../types";
 import { DownloadButton } from "../../DownloadButton";
 import { NotInterestedButton } from "../../NotInterestedButton";
-import { Bookmark, BookmarkCheck, Check, CheckCircle2, Heart, ListPlus, Pause, Play, RefreshCw } from "lucide-react";
+import { Bookmark, BookmarkCheck, CheckCircle2, Heart, Pause, Play, RefreshCw } from "lucide-react";
+import { QueueButton } from "../../QueueButton";
 import React, { useState } from "react";
 
 export interface DiscoveryTrackCardProps {
@@ -206,35 +207,6 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEnqueue?.(rec);
-          }}
-          style={{
-            position: "absolute",
-            bottom: "8px",
-            left: "8px",
-            width: "38px",
-            height: "38px",
-            borderRadius: "50%",
-            backgroundColor: isQueued ? "var(--accent-secondary-a90)" : "var(--shade-70)",
-            border: isQueued ? "1px solid var(--text-main-a45)" : "1px solid var(--overlay-15)",
-            color: isQueued ? "var(--text-main)" : "var(--text-muted)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            opacity: isHovered || isQueued ? 1 : 0,
-            transform: isHovered || isQueued ? "scale(1)" : "scale(0.85)",
-            transition: "opacity var(--duration-base) ease, transform var(--duration-base) ease, background-color var(--duration-base) ease",
-            zIndex: 3,
-          }}
-          title={isQueued ? "Already in queue" : "Add to queue"}
-        >
-          {isQueued ? <Check size={17} /> : <ListPlus size={17} />}
-        </button>
       </div>
 
       {/* 2. Name (Below thumbnail, bold, smaller than thumbnail) */}
@@ -284,7 +256,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         {rec.artist}
       </div>
 
-      {/* 4. Footer Actions (Download / Wishlist) */}
+      {/* 4. Footer Actions (Download / Queue / Not interested / Playlist) */}
       <div
         style={{
           marginTop: "auto",
@@ -300,6 +272,7 @@ export const DiscoveryTrackCard: React.FC<DiscoveryTrackCardProps> = ({
         <div
           style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}
         >
+          {onEnqueue && <QueueButton title={rec.title} queued={isQueued} onEnqueue={() => onEnqueue(rec)} />}
           <NotInterestedButton trackId={rec.external_track_id} title={rec.title} />
           {isLiked && (
             <span
