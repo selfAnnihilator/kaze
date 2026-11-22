@@ -126,8 +126,8 @@ Wired in Rust (runtime behaviour still unverified on a device):
   calls the plugin `pick_music_folder` (SAF `ACTION_OPEN_DOCUMENT_TREE`) and returns the tree
   URI, or `None` when cancelled.
 - **Audio focus**: `PlaybackService` requests focus when Rust plays. A refused request pauses
-  Rust. A transient loss pauses and resumes on gain. A user pause or stop clears any pending
-  resume and releases focus. The decision logic is unit tested in `FocusPolicy`.
+  Rust. A transient loss pauses and resumes on gain. A manual resume or a stop clears any pending
+  resume and releases focus; paused snapshots such as seeks keep it. The decision logic is unit tested in `FocusPolicy`.
 
 Not wired yet (verify before relying on them):
 

@@ -2,8 +2,9 @@ package org.intelligentmusicplayer.kazemedia
 
 /**
  * Pure audio-focus decisions, kept free of Android types so they are unit
- * tested. Distinguishes a pause caused by a transient focus loss (resume when
- * focus returns) from an explicit user pause or stop (never auto-resume).
+ * tested. A pause caused by a transient focus loss resumes when focus returns;
+ * a manual resume or a stop cancels that. Paused snapshots (seeks) keep it, so
+ * an explicit pause while already interrupted cannot be told apart.
  */
 class FocusPolicy {
     var resumeOnGain = false

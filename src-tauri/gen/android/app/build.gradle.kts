@@ -69,6 +69,29 @@ rust {
     rootDirRel = "../../../"
 }
 
+// The Rust backend links libc++_shared.so (oboe is C++), so ship the NDK copy.
+val copyLibcxx = tasks.register("copyLibcxxShared") {
+    val ndkDir = System.getenv("NDK_HOME")?.let { file(it) } ?: android.ndkDirectory
+    val outDir = layout.projectDirectory.dir("src/main/jniLibs")
+    val abis = mapOf(
+        "arm64-v8a" to "aarch64-linux-android",
+        "armeabi-v7a" to "arm-linux-androideabi",
+        "x86" to "i686-linux-android",
+        "x86_64" to "x86_64-linux-android",
+    )
+    doLast {
+        val prebuilt = File(ndkDir, "toolchains/llvm/prebuilt").listFiles()?.firstOrNull()
+            ?: throw GradleException("NDK prebuilt toolchain not found in $ndkDir")
+        abis.forEach { (abi, triple) ->
+            val lib = File(prebuilt, "sysroot/usr/lib/$triple/libc++_shared.so")
+            if (lib.exists()) {
+                lib.copyTo(outDir.dir(abi).asFile.apply { mkdirs() }.resolve(lib.name), overwrite = true)
+            }
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(copyLibcxx) }
+
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
