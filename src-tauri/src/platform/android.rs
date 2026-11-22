@@ -4,7 +4,7 @@
 
 use super::media_bridge::{command_for, MediaMirror};
 use super::shared;
-use crate::cloud::secret_store;
+use crate::cloud::secret_store::{self, SecretStore};
 use crate::config::settings::AppConfig;
 use crate::core::event::Event;
 use crate::core::processor::CoreProcessor;
@@ -14,6 +14,44 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
 use tauri_plugin_kaze_media::{KazeMedia, PlaybackSnapshot};
+
+type Media = KazeMedia<tauri::Wry>;
+
+/// Keystore bridge: forwards secret calls to the kaze-media plugin.
+struct PluginSecrets(tauri::AppHandle);
+
+impl PluginSecrets {
+    fn media(&self) -> Result<tauri::State<'_, Media>, String> {
+        self.0.try_state::<Media>().ok_or_else(|| "kaze-media not ready".to_string())
+    }
+}
+
+impl SecretStore for PluginSecrets {
+    fn set(&self, key: &str, value: &str) -> Result<(), String> {
+        self.media()?.secret_set(key, value)
+    }
+    fn get(&self, key: &str) -> Option<String> {
+        self.media().ok()?.secret_get(key)
+    }
+    fn delete(&self, key: &str) {
+        if let Ok(media) = self.media() {
+            let _ = media.secret_delete(key);
+        }
+    }
+}
+
+/// Opens the system folder picker (SAF). Returns the tree URI, or `None` when
+/// cancelled. The plugin call blocks until the activity result arrives, so it
+/// must not run on the main thread.
+#[tauri::command]
+async fn android_pick_music_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let media = app.try_state::<Media>().ok_or("kaze-media not ready")?;
+        media.pick_music_folder().map(|picked| picked.uri)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 
 /// Builds the config from Tauri's path resolver and points the credential
 /// fallback at the app-private data directory.
@@ -44,7 +82,7 @@ fn mirror_to_session(app: &tauri::AppHandle, mirror: &mut MediaMirror, event: &E
     let Some(update) = mirror.apply(event) else {
         return;
     };
-    let Some(media) = app.try_state::<KazeMedia<tauri::Wry>>() else {
+    let Some(media) = app.try_state::<Media>() else {
         return;
     };
     if let Err(error) = media.update_playback(&snapshot_of(update)) {
@@ -75,7 +113,7 @@ fn spawn_event_bridge(app: tauri::AppHandle, processor: Arc<CoreProcessor>) {
 
 /// Routes media-session transport commands into the processor.
 fn route_media_commands(app: &tauri::AppHandle, processor: Arc<CoreProcessor>) {
-    let Some(media) = app.try_state::<KazeMedia<tauri::Wry>>() else {
+    let Some(media) = app.try_state::<Media>() else {
         return;
     };
     let result = media.on_media_command(move |event| {
@@ -115,11 +153,15 @@ pub fn run() {
     shared::init_async_runtime();
     tauri::Builder::default()
         .plugin(tauri_plugin_kaze_media::init())
-        .setup(|app| start_backend(app))
+        .setup(|app| {
+            secret_store::set_bridge(Box::new(PluginSecrets(app.handle().clone())));
+            start_backend(app)
+        })
         .register_asynchronous_uri_scheme_protocol(artwork::SCHEME, shared::serve_artwork)
         .invoke_handler(tauri::generate_handler![
             shared::execute_command,
-            shared::execute_query
+            shared::execute_query,
+            android_pick_music_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running Kaze");

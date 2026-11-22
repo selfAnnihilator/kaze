@@ -1,9 +1,13 @@
 package org.intelligentmusicplayer.kazemedia
 
 import android.content.Context
+import android.media.AudioManager
 import android.content.Intent
 import android.os.Looper
 import android.os.PowerManager
+import androidx.media.AudioAttributesCompat
+import androidx.media.AudioFocusRequestCompat
+import androidx.media.AudioManagerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -87,6 +91,27 @@ class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private var player: ForwardingPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var focusRequest: AudioFocusRequestCompat? = null
+    private var resumeOnGain = false
+
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                resumeOnGain = false
+                abandonFocus()
+                commandSink?.invoke("pause", 0)
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                resumeOnGain = latest.playing
+                commandSink?.invoke("pause", 0)
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> if (resumeOnGain) {
+                resumeOnGain = false
+                commandSink?.invoke("play", 0)
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -96,6 +121,7 @@ class PlaybackService : MediaSessionService() {
         instance = this
         forwarding.update(latest)
         syncWakeLock(latest.playing)
+        syncFocus(latest.playing)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -103,6 +129,36 @@ class PlaybackService : MediaSessionService() {
     fun apply(state: MirrorState) {
         player?.update(state)
         syncWakeLock(state.playing)
+        syncFocus(state.playing)
+    }
+
+    private fun syncFocus(playing: Boolean) {
+        if (playing) requestFocus() else if (!resumeOnGain) abandonFocus()
+    }
+
+    private fun requestFocus() {
+        if (focusRequest != null) return
+        val attributes = AudioAttributesCompat.Builder()
+            .setUsage(AudioAttributesCompat.USAGE_MEDIA)
+            .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
+            .build()
+        val request = AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(attributes)
+            .setOnAudioFocusChangeListener(focusListener)
+            .build()
+        val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (AudioManagerCompat.requestAudioFocus(manager, request) ==
+            AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        ) {
+            focusRequest = request
+        }
+    }
+
+    private fun abandonFocus() {
+        val request = focusRequest ?: return
+        focusRequest = null
+        val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        AudioManagerCompat.abandonAudioFocusRequest(manager, request)
     }
 
     private fun syncWakeLock(playing: Boolean) {
@@ -121,6 +177,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
+        abandonFocus()
         session?.release()
         player?.release()
         session = null

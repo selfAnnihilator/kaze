@@ -61,23 +61,43 @@ mod imp {
     }
 }
 
+/// Secret backend installed by the Android shell (kaze-media Keystore bridge).
+pub trait SharedSecretStore: SecretStore + Send + Sync {}
+impl<T: SecretStore + Send + Sync> SharedSecretStore for T {}
+
+static BRIDGE: OnceLock<Box<dyn SharedSecretStore>> = OnceLock::new();
+
+/// Installs the platform bridge once the plugin is ready.
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub fn set_bridge(store: Box<dyn SharedSecretStore>) {
+    let _ = BRIDGE.set(store);
+}
+
+/// Delegates to the installed bridge; with none installed every call reports
+/// the store unavailable so callers use the app-private file fallback.
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub struct KeystoreStore;
+
+impl SecretStore for KeystoreStore {
+    fn set(&self, key: &str, value: &str) -> Result<(), String> {
+        match BRIDGE.get() {
+            Some(bridge) => bridge.set(key, value),
+            None => Err("Keystore bridge not initialised".into()),
+        }
+    }
+    fn get(&self, key: &str) -> Option<String> {
+        BRIDGE.get()?.get(key)
+    }
+    fn delete(&self, key: &str) {
+        if let Some(bridge) = BRIDGE.get() {
+            bridge.delete(key);
+        }
+    }
+}
+
 #[cfg(target_os = "android")]
 mod imp {
-    use super::SecretStore;
-
-    /// Stub until the kaze-media Keystore bridge lands: reports unavailable so
-    /// callers use the app-private file fallback.
-    pub struct KeystoreStore;
-
-    impl SecretStore for KeystoreStore {
-        fn set(&self, _key: &str, _value: &str) -> Result<(), String> {
-            Err("Keystore bridge not wired yet".into())
-        }
-        fn get(&self, _key: &str) -> Option<String> {
-            None
-        }
-        fn delete(&self, _key: &str) {}
-    }
+    use super::{KeystoreStore, SecretStore};
 
     pub fn platform_store() -> Option<Box<dyn SecretStore>> {
         Some(Box::new(KeystoreStore))
@@ -106,6 +126,14 @@ mod tests {
         fn delete(&self, key: &str) {
             self.0.borrow_mut().remove(key);
         }
+    }
+
+    #[test]
+    fn keystore_store_reports_unavailable_without_bridge() {
+        let store = KeystoreStore;
+        assert!(store.set("k", "v").is_err());
+        assert!(store.get("k").is_none());
+        store.delete("k");
     }
 
     #[test]
