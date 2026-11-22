@@ -87,12 +87,20 @@ impl ProfileService {
         Ok(webp_bytes)
     }
 
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub fn pick_avatar_file() -> AppResult<Option<PathBuf>> {
         let file = rfd::FileDialog::new()
             .set_title("Select Profile Photo")
             .add_filter("Images (*.jpg, *.jpeg, *.png, *.webp)", &["jpg", "jpeg", "png", "webp"])
             .pick_file();
         Ok(file)
+    }
+
+    /// Mobile has no native file dialog yet; the picker bridge lands with the
+    /// kaze-media plugin.
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    pub fn pick_avatar_file() -> AppResult<Option<PathBuf>> {
+        Ok(None)
     }
 }
 

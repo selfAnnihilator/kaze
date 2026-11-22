@@ -10,6 +10,7 @@ default-run = "kaze"
 [lib]
 name = "music_player_backend"
 path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
 name = "kaze"
@@ -64,12 +65,9 @@ rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 
 # Desktop Shell & Tauri IPC
-tauri = { version = "2.0", default-features = false, features = ["wry", "tray-icon", "image-png"] }
-tauri-plugin-updater = "2.14.1"
-tauri-plugin-single-instance = "2"
+tauri = { version = "2.0", default-features = false, features = ["wry", "image-png"] }
 base64 = "0.23.1"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
-rfd = "0.15"
 des = "0.8"
 html-escape = "0.2"
 
@@ -87,3 +85,9 @@ zbus = { version = "5", default-features = false, features = ["tokio"] }
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 tauri-plugin-autostart = "2"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2.0", default-features = false, features = ["wry", "tray-icon", "image-png"] }
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-single-instance = "2"
+rfd = "0.15"

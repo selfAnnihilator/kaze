@@ -28,3 +28,10 @@ pub use core::{
 pub fn run() {
     platform::desktop::run();
 }
+
+/// Starts the Kaze shell for the current platform.
+#[cfg(target_os = "android")]
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    platform::android::run();
+}
