@@ -1,4 +1,6 @@
-use crate::models::{PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue};
+#[cfg(target_os = "android")]
+use crate::models::ListenerArgs;
+use crate::models::{MediaCommandEvent, PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue};
 use serde::{de::DeserializeOwned, Serialize};
 use tauri::plugin::PluginApi;
 use tauri::{AppHandle, Runtime};
@@ -73,5 +75,32 @@ impl<R: Runtime> KazeMedia<R> {
     pub fn secret_delete(&self, key: &str) -> Result<(), String> {
         let args = SecretArgs { key, value: None };
         self.call::<()>("secretDelete", args)
+    }
+
+    /// Delivers media-session transport commands to `handler` (Android only).
+    #[cfg(target_os = "android")]
+    pub fn on_media_command(
+        &self,
+        handler: impl Fn(MediaCommandEvent) + Send + Sync + 'static,
+    ) -> Result<(), String> {
+        let channel = tauri::ipc::Channel::<serde_json::Value>::new(move |body| {
+            if let Ok(event) = body.deserialize::<MediaCommandEvent>() {
+                handler(event);
+            }
+            Ok(())
+        });
+        let args = ListenerArgs {
+            event: "mediaCommand",
+            handler: channel,
+        };
+        self.call::<()>("registerListener", args)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub fn on_media_command(
+        &self,
+        _handler: impl Fn(MediaCommandEvent) + Send + Sync + 'static,
+    ) -> Result<(), String> {
+        Err("kaze-media is only available on Android".into())
     }
 }
