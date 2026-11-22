@@ -16,12 +16,21 @@ class FocusPolicyTest {
     }
 
     @Test
-    fun explicitPauseAfterInterruptionCancelsResume() {
+    fun seekWhilePausedByInterruptionKeepsResume() {
         val policy = FocusPolicy()
         policy.onTransientLoss(playing = true)
         policy.onState(playing = false, hasTrack = true) // interruption pause
-        policy.onState(playing = false, hasTrack = true) // user pause
-        assertFalse(policy.shouldHoldFocus(playing = false))
+        policy.onState(playing = false, hasTrack = true) // seek snapshot
+        assertTrue(policy.shouldHoldFocus(playing = false))
+        assertTrue(policy.onGain())
+    }
+
+    @Test
+    fun manualResumeDuringInterruptionCancelsPendingResume() {
+        val policy = FocusPolicy()
+        policy.onTransientLoss(playing = true)
+        policy.onState(playing = false, hasTrack = true)
+        policy.onState(playing = true, hasTrack = true)
         assertFalse(policy.onGain())
     }
 

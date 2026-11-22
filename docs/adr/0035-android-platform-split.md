@@ -31,8 +31,9 @@ Consequences:
 - Kotlin and Gradle files sit outside `npm run audit:conventions` (which scans Rust and
   TypeScript). They still follow the 500-line limit by convention.
 - The Keystore bridge (`KeystoreStore` delegating to `PluginSecrets`) and the `android_pick_music_folder` command are wired in Rust. Frontend use of the picker, SAF-aware scanning and on-device verification are still open. These are listed in `docs/ANDROID.md`.
-  Until they are wired, Android credentials fall back to the private 0600 file and the
-  music folder is not chosen through SAF.
+  Android credentials use the Keystore bridge and fall back to the private 0600 file when
+  the bridge is unavailable or a call fails. The music folder is not yet chosen through SAF
+  in the UI.
 
 Alternatives:
 

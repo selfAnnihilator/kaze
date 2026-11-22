@@ -32,16 +32,18 @@ class FocusPolicy {
         return resume
     }
 
-    /** Folds a mirrored Rust state into the policy. */
+    /**
+     * Folds a mirrored Rust state into the policy. Paused snapshots that
+     * follow an interruption (seeks, position updates) keep the pending
+     * resume; playing again or stopping voids it.
+     */
     fun onState(playing: Boolean, hasTrack: Boolean) {
-        val interruptionPause = awaitingInterruptionPause && !playing && hasTrack
-        if (interruptionPause) {
+        if (playing || !hasTrack) {
+            resumeOnGain = false
             awaitingInterruptionPause = false
-            return
+        } else {
+            awaitingInterruptionPause = false
         }
-        // Playing again, explicit pause, or stop: any pending resume is void.
-        resumeOnGain = false
-        awaitingInterruptionPause = false
     }
 
     fun shouldHoldFocus(playing: Boolean): Boolean = playing || resumeOnGain

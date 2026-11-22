@@ -93,18 +93,25 @@ class PlaybackService : MediaSessionService() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var focusRequest: AudioFocusRequestCompat? = null
     private val policy = FocusPolicy()
+    private var hasAudioFocus = false
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
             AudioManager.AUDIOFOCUS_LOSS -> {
+                hasAudioFocus = false
                 policy.onLoss()
                 abandonFocus()
                 commandSink?.invoke("pause", 0)
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                hasAudioFocus = false
                 if (policy.onTransientLoss(latest.playing)) commandSink?.invoke("pause", 0)
-            AudioManager.AUDIOFOCUS_GAIN -> if (policy.onGain()) commandSink?.invoke("play", 0)
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                hasAudioFocus = true
+                if (policy.onGain()) commandSink?.invoke("play", 0)
+            }
         }
     }
 
@@ -137,25 +144,29 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** True when focus is held or was just granted. */
+    /** True when focus is actually held or was just granted by Android. */
     private fun requestFocus(): Boolean {
-        if (focusRequest != null) return true
+        if (hasAudioFocus) return true
+        val request = focusRequest ?: buildFocusRequest().also { focusRequest = it }
+        val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        hasAudioFocus = AudioManagerCompat.requestAudioFocus(manager, request) ==
+            AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return hasAudioFocus
+    }
+
+    private fun buildFocusRequest(): AudioFocusRequestCompat {
         val attributes = AudioAttributesCompat.Builder()
             .setUsage(AudioAttributesCompat.USAGE_MEDIA)
             .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
             .build()
-        val request = AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)
+        return AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener(focusListener)
             .build()
-        val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val granted = AudioManagerCompat.requestAudioFocus(manager, request) ==
-            AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        if (granted) focusRequest = request
-        return granted
     }
 
     private fun abandonFocus() {
+        hasAudioFocus = false
         val request = focusRequest ?: return
         focusRequest = null
         val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
