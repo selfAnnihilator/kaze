@@ -31,4 +31,5 @@ dependencies {
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation(project(":tauri-android"))
+    testImplementation("junit:junit:4.13.2")
 }

@@ -24,7 +24,7 @@ subgraph group_frontend["Desktop UI"]
 end
 
 subgraph group_application["Application Core"]
-  node_tauri_gateway["Tauri Gateway<br/>[app.rs]"]
+  node_tauri_gateway["Tauri Gateway<br/>[platform/shared.rs]"]
   node_core_processor["Core Processor<br/>[processor.rs]"]
   node_event_bus["Event Bus<br/>[event_bus.rs]"]
 end
@@ -96,7 +96,7 @@ node_cloud_client -.->|"HTTPS"| node_cloud_api
 
 click node_react_ui "https://github.com/selfannihilator/kaze/blob/prod/src/App.tsx"
 click node_api_bridge "https://github.com/selfannihilator/kaze/blob/prod/src/services/api.ts"
-click node_tauri_gateway "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/app.rs"
+click node_tauri_gateway "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/platform/shared.rs"
 click node_core_processor "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/core/processor.rs"
 click node_event_bus "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/core/event_bus.rs"
 click node_library_service "https://github.com/selfannihilator/kaze/blob/prod/src-tauri/src/library/service.rs"

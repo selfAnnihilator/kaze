@@ -158,6 +158,16 @@ See **[Architecture Documentation](docs/ARCHITECTURE.md)** for the complete syst
 
 ---
 
+## Android (in progress)
+
+The same Tauri 2 repository also builds an Android target. The shared Rust core is unchanged. Desktop-only integrations (tray, updater, single instance, MPRIS, keyring, native file dialogs) are compiled out on Android. A `kaze-media` Kotlin plugin provides the Media3 session (notification, lock screen, headset controls, audio focus). Audio still plays in Rust.
+
+Build prerequisites (JDK 21, NDK 28, the `aarch64-linux-android` Rust target) and build commands are in **[docs/ANDROID.md](docs/ANDROID.md)**. The platform split is recorded in **[ADR 0035](docs/adr/0035-android-platform-split.md)**.
+
+Android is not a release platform yet. The Keystore credential bridge and the SAF folder picker command are wired in Rust, but no UI calls the picker yet and the scanner does not read SAF URIs. Background playback, audio focus, Keystore and SAF behaviour on a device are still pending manual verification.
+
+---
+
 ## Built with
 
 [Rust](https://www.rust-lang.org/) · [Tauri v2](https://tauri.app/) · [React 19](https://react.dev/) · [SQLite](https://www.sqlite.org/)

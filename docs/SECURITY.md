@@ -39,6 +39,7 @@ SoundFlow operates a zero-trust, cloud-authoritative authentication system backe
     - **macOS**: Keychain Services
     - **Windows**: Windows Credential Manager
   - **Fallback**: If the OS keyring daemon is locked or unavailable (e.g. headless Linux), the token is written to an access-restricted file (`0600` permissions on Unix) in the application's secure data directory.
+  - **Android**: `KeystoreStore` delegates to the `PluginSecrets` bridge installed by `platform/android.rs`, which calls the kaze-media Kotlin `SecretStore` (EncryptedSharedPreferences with an AES-256 Keystore master key). If the bridge is unavailable or a write fails, the token uses the app-private `0600` file fallback. Runtime behaviour on a device is unverified. See [ANDROID.md](ANDROID.md).
   - **SQLite Zero-Leakage**: The local SQLite `cloud_sessions` table stores session metadata only (`user_id`, `username`, `session_id`, `device_id`, `device_name`, `idle_expires_at`, `absolute_expires_at`). Raw tokens are never stored in SQLite.
 
 ---

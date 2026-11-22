@@ -92,24 +92,19 @@ class PlaybackService : MediaSessionService() {
     private var player: ForwardingPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var focusRequest: AudioFocusRequestCompat? = null
-    private var resumeOnGain = false
+    private val policy = FocusPolicy()
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
             AudioManager.AUDIOFOCUS_LOSS -> {
-                resumeOnGain = false
+                policy.onLoss()
                 abandonFocus()
                 commandSink?.invoke("pause", 0)
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                resumeOnGain = latest.playing
-                commandSink?.invoke("pause", 0)
-            }
-            AudioManager.AUDIOFOCUS_GAIN -> if (resumeOnGain) {
-                resumeOnGain = false
-                commandSink?.invoke("play", 0)
-            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->
+                if (policy.onTransientLoss(latest.playing)) commandSink?.invoke("pause", 0)
+            AudioManager.AUDIOFOCUS_GAIN -> if (policy.onGain()) commandSink?.invoke("play", 0)
         }
     }
 
@@ -129,15 +124,22 @@ class PlaybackService : MediaSessionService() {
     fun apply(state: MirrorState) {
         player?.update(state)
         syncWakeLock(state.playing)
+        policy.onState(state.playing, state.title != null)
         syncFocus(state.playing)
     }
 
     private fun syncFocus(playing: Boolean) {
-        if (playing) requestFocus() else if (!resumeOnGain) abandonFocus()
+        if (!policy.shouldHoldFocus(playing)) {
+            abandonFocus()
+        } else if (playing && !requestFocus()) {
+            // Rust already started playing; a refused request must stop it.
+            commandSink?.invoke("pause", 0)
+        }
     }
 
-    private fun requestFocus() {
-        if (focusRequest != null) return
+    /** True when focus is held or was just granted. */
+    private fun requestFocus(): Boolean {
+        if (focusRequest != null) return true
         val attributes = AudioAttributesCompat.Builder()
             .setUsage(AudioAttributesCompat.USAGE_MEDIA)
             .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
@@ -147,11 +149,10 @@ class PlaybackService : MediaSessionService() {
             .setOnAudioFocusChangeListener(focusListener)
             .build()
         val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (AudioManagerCompat.requestAudioFocus(manager, request) ==
+        val granted = AudioManagerCompat.requestAudioFocus(manager, request) ==
             AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        ) {
-            focusRequest = request
-        }
+        if (granted) focusRequest = request
+        return granted
     }
 
     private fun abandonFocus() {
