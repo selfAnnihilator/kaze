@@ -37,7 +37,9 @@ mod imp {
         fn set(&self, key: &str, value: &str) -> Result<(), String> {
             let entry = Entry::new(SERVICE, key).map_err(|e| e.to_string())?;
             entry.set_password(value).map_err(|e| e.to_string())?;
-            match entry.get_password() {
+            // Read back through a fresh Entry so only persisted secrets count.
+            let fresh = Entry::new(SERVICE, key).map_err(|e| e.to_string())?;
+            match fresh.get_password() {
                 Ok(read) if read == value => Ok(()),
                 _ => Err("keyring read-back mismatch".into()),
             }
