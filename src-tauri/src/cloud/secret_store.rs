@@ -117,3 +117,27 @@ mod tests {
         assert!(store.get("k").is_none());
     }
 }
+
+#[cfg(all(test, not(target_os = "android")))]
+mod keyring_tests {
+    use super::imp::KeyringStore;
+    use super::SecretStore;
+
+    /// Pins the mock backend so the test never touches the real OS keyring.
+    /// Its entries do not share state, which is exactly the "not persisted
+    /// across instances" case `set` must report as failure.
+    #[test]
+    fn keyring_store_requires_persistence_across_entries() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        let store = KeyringStore;
+        let key = "kaze-test-keyring-store";
+
+        assert!(
+            store.set(key, "secret").is_err(),
+            "a write that a fresh Entry cannot read back must not count as stored"
+        );
+        assert!(store.get(key).is_none());
+        store.delete(key);
+        assert!(store.get(key).is_none());
+    }
+}
