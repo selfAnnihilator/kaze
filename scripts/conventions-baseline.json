@@ -1,9 +1,13 @@
 {
   "maxLines": 500,
   "legacy": {
-    "src-tauri/src/app.rs": {
-      "lines": 276,
+    "src-tauri/src/platform/desktop.rs": {
+      "lines": 277,
       "smells": 1
+    },
+    "src-tauri/src/platform/desktop/tray.rs": {
+      "lines": 191,
+      "smells": 2
     },
     "src-tauri/src/audio_features.rs": {
       "lines": 440,
@@ -108,10 +112,6 @@
     "src-tauri/src/recommendations/taste.rs": {
       "lines": 488,
       "smells": 1
-    },
-    "src-tauri/src/tray.rs": {
-      "lines": 191,
-      "smells": 2
     },
     "src/App.tsx": {
       "lines": 497,

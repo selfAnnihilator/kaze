@@ -10,6 +10,7 @@ pub mod library;
 pub mod logging;
 #[cfg(target_os = "linux")]
 pub mod mpris;
+pub mod platform;
 pub mod playback;
 pub mod profile;
 pub mod providers;
@@ -21,3 +22,9 @@ pub use core::{
     AppError, AppResult, Command, CommandResponse, CoreProcessor, Event, EventBus, Query,
     QueryResponse,
 };
+
+/// Starts the Kaze shell for the current platform.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn run() {
+    platform::desktop::run();
+}

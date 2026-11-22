@@ -28,7 +28,7 @@ pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String
     let state = app.state::<StartupSettings>();
     let _guard = state.0.lock().await;
     if app
-        .state::<crate::lifecycle::DesktopLifecycle>()
+        .state::<crate::platform::desktop::lifecycle::DesktopLifecycle>()
         .is_quitting()
     {
         return Err("Kaze is quitting. Reopen it to change login startup.".into());

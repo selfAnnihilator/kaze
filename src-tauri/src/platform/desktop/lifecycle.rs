@@ -1,6 +1,6 @@
 //! Desktop lifetime only: hiding never destroys the webview or touches playback.
-use music_player_backend::core::sync::MutexExt;
-use music_player_backend::core::processor::CoreProcessor;
+use crate::core::sync::MutexExt;
+use crate::core::processor::CoreProcessor;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
@@ -54,7 +54,7 @@ impl DesktopLifecycle {
             let _ = task.await;
         }
         #[cfg(target_os = "linux")]
-        if let Some(service) = app.try_state::<music_player_backend::mpris::MprisServiceHandle>() {
+        if let Some(service) = app.try_state::<crate::mpris::MprisServiceHandle>() {
             service.shutdown().await;
         }
         if let Some(processor) = app.try_state::<Arc<CoreProcessor>>() {
@@ -113,7 +113,7 @@ pub fn close_main_window<R: Runtime>(window: &tauri::Window<R>) {
         return;
     }
     if processor.close_button_behavior() == "quit_app"
-        || app.tray_by_id(crate::tray::TRAY_ID).is_none()
+        || app.tray_by_id(crate::platform::desktop::tray::TRAY_ID).is_none()
     {
         request_quit(app);
         return;

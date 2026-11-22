@@ -1,5 +1,5 @@
-use music_player_backend::core::command::Command;
-use music_player_backend::core::processor::CoreProcessor;
+use crate::core::command::Command;
+use crate::core::processor::CoreProcessor;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
@@ -15,7 +15,7 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 
 pub fn show_main_window_from_launch<R: Runtime>(app: &AppHandle<R>, args: &[String]) {
     #[cfg(target_os = "linux")]
-    let token = crate::linux_activation::token_from_args(args);
+    let token = crate::platform::desktop::linux_activation::token_from_args(args);
     #[cfg(not(target_os = "linux"))]
     let token = {
         let _ = args;
@@ -31,7 +31,7 @@ fn restore_main_window<R: Runtime>(app: &AppHandle<R>, token: Option<String>) {
     // together with the window operations, rather than before enqueueing them.
     if let Err(error) = app.run_on_main_thread(move || {
         if handle
-            .try_state::<crate::lifecycle::DesktopLifecycle>()
+            .try_state::<crate::platform::desktop::lifecycle::DesktopLifecycle>()
             .is_some_and(|lifecycle| lifecycle.is_quitting())
             || handle
                 .try_state::<Arc<CoreProcessor>>()
@@ -42,7 +42,7 @@ fn restore_main_window<R: Runtime>(app: &AppHandle<R>, token: Option<String>) {
         if let Some(window) = handle.get_webview_window("main") {
             #[cfg(target_os = "linux")]
             {
-                if let Err(error) = crate::linux_activation::present(&window, token.as_deref()) {
+                if let Err(error) = crate::platform::desktop::linux_activation::present(&window, token.as_deref()) {
                     tracing::warn!(%error, "Could not present Kaze");
                 }
             }
@@ -117,7 +117,7 @@ pub fn setup_tray<R: Runtime>(
     let icon = app
         .default_window_icon()
         .cloned()
-        .or_else(|| tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).ok());
+        .or_else(|| tauri::image::Image::from_bytes(include_bytes!("../../../icons/32x32.png")).ok());
     if let Some(icon) = icon {
         builder = builder.icon(icon);
     }
@@ -132,7 +132,7 @@ pub fn setup_tray<R: Runtime>(
                 "previous" => {
                     if let Some(processor) = app.try_state::<Arc<CoreProcessor>>() {
                         let proc = processor.inner().clone();
-                        app.state::<crate::lifecycle::DesktopLifecycle>()
+                        app.state::<crate::platform::desktop::lifecycle::DesktopLifecycle>()
                             .spawn(async move {
                                 if let Err(error) =
                                     proc.dispatch_command(Command::PreviousTrack).await
@@ -145,7 +145,7 @@ pub fn setup_tray<R: Runtime>(
                 "play_pause" => {
                     if let Some(processor) = app.try_state::<Arc<CoreProcessor>>() {
                         let proc = processor.inner().clone();
-                        app.state::<crate::lifecycle::DesktopLifecycle>()
+                        app.state::<crate::platform::desktop::lifecycle::DesktopLifecycle>()
                             .spawn(async move {
                                 if let Err(error) =
                                     proc.dispatch_command(Command::TogglePlayPause).await
@@ -158,7 +158,7 @@ pub fn setup_tray<R: Runtime>(
                 "next" => {
                     if let Some(processor) = app.try_state::<Arc<CoreProcessor>>() {
                         let proc = processor.inner().clone();
-                        app.state::<crate::lifecycle::DesktopLifecycle>()
+                        app.state::<crate::platform::desktop::lifecycle::DesktopLifecycle>()
                             .spawn(async move {
                                 if let Err(error) = proc.dispatch_command(Command::NextTrack).await
                                 {
@@ -169,7 +169,7 @@ pub fn setup_tray<R: Runtime>(
                 }
                 "quit" => {
                     info!("Explicit quit requested from system tray menu");
-                    crate::lifecycle::request_quit(app);
+                    crate::platform::desktop::lifecycle::request_quit(app);
                 }
                 _ => {}
             }
