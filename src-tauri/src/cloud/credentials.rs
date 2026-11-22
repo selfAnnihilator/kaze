@@ -1,11 +1,9 @@
 use crate::core::error::{AppError, AppResult};
 use directories::ProjectDirs;
-use keyring::Entry;
+use super::secret_store::{self, SecretStore};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
-
-const KEYRING_SERVICE: &str = "soundflow-music-player";
 
 /// Set only by tests: tokens then live in a private temporary folder and the
 /// OS keyring and the real profile are never touched.
@@ -20,16 +18,20 @@ pub fn use_isolated_store() {
     let _ = fs::create_dir_all(dir);
 }
 
-/// The OS keyring, unless tests isolated the store.
-fn keyring_entry(key: &str) -> Option<Entry> {
+/// The platform secret store, unless tests isolated the store.
+fn platform_store() -> Option<Box<dyn SecretStore>> {
     if ISOLATED_DIR.get().is_some() {
         return None;
     }
-    Entry::new(KEYRING_SERVICE, key).ok()
+    secret_store::platform_store()
 }
 
 fn fallback_credential_path(user_id: &str) -> Option<PathBuf> {
     if let Some(dir) = ISOLATED_DIR.get() {
+        return Some(dir.join(format!(".session_token_{}", user_id)));
+    }
+    if let Some(dir) = secret_store::base_dir() {
+        let _ = fs::create_dir_all(dir);
         return Some(dir.join(format!(".session_token_{}", user_id)));
     }
     ProjectDirs::from("org", "intelligentmusicplayer", "music-player").map(|dirs| {
@@ -44,16 +46,8 @@ pub fn store_session_token(user_id: &str, token: &str) -> AppResult<()> {
     let key = format!("token_{}", user_id);
     let mut stored_in_keyring = false;
 
-    if let Some(entry) = keyring_entry(&key) {
-        if entry.set_password(token).is_ok() {
-            if let Some(fresh_entry) = keyring_entry(&key) {
-                if let Ok(pwd) = fresh_entry.get_password() {
-                    if pwd == token {
-                        stored_in_keyring = true;
-                    }
-                }
-            }
-        }
+    if let Some(store) = platform_store() {
+        stored_in_keyring = store.set(&key, token).is_ok();
     }
 
     if !stored_in_keyring {
@@ -86,11 +80,9 @@ pub fn get_session_token(user_id: &str) -> Option<String> {
     let key = format!("token_{}", user_id);
 
     // 1. Try OS Keyring
-    if let Some(entry) = keyring_entry(&key) {
-        if let Ok(password) = entry.get_password() {
-            if !password.trim().is_empty() {
-                return Some(password);
-            }
+    if let Some(password) = platform_store().and_then(|store| store.get(&key)) {
+        if !password.trim().is_empty() {
+            return Some(password);
         }
     }
 
@@ -113,8 +105,8 @@ pub fn get_session_token(user_id: &str) -> Option<String> {
 pub fn delete_session_token(user_id: &str) -> AppResult<()> {
     let key = format!("token_{}", user_id);
 
-    if let Some(entry) = keyring_entry(&key) {
-        let _ = entry.delete_credential();
+    if let Some(store) = platform_store() {
+        store.delete(&key);
     }
 
     if let Some(path) = fallback_credential_path(user_id) {

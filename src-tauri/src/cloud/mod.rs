@@ -1,5 +1,6 @@
 pub mod client;
 pub mod credentials;
+pub mod secret_store;
 pub mod device;
 pub mod models;
 mod song_restore;

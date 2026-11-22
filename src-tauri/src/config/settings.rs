@@ -147,6 +147,16 @@ impl Default for DownloadConfig {
 }
 
 impl AppConfig {
+    /// Configuration from explicit base directories (Android: Tauri's path
+    /// resolver). `music` becomes the download directory.
+    pub fn with_base_dirs(data: PathBuf, cache: PathBuf, music: PathBuf) -> Self {
+        let mut config = Self::default_with_dirs();
+        config.database_path = data.join("music_player.db");
+        config.cache_dir = cache;
+        config.downloads.download_dir = Some(music);
+        config
+    }
+
     /// Constructs default configuration based on standard desktop directories.
     pub fn default_with_dirs() -> Self {
         let (db_path, cache_dir) = if let Some(proj_dirs) =
@@ -170,5 +180,22 @@ impl AppConfig {
             downloads: DownloadConfig::default(),
             close_button_behavior: default_close_button_behavior(),
         }
+    }
+}
+
+#[cfg(test)]
+mod base_dir_tests {
+    use super::*;
+
+    #[test]
+    fn with_base_dirs_uses_given_paths() {
+        let config = AppConfig::with_base_dirs(
+            PathBuf::from("/data"),
+            PathBuf::from("/cache"),
+            PathBuf::from("/music"),
+        );
+        assert_eq!(config.database_path, PathBuf::from("/data/music_player.db"));
+        assert_eq!(config.cache_dir, PathBuf::from("/cache"));
+        assert_eq!(config.downloads.download_dir, Some(PathBuf::from("/music")));
     }
 }
