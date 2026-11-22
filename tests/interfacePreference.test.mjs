@@ -19,6 +19,11 @@ registerHooks({
       if (specifier === "react") return { url: hooks, shortCircuit: true };
       if (specifier === "../services/api")
         return { url: api, shortCircuit: true };
+      if (specifier === "./mobile/platform")
+        return {
+          url: new URL("../src/presentation/mobile/platform.ts", import.meta.url).href,
+          shortCircuit: true,
+        };
     }
     return next(specifier, context);
   },

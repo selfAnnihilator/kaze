@@ -55,6 +55,7 @@ import "./presentation/brutalist.css";
 import "./presentation/responsive.css";
 import { BrutalistNavigation } from "./presentation/BrutalistNavigation";
 import { BrutalistDeck } from "./presentation/BrutalistDeck";
+import { MobileApp } from "./presentation/mobile/MobileApp";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
 const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then((m) => ({ default: m.FullScreenPlayerView,
@@ -323,6 +324,34 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     isLyricsActive,
     onToggleLyrics: toggleLyrics,
   };
+  const viewContext = {
+    isLyricsActive, isFullscreen, activePlayingTrackId, activePlayingArtist, activePlayingTitle, activePlayingDuration,
+    handleUnifiedSeek, activeCollection, isArchiveLiked, isLoadingCollectionTracks, loadingTrackId, navigateBack,
+    navigate, destination, handlePlayCollectionTrack, handlePlayAllCollection, handleShuffleCollection,
+    handleAddToWishlist, handleSaveCollectionToPlaylists, playbackState, isPlayingThisCollection,
+    isCollectionSaved, regularTrackPlaylistMap, regularPlaylistIds, handleOpenAddToPlaylistModal,
+    handleRenamePlaylist, handleDeletePlaylist, likedTrackIds, handleToggleCollectionLike, queuedTrackIds,
+    handleEnqueueRecommendation, currentView, homeOverview, isHomeLoading, flowPendingAction, fetchHomeOverview,
+    handleStartFlow, handleUnifiedPlayPause, handleToggleFlowPlayback, activePlayingArtwork, previousTrackRef,
+    nextQueuedTrack, handlePreviousTrack, handleNextTrack, handlePlayTrack, handleEnqueueTrack,
+    handleSelectAlbum, flowSteering, handleFlowSteeringChange, handleHomeDiscover, tracks, libraryScoped,
+    trackPage, scoped, handleLibraryRowPlay, handleLibraryPlayAll, downloadsListActive, libraryShuffle,
+    handleLibraryToggleShuffle, handleLike, handleRemoveFeedback, handleRescanLibrary, handleSearchLibrary,
+    albums, albumPage, playlists, currentUser, setIsAuthModalOpen, playingPlaylistId, handlePlayPlaylist,
+    handleCreatePlaylist, handleRefreshPlaylists, handleInspectJioSaavnPlaylist, handleSaveImportedPlaylist,
+    handleAddMissingToWishlist, handleInitiateDirectDownloadSearch, handleFetchPlaylistTracks,
+    handleOpenCollection, discoveryRecs, worldTrending, isTrendingLoading, trendingError, refreshTrending,
+    refreshPersonalRecommendations, handlePlayOnlineTrack, handleStopTrack, handlePlayDiscoveredCollection,
+    downloads, globalSearchQuery, setGlobalSearchQuery, currentSearchResults, setGlobalSearchResults,
+    isGlobalSearching, handleGlobalOnlineSearch, handleGlobalClearSearch, interfacePreference, queueEntries,
+    handlePlayQueueIndex, handleDequeueTrack, handleClearQueue,
+    fetchDownloads, settings, downloadsPage, kazeDownloadsPlayback, downloadsListState,
+    wishlist, handleUpdateWishlistStatus, notifications, clearAllNotifications, deleteNotification,
+    markAllNotificationsAsRead, markNotificationAsRead, fetchStatsOverview, statsRefreshTrigger, setCurrentUser,
+    handleTasteSaved, handleLogout, onboardingStatus, handleAddFolder, handleRemoveFolder, fetchSettings,
+    isScanning,
+  };
+  if (interfacePreference.style === "mobile") return <MobileApp c={viewContext} player={playerProps} />;
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
     <InterfaceContext.Provider value={interfacePreference.style}>
@@ -357,33 +386,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
 
             <ViewMemoryProvider>
             <Suspense fallback={null}>
-              <AppViews c={{
-                isLyricsActive, isFullscreen, activePlayingTrackId, activePlayingArtist, activePlayingTitle, activePlayingDuration,
-                handleUnifiedSeek, activeCollection, isArchiveLiked, isLoadingCollectionTracks, loadingTrackId, navigateBack,
-                navigate, destination, handlePlayCollectionTrack, handlePlayAllCollection, handleShuffleCollection,
-                handleAddToWishlist, handleSaveCollectionToPlaylists, playbackState, isPlayingThisCollection,
-                isCollectionSaved, regularTrackPlaylistMap, regularPlaylistIds, handleOpenAddToPlaylistModal,
-                handleRenamePlaylist, handleDeletePlaylist, likedTrackIds, handleToggleCollectionLike, queuedTrackIds,
-                handleEnqueueRecommendation, currentView, homeOverview, isHomeLoading, flowPendingAction, fetchHomeOverview,
-                handleStartFlow, handleUnifiedPlayPause, handleToggleFlowPlayback, activePlayingArtwork, previousTrackRef,
-                nextQueuedTrack, handlePreviousTrack, handleNextTrack, handlePlayTrack, handleEnqueueTrack,
-                handleSelectAlbum, flowSteering, handleFlowSteeringChange, handleHomeDiscover, tracks, libraryScoped,
-                trackPage, scoped, handleLibraryRowPlay, handleLibraryPlayAll, downloadsListActive, libraryShuffle,
-                handleLibraryToggleShuffle, handleLike, handleRemoveFeedback, handleRescanLibrary, handleSearchLibrary,
-                albums, albumPage, playlists, currentUser, setIsAuthModalOpen, playingPlaylistId, handlePlayPlaylist,
-                handleCreatePlaylist, handleRefreshPlaylists, handleInspectJioSaavnPlaylist, handleSaveImportedPlaylist,
-                handleAddMissingToWishlist, handleInitiateDirectDownloadSearch, handleFetchPlaylistTracks,
-                handleOpenCollection, discoveryRecs, worldTrending, isTrendingLoading, trendingError, refreshTrending,
-                refreshPersonalRecommendations, handlePlayOnlineTrack, handleStopTrack, handlePlayDiscoveredCollection,
-                downloads, globalSearchQuery, setGlobalSearchQuery, currentSearchResults, setGlobalSearchResults,
-                isGlobalSearching, handleGlobalOnlineSearch, handleGlobalClearSearch, interfacePreference, queueEntries,
-                handlePlayQueueIndex, handleDequeueTrack, handleClearQueue,
-                fetchDownloads, settings, downloadsPage, kazeDownloadsPlayback, downloadsListState,
-                wishlist, handleUpdateWishlistStatus, notifications, clearAllNotifications, deleteNotification,
-                markAllNotificationsAsRead, markNotificationAsRead, fetchStatsOverview, statsRefreshTrigger, setCurrentUser,
-                handleTasteSaved, handleLogout, onboardingStatus, handleAddFolder, handleRemoveFolder, fetchSettings,
-                isScanning,
-              }} />
+              <AppViews c={viewContext} />
             </Suspense>
             </ViewMemoryProvider>
           </main>

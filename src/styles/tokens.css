@@ -212,6 +212,32 @@
   --border: oklch(33% 0.004 55);
   --border-light: oklch(48% 0.004 55);
 }
+/* Mobile brutalist (Android): ink black, coral accent, warm paper text. */
+:root[data-interface="mobile"] {
+  --ui-radius: 0px;
+  --ui-space: 16px;
+  --ui-motion: 120ms;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-heading: Inter, system-ui, sans-serif;
+  --font-mono: "Courier Prime", "Courier New", monospace;
+  --bg-main: #0a0a0b;
+  --bg-sidebar: #0a0a0b;
+  --bg-card: #1a1b1c;
+  --bg-card-hover: #232425;
+  --bg-player: #1a1b1c;
+  --text-main: #e6e4df;
+  --text-muted: #c6c0b4;
+  --text-dim: #8d887d;
+  --accent: #fb615a;
+  --accent-light: #fb615a;
+  --accent-hover: #ff7a73;
+  --accent-secondary: #fb615a;
+  --border: #2e2f31;
+  --border-light: #c6c0b4;
+  --mobile-tabbar-height: calc(64 * var(--space-unit));
+  --mobile-minideck-height: calc(64 * var(--space-unit));
+  --mobile-touch: calc(44 * var(--space-unit));
+}
 :root[data-interface="spatial"] {
   --bg-main: oklch(18.2% 0.006 65);
   --bg-sidebar: var(--bg-main);

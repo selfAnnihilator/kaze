@@ -8,6 +8,7 @@ import {
 import { dispatchCommand } from "../services/api";
 import type { AppSettings } from "../types";
 import type { InterfaceStyle } from "./InterfaceContext";
+import { isMobileDevice } from "./mobile/platform";
 
 export function useInterfacePreference(settings: AppSettings | null) {
   const [style, setStyle] = useState<InterfaceStyle>(
@@ -20,12 +21,14 @@ export function useInterfacePreference(settings: AppSettings | null) {
     if (!pending.current && settings?.interface_style)
       setStyle(settings.interface_style);
   }, [settings?.interface_style]);
+  // Phones always get the mobile interface; it is never saved as a preference.
+  const effective: InterfaceStyle = isMobileDevice() ? "mobile" : style;
   useLayoutEffect(() => {
-    document.documentElement.dataset.interface = style;
-  }, [style]);
+    document.documentElement.dataset.interface = effective;
+  }, [effective]);
   const select = useCallback(
     async (next: InterfaceStyle) => {
-      if (pending.current || next === style) return;
+      if (pending.current || next === style || next === "mobile") return;
       const previous = style;
       pending.current = true;
       setError(null);
@@ -48,5 +51,5 @@ export function useInterfacePreference(settings: AppSettings | null) {
     },
     [style],
   );
-  return { style, saving, error, select };
+  return { style: effective, saving, error, select };
 }
