@@ -119,7 +119,11 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val forwarding = ForwardingPlayer(Looper.getMainLooper()) { name, pos -> commandSink?.invoke(name, pos) }
         player = forwarding
-        session = MediaSession.Builder(this, forwarding).build()
+        val created = MediaSession.Builder(this, forwarding).build()
+        session = created
+        // Attaches the notification manager so the service is promoted to the
+        // foreground without an external controller connecting first.
+        addSession(created)
         instance = this
         forwarding.update(latest)
         syncWakeLock(latest.playing)
@@ -190,7 +194,10 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         abandonFocus()
-        session?.release()
+        session?.let {
+            removeSession(it)
+            it.release()
+        }
         player?.release()
         session = null
         player = null
