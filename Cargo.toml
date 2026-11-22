@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri"]
+members = ["src-tauri", "plugins/kaze-media"]
 resolver = "2"
 
 # Whole-program optimisation for shipped builds: smaller, faster code. Panics

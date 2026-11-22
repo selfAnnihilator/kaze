@@ -1,0 +1,14 @@
+[package]
+name = "tauri-plugin-kaze-media"
+version = "0.1.0"
+edition = "2021"
+description = "Kaze Android media bridge: foreground playback service, Keystore secrets and SAF folder picker"
+license = "MIT OR Apache-2.0"
+links = "tauri-plugin-kaze-media"
+
+[dependencies]
+tauri = { version = "2.0", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
