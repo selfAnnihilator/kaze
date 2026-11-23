@@ -4,6 +4,8 @@ import { DeckActions, DeckProgressBar, DeckTabs, DeckVolume } from "./DeckParts"
 import { Sleeve } from "./Sleeve";
 import { QueueBody } from "./queue/QueueBody";
 import { useMobileNav } from "./mobileNav";
+import { usePresence } from "./usePresence";
+import { useSleeveSlide } from "./sleeveSlide";
 import type { AppViewsContext } from "../../components/layout/appViews/context";
 import type { MobileDeckExtras, MobilePlayer } from "./types";
 
@@ -52,6 +54,8 @@ export const MobileDeck = memo(function MobileDeck({
   const next = c.nextQueuedTrack;
   const [queueOpen, setQueueOpen] = useState(false);
   const toggleQueue = useCallback(() => setQueueOpen((open) => !open), []);
+  const queue = usePresence(queueOpen);
+  const slide = useSleeveSlide(track?.id, previous?.id, next?.id);
   const meta = track ? [track.artist_name || "Unknown artist", track.album_title].filter(Boolean).join(" — ") : "Pick a song or start your Flow";
 
   return (
@@ -68,19 +72,20 @@ export const MobileDeck = memo(function MobileDeck({
 
       <div className="m-deck__divider" />
 
-      {queueOpen ? (
-        <div className="m-deck__queue m-queue"><QueueBody c={c} kicker="THE DECK // QUEUE" /></div>
-      ) : (
+      <div className="m-deck__stage">
+      {!queueOpen && (
         <div className="m-deck__scroll-content">
           <div className="m-deck__turntable">
             <button type="button" className="m-deck__turntable-side" onClick={player.onPrevious} disabled={!previous} aria-label="Previous track">
-              <Sleeve size="side" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
+              <Sleeve key={previous?.id} size="side" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
             </button>
             <div className="m-deck__turntable-main">
-              <Sleeve key={track?.id} size="deck" src={player.coverArtUrl} trackId={track?.id} title={track?.title} />
+              <div key={track?.id} className={slide}>
+                <Sleeve size="deck" src={player.coverArtUrl} trackId={track?.id} title={track?.title} />
+              </div>
             </div>
             <button type="button" className="m-deck__turntable-side" onClick={player.onNext} disabled={!next} aria-label="Next track">
-              <Sleeve size="side" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
+              <Sleeve key={next?.id} size="side" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
             </button>
           </div>
 
@@ -114,6 +119,12 @@ export const MobileDeck = memo(function MobileDeck({
           <DeckVolume player={player} />
         </div>
       )}
+      {queue.mounted && (
+        <div className={`m-deck__queue m-queue ${queue.leaving ? "is-leaving" : ""}`}>
+          <QueueBody c={c} kicker="THE DECK // QUEUE" />
+        </div>
+      )}
+      </div>
 
       <div className="m-deck__divider" />
       <DeckTabs player={player} deck={deck} queueOpen={queueOpen} onToggleQueue={toggleQueue} />

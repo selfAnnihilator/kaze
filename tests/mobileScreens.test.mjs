@@ -7,6 +7,7 @@ import { closeTrackSheet, openTrackSheet } from "../src/presentation/mobile/shee
 import { swipeStep, clampChapter } from "../src/presentation/mobile/discover/swipeStep.ts";
 import { shownArtwork } from "../src/services/shownArtwork.ts";
 import { dragStarted, shouldOpen } from "../src/presentation/mobile/deck/dragMath.ts";
+import { slideFrom } from "../src/presentation/mobile/sleeveSlide.ts";
 
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 
@@ -183,7 +184,8 @@ test("the profile photo shows a buffer bar while a new photo saves", () => {
 
 test("the Deck's Queue button toggles the queue inside the Deck", () => {
   const deck = read("src/presentation/mobile/MobileDeck.tsx");
-  assert.match(deck, /queueOpen \? \(\s*<div className="m-deck__queue m-queue"><QueueBody c=\{c\} kicker="THE DECK \/\/ QUEUE" \/><\/div>/);
+  assert.match(deck, /\{!queueOpen && \(\s*<div className="m-deck__scroll-content">/, "the player shows when the queue is closed");
+  assert.match(deck, /<QueueBody c=\{c\} kicker="THE DECK \/\/ QUEUE" \/>/, "the queue opens inside the Deck");
   assert.match(deck, /<DeckTabs player=\{player\} deck=\{deck\} queueOpen=\{queueOpen\} onToggleQueue=\{toggleQueue\} \/>/);
   const tabs = read("src/presentation/mobile/DeckParts.tsx");
   assert.match(tabs, /m-deck__tab-item \$\{queueOpen \? "is-active" : ""\}`\} onClick=\{onToggleQueue\}/);
@@ -299,4 +301,32 @@ test("Flow fills the first Home screen so For You starts below the fold", () => 
   const css = read("src/presentation/mobile/mobile-home.css");
   assert.match(css, /\.m-flow \{[^}]*min-height: calc\(100% \+ var\(--space-24\)\);/, "a full screen, counting the scroll padding");
   assert.match(css, /\.m-flow > \.m-flow-carousel \{ flex: 1 0 auto; \}/, "the spare height goes around the sleeve");
+});
+
+test("The playing sleeve slides in from the Next or Previous side it came from", () => {
+  const seen = { current: "a", previous: "p", next: "n" };
+  assert.equal(slideFrom("n", seen), "next");
+  assert.equal(slideFrom("p", seen), "previous");
+  assert.equal(slideFrom("x", seen), "other", "a song picked elsewhere just fades in");
+  assert.equal(slideFrom("a", seen), "other");
+  for (const f of ["MobileHome.tsx", "MobileDeck.tsx"]) {
+    const src = read(`src/presentation/mobile/${f}`);
+    assert.match(src, /useSleeveSlide\(/, f);
+    assert.match(src, /<div key=\{(featured|track)\?\.id\} className=\{slide\}>/, f);
+  }
+  const css = read("src/presentation/mobile/mobile-motion.css");
+  assert.match(css, /@keyframes m-slide-from-right \{ from \{ opacity: 0\.4; transform: translateX\(40%\) scale\(0\.5\); \} \}/);
+});
+
+test("Lyrics and the Deck's queue animate in and out, and Lyrics has no down arrow", () => {
+  assert.match(read("src/presentation/mobile/usePresence.ts"), /return \{ mounted: open \|\| mounted, leaving: !open && mounted \};/);
+  const app = read("src/presentation/mobile/MobileApp.tsx");
+  assert.match(app, /\{lyrics\.mounted && <MobileLyrics [^>]*leaving=\{lyrics\.leaving\}/);
+  const deck = read("src/presentation/mobile/MobileDeck.tsx");
+  assert.match(deck, /\{queue\.mounted && \(\s*<div className=\{`m-deck__queue m-queue \$\{queue\.leaving \? "is-leaving" : ""\}`\}>/);
+  const css = read("src/presentation/mobile/mobile-motion.css");
+  assert.match(css, /\.m-lyrics\.is-leaving, \.m-deck__queue\.is-leaving \{ animation: m-sink-out/);
+  const lyrics = read("src/presentation/mobile/MobileLyrics.tsx");
+  assert.doesNotMatch(lyrics, /ChevronDown|Back to the Deck/);
+  assert.match(lyrics, /aria-label="Close lyrics"/);
 });

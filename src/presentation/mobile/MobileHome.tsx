@@ -5,6 +5,7 @@ import { MobileTopBar } from "./MobileTopBar";
 import { Sleeve } from "./Sleeve";
 import { joinMeta } from "./format";
 import type { MobileScreenProps } from "./types";
+import { useSleeveSlide } from "./sleeveSlide";
 
 /**
  * Home (Figma B1 Home — Flow, then B2/B3 sections): Flow poster with previous,
@@ -24,6 +25,7 @@ export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
     else void c.handleStartFlow(c.flowSteering);
   }, [active, c]);
 
+  const slide = useSleeveSlide(currentTrack?.id, previous?.id, next?.id);
   const steeringPercent = Math.round(c.flowSteering * 100);
   const featured = currentTrack ?? (rotation[0] ? {
     id: rotation[0].track_id,
@@ -54,13 +56,15 @@ export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
         <div className="m-flow-carousel">
           <button type="button" className="m-flow-carousel__side" onClick={() => void c.handlePreviousTrack()}
             disabled={!previous} aria-label="Previous track">
-            <Sleeve size="preview" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
+            <Sleeve key={previous?.id} size="preview" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
             <span className="m-flow-carousel__side-label">PREV</span>
           </button>
-          <Sleeve size="hero" src={c.activePlayingArtwork ?? featured?.cover_art_url} trackId={featured?.id} title={featured?.title} />
+          <div key={featured?.id} className={slide}>
+            <Sleeve size="hero" src={c.activePlayingArtwork ?? featured?.cover_art_url} trackId={featured?.id} title={featured?.title} />
+          </div>
           <button type="button" className="m-flow-carousel__side" onClick={() => void c.handleNextTrack()}
             disabled={!next} aria-label="Next track">
-            <Sleeve size="preview" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
+            <Sleeve key={next?.id} size="preview" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
             <span className="m-flow-carousel__side-label">NEXT</span>
           </button>
         </div>

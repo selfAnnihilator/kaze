@@ -1,4 +1,4 @@
-import { ChevronDown, Heart, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
+import { Heart, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { WindowedList } from "../WindowedList";
 import { DeckProgressBar } from "./DeckParts";
 import { LyricLines } from "./lyrics/LyricLines";
@@ -25,15 +25,14 @@ function LyricsBody({ lyrics, onSeek }: { lyrics: ReturnType<typeof useLyrics>; 
 }
 
 /** Lyrics (Figma E3): full screen over the app with the song, its lines, position and transport. */
-export function MobileLyrics({ player, onClose }: { player: MobilePlayer; onClose: () => void }) {
+export function MobileLyrics({ player, onClose, leaving = false }: { player: MobilePlayer; onClose: () => void; leaving?: boolean }) {
   const track = player.currentTrack;
   const lyrics = useLyrics(track);
   const state = player.playbackState;
   const synced = lyrics.synced.length > 0;
   return (
-    <section className="m-sheet m-lyrics" role="dialog" aria-modal="true" aria-label="Lyrics">
+    <section className={`m-sheet m-lyrics ${leaving ? "is-leaving" : ""}`} role="dialog" aria-modal="true" aria-label="Lyrics">
       <div className="m-lyrics__bar">
-        <button type="button" className="m-backbar__btn" onClick={onClose} aria-label="Back to the Deck"><ChevronDown size={20} strokeWidth={2} /></button>
         <span className="m-kicker m-kicker--ink">{synced ? "LYRICS // TAP A LINE TO SEEK" : "LYRICS"}</span>
         <button type="button" className="m-backbar__btn" onClick={onClose} aria-label="Close lyrics"><X size={20} strokeWidth={2} /></button>
       </div>

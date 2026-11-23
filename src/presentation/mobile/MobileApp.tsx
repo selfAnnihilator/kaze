@@ -15,6 +15,7 @@ import { TrackSheets } from "./sheets/TrackSheets";
 import { isPlayingLiked, togglePlayingLike } from "./likeTrack";
 import { MobileNavContext } from "./mobileNav";
 import { useMobileShell } from "./useMobileShell";
+import { usePresence } from "./usePresence";
 import { useDeckSheet } from "./deck/useDeckSheet";
 import { useSheetDrag } from "./deck/useSheetDrag";
 import type { MobileTab } from "./tabs";
@@ -47,6 +48,7 @@ const SCREENS: Record<MobileTab, React.ComponentType<MobileScreenProps>> = {
 export function MobileApp({ c, player, deck, overlays }: MobileProps) {
   const { tab, page, deckOpen, nav, closeTop } = useMobileShell(c);
   const handleLike = useCallback(() => togglePlayingLike(player), [player]);
+  const lyrics = usePresence(page === "lyrics");
   const sheet = useDeckSheet(deckOpen, { open: nav.openDeck, close: closeTop });
   const [mini, setMini] = useState<HTMLDivElement | null>(null);
   const [deckHeader, setDeckHeader] = useState<HTMLElement | null>(null);
@@ -81,7 +83,7 @@ export function MobileApp({ c, player, deck, overlays }: MobileProps) {
           <TabBar active={tab} onSelect={nav.goTab} />
 
           {sheet.mounted && <MobileDeck c={c} player={player} deck={deck} onClose={closeTop} sheetRef={sheet.ref} headerRef={setDeckHeader} />}
-          {page === "lyrics" && <MobileLyrics player={player} onClose={closeTop} />}
+          {lyrics.mounted && <MobileLyrics player={player} onClose={closeTop} leaving={lyrics.leaving} />}
           <TrackSheets c={c} />
           {overlays}
           <MobileStartup ready={!!c.onboardingStatus} />
