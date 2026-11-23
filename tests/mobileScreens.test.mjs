@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import { hoursMinutes } from "../src/presentation/mobile/profile/useProfileStats.ts";
 import { formatBytes, userInitials } from "../src/presentation/mobile/format.ts";
 import { closeTrackSheet, openTrackSheet } from "../src/presentation/mobile/sheets/trackSheet.ts";
-import { swipeStep, clampChapter } from "../src/presentation/mobile/discover/swipeStep.ts";
+import { swipeStep, clampChapter, discoverPullAction, sideStep } from "../src/presentation/mobile/discover/swipeStep.ts";
+import { PULL_TRIGGER, pullArmed, pullStarted, resist } from "../src/presentation/mobile/pullRefresh/pullMath.ts";
+import { upcomingFromEvent, upcomingFromPlayback } from "../src/presentation/queuePresentation.ts";
 import { shownArtwork } from "../src/services/shownArtwork.ts";
 import { dragStarted, shouldOpen } from "../src/presentation/mobile/deck/dragMath.ts";
 import { slideFrom } from "../src/presentation/mobile/sleeveSlide.ts";
@@ -205,7 +207,7 @@ test("Discover swipes: up is next, down is previous, sideways belongs to the row
 test("Discover shows one chapter at a time, each a sideways row, like the PC", () => {
   const ch = read("src/presentation/mobile/discover/DiscoverChapters.tsx");
   assert.match(ch, /<section key=\{active\} className=\{`m-discover-chapter/, "only the active chapter renders");
-  assert.match(ch, /useChapterSwipe\(stage, \(step\) => go\(active \+ step\)\)/);
+  assert.match(ch, /useChapterSwipe\(stage, \(step\) => go\(active \+ step\), \{/);
   assert.match(ch, /const jump = \(n: number\) => go\(n - 1\)/, "the arrows page too");
   assert.doesNotMatch(ch, /scrollIntoView/);
   assert.match(ch, /forYou\.map\(\(rec, i\) => <DiscoverCard /, "For You uses the Trending card");
@@ -329,4 +331,126 @@ test("Lyrics and the Deck's queue animate in and out, and Lyrics has no down arr
   const lyrics = read("src/presentation/mobile/MobileLyrics.tsx");
   assert.doesNotMatch(lyrics, /ChevronDown|Back to the Deck/);
   assert.match(lyrics, /aria-label="Close lyrics"/);
+});
+
+test("The Deck's header has only the close button, with its title centred", () => {
+  const deck = read("src/presentation/mobile/MobileDeck.tsx");
+  assert.doesNotMatch(deck, /aria-label="Settings"|<Settings /);
+  assert.match(deck, /<span className="m-deck__header-spacer" aria-hidden="true" \/>/);
+  assert.match(read("src/presentation/mobile/mobile-deck.css"), /\.m-deck__header-spacer \{ width: var\(--space-44\);/);
+});
+
+test("Music folders: the Android picker, permission before scanning, and the onboarding choice", () => {
+  const bridge = read("src/presentation/mobile/androidBridge.ts");
+  assert.match(bridge, /call<string \| null>\("android_pick_music_folder"\)/);
+  assert.match(bridge, /call<boolean>\("android_request_audio_access"\)/);
+  const pages = read("src/presentation/mobile/settings/SettingsPages.tsx");
+  assert.match(pages, /<span>CHOOSE A FOLDER<\/span>/);
+  assert.match(pages, /await ensureMusicAccess\(\); await c\.handleAddFolder\(value\)/, "typed paths ask for access too");
+  assert.match(pages, /await ensureMusicAccess\(\); await c\.handleRescanLibrary\(\)/, "rescans ask for access too");
+  const onboard = read("src/presentation/mobile/settings/MobileOnboarding.tsx");
+  assert.match(onboard, /onClick=\{\(\) => void choose\(\)\}/, "Choose a folder opens the picker");
+  assert.match(onboard, /await ensureMusicAccess\(\);\s*await onComplete\(\[folder\], scan\)/);
+  const rust = read("src-tauri/src/platform/android.rs");
+  for (const cmd of ["android_pick_music_folder", "android_request_audio_access", "android_share"]) assert.match(rust, new RegExp(`${cmd}[,\\s]`), cmd);
+  assert.match(read("src-tauri/src/library/service.rs"), /pub const ANDROID_MUSIC_DIR: &str = "\/storage\/emulated\/0\/Music";/);
+});
+
+test("Sharing from the Deck uses the Android share sheet", () => {
+  assert.match(read("src/presentation/mobile/DeckParts.tsx"), /await shareText\(track\.title, text\)/);
+  const kt = read("plugins/kaze-media/android/src/main/java/org/intelligentmusicplayer/kazemedia/KazeMediaPlugin.kt");
+  assert.match(kt, /Intent\.createChooser\(send, args\.title\)/);
+  assert.match(kt, /Permission\(strings = \[Manifest\.permission\.READ_MEDIA_AUDIO\], alias = "audio"\)/);
+});
+
+test("Phone downloads don't rely on hard links, which Android storage refuses", () => {
+  const src = read("src-tauri/src/downloads/jiosaavn.rs");
+  assert.match(src, /super::publish::publish\(&partial, &destination\)/);
+  assert.doesNotMatch(src, /tokio::fs::hard_link/);
+  assert.match(src, /tracing::warn!\(%error, "Download transfer failed"\)/, "the real cause is logged");
+});
+
+test("Tapping the playing sleeve on Flow opens the Deck", () => {
+  const home = read("src/presentation/mobile/MobileHome.tsx");
+  assert.match(home, /<Sleeve size="hero"[^>]*onPress=\{currentTrack \? nav\.openDeck : undefined\}/, "only when a song is loaded");
+});
+
+test("The position bar seeks on tap and on hold-and-drag, without a blue tap flash", () => {
+  const parts = read("src/presentation/mobile/DeckParts.tsx");
+  assert.match(parts, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the drag keeps following the finger");
+  assert.match(parts, /onSeek\?\.\(ratioAt\(e\) \* duration\)/, "seeks once, when the finger lifts");
+  assert.match(parts, /const shown = dragRatio === null \? position : dragRatio \* duration;/, "the time follows the drag");
+  const css = read("src/presentation/mobile/mobile-deck.css");
+  assert.match(css, /\.m-deck-progress__track \{[^}]*height: var\(--space-32\);[^}]*touch-action: none;/);
+  assert.match(read("src/presentation/mobile/mobile.css"), /\.m-shell, \.m-shell \* \{ -webkit-tap-highlight-color: transparent; \}/);
+});
+
+test("Phone downloads go to Music/Kaze with audio-named temporaries, falling back to the private folder", () => {
+  const android = read("src-tauri/src/platform/android.rs");
+  assert.match(android, /let music = shared_download_dir\(\)\.unwrap_or\(private\);/);
+  assert.match(android, /Path::new\(crate::library::service::ANDROID_MUSIC_DIR\)\.join\("Kaze"\)/);
+  assert.match(read("src-tauri/src/downloads/jiosaavn.rs"), /format!\("\.\{task_id\}\.part\.\{ext\}"\)/);
+  const folder = read("src-tauri/src/downloads/service/folder.rs");
+  assert.match(folder, /format!\("\.\{stem\}\.moving\.\{ext\}"\)/);
+  assert.match(folder, /&& !path\.file_name\(\)\.and_then\(\|n\| n\.to_str\(\)\)\.is_some_and\(\|n\| n\.starts_with\('\.'\)\)/, "temporaries are never adopted");
+});
+
+test("Pull to refresh starts only at the top, moving down, and arms past the trigger", () => {
+  assert.ok(pullStarted(2, 20, 0), "a downward pull at the top");
+  assert.ok(!pullStarted(2, 20, 40), "not while the page is scrolled");
+  assert.ok(!pullStarted(2, -20, 0), "not upward");
+  assert.ok(!pullStarted(40, 20, 0), "not mostly sideways");
+  assert.ok(!pullStarted(0, 4, 0), "a tap stays a tap");
+  assert.ok(pullArmed(PULL_TRIGGER) && !pullArmed(PULL_TRIGGER - 1));
+  assert.ok(resist(60) < 60, "the indicator moves slower than the finger");
+  assert.equal(resist(1000), resist(2000), "and stops at its limit");
+});
+
+test("Discover: a long slow pull refreshes, a quick swipe down goes back a chapter", () => {
+  assert.equal(discoverPullAction(0, 140, 700, true), "refresh");
+  assert.equal(discoverPullAction(0, 140, 120, true), "previous", "a quick flick, even a long one");
+  assert.equal(discoverPullAction(0, 60, 400, true), "previous", "a short swipe");
+  assert.equal(discoverPullAction(0, 140, 700, false), "previous", "only from the top of the page");
+  assert.equal(discoverPullAction(0, 20, 400, true), null);
+  assert.equal(discoverPullAction(0, -140, 700, true), null, "swiping up is the pager's next chapter");
+});
+
+test("Albums: a sideways swipe steps between records", () => {
+  assert.equal(sideStep(-90, 10), 1, "swipe left is later");
+  assert.equal(sideStep(90, -10), -1, "swipe right is earlier");
+  assert.equal(sideStep(60, 120), 0, "vertical moves scroll the page");
+  assert.equal(sideStep(20, 0), 0);
+  const panes = read("src/presentation/mobile/LibraryPanes.tsx");
+  assert.match(panes, /useSideSwipe\(showcase, \(step\) => \(step > 0 \? later\(\) : earlier\(\)\)\)/);
+  assert.match(panes, /<div key=\{album\.id\} className=\{slide\}>/);
+});
+
+test("The phone has no ⟳ refresh buttons; Home, Discover and Profile pull to refresh", () => {
+  for (const f of ["MobileHome.tsx", "HomeSections.tsx", "discover/DiscoverChapters.tsx", "profile/ProfileStats.tsx", "MobileProfile.tsx"]) {
+    assert.doesNotMatch(read(`src/presentation/mobile/${f}`), /RotateCw size|RefreshCw size|aria-label=\{?[`"]Refresh/, f);
+  }
+  assert.match(read("src/presentation/mobile/MobileHome.tsx"), /usePullToRefresh\(pull, \(\) => Promise\.all\(\[c\.fetchHomeOverview\(\), c\.handleStartFlow\(c\.flowSteering\)\]\)\)/);
+  assert.match(read("src/presentation/mobile/MobileProfile.tsx"), /usePullToRefresh\(pull, reload\)/);
+  assert.match(read("src/presentation/mobile/discover/DiscoverChapters.tsx"), /refresh: \(\) => refreshers\[active\]\(\)/);
+  const hook = read("src/presentation/mobile/pullRefresh/usePullToRefresh.ts");
+  assert.match(hook, /if \(!g\.on\) return;\n\s*\/\/[^\n]*\n\s*if \(e\.cancelable\) e\.preventDefault\(\);/, "only an active pull blocks scrolling");
+});
+
+test("Your Week numbers stay on one line and shrink to fit", () => {
+  assert.match(read("src/presentation/mobile/mobile-home.css"), /\.m-home-week__value \{[^}]*white-space: nowrap;/);
+  assert.match(read("src/presentation/mobile/HomeSections.tsx"), /const ref = useFitText<HTMLSpanElement>\(value\);/);
+});
+
+test("Up Next follows the shuffled play order and keeps each song's queue position", () => {
+  const items = ["a", "b", "c", "d"].map((id) => ({ queue_id: `q${id}`, track_id: id, title: id, artist: "x" }));
+  assert.deepEqual(upcomingFromEvent(items, 0, [3, 1, 2]).map((e) => [e.trackId, e.index]), [["d", 3], ["b", 1], ["c", 2]]);
+  assert.deepEqual(upcomingFromEvent(items, 1).map((e) => e.trackId), ["c", "d"], "older backends: queue order");
+  const state = { current_queue_index: 0, queue_track_ids: ["d", "b"], upcoming_indices: [3, 1] };
+  assert.deepEqual(upcomingFromPlayback(state).map((e) => e.index), [3, 1]);
+});
+
+test("A collection's shuffle starts it shuffled even if shuffle was left on elsewhere", () => {
+  const hook = read("src/hooks/app/useCollections.ts");
+  assert.doesNotMatch(hook, /if \(playbackState\.is_shuffled\) \{\n\s*await handleToggleShuffle\(\);/);
+  assert.match(read("src/presentation/mobile/CollectionPane.tsx"), /aria-pressed=\{shuffled\}/);
 });

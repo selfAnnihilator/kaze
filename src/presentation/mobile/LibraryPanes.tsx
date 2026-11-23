@@ -1,4 +1,6 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import { useSleeveSlide } from "./sleeveSlide";
+import { useSideSwipe } from "./useSideSwipe";
 import { openTrackSheet, type SheetTrack } from "./sheets/trackSheet";
 import { ArrowLeft, ArrowRight, Link, Play, Plus, RotateCw, Search, Shuffle } from "lucide-react";
 import { ImportPlaylistSheet } from "./playlists/ImportPlaylistSheet";
@@ -14,7 +16,7 @@ import type { MobileScreenProps } from "./types";
 const ROW_HEIGHT = 67;
 const pad3 = (n: number) => String(n).padStart(3, "0");
 
-/** Albums record browser (Figma D1): one record at a time with Earlier / Later. */
+/** Albums record browser (Figma D1): one record at a time; swipe sideways or use Earlier / Later. */
 export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenProps & { focusId?: string | null }) {
   const albums = c.albums;
   const [index, setIndex] = useState(0);
@@ -24,8 +26,7 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
     if (at >= 0) setIndex(at);
   }, [focusId, albums]);
   const total = c.albumPage.total || albums.length;
-  if (!albums.length) return <p className="m-empty-msg">{c.albumPage.loading ? "Loading albums…" : "No albums yet. Add a music folder in Settings › Music folders."}</p>;
-  const at = Math.min(index, albums.length - 1);
+  const at = Math.min(index, Math.max(0, albums.length - 1));
   const album = albums[at];
   const prev = albums[at - 1];
   const next = albums[at + 1];
@@ -33,6 +34,11 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
     if (at + 1 >= albums.length - 2) c.albumPage.next();
     setIndex(Math.min(albums.length - 1, at + 1));
   };
+  const earlier = () => setIndex(Math.max(0, at - 1));
+  const showcase = useRef<HTMLDivElement>(null);
+  useSideSwipe(showcase, (step) => (step > 0 ? later() : earlier()));
+  const slide = useSleeveSlide(album?.id, prev?.id, next?.id);
+  if (!albums.length) return <p className="m-empty-msg">{c.albumPage.loading ? "Loading albums…" : "No albums yet. Add a music folder in Settings › Music folders."}</p>;
 
   return (
     <div className="m-albums">
@@ -40,11 +46,13 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
         <span className="m-kicker">RECORD {pad3(at + 1)} / {pad3(total)}</span>
         <span className="m-kicker m-kicker--ink">SORT: A—Z</span>
       </div>
-      <div className="m-albums__showcase">
-        <span className="m-albums__side">{prev && <Sleeve size="edge" src={prev.cover_art_path} trackId={prev.first_track_id} title={prev.title} />}</span>
-        <Sleeve size="album" src={album.cover_art_path} trackId={album.first_track_id} title={album.title}
-          onPress={() => c.handleSelectAlbum(album.id)} />
-        <span className="m-albums__side">{next && <Sleeve size="edge" src={next.cover_art_path} trackId={next.first_track_id} title={next.title} />}</span>
+      <div ref={showcase} className="m-albums__showcase">
+        <span className="m-albums__side">{prev && <Sleeve key={prev.id} size="edge" src={prev.cover_art_path} trackId={prev.first_track_id} title={prev.title} onPress={earlier} />}</span>
+        <div key={album.id} className={slide}>
+          <Sleeve size="album" src={album.cover_art_path} trackId={album.first_track_id} title={album.title}
+            onPress={() => c.handleSelectAlbum(album.id)} />
+        </div>
+        <span className="m-albums__side">{next && <Sleeve key={next.id} size="edge" src={next.cover_art_path} trackId={next.first_track_id} title={next.title} onPress={later} />}</span>
       </div>
       <div className="m-albums__info">
         <h2 className="m-display m-albums__title">{album.title.toUpperCase()}</h2>
@@ -53,7 +61,7 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
         </span>
       </div>
       <div className="m-albums__actions">
-        <button type="button" className="m-btn m-btn--outline m-btn--sm m-btn--grow" disabled={at === 0} onClick={() => setIndex(at - 1)}>
+        <button type="button" className="m-btn m-btn--outline m-btn--sm m-btn--grow" disabled={at === 0} onClick={earlier}>
           <ArrowLeft size={18} strokeWidth={2} /><span>EARLIER</span>
         </button>
         <button type="button" className="m-btn m-btn--sm m-albums__play" disabled={!album.first_track_id}

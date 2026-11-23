@@ -1,11 +1,14 @@
-import { memo, useCallback } from "react";
-import { Pause, Play, RotateCw, SkipForward } from "lucide-react";
+import { memo, useCallback, useRef } from "react";
+import { Pause, Play, SkipForward } from "lucide-react";
+import { PullIndicator } from "./pullRefresh/PullIndicator";
+import { usePullToRefresh } from "./pullRefresh/usePullToRefresh";
 import { HomeSections } from "./HomeSections";
 import { MobileTopBar } from "./MobileTopBar";
 import { Sleeve } from "./Sleeve";
 import { joinMeta } from "./format";
 import type { MobileScreenProps } from "./types";
 import { useSleeveSlide } from "./sleeveSlide";
+import { useMobileNav } from "./mobileNav";
 
 /**
  * Home (Figma B1 Home — Flow, then B2/B3 sections): Flow poster with previous,
@@ -25,6 +28,10 @@ export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
     else void c.handleStartFlow(c.flowSteering);
   }, [active, c]);
 
+  const nav = useMobileNav();
+  // Pull down refreshes Flow and the sections below it (the phone has no ⟳ buttons).
+  const pull = useRef<HTMLDivElement>(null);
+  usePullToRefresh(pull, () => Promise.all([c.fetchHomeOverview(), c.handleStartFlow(c.flowSteering)]));
   const slide = useSleeveSlide(currentTrack?.id, previous?.id, next?.id);
   const steeringPercent = Math.round(c.flowSteering * 100);
   const featured = currentTrack ?? (rotation[0] ? {
@@ -40,17 +47,12 @@ export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
       <MobileTopBar num="01" name="HOME" />
 
       <div className="m-screen__content">
+        <PullIndicator ref={pull} />
         {/* Flow fills the first screen; For You starts below the fold. */}
         <section className="m-flow" aria-label="Flow">
         <div className="m-flow-header">
           <span className="m-kicker">01 // FLOW — YOUR PERSONAL RADIO</span>
-          <div className="m-flow-header__title-row">
-            <h1 className="m-display m-flow-header__title">FLOW.</h1>
-            <button type="button" className="m-flow-header__refresh-btn"
-              onClick={() => void c.handleStartFlow(c.flowSteering)} aria-label="Refresh Flow">
-              <RotateCw size={20} strokeWidth={2} />
-            </button>
-          </div>
+          <h1 className="m-display m-flow-header__title">FLOW.</h1>
         </div>
 
         <div className="m-flow-carousel">
@@ -60,7 +62,8 @@ export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
             <span className="m-flow-carousel__side-label">PREV</span>
           </button>
           <div key={featured?.id} className={slide}>
-            <Sleeve size="hero" src={c.activePlayingArtwork ?? featured?.cover_art_url} trackId={featured?.id} title={featured?.title} />
+            <Sleeve size="hero" src={c.activePlayingArtwork ?? featured?.cover_art_url} trackId={featured?.id} title={featured?.title}
+              onPress={currentTrack ? nav.openDeck : undefined} />
           </div>
           <button type="button" className="m-flow-carousel__side" onClick={() => void c.handleNextTrack()}
             disabled={!next} aria-label="Next track">

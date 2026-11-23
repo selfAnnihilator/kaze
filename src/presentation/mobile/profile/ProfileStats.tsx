@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MONTHS, hoursMinutes, type ProfileStats } from "./useProfileStats";
 import { dayFocus } from "./dayFocus";
 
-/** Year chips (current year red, earlier years "· ARCHIVED") and refresh. */
+/** Year chips (current year red, earlier years "· ARCHIVED"); pull down refreshes. */
 export function YearChips({ p }: { p: ProfileStats }) {
   const years = p.stats?.available_years?.length ? [...p.stats.available_years].sort((a, b) => b - a) : [p.currentYear];
   return (
@@ -12,9 +12,6 @@ export function YearChips({ p }: { p: ProfileStats }) {
           {y < p.currentYear ? `${y} · ARCHIVED` : y}
         </button>
       ))}
-      <button type="button" className="m-profile-refresh" disabled={p.loading} onClick={() => void p.reload()} aria-label="Refresh stats">
-        <RefreshCw size={16} strokeWidth={2} />
-      </button>
     </div>
   );
 }

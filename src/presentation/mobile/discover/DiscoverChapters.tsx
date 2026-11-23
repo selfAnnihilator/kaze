@@ -1,5 +1,8 @@
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Play, RotateCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { PullIndicator } from "../pullRefresh/PullIndicator";
+import { PullView } from "../pullRefresh/pullView";
+import { scrollerOf } from "../pullRefresh/usePullToRefresh";
 import { DownloadButton } from "../../../components/DownloadButton";
 import { playlistCollection } from "../playlistCollection";
 import { SectionHead } from "../SectionHead";
@@ -20,11 +23,10 @@ const TOTAL = 4;
 const pad = (n: number) => String(n).padStart(2, "0");
 const recKey = (rec: DiscoveryRecommendation, idx: number) => rec.external_track_id || `${rec.title}:${idx}`;
 
-/** Chapter band (Figma C1–C3): "CH.0N //", title, refresh, previous, "0N/04", next. */
-function ChapterHead({ n, title, onRefresh, onJump }: { n: number; title: string; onRefresh: () => void; onJump: (to: number) => void }) {
+/** Chapter band (Figma C1–C3): "CH.0N //", title, previous, "0N/04", next (pull down refreshes). */
+function ChapterHead({ n, title, onJump }: { n: number; title: string; onJump: (to: number) => void }) {
   return (
     <SectionHead kicker={`CH.${pad(n)} //`} title={title} compact actions={<>
-      <button type="button" className="m-sechead__btn" onClick={onRefresh} aria-label={`Refresh ${title.toLowerCase()}`}><RotateCw size={18} strokeWidth={2} /></button>
       <button type="button" className="m-sechead__btn" disabled={n === 1} onClick={() => onJump(n - 1)} aria-label="Previous chapter"><ChevronLeft size={20} strokeWidth={2} /></button>
       <span className="m-sechead__page">{pad(n)}/{pad(TOTAL)}</span>
       <button type="button" className="m-sechead__btn" disabled={n === TOTAL} onClick={() => onJump(n + 1)} aria-label="Next chapter"><ChevronRight size={20} strokeWidth={2} /></button>
@@ -90,7 +92,19 @@ export function DiscoverChapters({ c }: { c: Ctx }) {
     setActive(next);
     memory.chapter = next;
   };
-  useChapterSwipe(stage, (step) => go(active + step));
+  const pullEl = useRef<HTMLDivElement>(null);
+  // A long slow pull from the top refreshes the chapter on screen.
+  const refreshers: (() => Promise<unknown>)[] = [
+    () => c.refreshTrending(),
+    () => c.refreshPersonalRecommendations(),
+    () => c.handleRefreshPlaylists(),
+    async () => setChartsKey((k) => k + 1),
+  ];
+  useChapterSwipe(stage, (step) => go(active + step), {
+    view: () => (pullEl.current ? new PullView(pullEl.current) : null),
+    atTop: () => { const el = pullEl.current; return !!el && (scrollerOf(el)?.scrollTop ?? 0) <= 0; },
+    refresh: () => refreshers[active](),
+  });
   const jump = (n: number) => go(n - 1);
 
   const trending = (c.worldTrending.length ? c.worldTrending : c.discoveryRecs).slice(0, 12);
@@ -98,18 +112,19 @@ export function DiscoverChapters({ c }: { c: Ctx }) {
   const seen = new Set<string>();
   const mixes = c.playlists.filter((p) => p.is_smart_mix === 1 && !seen.has(p.name) && seen.add(p.name));
   const chapters = [
-    <><ChapterHead n={1} title="TRENDING SONGS" onRefresh={() => void c.refreshTrending()} onJump={jump} />
-      <Row empty="Nothing trending right now. Tap refresh to try again.">{trending.map((rec, i) => <DiscoverCard key={recKey(rec, i)} rec={rec} index={i + 1} c={c} />)}</Row></>,
-    <><ChapterHead n={2} title="FOR YOU" onRefresh={() => void c.refreshPersonalRecommendations()} onJump={jump} />
+    <><ChapterHead n={1} title="TRENDING SONGS" onJump={jump} />
+      <Row empty="Nothing trending right now. Pull down to try again.">{trending.map((rec, i) => <DiscoverCard key={recKey(rec, i)} rec={rec} index={i + 1} c={c} />)}</Row></>,
+    <><ChapterHead n={2} title="FOR YOU" onJump={jump} />
       <Row empty="No picks yet. Play a few songs so Kaze can learn your taste.">{forYou.map((rec, i) => <DiscoverCard key={recKey(rec, i)} rec={rec} index={i + 1} c={c} />)}</Row></>,
-    <><ChapterHead n={3} title="MIXES FOR YOU" onRefresh={() => void c.handleRefreshPlaylists()} onJump={jump} />
+    <><ChapterHead n={3} title="MIXES FOR YOU" onJump={jump} />
       {mixes.length ? <div className="m-dmix-row">{mixes.map((mix) => <MixCard key={mix.id} mix={mix} c={c} />)}</div>
         : <Empty>No mixes yet. Kaze builds them from what you play.</Empty>}</>,
-    <><ChapterHead n={4} title="TOP CHARTS" onRefresh={() => setChartsKey((k) => k + 1)} onJump={jump} />
+    <><ChapterHead n={4} title="TOP CHARTS" onJump={jump} />
       <TopCharts key={chartsKey} c={c} force={chartsKey > 0} /></>,
   ];
   return (
     <div ref={stage} className="m-discover-stage">
+      <PullIndicator ref={pullEl} />
       <section key={active} className={`m-discover-chapter ${dir > 0 ? "is-from-below" : "is-from-above"}`} aria-label={`Chapter ${active + 1} of ${TOTAL}`}>
         {chapters[active]}
       </section>

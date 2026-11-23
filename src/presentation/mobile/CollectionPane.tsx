@@ -26,6 +26,7 @@ export const CollectionPane = memo(function CollectionPane({ c }: MobileScreenPr
 
   const liked = collection.title === "Liked Songs";
   const playing = c.isPlayingThisCollection && c.playbackState.is_playing;
+  const shuffled = c.isPlayingThisCollection && c.playbackState.is_shuffled;
   const saved = c.isCollectionSaved;
 
   return (
@@ -60,7 +61,8 @@ export const CollectionPane = memo(function CollectionPane({ c }: MobileScreenPr
           {playing ? <Pause size={18} strokeWidth={2} /> : <Play size={18} strokeWidth={2} />}
           <span>{playing ? "PAUSE" : "PLAY"}</span>
         </button>
-        <button type="button" className="m-box-btn m-collection-toolbar__box" onClick={() => void c.handleShuffleCollection()} aria-label="Shuffle">
+        <button type="button" className={`m-box-btn m-collection-toolbar__box ${shuffled ? "m-box-btn--accent" : ""}`}
+          onClick={() => void c.handleShuffleCollection()} aria-label="Shuffle" aria-pressed={shuffled}>
           <Shuffle size={20} strokeWidth={2} />
         </button>
         {!liked && (

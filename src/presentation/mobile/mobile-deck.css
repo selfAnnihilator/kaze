@@ -2,6 +2,7 @@
 .m-deck { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; flex-direction: column; background: var(--m-paper); overflow: hidden; padding-top: env(safe-area-inset-top, 0); padding-bottom: env(safe-area-inset-bottom, 0); }
 .m-deck__header { display: flex; align-items: center; justify-content: space-between; height: var(--space-48); padding: 0 var(--space-6); flex-shrink: 0; }
 .m-deck__btn-header { display: flex; align-items: center; justify-content: center; width: var(--space-44); height: var(--space-44); border: 0; background: transparent; color: var(--m-ink); cursor: pointer; }
+.m-deck__header-spacer { width: var(--space-44); flex-shrink: 0; }
 .m-deck__header-title { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.045em; color: var(--m-ink); }
 .m-deck__divider { height: var(--space-2); background: var(--m-line); width: 100%; flex-shrink: 0; }
 .m-deck__scroll-content { flex: 1 1 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
@@ -31,10 +32,12 @@
 .m-deck-progress__header { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-10); letter-spacing: 0.045em; line-height: 1.1; }
 .m-deck-progress__label { color: var(--m-ink); }
 .m-deck-progress__time { color: var(--m-muted); }
-.m-deck-progress__track { position: relative; height: var(--space-14); display: flex; align-items: center; cursor: pointer; }
+/* A tall, finger-sized touch area around the thin line; touch-action keeps drags from scrolling the Deck. */
+.m-deck-progress__track { position: relative; height: var(--space-32); display: flex; align-items: center; cursor: pointer; touch-action: none; }
 .m-deck-progress__track::before { content: ""; position: absolute; left: 0; right: 0; height: var(--space-4); background: var(--m-line); }
 .m-deck-progress__fill { position: relative; height: var(--space-4); background: var(--m-red); }
-.m-deck-progress__notch { position: absolute; top: 0; width: var(--space-6); height: var(--space-14); background: var(--m-ink); transform: translateX(-50%); }
+.m-deck-progress__notch { position: absolute; top: calc(50% - var(--space-14) / 2); width: var(--space-6); height: var(--space-14); background: var(--m-ink); transform: translateX(-50%); transition: transform var(--duration-fast) var(--ease-standard); }
+.m-deck-progress__track.is-dragging .m-deck-progress__notch { transform: translateX(-50%) scaleY(1.4); }
 
 .m-deck__transport { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-14) var(--space-20) var(--space-12); }
 .m-deck__btn-transport { width: calc(72 * var(--space-unit)); height: calc(92 * var(--space-unit)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-6); background: transparent; border: var(--space-2) solid var(--m-line); color: var(--m-ink); cursor: pointer; flex-shrink: 0; }

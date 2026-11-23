@@ -30,6 +30,7 @@ import "./mobile-settings.css";
 import "./mobile-profile.css";
 import "./mobile-lyrics.css";
 import "./mobile-motion.css";
+import "./mobile-pull.css";
 
 const SCREENS: Record<MobileTab, React.ComponentType<MobileScreenProps>> = {
   home: MobileHome,

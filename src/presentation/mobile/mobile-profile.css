@@ -20,7 +20,6 @@
 .m-profile-years { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6); padding: var(--space-12) var(--space-20); }
 .m-profile-chip { display: flex; align-items: center; height: calc(34 * var(--space-unit)); padding: 0 var(--space-12); border: 1px solid var(--m-line); background: transparent; color: var(--m-ink); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.045em; white-space: nowrap; cursor: pointer; }
 .m-profile-chip.is-on { border-color: var(--m-red); background: var(--m-red); color: var(--m-paper); }
-.m-profile-refresh { display: flex; align-items: center; justify-content: center; width: calc(36 * var(--space-unit)); height: calc(36 * var(--space-unit)); margin-left: auto; border: var(--space-2) solid var(--m-line); background: transparent; color: var(--m-ink); cursor: pointer; }
 .m-profile-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-10); padding: 0 var(--space-20); }
 .m-profile-box { flex: 1 1 0; display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-16); border: var(--space-2) solid var(--m-line); min-width: 0; }
 .m-profile-box strong { font-family: var(--font-sans); font-size: var(--fs-30); font-weight: var(--weight-black); letter-spacing: -0.07em; line-height: 0.92; color: var(--m-ink); white-space: nowrap; }

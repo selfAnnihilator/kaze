@@ -1,0 +1,19 @@
+/* Pull to refresh: a ⟳ tile that drops from the top of the page (transform and opacity only). */
+.m-pull { position: sticky; top: 0; z-index: var(--z-raised); height: 0; display: flex; justify-content: center; pointer-events: none; --pull-y: 0px; --pull-turn: 0deg; }
+.m-pull__tile {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--space-40); height: var(--space-40);
+  border: var(--space-2) solid var(--m-line); background: var(--m-paper); color: var(--m-ink);
+  transform: translateY(calc(var(--pull-y) - 100%)); opacity: 0;
+  transition: transform var(--duration-moderate) var(--ease-out), opacity var(--duration-moderate) var(--ease-out);
+}
+/* While the finger is down the tile follows it exactly. */
+.m-pull.is-pulling .m-pull__tile { opacity: 1; transition: none; }
+.m-pull__icon { transform: rotate(var(--pull-turn)); }
+.m-pull.is-armed .m-pull__tile, .m-pull.is-spinning .m-pull__tile { border-color: var(--m-red); color: var(--m-red); }
+.m-pull.is-spinning .m-pull__tile { transform: translateY(calc(var(--space-48) - 100%)); transition: transform var(--duration-moderate) var(--ease-out); }
+.m-pull.is-spinning .m-pull__icon { animation: m-pull-spin var(--duration-long) linear infinite; }
+@keyframes m-pull-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .m-pull.is-spinning .m-pull__icon { animation: none; }
+}

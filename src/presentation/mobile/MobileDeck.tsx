@@ -1,5 +1,5 @@
 import { memo, useCallback, useState, type Ref } from "react";
-import { ArrowUpRight, ChevronDown, Pause, Play, Settings, SkipBack, SkipForward } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { DeckActions, DeckProgressBar, DeckTabs, DeckVolume } from "./DeckParts";
 import { Sleeve } from "./Sleeve";
 import { QueueBody } from "./queue/QueueBody";
@@ -47,7 +47,6 @@ export const MobileDeck = memo(function MobileDeck({
   /** The header strip, where dragging down closes The Deck. */
   headerRef?: Ref<HTMLElement>;
 }) {
-  const nav = useMobileNav();
   const { currentTrack: track, playbackState: state } = player;
   const isPlaying = state.is_playing;
   const previous = c.previousTrack;
@@ -65,9 +64,8 @@ export const MobileDeck = memo(function MobileDeck({
           <ChevronDown size={20} strokeWidth={2} />
         </button>
         <span className="m-deck__header-title">THE DECK // NOW PLAYING</span>
-        <button type="button" className="m-deck__btn-header" onClick={() => nav.openPage("settings")} aria-label="Settings">
-          <Settings size={20} strokeWidth={2} />
-        </button>
+        {/* Keeps the title centred opposite the close button. */}
+        <span className="m-deck__header-spacer" aria-hidden="true" />
       </header>
 
       <div className="m-deck__divider" />

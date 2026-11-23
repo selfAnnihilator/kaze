@@ -146,6 +146,8 @@
 .m-field { display: flex; align-items: center; gap: var(--space-10); height: var(--space-48); padding: 0 var(--space-14); border: var(--space-2) solid var(--m-line); box-sizing: border-box; flex: 1 1 0; min-width: 0; }
 .m-field--sm { height: var(--space-44); }
 .m-field:focus-within { border-color: var(--m-red); }
+/* No blue flash on tap (Android WebView): presses show through the scale feedback instead. */
+.m-shell, .m-shell * { -webkit-tap-highlight-color: transparent; }
 /* Only the outer border marks focus; the global focus ring would draw a second red box inside. */
 .m-shell .m-field__input:focus-visible { outline: none; }
 .m-field__icon { color: var(--m-muted); flex-shrink: 0; }

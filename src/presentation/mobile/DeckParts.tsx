@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react";
+import { memo, useState } from "react";
 import { BookmarkPlus, Download, Heart, ListMusic, Mic, Radio, Repeat1, Share2, ThumbsDown, Volume1, Volume2, VolumeX } from "lucide-react";
 import { DownloadButton } from "../../components/DownloadButton";
 import { useSongDownloaded } from "../../services/downloadProgress";
@@ -9,27 +9,53 @@ import { isPlayingLiked, togglePlayingLike } from "./likeTrack";
 import { useMobileNav } from "./mobileNav";
 import { openTrackSheet } from "./sheets/trackSheet";
 import type { MobileDeckExtras, MobilePlayer } from "./types";
+import { shareText } from "./androidBridge";
 
-/** Position bar (Figma E1): a leaf, so position ticks re-render only this. */
+type BarEvent = React.PointerEvent<HTMLDivElement>;
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+const ratioAt = (e: BarEvent) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  return clamp01((e.clientX - r.left) / r.width);
+};
+
+/**
+ * Tap or drag to seek: while the finger is down the bar shows where it is
+ * (`dragRatio`), and the seek happens once, when the finger lifts.
+ */
+function useSeekDrag(duration: number, onSeek?: (secs: number) => void) {
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
+  const enabled = !!onSeek && duration > 0;
+  const onPointerDown = (e: BarEvent) => {
+    if (!enabled) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragRatio(ratioAt(e));
+  };
+  const onPointerMove = (e: BarEvent) => { if (dragRatio !== null) setDragRatio(ratioAt(e)); };
+  const onPointerUp = (e: BarEvent) => {
+    if (dragRatio === null) return;
+    setDragRatio(null);
+    onSeek?.(ratioAt(e) * duration);
+  };
+  const onPointerCancel = () => setDragRatio(null);
+  return { dragRatio, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel } };
+}
+
+/** Position bar (Figma E1): a leaf, so position ticks re-render only this. Tap or drag to seek. */
 export function DeckProgressBar({ duration, onSeek }: { duration: number; onSeek?: (secs: number) => void }) {
   const { position } = usePlaybackProgress();
-  const ratio = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
+  const { dragRatio, handlers } = useSeekDrag(duration, onSeek);
+  const ratio = dragRatio ?? (duration > 0 ? clamp01(position / duration) : 0);
   const percent = ratio * 100;
-
-  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!onSeek || duration <= 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    onSeek(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration);
-  }, [duration, onSeek]);
+  const shown = dragRatio === null ? position : dragRatio * duration;
 
   return (
     <div className="m-deck-progress">
       <div className="m-deck-progress__header">
         <span className="m-deck-progress__label">POSITION</span>
-        <span className="m-deck-progress__time">{formatDuration(position)} / {formatDuration(duration)}</span>
+        <span className="m-deck-progress__time">{formatDuration(shown)} / {formatDuration(duration)}</span>
       </div>
-      <div className="m-deck-progress__track" onClick={handleClick} role="slider" aria-label="Seek"
-        aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(position)}>
+      <div className={`m-deck-progress__track ${dragRatio === null ? "" : "is-dragging"}`} {...handlers} role="slider" aria-label="Seek"
+        aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(shown)}>
         <div className="m-deck-progress__fill" style={{ width: `${percent}%` }} />
         <div className="m-deck-progress__notch" style={{ left: `${percent}%` }} />
       </div>
@@ -42,12 +68,7 @@ async function sharePlaying(player: MobilePlayer, notify: MobileDeckExtras["noti
   if (!track) return;
   const text = [track.title, track.artist_name].filter(Boolean).join(" — ");
   try {
-    if (navigator.share) {
-      await navigator.share({ title: track.title, text });
-      return;
-    }
-    await navigator.clipboard.writeText(text);
-    notify("success", "Copied", `“${text}” is on the clipboard.`);
+    if ((await shareText(track.title, text)) === "copied") notify("success", "Copied", `“${text}” is on the clipboard.`);
   } catch (error) {
     if ((error as DOMException)?.name !== "AbortError") notify("error", "Couldn’t share", String(error));
   }

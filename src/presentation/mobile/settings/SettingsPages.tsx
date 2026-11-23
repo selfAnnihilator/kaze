@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, Folder, FolderPlus, Lock, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Folder, FolderOpen, FolderPlus, Lock, RefreshCw, Trash2 } from "lucide-react";
+import { ensureMusicAccess, pickMusicFolder } from "../androidBridge";
 import { MobileMusicTaste } from "./MobileMusicTaste";
 import { formatBytes, useAudioCache } from "./useSettingsData";
 import { SettingsHead } from "./SettingsHead";
@@ -44,8 +45,13 @@ export function FoldersPage({ c, onBack }: { c: Ctx; onBack: () => void }) {
     e.preventDefault();
     const value = path.trim();
     if (!value) return setError("Type the folder’s path first, e.g. /storage/emulated/0/Music.");
-    void act(async () => { await c.handleAddFolder(value); setPath(""); }, "Couldn’t add this folder.");
+    void act(async () => { await ensureMusicAccess(); await c.handleAddFolder(value); setPath(""); }, "Couldn’t add this folder.");
   };
+  const pick = () => void act(async () => {
+    const picked = await pickMusicFolder();
+    if (picked) await c.handleAddFolder(picked);
+  }, "Couldn’t add this folder.");
+  const rescan = () => void act(async () => { await ensureMusicAccess(); await c.handleRescanLibrary(); }, "Couldn’t start the scan.");
 
   return (
     <SubPage title="MUSIC FOLDERS." onBack={onBack}>
@@ -59,15 +65,20 @@ export function FoldersPage({ c, onBack }: { c: Ctx; onBack: () => void }) {
         </div>
       ))}
       {!folders.length && <p className="m-set-note m-set-pad">No music folders yet. Add the folder that holds your songs below.</p>}
+      <div className="m-set-pad m-set-pad--top">
+        <button type="button" className="m-btn m-btn--outline m-set-big" disabled={busy} onClick={pick}>
+          <FolderOpen size={18} strokeWidth={2} /><span>CHOOSE A FOLDER</span>
+        </button>
+      </div>
       <form className="m-set-add" onSubmit={add}>
         <label className="m-field m-field--sm">
           <FolderPlus size={18} strokeWidth={2} className="m-field__icon" />
-          <input className="m-field__input" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Add folder path…" aria-label="Folder path" autoCapitalize="none" />
+          <input className="m-field__input" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Or type a folder path…" aria-label="Folder path" autoCapitalize="none" />
         </label>
         <button type="submit" className="m-btn m-btn--sm m-set-add__btn" disabled={busy}>ADD</button>
       </form>
       <div className="m-set-pad m-set-pad--top">
-        <button type="button" className="m-btn m-set-big" disabled={busy || c.isScanning} onClick={() => void act(c.handleRescanLibrary, "Couldn’t start the scan.")}>
+        <button type="button" className="m-btn m-set-big" disabled={busy || c.isScanning} onClick={rescan}>
           <RefreshCw size={18} strokeWidth={2} /><span>{c.isScanning ? "SCANNING…" : "RESCAN LIBRARY"}</span>
         </button>
       </div>

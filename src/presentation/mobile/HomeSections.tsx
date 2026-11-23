@@ -1,10 +1,11 @@
 import { memo } from "react";
-import { ListPlus, Check, Play, RotateCw } from "lucide-react";
+import { ListPlus, Check, Play } from "lucide-react";
 import { SectionHead } from "./SectionHead";
 import { Sleeve } from "./Sleeve";
 import { joinMeta } from "./format";
 import type { MobileScreenProps } from "./types";
 import { queueTrack } from "./phoneToasts";
+import { useFitText } from "./fitText";
 
 interface HomeItem {
   id: string;
@@ -42,19 +43,14 @@ const HomeRow = memo(function HomeRow({
 });
 
 function Section({
-  c, num, sub, title, items, refresh,
+  c, num, sub, title, items,
 }: MobileScreenProps & {
-  num: string; sub: string; title: string; items: HomeItem[]; refresh?: boolean;
+  num: string; sub: string; title: string; items: HomeItem[];
 }) {
   if (!items.length) return null;
-  const actions = refresh ? (
-    <button type="button" className="m-sechead__btn" onClick={() => void c.fetchHomeOverview()} aria-label={`Refresh ${title}`}>
-      <RotateCw size={18} strokeWidth={2} />
-    </button>
-  ) : undefined;
   return (
     <section>
-      <SectionHead kicker={`${num} // ${sub}`} title={title} actions={actions} />
+      <SectionHead kicker={`${num} // ${sub}`} title={title} />
       {items.slice(0, SHOWN).map((item) => (
         <HomeRow
           key={item.id}
@@ -66,6 +62,12 @@ function Section({
       ))}
     </section>
   );
+}
+
+/** A Your Week number: one line, shrinking to fit its cell instead of wrapping. */
+function WeekValue({ value }: { value: string }) {
+  const ref = useFitText<HTMLSpanElement>(value);
+  return <span ref={ref} className="m-home-week__value">{value}</span>;
 }
 
 /** Home below Flow (Figma B2 and B3): rotation, rediscover, for you, library moment, your week. */
@@ -87,9 +89,9 @@ export const HomeSections = memo(function HomeSections({ c }: MobileScreenProps)
 
   return (
     <>
-      <Section c={c} num="02" sub="BACK IN GOOD COMPANY" title="RECENT ROTATION" items={rotation} refresh />
+      <Section c={c} num="02" sub="BACK IN GOOD COMPANY" title="RECENT ROTATION" items={rotation} />
       <Section c={c} num="03" sub="STILL SOUNDS LIKE THE FIRST TIME" title="REDISCOVER" items={rediscover} />
-      <Section c={c} num="04" sub="PICKED FROM YOUR LISTENING" title="FOR YOU" items={forYou} refresh />
+      <Section c={c} num="04" sub="PICKED FROM YOUR LISTENING" title="FOR YOU" items={forYou} />
 
       {moment && (
         <section>
@@ -121,7 +123,7 @@ export const HomeSections = memo(function HomeSections({ c }: MobileScreenProps)
               [String(week.artist_count), "ARTISTS EXPLORED"],
             ].map(([value, label]) => (
               <div key={label} className="m-home-week__cell">
-                <span className="m-home-week__value">{value}</span>
+                <WeekValue value={value} />
                 <span className="m-kicker m-kicker--muted m-home-week__label">{label}</span>
               </div>
             ))}
