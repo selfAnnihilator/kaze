@@ -19,19 +19,22 @@ export interface BackendQueueItem {
   artist: string;
 }
 
-/** A read-only adapter, never a second queue or transport state machine. */
+/**
+ * A read-only adapter, never a second queue or transport state machine.
+ * `order` (the backend's `upcoming_indices`) lists Up Next in play order,
+ * which differs from queue order while shuffled; older backends omit it.
+ */
 export function upcomingFromEvent(
   items: BackendQueueItem[],
   currentIndex: number | null,
+  order?: number[],
 ): QueueEntry[] {
   const start = currentIndex == null ? 0 : currentIndex + 1;
-  return items.slice(start).map((item, offset) => ({
-    key: item.queue_id,
-    trackId: item.track_id,
-    index: start + offset,
-    title: item.title,
-    artist: item.artist,
-  }));
+  const indices = order ?? items.map((_, i) => i).slice(start);
+  return indices.flatMap((index) => {
+    const item = items[index];
+    return item ? [{ key: item.queue_id, trackId: item.track_id, index, title: item.title, artist: item.artist }] : [];
+  });
 }
 
 export function upcomingFromPlayback(state: PlaybackState): QueueEntry[] {
@@ -41,11 +44,11 @@ export function upcomingFromPlayback(state: PlaybackState): QueueEntry[] {
     state.current_queue_index == null || stopped
       ? 0
       : state.current_queue_index + 1;
-  return (state.queue_track_ids || []).map((trackId, offset) => ({
-    key: `${start + offset}:${trackId}`,
-    trackId,
-    index: start + offset,
-  }));
+  const order = state.upcoming_indices;
+  return (state.queue_track_ids || []).map((trackId, offset) => {
+    const index = order?.[offset] ?? start + offset;
+    return { key: `${index}:${trackId}`, trackId, index };
+  });
 }
 
 /**

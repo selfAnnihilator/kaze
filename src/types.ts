@@ -72,6 +72,8 @@ export interface PlaybackState {
   /** Playback source that owns the queue: "library", "flow", "archive" (Downloads list), ... */
   source?: string;
   queue_track_ids?: string[];
+  /** Queue position of each `queue_track_ids` entry (play order; differs while shuffled). */
+  upcoming_indices?: number[];
   /** Songs the user queued that are still waiting (they play before the app's queue). */
   user_queue_track_ids?: string[];
   can_seek?: boolean;

@@ -79,6 +79,9 @@ pub enum Event {
         items: std::sync::Arc<Vec<QueueItem>>,
         current_index: Option<usize>,
         queue_track_ids: std::sync::Arc<Vec<String>>,
+        /// Queue position of each upcoming entry, in play order (shuffle-aware).
+        #[serde(default)]
+        upcoming_indices: std::sync::Arc<Vec<usize>>,
         /// Songs the user queued that are still waiting, in the order they were added.
         #[serde(default)]
         user_queue_track_ids: std::sync::Arc<Vec<String>>,

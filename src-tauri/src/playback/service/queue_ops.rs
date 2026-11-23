@@ -144,29 +144,15 @@ impl PlaybackService {
                 );
             }
         }
-        let (items, current_index, queue_track_ids, user_queue_track_ids) = {
+        let (items, current_index, queue_track_ids, upcoming_indices, user_queue_track_ids) = {
             let q_guard = self.queue.read().await;
-            let has_active_track = q_guard.current_index().is_some();
-
-            let queue_track_ids: Vec<String> = if has_active_track {
-                if let Some(curr) = q_guard.current_index() {
-                    q_guard
-                        .items()
-                        .iter()
-                        .skip(curr + 1)
-                        .map(|i| i.track_id.clone())
-                        .collect()
-                } else {
-                    q_guard.items().iter().map(|i| i.track_id.clone()).collect()
-                }
-            } else {
-                q_guard.items().iter().map(|i| i.track_id.clone()).collect()
-            };
-
+            // Up Next in play order (shuffle-aware), as in the playback state.
+            let upcoming_indices = q_guard.upcoming_indices();
             (
                 q_guard.items().to_vec(),
                 q_guard.current_index(),
-                queue_track_ids,
+                q_guard.track_ids_at(&upcoming_indices),
+                upcoming_indices,
                 q_guard.waiting_manual_track_ids(),
             )
         };
@@ -175,6 +161,7 @@ impl PlaybackService {
             items: Arc::new(items),
             current_index,
             queue_track_ids: Arc::new(queue_track_ids),
+            upcoming_indices: Arc::new(upcoming_indices),
             user_queue_track_ids: Arc::new(user_queue_track_ids),
             source,
         });

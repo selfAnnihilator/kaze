@@ -236,6 +236,26 @@ impl PlaybackQueue {
         }
     }
 
+    /// Positions of the upcoming items in the order they will play: the
+    /// shuffle order when shuffle is on (Up Next must match what plays), no
+    /// repeat wrap. With nothing current, the whole queue in its own order.
+    pub fn upcoming_indices(&self) -> Vec<usize> {
+        let Some(curr) = self.current_index else {
+            return (0..self.items.len()).collect();
+        };
+        if self.shuffle_enabled {
+            if let Some(pos) = self.shuffle_indices.iter().position(|&i| i == curr) {
+                return self.shuffle_indices[pos + 1..].to_vec();
+            }
+        }
+        (curr + 1..self.items.len()).collect()
+    }
+
+    /// Track ids for `indices` (see `upcoming_indices`).
+    pub fn track_ids_at(&self, indices: &[usize]) -> Vec<String> {
+        indices.iter().filter_map(|&i| self.items.get(i)).map(|i| i.track_id.clone()).collect()
+    }
+
     /// Advances to the next track for an explicit user action. Repeat-one does not
     /// trap the Next button on the current track.
     pub fn skip_forward(&mut self) -> Option<&QueueItem> {
@@ -415,3 +435,6 @@ mod priority_tests;
 
 #[cfg(test)]
 mod upcoming_reset_tests;
+
+#[cfg(test)]
+mod upcoming_order_tests;

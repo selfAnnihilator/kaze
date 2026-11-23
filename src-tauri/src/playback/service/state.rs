@@ -32,20 +32,13 @@ impl PlaybackService {
         let is_playing = !is_paused && !is_finished && has_loaded_track;
         let has_active_track = has_loaded_track && (!is_finished || is_paused);
 
-        let queue_track_ids: Vec<String> = if has_active_track {
-            if let Some(curr) = q_guard.current_index() {
-                q_guard
-                    .items()
-                    .iter()
-                    .skip(curr + 1)
-                    .map(|i| i.track_id.clone())
-                    .collect()
-            } else {
-                q_guard.items().iter().map(|i| i.track_id.clone()).collect()
-            }
+        // Up Next in play order (shuffle-aware); a stopped queue lists everything.
+        let upcoming_indices: Vec<usize> = if has_active_track {
+            q_guard.upcoming_indices()
         } else {
-            q_guard.items().iter().map(|i| i.track_id.clone()).collect()
+            (0..q_guard.len()).collect()
         };
+        let queue_track_ids = q_guard.track_ids_at(&upcoming_indices);
 
         let can_seek = match &*self.active_stream_state.read_or_recover() {
             Some(state) => state.can_seek(),
@@ -77,6 +70,7 @@ impl PlaybackService {
             queue_length: q_guard.len(),
             current_queue_index: q_guard.current_index(),
             queue_track_ids,
+            upcoming_indices,
             user_queue_track_ids: q_guard.waiting_manual_track_ids(),
             source: self.current_source.read().await.clone(),
         }

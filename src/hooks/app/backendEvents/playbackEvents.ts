@@ -196,6 +196,7 @@ export function handlePlaybackEvent(event: BackendEvent, ctx: BackendEventContex
           upcomingFromEvent(
             event.payload.items,
             event.payload.current_index ?? null,
+            event.payload.upcoming_indices,
           ),
         );
         setPlaybackState((prev) => ({

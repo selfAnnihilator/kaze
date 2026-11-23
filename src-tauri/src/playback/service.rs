@@ -55,6 +55,10 @@ pub struct PlaybackStateDto {
     pub queue_length: usize,
     pub current_queue_index: Option<usize>,
     pub queue_track_ids: Vec<String>,
+    /// Queue position of each `queue_track_ids` entry (they follow the play
+    /// order, which differs from queue order while shuffled).
+    #[serde(default)]
+    pub upcoming_indices: Vec<usize>,
     /// Songs the user queued that are still waiting, in the order they were added.
     #[serde(default)]
     pub user_queue_track_ids: Vec<String>,

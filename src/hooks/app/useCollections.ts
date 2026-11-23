@@ -297,13 +297,8 @@ export function useCollections({
       return;
     }
 
-    // If shuffle is currently active, clicking it deactivates shuffle and continues with normal queue
-    if (playbackState.is_shuffled) {
-      await handleToggleShuffle();
-      return;
-    }
-
-    // If this collection is already playing, simply activate shuffle
+    // This collection is already playing: the button turns its shuffle on or off.
+    // (Shuffle left on by another list must not turn a fresh shuffle into "off".)
     if (isPlayingThisCollection) {
       await handleToggleShuffle();
       return;
@@ -368,7 +363,6 @@ export function useCollections({
     }
   }, [
     activeCollection,
-    playbackState.is_shuffled,
     isPlayingThisCollection,
     handleToggleShuffle,
     handleStopOnlineAudio,
