@@ -183,6 +183,8 @@ impl SyncManager {
 
             // Keep the track_statistics compatibility layer at least the sum across devices;
             // MAX so plays recorded before per-device rows existed are never wiped.
+            // Only for songs this device knows: track_statistics references tracks, and
+            // another device's plays may be of songs that never reached this library.
             sqlx::query(
                 "INSERT INTO track_statistics (
                     user_id, track_id, play_count, total_time_listened, completion_count, skip_count, last_played_at
@@ -190,6 +192,7 @@ impl SyncManager {
                  SELECT user_id, track_id, SUM(play_count), SUM(total_time_listened), SUM(completion_count), SUM(skip_count), MAX(last_played_at)
                  FROM track_device_statistics
                  WHERE user_id = ? AND track_id = ?
+                   AND EXISTS (SELECT 1 FROM tracks WHERE tracks.id = track_device_statistics.track_id)
                  GROUP BY user_id, track_id
                  ON CONFLICT(user_id, track_id) DO UPDATE SET
                      play_count = MAX(track_statistics.play_count, excluded.play_count),

@@ -62,7 +62,7 @@ impl SyncManager {
 
         // Also collect song IDs that have user feedback (liked or disliked) or play statistics
         let rated_rows: Vec<(String,)> = sqlx::query_as(
-            "SELECT track_id FROM track_statistics WHERE user_id = ? AND (manual_like != 0 OR play_count > 0)",
+            "SELECT track_id FROM track_statistics WHERE user_id = ? AND (manual_like != 0 OR play_count > 0 OR total_time_listened > 0)",
         )
         .bind(user_id)
         .fetch_all(pool)

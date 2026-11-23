@@ -7,6 +7,9 @@ pub struct ProfileService {
     cache_dir: PathBuf,
 }
 
+/// Largest avatar image accepted before normalising (matches `normalize_avatar_image`).
+pub const MAX_AVATAR_UPLOAD_BYTES: usize = 5 * 1024 * 1024;
+
 impl ProfileService {
     pub fn new(cache_dir: PathBuf) -> Self {
         let avatars_dir = cache_dir.join("avatars");
@@ -56,7 +59,7 @@ impl ProfileService {
         if raw_bytes.is_empty() {
             return Err(AppError::Validation("Image file is empty (zero bytes)".to_string()));
         }
-        if raw_bytes.len() > 5 * 1024 * 1024 {
+        if raw_bytes.len() > MAX_AVATAR_UPLOAD_BYTES {
             return Err(AppError::Validation("Image exceeds maximum 5 MB limit".to_string()));
         }
 
@@ -94,6 +97,37 @@ impl ProfileService {
             .add_filter("Images (*.jpg, *.jpeg, *.png, *.webp)", &["jpg", "jpeg", "png", "webp"])
             .pick_file();
         Ok(file)
+    }
+
+    /// The picked photo's bytes: sent inline (phone), from a path, or from the
+    /// native dialog. `None` when the dialog was cancelled.
+    pub fn avatar_upload_bytes(file_path: Option<String>, image_base64: Option<String>) -> AppResult<Option<Vec<u8>>> {
+        if let Some(encoded) = image_base64.filter(|b| !b.trim().is_empty()) {
+            return Self::decode_avatar_upload(&encoded).map(Some);
+        }
+        let path = match file_path.filter(|p| !p.trim().is_empty()) {
+            Some(p) => PathBuf::from(p),
+            None => match Self::pick_avatar_file()? {
+                Some(p) => p,
+                None => return Ok(None),
+            },
+        };
+        std::fs::read(&path)
+            .map(Some)
+            .map_err(|e| AppError::Io(format!("Failed to read selected image: {}", e)))
+    }
+
+    /// Decodes an image sent as base64 (optionally a `data:` URL) by the phone's
+    /// own picker. Rejects anything over `MAX_AVATAR_UPLOAD_BYTES`.
+    pub fn decode_avatar_upload(encoded: &str) -> AppResult<Vec<u8>> {
+        use base64::Engine;
+        let body = encoded.split_once(";base64,").map_or(encoded, |(_, b)| b).trim();
+        if body.len() / 4 * 3 > MAX_AVATAR_UPLOAD_BYTES {
+            return Err(AppError::Validation("That photo is too large. Pick one under 5 MB.".into()));
+        }
+        base64::engine::general_purpose::STANDARD
+            .decode(body)
+            .map_err(|_| AppError::Validation("Couldn’t read that photo. Pick another image.".into()))
     }
 
     /// Mobile has no native file dialog yet; the picker bridge lands with the
@@ -152,5 +186,24 @@ mod tests {
 
         let oversized = vec![0u8; 6 * 1024 * 1024]; // 6 MB exceeds 5 MB limit
         assert!(ProfileService::normalize_avatar_image(&oversized).is_err());
+    }
+
+    #[test]
+    fn test_decode_avatar_upload_accepts_data_urls_and_rejects_junk() {
+        use base64::Engine;
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_pixel(40, 30, Rgba([1, 2, 3, 255]));
+        let mut raw_png = Vec::new();
+        img.write_to(&mut Cursor::new(&mut raw_png), image::ImageFormat::Png).expect("png encode");
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&raw_png);
+
+        let plain = ProfileService::decode_avatar_upload(&b64).expect("plain base64");
+        let url = ProfileService::decode_avatar_upload(&format!("data:image/png;base64,{b64}")).expect("data url");
+        assert_eq!(plain, raw_png);
+        assert_eq!(url, raw_png);
+        assert!(!ProfileService::normalize_avatar_image(&url).expect("normalizes").is_empty());
+
+        assert!(ProfileService::decode_avatar_upload("not base64 !!").is_err());
+        let huge = "A".repeat(MAX_AVATAR_UPLOAD_BYTES / 3 * 4 + 8);
+        assert!(ProfileService::decode_avatar_upload(&huge).is_err());
     }
 }

@@ -186,6 +186,8 @@ pub enum Event {
     },
     UserLoggedOut,
     PlaylistsUpdated,
+    /// A cloud sync merged other devices' listening data into this profile.
+    CloudDataSynced,
     UserProfileUpdated {
         user: serde_json::Value,
     },

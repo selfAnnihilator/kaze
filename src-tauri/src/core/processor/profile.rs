@@ -6,7 +6,7 @@ use super::*;
 impl CoreProcessor {
     pub(super) async fn profile_command(&self, cmd: Command) -> AppResult<CommandResponse> {
         match cmd {
-            Command::UploadAvatar { file_path } => {
+            Command::UploadAvatar { file_path, image_base64 } => {
                 let worker_url = self.get_cloud_worker_url().await;
                 let session = SyncManager::get_active_session(&self.db_pool)
                     .await?
@@ -21,16 +21,9 @@ impl CoreProcessor {
                     )
                 })?;
 
-                let path = match file_path {
-                    Some(p) if !p.trim().is_empty() => std::path::PathBuf::from(p),
-                    _ => match ProfileService::pick_avatar_file()? {
-                        Some(p) => p,
-                        None => return Ok(CommandResponse::Ok),
-                    },
+                let Some(raw_bytes) = ProfileService::avatar_upload_bytes(file_path, image_base64)? else {
+                    return Ok(CommandResponse::Ok);
                 };
-
-                let raw_bytes = std::fs::read(&path)
-                    .map_err(|e| AppError::Io(format!("Failed to read selected image: {}", e)))?;
                 let normalized_webp = ProfileService::normalize_avatar_image(&raw_bytes)?;
 
                 // Save to local cache immediately so the user has their photo locally regardless of cloud R2 status

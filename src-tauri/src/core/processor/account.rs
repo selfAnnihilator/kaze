@@ -163,7 +163,7 @@ impl CoreProcessor {
                     let user_id_clone = profile.id.clone();
                     let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        if let Ok(_report) = SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud(
                             &pool_clone,
                             &client_clone,
                             &worker_url,
@@ -172,7 +172,11 @@ impl CoreProcessor {
                         )
                         .await
                         {
-                            let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
+                            Ok(_) => {
+                                let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
+                                let _ = event_bus_clone.publish(Event::CloudDataSynced);
+                            }
+                            Err(e) => tracing::warn!("Sign-in cloud sync failed: {}", e),
                         }
                     });
 
@@ -373,7 +377,7 @@ impl CoreProcessor {
                     let user_id_clone = profile.id.clone();
                     let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        if let Ok(_report) = SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud(
                             &pool_clone,
                             &client_clone,
                             &worker_url,
@@ -382,7 +386,11 @@ impl CoreProcessor {
                         )
                         .await
                         {
-                            let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
+                            Ok(_) => {
+                                let _ = event_bus_clone.publish(Event::PlaylistsUpdated);
+                                let _ = event_bus_clone.publish(Event::CloudDataSynced);
+                            }
+                            Err(e) => tracing::warn!("Sign-in cloud sync failed: {}", e),
                         }
                     });
 

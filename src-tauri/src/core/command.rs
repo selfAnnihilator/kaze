@@ -281,6 +281,9 @@ pub enum Command {
     UploadAvatar {
         #[serde(default)]
         file_path: Option<String>,
+        /// The picked image itself, for platforms without a native file dialog (Android).
+        #[serde(default)]
+        image_base64: Option<String>,
     },
     RemoveAvatar,
     // --- Cloud Authentication & Sync ---

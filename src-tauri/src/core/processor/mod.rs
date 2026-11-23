@@ -15,6 +15,7 @@ mod playback;
 mod recommendations;
 mod settings;
 mod stats;
+mod live_sync;
 
 use crate::recommendations::mixes::OnlineTrackInput;
 use crate::database::repositories::user_repo::AvatarFields;

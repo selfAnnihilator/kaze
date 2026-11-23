@@ -50,6 +50,7 @@ impl CoreProcessor {
                 SyncManager::update_validation_timestamp(&self.db_pool, &session.user_id, now)
                     .await?;
                 let _ = self.event_bus.publish(Event::PlaylistsUpdated);
+                let _ = self.event_bus.publish(Event::CloudDataSynced);
 
                 Ok(CommandResponse::CloudSyncCompleted {
                     synced_at: report.synced_at,

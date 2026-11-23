@@ -160,6 +160,22 @@ impl CoreProcessor {
         let profile_service = Arc::new(ProfileService::new(config.cache_dir.clone()));
         let app_start_date = Arc::new(RwLock::new(0));
 
+        // Keep the signed-in profile and listening data live while the app runs.
+        let live_settings = settings_repo.clone();
+        let live = super::live_sync::LiveSync {
+            pool: db_pool.clone(),
+            client: cloud_client.clone(),
+            profiles: profile_service.clone(),
+            current_user: current_user.clone(),
+            events: event_bus.clone(),
+            worker_url: String::new(),
+        };
+        background_tasks.push(tokio::spawn(async move {
+            let worker_url = live_settings.get_setting("cloud_sync_url").await.ok().flatten()
+                .unwrap_or_else(|| "https://soundflow-cloud-worker.abhi-atlas-2026.workers.dev".to_string());
+            super::live_sync::LiveSync { worker_url, ..live }.run().await;
+        }));
+
         // Validate active cloud session on launch, sync with server, and enforce hybrid expiry
         let current_user_init = current_user.clone();
         let session_state_init = session_state.clone();
@@ -329,14 +345,18 @@ impl CoreProcessor {
                         let _ = event_bus_init.publish(Event::SessionChanged { user: user_val });
 
                         // Automatically sync with server on launch: Pull first, reconcile, push
-                        if let Ok(_report) = SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud(
                             &pool_init,
                             &cloud_client_init,
                             &worker_url,
-                            &tok,
                             &cloud_user.id,
+                            &tok,
                         ).await {
-                            let _ = event_bus_init.publish(Event::PlaylistsUpdated);
+                            Ok(_) => {
+                                let _ = event_bus_init.publish(Event::PlaylistsUpdated);
+                                let _ = event_bus_init.publish(Event::CloudDataSynced);
+                            }
+                            Err(e) => tracing::warn!("Launch cloud sync failed: {}", e),
                         }
                     }
                     Err(AppError::Validation(_)) => {
