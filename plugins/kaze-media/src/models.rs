@@ -19,6 +19,18 @@ pub struct PickedFolder {
     pub uri: Option<String>,
 }
 
+/// Whether the app may read music in shared storage.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AudioAccess {
+    pub granted: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ShareArgs<'a> {
+    pub title: Option<&'a str>,
+    pub text: &'a str,
+}
+
 #[derive(Serialize)]
 pub(crate) struct SecretArgs<'a> {
     pub key: &'a str,

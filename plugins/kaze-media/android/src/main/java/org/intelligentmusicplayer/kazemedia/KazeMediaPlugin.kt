@@ -1,12 +1,17 @@
 package org.intelligentmusicplayer.kazemedia
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import androidx.activity.result.ActivityResult
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
+import app.tauri.PermissionState
 import app.tauri.annotation.InvokeArg
+import app.tauri.annotation.Permission
+import app.tauri.annotation.PermissionCallback
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
@@ -28,7 +33,21 @@ class SecretArgs {
     var value: String? = null
 }
 
-@TauriPlugin
+@InvokeArg
+class ShareArgs {
+    var title: String? = null
+    var text: String = ""
+}
+
+/** Reading music in shared storage: READ_MEDIA_AUDIO from Android 13, READ_EXTERNAL_STORAGE before. */
+private val AUDIO_ALIAS = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "audio" else "storage"
+
+@TauriPlugin(
+    permissions = [
+        Permission(strings = [Manifest.permission.READ_MEDIA_AUDIO], alias = "audio"),
+        Permission(strings = [Manifest.permission.READ_EXTERNAL_STORAGE], alias = "storage"),
+    ],
+)
 class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
     private val secrets by lazy { SecretStore(activity.applicationContext) }
 
@@ -67,6 +86,31 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
             null
         }
         invoke.resolve(JSObject().put("uri", uri?.toString()))
+    }
+
+    /** Asks for music access when it isn't granted yet; resolves `granted`. */
+    @Command
+    fun requestAudioAccess(invoke: Invoke) {
+        if (getPermissionState(AUDIO_ALIAS) == PermissionState.GRANTED) {
+            invoke.resolve(JSObject().put("granted", true))
+        } else {
+            requestPermissionForAlias(AUDIO_ALIAS, invoke, "audioAccessResult")
+        }
+    }
+
+    @PermissionCallback
+    fun audioAccessResult(invoke: Invoke) {
+        invoke.resolve(JSObject().put("granted", getPermissionState(AUDIO_ALIAS) == PermissionState.GRANTED))
+    }
+
+    /** Opens the Android share sheet with plain text. */
+    @Command
+    fun share(invoke: Invoke) {
+        val args = invoke.parseArgs(ShareArgs::class.java)
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, args.text)
+        args.title?.let { send.putExtra(Intent.EXTRA_SUBJECT, it) }
+        activity.startActivity(Intent.createChooser(send, args.title))
+        invoke.resolve()
     }
 
     @Command

@@ -23,6 +23,9 @@ pub struct LibraryService {
     event_bus: Arc<EventBus>,
 }
 
+/// The shared Music folder on an Android phone's internal storage.
+pub const ANDROID_MUSIC_DIR: &str = "/storage/emulated/0/Music";
+
 impl LibraryService {
     pub fn new(pool: SqlitePool, event_bus: Arc<EventBus>) -> Self {
         let folder_repo = Arc::new(SqliteFolderRepository::new(pool.clone()));
@@ -48,8 +51,13 @@ impl LibraryService {
         }
     }
 
-    /// Discovers the system's default audio/music folder path.
+    /// Discovers the system's default audio/music folder path. Android has no
+    /// user-dirs lookup (it would fall back to a relative "./Music"): use the
+    /// phone's shared Music folder.
     pub fn get_default_music_dir() -> PathBuf {
+        if cfg!(target_os = "android") {
+            return PathBuf::from(ANDROID_MUSIC_DIR);
+        }
         if let Some(user_dirs) = UserDirs::new() {
             if let Some(audio_dir) = user_dirs.audio_dir() {
                 return audio_dir.to_path_buf();

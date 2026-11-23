@@ -1,6 +1,6 @@
 #[cfg(target_os = "android")]
 use crate::models::ListenerArgs;
-use crate::models::{MediaCommandEvent, PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue};
+use crate::models::{AudioAccess, MediaCommandEvent, PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue, ShareArgs};
 use serde::{de::DeserializeOwned, Serialize};
 use tauri::plugin::PluginApi;
 use tauri::{AppHandle, Runtime};
@@ -55,6 +55,16 @@ impl<R: Runtime> KazeMedia<R> {
     /// Opens the system folder picker; `uri` is `None` when cancelled.
     pub fn pick_music_folder(&self) -> Result<PickedFolder, String> {
         self.call::<PickedFolder>("pickMusicFolder", ())
+    }
+
+    /// Asks for permission to read music in shared storage; `true` when granted.
+    pub fn request_audio_access(&self) -> Result<bool, String> {
+        self.call::<AudioAccess>("requestAudioAccess", ()).map(|a| a.granted)
+    }
+
+    /// Opens the Android share sheet with `text`.
+    pub fn share(&self, title: Option<&str>, text: &str) -> Result<(), String> {
+        self.call::<()>("share", ShareArgs { title, text })
     }
 
     pub fn secret_set(&self, key: &str, value: &str) -> Result<(), String> {

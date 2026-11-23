@@ -124,7 +124,10 @@ impl DownloadProvider for JioSaavnDownloadProvider {
                 "This song is already downloaded".into(),
             ));
         }
-        let partial = directory.join(format!(".{task_id}.part"));
+        // Hidden, and ending in the audio extension: Android's shared Music folder
+        // only accepts files whose name looks like audio.
+        let ext = destination.extension().and_then(|e| e.to_str()).unwrap_or("m4a");
+        let partial = directory.join(format!(".{task_id}.part.{ext}"));
         let tags = result.tags.clone();
         let task_key = task_id.clone();
         let tasks = self.transfers.clone();
@@ -215,12 +218,15 @@ impl DownloadProvider for JioSaavnDownloadProvider {
                     tag_partial(partial.clone(), tags).await;
                 }
                 // Create the final name without overwriting a concurrently saved file.
-                tokio::fs::hard_link(&partial, &destination)
+                super::publish::publish(&partial, &destination)
                     .await
                     .map_err(|e| AppError::Io(e.to_string()))?;
                 Ok(())
             }
             .await;
+            if let Err(error) = &transfer {
+                tracing::warn!(%error, "Download transfer failed");
+            }
             if let Some(task) = tasks.lock().await.get_mut(&task_key) {
                 task.progress.status = if transfer.is_ok() {
                     DownloadStatus::Completed

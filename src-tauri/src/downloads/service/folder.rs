@@ -15,7 +15,7 @@ impl DownloadService {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
         let watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
             let relevant = result.is_ok_and(|event| {
-                // Ignore in-progress partials and moves (".x.part", ".x.moving").
+                // Ignore in-progress partials and moves (".x.part.m4a", ".x.moving.m4a").
                 event.paths.iter().any(|path| {
                     !path
                         .file_name()
@@ -210,8 +210,10 @@ async fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
         return Ok(());
     }
     // Different filesystems: copy beside the target, then publish atomically.
-    let name = to.file_name().and_then(|n| n.to_str()).unwrap_or("download");
-    let temp = to.with_file_name(format!(".{name}.moving"));
+    // Hidden, keeping the audio extension so Android's shared Music folder accepts it.
+    let stem = to.file_stem().and_then(|n| n.to_str()).unwrap_or("download");
+    let ext = to.extension().and_then(|e| e.to_str()).unwrap_or("m4a");
+    let temp = to.with_file_name(format!(".{stem}.moving.{ext}"));
     let result = async {
         tokio::fs::copy(from, &temp).await?;
         tokio::fs::File::open(&temp).await?.sync_all().await?;
@@ -240,8 +242,11 @@ pub(super) fn file_exists(path: Option<&str>) -> bool {
     path.is_some_and(|p| Path::new(p).is_file())
 }
 
+/// A finished download: an `.m4a` that isn't one of Kaze's hidden temporary
+/// files (".x.part.m4a" while downloading, ".x.moving.m4a" while moving).
 pub(super) fn is_download_file(path: &Path) -> bool {
     path.is_file()
+        && !path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with('.'))
         && path
             .extension()
             .and_then(|e| e.to_str())

@@ -15,6 +15,11 @@ use std::time::Instant;
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
+/// Hidden files (a leading dot): Kaze's in-progress downloads, macOS "._" files.
+fn is_hidden(path: &Path) -> bool {
+    path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with('.'))
+}
+
 /// Set of supported audio file extensions.
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "mp3", "flac", "ogg", "oga", "opus", "m4a", "aac", "wav",
@@ -54,6 +59,14 @@ pub fn parse_download_stem(stem: &str) -> Option<DownloadStem> {
 #[cfg(test)]
 mod download_stem_tests {
     use super::*;
+
+    #[test]
+    fn hidden_temporaries_are_not_songs() {
+        assert!(is_hidden(Path::new("/m/Kaze/.0f3a.part.m4a")), "an in-progress download");
+        assert!(is_hidden(Path::new("/m/Kaze/.Song (id).moving.m4a")), "a file being moved");
+        assert!(is_hidden(Path::new("/m/._Song.m4a")), "macOS metadata");
+        assert!(!is_hidden(Path::new("/m/Kaze/Queen - Song (id).m4a")));
+    }
 
     #[test]
     fn parses_download_names_and_rejects_others() {
@@ -236,7 +249,7 @@ impl LibraryScanner {
                 continue;
             }
 
-            if !entry.file_type().is_file() || !is_supported_audio_format(path) {
+            if !entry.file_type().is_file() || is_hidden(path) || !is_supported_audio_format(path) {
                 continue;
             }
 
