@@ -86,6 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div
+      className="modal-overlay-anim"
       style={{
         position: "fixed",
         inset: 0,
@@ -99,6 +100,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClick={handleClose}
     >
       <div
+        className="modal-card-anim"
         style={{
           width: "100%",
           maxWidth: "400px",

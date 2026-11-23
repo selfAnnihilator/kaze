@@ -46,6 +46,7 @@ import "./presentation/spatial.css";
 import "./presentation/familiarity-dial.css";
 import "./presentation/spatial-preview.css";
 import "./presentation/brutalist.css";
+import "./presentation/pc-motion.css";
 import "./presentation/responsive.css";
 import { BrutalistNavigation } from "./presentation/BrutalistNavigation";
 import { BrutalistDeck } from "./presentation/BrutalistDeck";

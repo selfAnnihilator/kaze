@@ -1,0 +1,54 @@
+/*
+ * PC (Brutalist) motion, matching the phone: screens fade in, their sections
+ * rise in one after another, popups pop in over a fading backdrop, and
+ * buttons press. Only opacity and the individual `translate`/`scale`
+ * properties animate (compositor-only, and they leave existing transforms
+ * alone). Everything is a one-shot entrance, so nothing runs during playback.
+ * The global reduced-motion rule in index.css switches it all off.
+ */
+@keyframes pc-fade { from { opacity: 0; } }
+@keyframes pc-rise { from { opacity: 0; translate: 0 var(--space-16); } }
+@keyframes pc-pop { from { opacity: 0; scale: 0.96; translate: 0 var(--space-8); } }
+@keyframes pc-drop { from { opacity: 0; scale: 0.94; translate: 0 calc(-1 * var(--space-6)); } }
+@keyframes pc-sheet { from { opacity: 0; translate: 0 var(--space-48); } }
+
+.kaze-interface[data-interface="brutalist"] {
+  --pc-enter: var(--duration-moderate) var(--ease-out) both;
+  --pc-pop: var(--duration-moderate) var(--ease-emphasized) both;
+  --pc-step: calc(45 * var(--duration-unit));
+}
+
+/* Screens: a route, an open collection or lyrics fades in as it opens. */
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) {
+  animation: pc-fade var(--duration-base) var(--ease-out) both;
+}
+
+/* Sections: the screen's top-level blocks rise in, one after another. */
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(-n + 8) {
+  animation: pc-rise var(--pc-enter);
+  animation-delay: calc(var(--pc-step) * var(--pc-i, 0));
+}
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(2) { --pc-i: 1; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(3) { --pc-i: 2; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(4) { --pc-i: 3; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(5) { --pc-i: 4; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(6) { --pc-i: 5; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(7) { --pc-i: 6; }
+.kaze-interface[data-interface="brutalist"] .main-content > :not(.interface-toolbar) > :nth-child(8) { --pc-i: 7; }
+
+/* Discover: each chapter rises in when it changes (chapters are keyed). */
+.kaze-interface[data-interface="brutalist"] .press-discover .discovery-chapter { animation: pc-rise var(--pc-enter); }
+
+/* Popups: backdrop fades, card pops. */
+.kaze-interface[data-interface="brutalist"] :is(.modal-overlay, .modal-overlay-anim) { animation: pc-fade var(--duration-base) var(--ease-out) both; }
+.kaze-interface[data-interface="brutalist"] :is(.modal-content, .modal-card-anim) { animation: pc-pop var(--pc-pop); }
+.kaze-interface[data-interface="brutalist"] :is(.settings-logout-dialog, .taste-dialog)[open] { animation: pc-pop var(--pc-pop); }
+.kaze-interface[data-interface="brutalist"] :is(.settings-logout-dialog, .taste-dialog)[open]::backdrop { animation: pc-fade var(--duration-base) var(--ease-out) both; }
+.kaze-interface[data-interface="brutalist"] .not-interested-menu { transform-origin: top right; animation: pc-drop var(--duration-base) var(--ease-emphasized) both; }
+.kaze-interface[data-interface="brutalist"] :is(.playback-notice, .recommendation-feedback-toast, .update-banner-anim) { animation: pc-rise var(--pc-enter); }
+
+/* Full-screen player slides up like the phone's Deck. */
+.kaze-interface[data-interface="brutalist"] .press-fullscreen { animation: pc-sheet var(--duration-slow) var(--ease-emphasized) both; }
+
+/* Press feedback on buttons (instant, so existing hover transitions stay). */
+.kaze-interface[data-interface="brutalist"] button:is(.press-icon, .player-icon-btn, .scroll-arrow-btn, [class*="btn"]):not(:disabled):active { scale: 0.96; }

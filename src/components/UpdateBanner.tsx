@@ -50,6 +50,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
 
   return (
     <div
+      className="update-banner-anim"
       style={{
         position: "fixed",
         top: 0,
