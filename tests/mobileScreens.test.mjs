@@ -10,6 +10,7 @@ import { upcomingFromEvent, upcomingFromPlayback } from "../src/presentation/que
 import { shownArtwork } from "../src/services/shownArtwork.ts";
 import { dragStarted, shouldOpen } from "../src/presentation/mobile/deck/dragMath.ts";
 import { slideFrom } from "../src/presentation/mobile/sleeveSlide.ts";
+import { updateLabel } from "../src/presentation/mobile/updatePhase.ts";
 
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 
@@ -113,7 +114,7 @@ test("toasts carry UNDO and RETRY, and the update banner keeps its UPDATE button
   assert.match(phone, /label: "UNDO", run: \(\) => c\.handleDequeueTrack/);
   const notices = read("src/presentation/mobile/MobileNotices.tsx");
   assert.match(notices, /toast\.action\.label/);
-  assert.match(notices, />UPDATE</);
+  assert.match(notices, />\{updateLabel\(phase\)\}</, "the button reads UPDATE until an update starts");
 });
 
 test("profile lists show every entry inside a fixed-height scroll", () => {
@@ -453,4 +454,31 @@ test("A collection's shuffle starts it shuffled even if shuffle was left on else
   const hook = read("src/hooks/app/useCollections.ts");
   assert.doesNotMatch(hook, /if \(playbackState\.is_shuffled\) \{\n\s*await handleToggleShuffle\(\);/);
   assert.match(read("src/presentation/mobile/CollectionPane.tsx"), /aria-pressed=\{shuffled\}/);
+});
+
+test("Android updates download and install inside the app", () => {
+  assert.equal(updateLabel({ state: "idle" }), "UPDATE");
+  assert.equal(updateLabel({ state: "downloading", percent: 42 }), "UPDATING 42%");
+  assert.equal(updateLabel({ state: "installing" }), "INSTALLING…");
+  const app = read("src/presentation/mobile/appUpdate.ts");
+  assert.doesNotMatch(app, /coming soon/);
+  assert.match(app, /await invoke\("android_install_update"\);/);
+  assert.match(app, /listen<\{ message\?: string \}>\("update-failed"/);
+  const banner = read("src/presentation/mobile/MobileNotices.tsx");
+  assert.match(banner, /disabled=\{phase\.state !== "idle"\} onClick=\{\(\) => void startAppUpdate\(version\)\}>\{updateLabel\(phase\)\}/);
+  assert.match(read("src/presentation/mobile/settings/SettingsPages.tsx"), /<SettingsHead num="02" title="APP UPDATES" \/>\n\s*<UpdateCheck \/>/);
+  assert.match(read("src/presentation/mobile/settings/UpdateCheck.tsx"), /CHECK FOR UPDATES/);
+});
+
+test("The APK installs itself through a PackageInstaller session", () => {
+  const kt = read("plugins/kaze-media/android/src/main/java/org/intelligentmusicplayer/kazemedia/ApkInstaller.kt");
+  assert.match(kt, /setRequireUserAction\(PackageInstaller\.SessionParams\.USER_ACTION_NOT_REQUIRED\)/);
+  assert.match(kt, /STATUS_PENDING_USER_ACTION ->/, "falls back to Android's confirmation");
+  const manifest = read("plugins/kaze-media/android/src/main/AndroidManifest.xml");
+  assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
+  assert.match(manifest, /UPDATE_PACKAGES_WITHOUT_USER_ACTION/);
+  assert.doesNotMatch(manifest, /MY_PACKAGE_REPLACED/, "Android 14 blocks reopening from the background");
+  const rust = read("src-tauri/src/platform/android_update.rs");
+  assert.match(rust, /if !sha\.eq_ignore_ascii_case\(release\.sha256\.trim\(\)\) \{\n\s*let _ = tokio::fs::remove_file\(&apk\)\.await;/, "a damaged APK is never installed");
+  assert.match(read("src-tauri/gen/android/app/build.gradle.kts"), /if \(hasReleaseKey\) signingConfig = signingConfigs\.getByName\("release"\)/);
 });

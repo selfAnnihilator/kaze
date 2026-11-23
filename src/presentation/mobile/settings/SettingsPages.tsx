@@ -4,6 +4,7 @@ import { ensureMusicAccess, pickMusicFolder } from "../androidBridge";
 import { MobileMusicTaste } from "./MobileMusicTaste";
 import { formatBytes, useAudioCache } from "./useSettingsData";
 import { SettingsHead } from "./SettingsHead";
+import { UpdateCheck } from "./UpdateCheck";
 import type { MobileScreenProps } from "../types";
 
 type Ctx = MobileScreenProps["c"];
@@ -112,6 +113,8 @@ export function StoragePage({ onBack }: { onBack: () => void }) {
         </button>
       </div>
       {s.error && <p className="m-set-note is-error m-set-pad" role="alert">Couldn’t read or clear temporary audio. Open this page again to retry.</p>}
+      <SettingsHead num="02" title="APP UPDATES" />
+      <UpdateCheck />
     </SubPage>
   );
 }

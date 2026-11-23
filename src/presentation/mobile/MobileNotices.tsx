@@ -3,23 +3,24 @@ import { memo, useEffect, useState, type ComponentProps, type ReactNode } from "
 import { ArrowUpCircle, Check, CircleAlert, CirclePlay, X } from "lucide-react";
 import { recommendationNoticeText, undoRecommendationFeedback, type RecommendationNotice } from "../../components/RecommendationNotice";
 import { useAvailableUpdate } from "../../components/UpdateBanner";
-import { startAppUpdate } from "./appUpdate";
+import { startAppUpdate, updateLabel, useUpdatePhase } from "./appUpdate";
 import { dismissPhoneToast, usePhoneToasts } from "./phoneToasts";
 import type { ToastContainer } from "../../components/notifications/ToastContainer";
 import type { AppNotification } from "../../types";
 
 const PLAYBACK_EVENT = "kaze-empty-playback";
 
-/** Update banner (Figma G10): red bar on top with the version; the app restarts itself once it is in. */
+/** Update banner (Figma G10): red bar on top with the version; UPDATE downloads and installs it in the app (Android then closes Kaze). */
 export const MobileUpdateBanner = memo(function MobileUpdateBanner() {
   const version = useAvailableUpdate();
   const [closed, setClosed] = useState(false);
+  const phase = useUpdatePhase();
   if (!version || closed) return null;
   return (
     <div className="m-update" role="status">
       <ArrowUpCircle size={20} strokeWidth={2} />
       <span className="m-notice__text"><strong>Kaze v{version} is available</strong><span className="m-notice__kind">NEW VERSION</span></span>
-      <button type="button" className="m-update__btn" onClick={() => startAppUpdate(version)}>UPDATE</button>
+      <button type="button" className="m-update__btn" disabled={phase.state !== "idle"} onClick={() => void startAppUpdate(version)}>{updateLabel(phase)}</button>
       <button type="button" className="m-notice__x" onClick={() => setClosed(true)} aria-label="Dismiss update"><X size={18} strokeWidth={2} /></button>
     </div>
   );

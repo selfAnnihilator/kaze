@@ -136,3 +136,8 @@ mod tests {
         assert_eq!(next.position_ms, None);
     }
 }
+
+#[derive(Serialize)]
+pub(crate) struct InstallArgs<'a> {
+    pub path: &'a str,
+}

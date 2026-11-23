@@ -196,7 +196,10 @@ pub fn run() {
         .plugin(tauri_plugin_kaze_media::init())
         .setup(|app| {
             secret_store::set_bridge(Box::new(PluginSecrets(app.handle().clone())));
-            start_backend(app)
+            app.manage(super::android_update::PendingUpdate::default());
+            start_backend(app)?;
+            super::android_update::check_on_launch(app.handle().clone());
+            Ok(())
         })
         .register_asynchronous_uri_scheme_protocol(artwork::SCHEME, shared::serve_artwork)
         .invoke_handler(tauri::generate_handler![
@@ -204,7 +207,9 @@ pub fn run() {
             shared::execute_query,
             android_pick_music_folder,
             android_request_audio_access,
-            android_share
+            android_share,
+            super::android_update::android_check_update,
+            super::android_update::android_install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running Kaze");

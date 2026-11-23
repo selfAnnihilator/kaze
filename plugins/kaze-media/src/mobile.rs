@@ -1,6 +1,6 @@
 #[cfg(target_os = "android")]
 use crate::models::ListenerArgs;
-use crate::models::{AudioAccess, MediaCommandEvent, PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue, ShareArgs};
+use crate::models::{AudioAccess, InstallArgs, MediaCommandEvent, PickedFolder, PlaybackSnapshot, SecretArgs, SecretValue, ShareArgs};
 use serde::{de::DeserializeOwned, Serialize};
 use tauri::plugin::PluginApi;
 use tauri::{AppHandle, Runtime};
@@ -67,6 +67,12 @@ impl<R: Runtime> KazeMedia<R> {
         self.call::<()>("share", ShareArgs { title, text })
     }
 
+    /// Installs the downloaded update APK at `path` in place (PackageInstaller
+    /// session); asks once to allow installing apps when Android requires it.
+    pub fn install_apk(&self, path: &str) -> Result<(), String> {
+        self.call::<()>("installApk", InstallArgs { path })
+    }
+
     pub fn secret_set(&self, key: &str, value: &str) -> Result<(), String> {
         let args = SecretArgs {
             key,
@@ -104,6 +110,18 @@ impl<R: Runtime> KazeMedia<R> {
             handler: channel,
         };
         self.call::<()>("registerListener", args)
+    }
+
+    /// Delivers the reason when an update install fails after it started (Android only).
+    #[cfg(target_os = "android")]
+    pub fn on_update_failed(&self, handler: impl Fn(String) + Send + Sync + 'static) -> Result<(), String> {
+        let channel = tauri::ipc::Channel::<serde_json::Value>::new(move |body| {
+            if let Ok(value) = body.deserialize::<serde_json::Value>() {
+                handler(value["message"].as_str().unwrap_or("unknown error").to_string());
+            }
+            Ok(())
+        });
+        self.call::<()>("registerListener", ListenerArgs { event: "updateFailed", handler: channel })
     }
 
     #[cfg(not(target_os = "android"))]

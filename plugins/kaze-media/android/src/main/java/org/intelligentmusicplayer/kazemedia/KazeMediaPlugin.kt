@@ -3,7 +3,9 @@ package org.intelligentmusicplayer.kazemedia
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.result.ActivityResult
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.ActivityCallback
@@ -34,6 +36,11 @@ class SecretArgs {
 }
 
 @InvokeArg
+class InstallArgs {
+    var path: String = ""
+}
+
+@InvokeArg
 class ShareArgs {
     var title: String? = null
     var text: String = ""
@@ -55,6 +62,7 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
         PlaybackService.commandSink = { name, pos ->
             trigger("mediaCommand", JSObject().put("command", name).put("positionMs", pos))
         }
+        ApkInstaller.onFailure = { message -> trigger("updateFailed", JSObject().put("message", message)) }
     }
 
     @Command
@@ -111,6 +119,40 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
         args.title?.let { send.putExtra(Intent.EXTRA_SUBJECT, it) }
         activity.startActivity(Intent.createChooser(send, args.title))
         invoke.resolve()
+    }
+
+    /**
+     * Installs the downloaded update in place. The first time, Android needs
+     * "Install unknown apps" allowed for Kaze: its settings page opens, and
+     * the install continues when the user comes back.
+     */
+    @Command
+    fun installApk(invoke: Invoke) {
+        val path = invoke.parseArgs(InstallArgs::class.java).path
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.packageManager.canRequestPackageInstalls()) {
+            val allow = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}"))
+            startActivityForResult(invoke, allow, "installAllowed")
+        } else {
+            commitInstall(invoke, path)
+        }
+    }
+
+    @ActivityCallback
+    fun installAllowed(invoke: Invoke, result: ActivityResult) {
+        if (activity.packageManager.canRequestPackageInstalls()) {
+            commitInstall(invoke, invoke.parseArgs(InstallArgs::class.java).path)
+        } else {
+            invoke.reject("Allow Kaze to install apps to update it")
+        }
+    }
+
+    private fun commitInstall(invoke: Invoke, path: String) {
+        try {
+            ApkInstaller.install(activity.applicationContext, java.io.File(path))
+            invoke.resolve()
+        } catch (e: Exception) {
+            invoke.reject(e.message ?: "Could not install the update")
+        }
     }
 
     @Command

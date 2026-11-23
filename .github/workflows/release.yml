@@ -198,6 +198,72 @@ jobs:
           path: packaging/arch/*.pkg.tar.zst*
           if-no-files-found: error
 
+  # ── Android Build Job ───────────────────────────────────────────────────────
+  # A signed arm64 APK for the phone's in-app updater (android.json is written
+  # by the publish job). Signing comes from repo secrets; the key must stay the
+  # same forever or installed phones can't update.
+  build-android:
+    name: Build (android-arm64)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@18f0487477426dce244608110aa2660c2893deb7 # 1.98.1
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: ''
+
+      - name: Setup Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" >/dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build signed APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KAZE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KAZE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KAZE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo 'Missing ANDROID_KEYSTORE_BASE64 secret' >&2; exit 1; }
+          TAG="$REQUESTED_TAG"
+          [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]] || { echo 'Invalid release tag'; exit 1; }
+          VERSION="${TAG#v}"
+          export KAZE_KEYSTORE_PATH="$RUNNER_TEMP/kaze-release.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KAZE_KEYSTORE_PATH"
+          npx tauri android build --apk --target aarch64
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-release.apk' | head -n 1)
+          [ -n "$APK" ] || { echo 'No release APK was built' >&2; exit 1; }
+          mkdir -p android-out
+          cp "$APK" "android-out/Kaze_${VERSION}_arm64.apk"
+          rm -f "$KAZE_KEYSTORE_PATH"
+
+      - name: Upload Android build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: artifacts-android
+          path: android-out/Kaze_*_arm64.apk
+          if-no-files-found: error
+
   # ── Dedicated Publish Job ───────────────────────────────────────────────────
   publish-release:
     name: Publish Release
@@ -205,6 +271,7 @@ jobs:
       - build-linux
       - build-windows
       - build-arch
+      - build-android
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -388,6 +455,21 @@ jobs:
           console.log(fs.readdirSync(uploadDir));
           console.log("Successfully generated " + manifestPath + ":\n", JSON.stringify(manifest, null, 2));
           '
+
+      - name: Add Android update files (APK + android.json)
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          APK_NAME="Kaze_${VERSION}_arm64.apk"
+          APK=$(find release-artifacts -name "$APK_NAME" | head -n 1)
+          [ -n "$APK" ] || { echo "Missing $APK_NAME" >&2; exit 1; }
+          cp "$APK" "release-upload/$APK_NAME"
+          SHA=$(sha256sum "release-upload/$APK_NAME" | cut -d' ' -f1)
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${APK_NAME}"
+          jq -n --arg version "$VERSION" --arg url "$URL" --arg sha256 "$SHA" \
+            --arg notes "$(cat release_notes.md)" --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version: $version, url: $url, sha256: $sha256, notes: $notes, pub_date: $pub_date}' \
+            > release-upload/android.json
+          cat release-upload/android.json
 
       - name: Create or update draft release
         env:

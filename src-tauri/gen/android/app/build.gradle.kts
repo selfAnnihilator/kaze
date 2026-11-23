@@ -14,6 +14,22 @@ val tauriProperties = Properties().apply {
     }
 }
 
+/**
+ * Release signing for Kaze's APK (in-app updates only install builds signed
+ * with the same key). Read from keystore.properties (local, gitignored) or
+ * from KAZE_KEYSTORE_* environment variables (CI). Without either, release
+ * builds stay unsigned.
+ */
+val keystore = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) propFile.inputStream().use { load(it) }
+    System.getenv("KAZE_KEYSTORE_PATH")?.let { setProperty("storeFile", it) }
+    System.getenv("KAZE_KEYSTORE_PASSWORD")?.let { setProperty("storePassword", it) }
+    System.getenv("KAZE_KEY_ALIAS")?.let { setProperty("keyAlias", it) }
+    System.getenv("KAZE_KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
+}
+val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { keystore.getProperty(it) != null }
+
 android {
     compileSdk = 37
     namespace = "org.intelligentmusicplayer.app"
@@ -24,6 +40,16 @@ android {
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keystore.getProperty("storeFile"))
+                storePassword = keystore.getProperty("storePassword")
+                keyAlias = keystore.getProperty("keyAlias")
+                keyPassword = keystore.getProperty("keyPassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -39,6 +65,7 @@ android {
             }
         }
         getByName("release") {
+            if (hasReleaseKey) signingConfig = signingConfigs.getByName("release")
             optimization {
                enable = true
             }
