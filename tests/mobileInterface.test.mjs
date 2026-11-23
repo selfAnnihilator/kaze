@@ -31,7 +31,7 @@ test("mobile interface is never persisted and the hubs only wire it in", () => {
   const hook = read("src/presentation/useInterfacePreference.ts");
   assert.match(hook, /next === "mobile"/);
   assert.match(read("src/presentation/InterfaceContext.tsx"), /"spatial" \| "brutalist" \| "mobile"/);
-  assert.match(read("src/App.tsx"), /style === "mobile"\) return <MobileApp/);
+  assert.match(read("src/App.tsx"), /style === "mobile"\) \{\s*return <MobileApp/);
 });
 
 test("mobile screens use no HTML audio and no unvirtualized track maps", () => {
@@ -39,7 +39,7 @@ test("mobile screens use no HTML audio and no unvirtualized track maps", () => {
     const src = read(`src/presentation/mobile/${f}.tsx`);
     assert.doesNotMatch(src, /<audio|new Audio\(/, f);
   }
-  for (const f of ["MobileLibrary", "MobileQueue", "MobileDiscover"]) {
+  for (const f of ["LibraryPanes", "CollectionPane", "queue/QueueBody", "discover/SearchResults", "playlists/ImportPlaylistSheet"]) {
     assert.match(read(`src/presentation/mobile/${f}.tsx`), /WindowedList/, f);
   }
 });

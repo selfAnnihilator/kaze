@@ -1,40 +1,117 @@
-import { memo } from "react";
-import { MobileButton, EmptyNote, SectionHeader } from "./primitives";
-import { TrackRow } from "./TrackRow";
+import { memo, useCallback } from "react";
+import { Pause, Play, RotateCw, SkipForward } from "lucide-react";
+import { HomeSections } from "./HomeSections";
+import { MobileTopBar } from "./MobileTopBar";
+import { Sleeve } from "./Sleeve";
 import { joinMeta } from "./format";
 import type { MobileScreenProps } from "./types";
 
-/** Home: start or pause Flow, then the recent, rediscovered and recommended tracks. */
+/**
+ * Home (Figma B1 Home — Flow, then B2/B3 sections): Flow poster with previous,
+ * current and next sleeves, the Flow controls and Flow Steering.
+ */
 export const MobileHome = memo(function MobileHome({ c }: MobileScreenProps) {
   const overview = c.homeOverview;
-  const session = overview?.flow_session;
-  const active = !!session?.is_active;
-  const onFlow = () => void (active ? c.handleToggleFlowPlayback() : c.handleStartFlow(c.flowSteering));
-  const pending = c.flowPendingAction !== null;
+  const active = !!overview?.flow_session?.is_active;
+  const playing = active && c.playbackState.is_playing;
+  const currentTrack = c.playbackState.current_track;
+  const rotation = overview?.recent_rotation ?? [];
+  const previous = c.previousTrack;
+  const next = c.nextQueuedTrack;
+
+  const handleFlowToggle = useCallback(() => {
+    if (active) c.handleToggleFlowPlayback();
+    else void c.handleStartFlow(c.flowSteering);
+  }, [active, c]);
+
+  const steeringPercent = Math.round(c.flowSteering * 100);
+  const featured = currentTrack ?? (rotation[0] ? {
+    id: rotation[0].track_id,
+    title: rotation[0].title,
+    artist_name: rotation[0].artist,
+    album_title: rotation[0].album,
+    cover_art_url: rotation[0].cover_art_url,
+  } : null);
+
   return (
-    <div className="m-screen__body">
-      <section className="m-flow" aria-label="Flow">
-        <p className="m-flow__label">{active ? session?.flow_label : "Flow"}</p>
-        <h1 className="m-flow__title">{active ? "In the flow" : "Play what fits"}</h1>
-        <label className="m-flow__steer">
-          <span className="m-field__label">Familiar ↔ New</span>
-          <input type="range" min={0} max={1} step={0.05} value={c.flowSteering}
-            onChange={(e) => c.handleFlowSteeringChange(Number(e.target.value))} />
-        </label>
-        <MobileButton disabled={pending} onClick={onFlow}>{active ? "Pause Flow" : "Start Flow"}</MobileButton>
-      </section>
-      <SectionHeader title="Recent rotation" />
-      {overview?.recent_rotation.length ? overview.recent_rotation.map((item) => (
-        <TrackRow key={`${item.track_id}:${item.started_at}`} title={item.title}
-          subtitle={joinMeta(item.artist, item.album)} durationSecs={item.duration_secs}
-          src={item.cover_art_url} trackId={item.track_id} onPress={() => void c.handlePlayTrack(item.track_id)} />
-      )) : <EmptyNote>{c.isHomeLoading ? "Loading…" : "Nothing played yet."}</EmptyNote>}
-      <SectionHeader title="For you" />
-      {overview?.for_you.length ? overview.for_you.map((item) => (
-        <TrackRow key={item.track_id} title={item.title} subtitle={joinMeta(item.artist_name, item.album_title)}
-          durationSecs={item.duration_secs} trackId={item.track_id}
-          onPress={() => void c.handlePlayTrack(item.track_id)} />
-      )) : <EmptyNote>Recommendations appear as you listen.</EmptyNote>}
+    <div className="m-screen__container">
+      <MobileTopBar num="01" name="HOME" />
+
+      <div className="m-screen__content">
+        {/* Flow fills the first screen; For You starts below the fold. */}
+        <section className="m-flow" aria-label="Flow">
+        <div className="m-flow-header">
+          <span className="m-kicker">01 // FLOW — YOUR PERSONAL RADIO</span>
+          <div className="m-flow-header__title-row">
+            <h1 className="m-display m-flow-header__title">FLOW.</h1>
+            <button type="button" className="m-flow-header__refresh-btn"
+              onClick={() => void c.handleStartFlow(c.flowSteering)} aria-label="Refresh Flow">
+              <RotateCw size={20} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+
+        <div className="m-flow-carousel">
+          <button type="button" className="m-flow-carousel__side" onClick={() => void c.handlePreviousTrack()}
+            disabled={!previous} aria-label="Previous track">
+            <Sleeve size="preview" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
+            <span className="m-flow-carousel__side-label">PREV</span>
+          </button>
+          <Sleeve size="hero" src={c.activePlayingArtwork ?? featured?.cover_art_url} trackId={featured?.id} title={featured?.title} />
+          <button type="button" className="m-flow-carousel__side" onClick={() => void c.handleNextTrack()}
+            disabled={!next} aria-label="Next track">
+            <Sleeve size="preview" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
+            <span className="m-flow-carousel__side-label">NEXT</span>
+          </button>
+        </div>
+
+        <div className="m-flow-track-info">
+          <h2 className="m-flow-track-info__title">{featured?.title ?? "Start your Flow"}</h2>
+          <p className="m-flow-track-info__meta">
+            {joinMeta(featured?.artist_name, featured?.album_title).replace(" · ", " — ") || "Kaze picks what plays next"}
+          </p>
+        </div>
+
+        <div className="m-flow-controls">
+          <button type="button" className="m-btn m-btn--grow m-flow-controls__play" onClick={handleFlowToggle}
+            disabled={c.flowPendingAction !== null}>
+            {playing ? <Pause size={18} strokeWidth={2} /> : <Play size={18} strokeWidth={2} />}
+            <span>{playing ? "PAUSE FLOW" : active ? "RESUME FLOW" : "START FLOW"}</span>
+          </button>
+          <button type="button" className="m-box-btn m-flow-controls__square" onClick={() => void c.handleNextTrack()} aria-label="Skip forward">
+            <SkipForward size={20} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="m-flow-steer">
+          <div className="m-flow-steer__header">
+            <span className="m-kicker m-kicker--ink">FLOW STEERING</span>
+            <span className="m-kicker">{steeringPercent}% UNFAMILIAR</span>
+          </div>
+          <div
+            className="m-flow-steer__track"
+            role="slider"
+            aria-label="Flow steering"
+            aria-valuenow={steeringPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              c.handleFlowSteeringChange(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
+            }}
+          >
+            <div className="m-flow-steer__fill" style={{ width: `${steeringPercent}%` }} />
+            <div className="m-flow-steer__thumb" style={{ left: `${steeringPercent}%` }} />
+          </div>
+          <div className="m-flow-steer__footer">
+            <span>FAMILIAR</span>
+            <span>UNFAMILIAR</span>
+          </div>
+        </div>
+        </section>
+
+        <HomeSections c={c} />
+      </div>
     </div>
   );
 });

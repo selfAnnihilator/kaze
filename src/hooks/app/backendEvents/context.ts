@@ -1,3 +1,4 @@
+import type { ToastAction } from "../../../types";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { AddToPlaylistModalTrack } from "../../../components/modals/AddToPlaylistModal";
 import type { RecommendationNoticeValue } from "../../../components/RecommendationNotice";
@@ -17,7 +18,7 @@ export interface EventTimers { taste?: ReturnType<typeof setTimeout> }
 
 /** Everything the event handlers read or update. All values are stable setters, refs and fetchers. */
 export interface BackendEventContext {
-  addAppNotification: (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
+  addAppNotification: (type: "success" | "error" | "info" | "warning", title: string, message: string, action?: ToastAction) => void;
   chartRequestRef: MutableRefObject<number>;
   currentUserIdRef: MutableRefObject<string>;
   discoveryRequestRef: MutableRefObject<number>;

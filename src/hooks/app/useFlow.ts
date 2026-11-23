@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { dispatchCommand, executeQuery } from "../../services/api";
-import type { FlowExplanation, HomeOverview, PlaybackState } from "../../types";
+import type { HomeOverview, PlaybackState } from "../../types";
 
 type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
 import type { PlayingOrigin } from "../../playingOrigin";
@@ -25,11 +25,6 @@ export function useFlow({
   const [flowPendingAction, setFlowPendingAction] = useState<"start" | "resume" | "pause" | null>(null);
   const flowCommandPendingRef = useRef(false);
   const [flowSteering, setFlowSteering] = useState<number>(0.5);
-  const [whyTrackModal, setWhyTrackModal] = useState<{
-    title: string;
-    artist: string;
-    explanation: FlowExplanation;
-  } | null>(null);
 
   const homeRequestRef = useRef(0);
   const steeringRevisionRef = useRef(0);
@@ -158,26 +153,7 @@ export function useFlow({
     [],
   );
 
-  const handleInspectWhyCurrentTrack = useCallback(async () => {
-    if (!playbackState.current_track) return;
-    try {
-      const res = await executeQuery({
-        query: "GetFlowTrackReason",
-        payload: { track_id: playbackState.current_track.id },
-      });
-      if (res.data) {
-        setWhyTrackModal({
-          title: playbackState.current_track.title,
-          artist: playbackState.current_track.artist_name || "Unknown Artist",
-          explanation: res.data,
-        });
-      }
-    } catch (err) {
-      console.error("Failed to fetch Flow track reason:", err);
-    }
-  }, [playbackState.current_track]);
-
   return useMemo(() => ({
-    homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, whyTrackModal, setWhyTrackModal, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange, handleInspectWhyCurrentTrack,
-  }), [homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, whyTrackModal, setWhyTrackModal, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange, handleInspectWhyCurrentTrack]);
+    homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange,
+  }), [homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange]);
 }

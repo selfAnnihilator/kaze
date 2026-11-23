@@ -1,7 +1,15 @@
 // Library scan, download, wishlist and playlist events.
 import { clearCoverArtCache } from "../../../services/coverArt";
 import { downloadProgress } from "../../../services/downloadProgress";
+import { startDownload } from "../../../services/downloadActions";
+
+/** RETRY on a failed download's toast, when the song behind the task is known. */
+function retryAction(taskId: string | undefined) {
+  const trackId = taskId ? downloadProgress.trackOfTask(taskId) : undefined;
+  return trackId ? { label: "RETRY", run: () => void startDownload(trackId).catch(() => undefined) } : undefined;
+}
 import type { BackendEvent, BackendEventContext } from "./context";
+import { cloudSyncSignal } from "../../../services/cloudSyncSignal";
 
 /** Handles one library event; returns false when the event belongs elsewhere. */
 export function handleLibraryEvent(event: BackendEvent, ctx: BackendEventContext): boolean {
@@ -87,6 +95,7 @@ export function handleLibraryEvent(event: BackendEvent, ctx: BackendEventContext
         "error",
         "Download Failed",
         `Failed downloading "${trackTitle}": ${errReason}`,
+        retryAction(event.payload?.task_id),
       );
       fetchDownloads();
       fetchWishlist();
@@ -100,6 +109,10 @@ export function handleLibraryEvent(event: BackendEvent, ctx: BackendEventContext
       fetchWishlist();
       break;
 
+    case "CloudDataSynced": {
+      cloudSyncSignal.emit();
+      break;
+    }
     case "PlaylistsUpdated": {
       fetchPlaylists();
       fetchTrackPlaylistMemberships();

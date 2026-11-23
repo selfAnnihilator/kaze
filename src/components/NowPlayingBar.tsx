@@ -20,7 +20,6 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
-  Sparkles,
   ListMusic,
 } from "lucide-react";
 import { PlaybackState, Track } from "../types";
@@ -59,7 +58,6 @@ export interface NowPlayingBarProps {
   onToggleLyrics?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
-  onInspectWhyTrack?: () => void;
 }
 
 export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
@@ -89,7 +87,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
     onToggleLyrics,
     isFullscreen = false,
     onToggleFullscreen,
-    onInspectWhyTrack,
   }) => {
     const isOnline = isOnlineTrack(currentTrack) === true;
     const isKazeDownload = useSongDownloaded(currentTrack?.id ?? "");
@@ -253,17 +250,6 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
                   }
                 />
               </button>
-              {onInspectWhyTrack && (
-                <button
-                  className="player-icon-btn"
-                  title="Why this track? (Flow recommendation)"
-                  aria-label="Why this track?"
-                  onClick={onInspectWhyTrack}
-                  style={{ color: "var(--accent-secondary, var(--accent))" }}
-                >
-                  <Sparkles size={16} />
-                </button>
-              )}
             </div>
           )}
           {(isOnline || isKazeDownload) && currentTrack && <DownloadButton key={`download:${currentTrack.id}`} trackId={currentTrack.id} sourceId={currentTrack.playback_source?.track_id} title={currentTrack.title} compact />}

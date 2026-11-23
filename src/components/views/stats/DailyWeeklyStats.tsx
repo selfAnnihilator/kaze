@@ -127,7 +127,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
         </div>
       </div>
 
-      {/* Lifetime Listening Card */}
+      {/* Year Total Listening Card */}
       <div
         style={{
           background: "linear-gradient(135deg, var(--palette-violet-850-a60) 0%, var(--palette-gray-900-a80) 100%)",
@@ -153,7 +153,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
               letterSpacing: "0.5px",
             }}
           >
-            Lifetime Listening
+            {c.viewingYear} Total Listening
           </span>
           <div
             style={{
@@ -171,7 +171,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
           </div>
         </div>
         <div style={{ fontSize: "var(--fs-32)", fontWeight: "var(--weight-extrabold)", color: "var(--text-main)" }}>
-          {c.formatSeconds(c.stats?.lifetime_seconds || 0)}
+          {c.formatSeconds(c.stats?.total_year_seconds || 0)}
         </div>
         <div
           style={{
@@ -180,7 +180,7 @@ export function DailyWeeklyStats({ c }: { c: StatsViewContext }) {
             marginTop: "var(--space-4)",
           }}
         >
-          All-time cumulative history
+          {c.isPastYear ? `All of ${c.viewingYear}` : "This year so far"}
         </div>
       </div>
     </div>

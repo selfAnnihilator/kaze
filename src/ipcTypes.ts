@@ -141,7 +141,7 @@ export type Command =
   | { command: "Logout" }
   | { command: "LogoutAll" }
   | { command: "RevokeSession"; payload: { session_id: string } }
-  | { command: "UploadAvatar"; payload?: { file_path?: string } }
+  | { command: "UploadAvatar"; payload?: { file_path?: string; image_base64?: string } }
   | { command: "RemoveAvatar" }
   | { command: "SyncCloudData" }
   | { command: "SetCloudServerUrl"; payload: { url: string } }

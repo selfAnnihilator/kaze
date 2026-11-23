@@ -1,5 +1,14 @@
-import { useCallback, useState } from "react";
-import { PromptModal } from "../../components/modals/PromptModal";
+import { lazy, Suspense, useCallback, useState } from "react";
+import { PromptModal, type PromptModalProps } from "../../components/modals/PromptModal";
+import { useInterfaceStyle } from "../../presentation/InterfaceContext";
+
+const MobilePrompt = lazy(() => import("../../presentation/mobile/MobilePrompts").then((m) => ({ default: m.MobilePrompt })));
+
+/** The phone gets the Figma G7 prompt; the PC keeps its own. */
+function PromptSurface(props: PromptModalProps) {
+  if (useInterfaceStyle() !== "mobile") return <PromptModal {...props} />;
+  return <Suspense fallback={null}><MobilePrompt {...props} /></Suspense>;
+}
 
 interface PendingPrompt {
   title: string;
@@ -21,7 +30,7 @@ export function usePromptDialog() {
     setPending(null);
   };
   const promptDialog = pending && (
-    <PromptModal
+    <PromptSurface
       title={pending.title}
       message={pending.message}
       defaultValue={pending.defaultValue}

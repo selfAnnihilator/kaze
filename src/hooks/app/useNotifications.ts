@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { AppNotification } from "../../types";
+import type { AppNotification, ToastAction } from "../../types";
 
 const TOAST_MS = 3000;
 
@@ -9,7 +9,7 @@ export function useNotifications() {
   const [toasts, setToasts] = useState<AppNotification[]>([]);
 
   const addAppNotification = useCallback(
-    (type: "success" | "error" | "info" | "warning", title: string, message: string) => {
+    (type: "success" | "error" | "info" | "warning", title: string, message: string, action?: ToastAction) => {
       const notification: AppNotification = {
         id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
         type,
@@ -17,6 +17,7 @@ export function useNotifications() {
         message,
         timestamp: Date.now(),
         read: false,
+        action,
       };
       setNotifications((prev) => [notification, ...prev]);
       setToasts((prev) => [...prev, notification]);

@@ -1,17 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { isTauri } from "../services/api";
 
-interface UpdateBannerProps {}
-
-/**
- * Listens for the "update-available" event emitted by the Rust backend.
- * Shows a subtle banner at the top of the app when a new version is downloading.
- * The app restarts automatically once the update is installed.
- */
-export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
+/** The version the backend says is on its way ("update-available"), or null. */
+export function useAvailableUpdate(): string | null {
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
   useEffect(() => {
     if (!isTauri()) return;
 
@@ -40,6 +32,19 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
       unlisten?.();
     };
   }, []);
+  return updateVersion;
+}
+
+interface UpdateBannerProps {}
+
+/**
+ * Listens for the "update-available" event emitted by the Rust backend.
+ * Shows a subtle banner at the top of the app when a new version is downloading.
+ * The app restarts automatically once the update is installed.
+ */
+export const UpdateBanner: React.FC<UpdateBannerProps> = () => {
+  const updateVersion = useAvailableUpdate();
+  const [dismissed, setDismissed] = useState(false);
 
   if (!updateVersion || dismissed) return null;
 

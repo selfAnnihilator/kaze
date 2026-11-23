@@ -3,11 +3,22 @@ import { subscribeCoverArt, coverArtGeneration, loadCoverArt, sizedCoverUrl } fr
 import type { Album, DiscoveryRecommendation, Playlist, Track } from "../../types";
 import type { CollectionData } from "../../components/views/CollectionDetailView";
 
+type ArtworkTrack = Pick<Track, "id" | "title" | "artist_name" | "album_title" | "cover_art_url">;
+
+/** Where a song's cover can be found besides its own record. */
+export interface ArtworkSources {
+  tracks: Track[];
+  activeCollection: CollectionData | null;
+  discoveryRecs: DiscoveryRecommendation[];
+  worldTrending?: DiscoveryRecommendation[];
+  albums: Album[];
+}
+
 const sameText = (a: string | undefined | null, b: string | undefined | null) =>
   a?.toLowerCase().trim() === b?.toLowerCase().trim();
 
 /** Matches a listed recording to the playing track: by id, local match, or title + artist. */
-function matchesTrack(current: Track, item: { title: string; artist: string; matched_local_track_id?: string | null }, id: string) {
+function matchesTrack(current: ArtworkTrack, item: { title: string; artist: string; matched_local_track_id?: string | null }, id: string) {
   return item.matched_local_track_id === current.id || id === current.id
     || (sameText(item.title, current.title) && sameText(item.artist, current.artist_name));
 }
@@ -42,20 +53,30 @@ export function useNowPlayingArtwork({ track, tracks, activeCollection, discover
   const resolvedCover = useResolvedCover(track);
   return useMemo(() => {
     if (resolvedCover) return resolvedCover;
-    if (!track) return null;
-    if (track.cover_art_url) return track.cover_art_url;
-    const fromLibrary = tracks.find((t) => t.id === track.id)?.cover_art_url;
-    if (fromLibrary) return fromLibrary;
-    const fromCollection = activeCollection?.tracks?.find((t) => matchesTrack(track, t, t.id))?.cover_art_url;
-    if (fromCollection) return fromCollection;
-    const fromDiscovery = discoveryRecs.find((r) => matchesTrack(track, r, r.external_track_id))?.cover_art_url;
-    if (fromDiscovery) return fromDiscovery;
-    if (track.album_title) {
-      const album = albums.find((a) => sameText(a.title, track.album_title));
-      if (album?.cover_art_path) return album.cover_art_path;
-    }
-    return null;
-  }, [resolvedCover, track, tracks, activeCollection?.tracks, discoveryRecs, albums]);
+    return track ? lookupArtwork(track, { tracks, activeCollection, discoveryRecs, albums }) : null;
+  }, [resolvedCover, track, tracks, activeCollection, discoveryRecs, albums]);
+}
+
+/**
+ * A song's cover from what the app already has: its own record, the library,
+ * the open collection, Discover lists, then its album. Used for the playing
+ * song and its Previous / Next neighbours alike, so all three agree.
+ */
+export function lookupArtwork(track: ArtworkTrack, sources: ArtworkSources): string | null {
+  const listed = (list: DiscoveryRecommendation[] = []) => list.find((r) => matchesTrack(track, r, r.external_track_id))?.cover_art_url;
+  const steps = [
+    () => track.cover_art_url,
+    () => sources.tracks.find((t) => t.id === track.id)?.cover_art_url,
+    () => sources.activeCollection?.tracks?.find((t) => matchesTrack(track, t, t.id))?.cover_art_url,
+    () => listed(sources.discoveryRecs),
+    () => listed(sources.worldTrending),
+    () => (track.album_title ? sources.albums.find((a) => sameText(a.title, track.album_title))?.cover_art_path : undefined),
+  ];
+  for (const step of steps) {
+    const found = step();
+    if (found) return found;
+  }
+  return null;
 }
 
 function likedIds(trackPlaylistMap: Record<string, string[]>, likedPlaylistId: string | null | undefined, tracks: Track[]) {

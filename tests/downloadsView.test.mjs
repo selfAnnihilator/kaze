@@ -93,7 +93,8 @@ test("Local and Downloads lists request their own section from the backend", () 
 
 test("downloaded songs can be removed from the deck, the bar and the Downloads list", () => {
   const app = read("src/App.tsx");
-  assert.match(app, /<ConfirmModal \/>/, "one store-driven popup, no App state");
+  assert.match(read("src/components/layout/AppOverlays.tsx"), /<ConfirmModal \/>/, "one store-driven popup, no App state");
+  assert.match(read("src/presentation/mobile/MobileOverlays.tsx"), /<MobileConfirm \/>/, "the phone's popup reads the same store");
   assert.doesNotMatch(app, /useConfirmRequest/, "App never subscribes to the popup");
   assert.match(read("src/components/layout/appViews/otherViews.tsx"), /downloadControls\s+emptyTitle="No downloaded songs yet"/);
   assert.match(read("src/components/views/LibraryView.tsx"), /downloadControls && <DownloadButton/);

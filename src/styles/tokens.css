@@ -6,6 +6,7 @@
 
 /* Fonts */
 @font-face { font-family: Inter; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Courier Prime"; src: url('/fonts/courier-prime.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 
 /* Global knobs: change one value to retune the whole app. */
 :root {
@@ -33,12 +34,20 @@
   --fs-20: calc(20 * var(--fs-unit));
   --fs-22: calc(22 * var(--fs-unit));
   --fs-24: calc(24 * var(--fs-unit));
+  --fs-26: calc(26 * var(--fs-unit));
   --fs-28: calc(28 * var(--fs-unit));
+  --fs-30: calc(30 * var(--fs-unit));
   --fs-32: calc(32 * var(--fs-unit));
+  --fs-34: calc(34 * var(--fs-unit));
   --fs-36: calc(36 * var(--fs-unit));
+  --fs-38: calc(38 * var(--fs-unit));
   --fs-40: calc(40 * var(--fs-unit));
+  --fs-42: calc(42 * var(--fs-unit));
+  --fs-44: calc(44 * var(--fs-unit));
+  --fs-46: calc(46 * var(--fs-unit));
   --fs-48: calc(48 * var(--fs-unit));
   --fs-56: calc(56 * var(--fs-unit));
+  --fs-60: calc(60 * var(--fs-unit));
   --fs-64: calc(64 * var(--fs-unit));
   --fs-72: calc(72 * var(--fs-unit));
   --fs-80: calc(80 * var(--fs-unit));
@@ -212,31 +221,43 @@
   --border: oklch(33% 0.004 55);
   --border-light: oklch(48% 0.004 55);
 }
-/* Mobile brutalist (Android): ink black, coral accent, warm paper text. */
+/* Mobile brutalist (Android): ink black, coral accent, warm paper text, raw mechanical grid. */
 :root[data-interface="mobile"] {
   --ui-radius: 0px;
   --ui-space: 16px;
   --ui-motion: 120ms;
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-heading: Inter, system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-heading: "Inter", system-ui, sans-serif;
   --font-mono: "Courier Prime", "Courier New", monospace;
   --bg-main: #0a0a0b;
   --bg-sidebar: #0a0a0b;
   --bg-card: #1a1b1c;
   --bg-card-hover: #232425;
-  --bg-player: #1a1b1c;
+  --bg-player: #0a0a0b;
   --text-main: #e6e4df;
-  --text-muted: #c6c0b4;
-  --text-dim: #8d887d;
+  --text-muted: #9c9b98;
+  --text-dim: #9c9b98;
   --accent: #fb615a;
   --accent-light: #fb615a;
   --accent-hover: #ff7a73;
   --accent-secondary: #fb615a;
-  --border: #2e2f31;
-  --border-light: #c6c0b4;
-  --mobile-tabbar-height: calc(64 * var(--space-unit));
-  --mobile-minideck-height: calc(64 * var(--space-unit));
-  --mobile-touch: calc(44 * var(--space-unit));
+  --border: #525254;
+  --border-light: #525254;
+  --m-paper: #0a0a0b;
+  --m-ink: #e6e4df;
+  --m-muted: #9c9b98;
+  --m-red: #fb615a;
+  --m-wash: #1a1b1c;
+  --m-line: #525254;
+  --m-sand-200: #c6c0b4;
+  --m-sand-100: #ddd7ca;
+  --m-groove: #5b5852;
+  --m-shadow: #020203;
+  --m-dim: #050506;
+  --m-red-deep: #b2302a;
+  --mobile-tabbar-height: 60px;
+  --mobile-minideck-height: 67px;
+  --mobile-touch: 44px;
 }
 :root[data-interface="spatial"] {
   --bg-main: oklch(18.2% 0.006 65);

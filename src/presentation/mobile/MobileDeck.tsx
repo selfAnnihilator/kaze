@@ -1,44 +1,122 @@
-import { memo } from "react";
-import { ChevronDown, Heart } from "lucide-react";
-import { NowPlayingProgressBar } from "../../components/NowPlayingProgressBar";
-import { MobileIconButton, EmptyNote } from "./primitives";
+import { memo, useCallback, useState, type Ref } from "react";
+import { ArrowUpRight, ChevronDown, Pause, Play, Settings, SkipBack, SkipForward } from "lucide-react";
+import { DeckActions, DeckProgressBar, DeckTabs, DeckVolume } from "./DeckParts";
 import { Sleeve } from "./Sleeve";
-import { TransportControls } from "./TransportControls";
-import { joinMeta } from "./format";
-import type { MobilePlayer } from "./types";
+import { QueueBody } from "./queue/QueueBody";
+import { useMobileNav } from "./mobileNav";
+import type { AppViewsContext } from "../../components/layout/appViews/context";
+import type { MobileDeckExtras, MobilePlayer } from "./types";
 
-/** The Deck: full-screen now playing with cover, seek bar and transport. */
-export const MobileDeck = memo(function MobileDeck({
-  player, onClose,
-}: { player: MobilePlayer; onClose: () => void }) {
-  const { currentTrack: track, playbackState: state } = player;
-  const liked = (track?.manual_like ?? 0) === 1;
+/** Open Album when the song's album is in the library, else the playlist or mix it plays from. */
+function SourceLink({ c, player, deck, onClose }: { c: AppViewsContext; player: MobilePlayer; deck: MobileDeckExtras; onClose: () => void }) {
+  const nav = useMobileNav();
+  const track = player.currentTrack;
+  const album = track?.album_title
+    ? c.albums.find((a) => a.title === track.album_title && a.artist_name === track.artist_name)
+    : undefined;
+  if (album) {
+    return (
+      <button type="button" className="m-deck__album-link" onClick={() => nav.openAlbum(album.id)} aria-label={`Open album ${album.title}`}>
+        <span>OPEN ALBUM</span>
+        <ArrowUpRight size={12} strokeWidth={2} />
+      </button>
+    );
+  }
+  if (!deck.onOpenOrigin) return null;
   return (
-    <section className="m-deck" aria-label="The Deck">
-      <header className="m-deck__bar">
-        <MobileIconButton label="Close the deck" onClick={onClose}><ChevronDown size={24} /></MobileIconButton>
-        <span className="m-deck__kicker">The Deck</span>
+    <button type="button" className="m-deck__album-link" onClick={() => { onClose(); deck.onOpenOrigin?.(); }} aria-label="Open where this song plays from">
+      <span>OPEN SOURCE</span>
+      <ArrowUpRight size={12} strokeWidth={2} />
+    </button>
+  );
+}
+
+/**
+ * The Deck (Figma E1 Now Playing): previous / playing / next sleeves, title,
+ * artist with Open Album, the action strip, position, transport, volume and
+ * the Loop / Queue / Lyrics / Flow tabs.
+ */
+export const MobileDeck = memo(function MobileDeck({
+  c, player, deck, onClose, sheetRef, headerRef,
+}: {
+  c: AppViewsContext; player: MobilePlayer; deck: MobileDeckExtras; onClose: () => void;
+  /** The sheet that grows out of the mini player; its position is set by `useDeckSheet`. */
+  sheetRef?: Ref<HTMLElement>;
+  /** The header strip, where dragging down closes The Deck. */
+  headerRef?: Ref<HTMLElement>;
+}) {
+  const nav = useMobileNav();
+  const { currentTrack: track, playbackState: state } = player;
+  const isPlaying = state.is_playing;
+  const previous = c.previousTrack;
+  const next = c.nextQueuedTrack;
+  const [queueOpen, setQueueOpen] = useState(false);
+  const toggleQueue = useCallback(() => setQueueOpen((open) => !open), []);
+  const meta = track ? [track.artist_name || "Unknown artist", track.album_title].filter(Boolean).join(" — ") : "Pick a song or start your Flow";
+
+  return (
+    <section ref={sheetRef} className="m-deck" aria-label="The Deck — Now Playing">
+      <header ref={headerRef} className="m-deck__header">
+        <button type="button" className="m-deck__btn-header" onClick={onClose} aria-label="Close The Deck">
+          <ChevronDown size={20} strokeWidth={2} />
+        </button>
+        <span className="m-deck__header-title">THE DECK // NOW PLAYING</span>
+        <button type="button" className="m-deck__btn-header" onClick={() => nav.openPage("settings")} aria-label="Settings">
+          <Settings size={20} strokeWidth={2} />
+        </button>
       </header>
-      {!track ? <EmptyNote>Nothing is playing.</EmptyNote> : (
-        <>
-          <Sleeve size="large" title={track.title} src={player.coverArtUrl} trackId={track.id} />
-          <div className="m-deck__info">
-            <h1 className="m-deck__title">{track.title}</h1>
-            <p className="m-deck__meta">{joinMeta(track.artist_name, track.album_title)}</p>
+
+      <div className="m-deck__divider" />
+
+      {queueOpen ? (
+        <div className="m-deck__queue m-queue"><QueueBody c={c} kicker="THE DECK // QUEUE" /></div>
+      ) : (
+        <div className="m-deck__scroll-content">
+          <div className="m-deck__turntable">
+            <button type="button" className="m-deck__turntable-side" onClick={player.onPrevious} disabled={!previous} aria-label="Previous track">
+              <Sleeve size="side" src={previous?.cover_art_url} trackId={previous?.id} title={previous?.title} />
+            </button>
+            <div className="m-deck__turntable-main">
+              <Sleeve key={track?.id} size="deck" src={player.coverArtUrl} trackId={track?.id} title={track?.title} />
+            </div>
+            <button type="button" className="m-deck__turntable-side" onClick={player.onNext} disabled={!next} aria-label="Next track">
+              <Sleeve size="side" src={next?.cover_art_url} trackId={next?.id} title={next?.title} />
+            </button>
           </div>
-          <NowPlayingProgressBar duration={state.duration_secs} canSeek={state.can_seek !== false}
-            onSeek={player.onSeek} />
-          <TransportControls isPlaying={state.is_playing} isLoading={!!player.isLoading} repeat={state.repeat_mode}
-            onPlayPause={player.onPlayPause} onNext={player.onNext} onPrevious={player.onPrevious}
-            onToggleRepeat={player.onToggleRepeat} />
-          <div className="m-deck__actions">
-            <MobileIconButton label={liked ? "Remove like" : "Like"} active={liked}
-              onClick={() => (liked ? player.onRemoveFeedback(track.id) : player.onLike(track.id))}>
-              <Heart size={20} />
-            </MobileIconButton>
+
+          <div className="m-deck__track-info">
+            <h1 className="m-display m-deck__track-title">{track?.title?.toUpperCase() ?? "NOTHING PLAYING"}</h1>
+            <div className="m-deck__meta-row">
+              <span className="m-deck__artist-name">{meta}</span>
+              <SourceLink c={c} player={player} deck={deck} onClose={onClose} />
+            </div>
           </div>
-        </>
+
+          <DeckActions player={player} deck={deck} />
+          <DeckProgressBar duration={state.duration_secs || track?.duration_secs || 0} onSeek={player.onSeek} />
+
+          <div className="m-deck__transport">
+            <button type="button" className="m-deck__btn-transport" onClick={player.onPrevious} aria-label="Previous track">
+              <SkipBack size={22} strokeWidth={2} />
+              <span className="m-deck__btn-transport-label">PREV</span>
+            </button>
+            <button type="button" className="m-deck__btn-play-hero" disabled={!!player.isLoading || !track}
+              onClick={player.onPlayPause} aria-label={isPlaying ? "Pause" : "Play"}>
+              {isPlaying ? <Pause size={30} strokeWidth={2} fill="currentColor" /> : <Play size={30} strokeWidth={2} fill="currentColor" />}
+              <span className="m-deck__play-hero-text">{isPlaying ? "PAUSE" : "PLAY"}</span>
+            </button>
+            <button type="button" className="m-deck__btn-transport" onClick={player.onNext} aria-label="Next track">
+              <SkipForward size={22} strokeWidth={2} />
+              <span className="m-deck__btn-transport-label">NEXT</span>
+            </button>
+          </div>
+
+          <DeckVolume player={player} />
+        </div>
       )}
+
+      <div className="m-deck__divider" />
+      <DeckTabs player={player} deck={deck} queueOpen={queueOpen} onToggleQueue={toggleQueue} />
     </section>
   );
 });

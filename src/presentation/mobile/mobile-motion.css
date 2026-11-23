@@ -1,0 +1,40 @@
+/* Phone motion (Android UI): small moves that make the app feel smooth.
+   Only transform and opacity animate, with token durations and easings. */
+
+/* Screens: a tab rises in; a page or open collection slides in from the right. */
+.m-screen__enter { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; animation: m-enter-rise var(--duration-base) var(--ease-out); }
+.m-screen__enter.is-page { animation-name: m-enter-side; }
+@keyframes m-enter-rise { from { opacity: 0; transform: translateY(var(--space-8)); } to { opacity: 1; transform: none; } }
+@keyframes m-enter-side { from { opacity: 0; transform: translateX(var(--space-24)); } to { opacity: 1; transform: none; } }
+
+/* Sheets rise from the bottom over a fading dim; dialogs pop in. */
+.m-bsheet__dim { animation: m-fade-in var(--duration-base) ease-out; }
+.m-bsheet__card { animation: m-rise-in var(--duration-moderate) var(--ease-emphasized); }
+.m-dialog__card { animation: m-pop-in var(--duration-base) var(--ease-emphasized); }
+@keyframes m-fade-in { from { opacity: 0; } }
+@keyframes m-rise-in { from { opacity: 0; transform: translateY(var(--space-48)); } }
+@keyframes m-pop-in { from { opacity: 0; transform: scale(0.96); } }
+
+/* The mini player slides up when a song first appears; the Deck's sleeve fades between songs. */
+.m-minideck { animation: m-rise-in var(--duration-moderate) var(--ease-emphasized); }
+.m-deck__turntable-main .m-sleeve--deck { animation: m-fade-in var(--duration-moderate) ease-out; }
+
+/* The active tab's red bar grows in. */
+.m-tabbar__indicator { animation: m-grow-x var(--duration-base) var(--ease-emphasized); }
+@keyframes m-grow-x { from { transform: scaleX(0); } }
+
+/* Press feedback: controls give a little under the finger. */
+.m-btn, .m-minideck__btn-play, .m-minideck__btn-icon, .m-deck__btn-header, .m-deck__btn-transport,
+.m-deck__btn-play-hero, .m-tabbar__content, .m-discover-card__btn, .m-chip, .m-topbar__btn, .m-topbar__avatar-btn {
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+.m-btn:active, .m-minideck__btn-play:active, .m-minideck__btn-icon:active, .m-deck__btn-header:active, .m-deck__btn-transport:active,
+.m-deck__btn-play-hero:active, .m-tabbar__item:active .m-tabbar__content, .m-discover-card__btn:active, .m-chip:active,
+.m-topbar__btn:active, .m-topbar__avatar-btn:active {
+  transform: scale(0.96);
+}
+
+/* Reduced motion: everything (the Deck included) moves instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .m-shell *, .m-shell *::before, .m-shell *::after { animation: none !important; transition: none !important; }
+}

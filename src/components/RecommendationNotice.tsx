@@ -10,6 +10,15 @@ export function recommendationNoticeText(notice: RecommendationNoticeValue): str
   const names = joinNames(rows.map(row => row.display));
   return rows.some(row => row.level === "block") ? `Won’t recommend ${names} again.` : `Showing less of ${names}.`;
 }
+/** Takes back the feedback a notice reports (shared by the PC toast and the phone notice). */
+export async function undoRecommendationFeedback(notice: RecommendationNoticeValue) {
+  if (!notice.entities?.length) {
+    await dispatchCommand({ command: "RemoveTrackFeedback", payload: { track_id: notice.id } });
+    return;
+  }
+  for (const row of notice.entities) await dispatchCommand({ command: "ClearEntityFeedback", payload: { kind: row.kind, key: row.key } });
+}
+
 export const RecommendationNotice = memo(function RecommendationNotice({ notice, onDismiss, onError }: {
   notice: RecommendationNoticeValue;
   onDismiss: (notice: RecommendationNoticeValue) => void;
@@ -29,11 +38,7 @@ export const RecommendationNotice = memo(function RecommendationNotice({ notice,
     if (busy) return;
     setBusy(true);
     try {
-      if (notice.entities?.length) {
-        for (const row of notice.entities) await dispatchCommand({ command: "ClearEntityFeedback", payload: { kind: row.kind, key: row.key } });
-      } else {
-        await dispatchCommand({ command: "RemoveTrackFeedback", payload: { track_id: notice.id } });
-      }
+      await undoRecommendationFeedback(notice);
       if (alive.current) onDismiss(notice);
     } catch (error) { if (alive.current) onError(String(error)); }
     finally { if (alive.current) setBusy(false); }

@@ -1,38 +1,80 @@
-import { memo } from "react";
-import { Pause, Play } from "lucide-react";
+import { memo, type Ref } from "react";
+import { Heart, Pause, Play, SkipForward } from "lucide-react";
 import { usePlaybackProgress } from "../../services/playbackProgress";
-import { Artwork } from "../Artwork";
-import { MobileIconButton } from "./primitives";
+import { Sleeve } from "./Sleeve";
 import type { Track } from "../../types";
 
-/** Thin progress line. The only subscriber to position ticks in the mini deck. */
 function MiniProgress() {
   const { position, duration } = usePlaybackProgress();
   const ratio = duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
-  return <span className="m-minideck__progress" style={{ transform: `scaleX(${ratio})` }} aria-hidden="true" />;
+  return (
+    <div className="m-minideck__progress-track" aria-hidden="true">
+      <div className="m-minideck__progress-fill" style={{ transform: `scaleX(${ratio})` }} />
+    </div>
+  );
 }
 
-/** Collapsed player above the tab bar; tapping it opens the deck. */
+/**
+ * Brutalist Mini Deck (Figma 1:7800):
+ * 67px total height, 3px top progress bar, 44x44 sleeve,
+ * Inter 15px title, Courier 10px meta, 52x44 solid coral play block.
+ */
 export const MiniDeck = memo(function MiniDeck({
-  track, coverArtUrl, isPlaying, isLoading, onOpen, onPlayPause,
+  track, coverArtUrl, isPlaying, isLoading, liked, onOpen, onPlayPause, onNext, onLike, rootRef,
 }: {
-  track?: Track; coverArtUrl?: string | null; isPlaying: boolean; isLoading: boolean;
-  onOpen: () => void; onPlayPause: () => void;
+  track?: Track; coverArtUrl?: string | null; isPlaying: boolean; isLoading: boolean; liked: boolean;
+  onOpen: () => void; onPlayPause: () => void; onNext?: () => void; onLike?: () => void;
+  /** The bar itself, so dragging it up can pull The Deck open. */
+  rootRef?: Ref<HTMLDivElement>;
 }) {
   if (!track) return null;
+  const isLiked = liked;
+
   return (
-    <div className="m-minideck">
-      <button type="button" className="m-minideck__main" onClick={onOpen} aria-label="Open the deck">
-        <Artwork src={coverArtUrl} trackId={track.id} alt="" className="m-minideck__art" />
-        <span className="m-minideck__text">
-          <span className="m-minideck__title">{track.title}</span>
-          <span className="m-minideck__meta">{track.artist_name ?? ""}</span>
-        </span>
-      </button>
-      <MobileIconButton label={isPlaying ? "Pause" : "Play"} disabled={isLoading} onClick={onPlayPause}>
-        {isPlaying ? <Pause size={22} /> : <Play size={22} />}
-      </MobileIconButton>
+    <div className="m-minideck" ref={rootRef}>
       <MiniProgress />
+      <div className="m-minideck__row">
+        <button type="button" className="m-minideck__info" onClick={onOpen} aria-label="Open The Deck">
+          <Sleeve size="mini" src={coverArtUrl} trackId={track.id} title={track.title} />
+          <div className="m-minideck__text">
+            <span className="m-minideck__title">{track.title}</span>
+            <span className="m-minideck__meta">
+              {(track.artist_name || "UNKNOWN").toUpperCase()} · THE DECK
+            </span>
+          </div>
+        </button>
+        <div className="m-minideck__actions">
+          {onLike && (
+            <button
+              type="button"
+              className={`m-minideck__btn-icon ${isLiked ? "is-liked" : ""}`}
+              onClick={onLike}
+              aria-label={isLiked ? "Unlike" : "Like"}
+            >
+              <Heart size={20} strokeWidth={2} fill={isLiked ? "currentColor" : "none"} className="m-minideck__heart-icon" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="m-minideck__btn-play"
+            disabled={isLoading}
+            onClick={onPlayPause}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause size={20} strokeWidth={2} /> : <Play size={20} strokeWidth={2} />}
+          </button>
+          {onNext && (
+            <button
+              type="button"
+              className="m-minideck__btn-icon"
+              onClick={onNext}
+              aria-label="Next track"
+            >
+              <SkipForward size={20} strokeWidth={2} />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 });

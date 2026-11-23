@@ -74,7 +74,7 @@ export const OTHER_VIEWS: Partial<Record<ViewType, (c: AppViewsContext) => React
         <PlaybackStage
           track={c.playbackState.current_track}
           cover={c.activePlayingArtwork}
-          previous={c.previousTrackRef.current}
+          previous={c.previousTrack}
           next={c.nextQueuedTrack}
           index={c.playbackState.current_queue_index}
           playing={c.playbackState.is_playing}

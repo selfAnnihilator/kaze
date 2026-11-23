@@ -270,6 +270,19 @@ export function ProfileCard({ c }: { c: StatsViewContext }) {
             )}
           </div>
 
+          <div
+            style={{
+              marginTop: "var(--space-6)",
+              fontSize: "var(--fs-13)",
+              fontWeight: "var(--weight-semibold)",
+              color: "var(--palette-red-300)",
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+            }}
+          >
+            {c.formatSeconds(c.stats?.lifetime_seconds || 0)} lifetime
+          </div>
+
           {c.avatarError && (
             <div
               style={{

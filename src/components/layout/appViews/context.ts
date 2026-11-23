@@ -42,7 +42,7 @@ export interface AppViewsContext {
   likedTrackIds: Set<string>;
   handleToggleCollectionLike: (track: CollectionTrackItem, isLiked: boolean) => Promise<void>;
   queuedTrackIds: Set<string>;
-  handleEnqueueRecommendation: (rec: DiscoveryRecommendation) => Promise<void>;
+  handleEnqueueRecommendation: (rec: DiscoveryRecommendation) => Promise<boolean>;
   currentView: ViewType;
   homeOverview: HomeOverview | null;
   isHomeLoading: boolean;
@@ -53,11 +53,13 @@ export interface AppViewsContext {
   handleToggleFlowPlayback: () => Promise<void>;
   activePlayingArtwork: string | null;
   previousTrackRef: RefObject<Track | undefined>;
+  /** The previous song with the artwork it showed while playing. */
+  previousTrack: Track | undefined;
   nextQueuedTrack: PlaybackArtworkTrack | undefined;
   handlePreviousTrack: () => Promise<void>;
   handleNextTrack: () => Promise<void>;
   handlePlayTrack: (trackId: string) => Promise<void>;
-  handleEnqueueTrack: (trackId: string) => Promise<void>;
+  handleEnqueueTrack: (trackId: string, playNext?: boolean) => Promise<boolean>;
   handleSelectAlbum: (albumId: string) => void;
   flowSteering: number;
   handleFlowSteeringChange: (val: number) => void;

@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const TOKENS = "src/styles/tokens.css";
-const files = execFileSync("git", ["ls-files", "src"], { encoding: "utf8" })
-  .split("\n").filter((f) => /\.(css|tsx?)$/.test(f) && !f.includes("design-exploration/"));
+// Tracked and new (untracked) files; files deleted but not yet committed are skipped.
+const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "src"], { encoding: "utf8" })
+  .split("\n").filter((f) => /\.(css|tsx?)$/.test(f) && !f.includes("design-exploration/") && existsSync(f));
 const read = (f) => readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** Custom properties defined anywhere: CSS `--x:`, inline `"--x":`, or setProperty("--x"). */

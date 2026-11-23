@@ -16,7 +16,7 @@ interface LyricsViewProps {
 }
 
 // Parses LRC string format into timestamped LyricLine array
-function parseLrc(lrcText: string): LyricLine[] {
+export function parseLrc(lrcText: string): LyricLine[] {
   const lines = lrcText.split(/\r?\n/);
   const result: LyricLine[] = [];
   const timeRegex = /\[(\d{1,2}):(\d{2}(?:\.\d+)?)\]/g;
@@ -49,7 +49,7 @@ const LINE_COLOR_FUTURE = "var(--overlay-30)";
 const LINE_COLOR_HOVER = "var(--overlay-85)";
 
 /** Index of the last line with `timeSecs <= time`, or -1 before the first line. */
-function findActiveLine(lines: LyricLine[], time: number): number {
+export function findActiveLine(lines: LyricLine[], time: number): number {
   let lo = 0;
   let hi = lines.length - 1;
   let found = -1;

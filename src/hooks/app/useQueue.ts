@@ -6,101 +6,50 @@ import { queueIdOf } from "../../trackKind";
 
 type Notify = (type: "success" | "error" | "info" | "warning", title: string, message: string) => void;
 
+const ALREADY = ["Already in Queue", "This song is already waiting in the queue."] as const;
+
 /** Queue commands: enqueue local/online tracks (dedup via queuedTrackIds), play index, dequeue, clear. */
 export function useQueue({ queuedTrackIds, setQueuedTrackIds, addAppNotification }: {
   queuedTrackIds: Set<string>;
   setQueuedTrackIds: Dispatch<SetStateAction<Set<string>>>;
   addAppNotification: Notify;
 }) {
-  const handleEnqueueTrack = useCallback(async (trackId: string) => {
+  /** Sends one enqueue command; true when the song was added. */
+  const enqueue = useCallback(async (trackId: string, command: Parameters<typeof dispatchCommand>[0]): Promise<boolean> => {
     if (queuedTrackIds.has(trackId)) {
-      addAppNotification(
-        "info",
-        "Already in Queue",
-        "This song is already waiting in the queue.",
-      );
-      return;
+      addAppNotification("info", ...ALREADY);
+      return false;
     }
     try {
-      await dispatchCommand({
-        command: "EnqueueTrack",
-        payload: { track_id: trackId, play_next: false, manual: true },
-      });
+      await dispatchCommand(command);
       setQueuedTrackIds((prev) => new Set(prev).add(trackId));
+      return true;
     } catch (err: any) {
-      if (
-        String(err?.message || err)
-          .toLowerCase()
-          .includes("already in the queue")
-      ) {
+      const message = String(err?.message || err);
+      if (message.toLowerCase().includes("already in the queue")) {
         setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-        addAppNotification(
-          "info",
-          "Already in Queue",
-          "This song is already waiting in the queue.",
-        );
-        return;
+        addAppNotification("info", ...ALREADY);
+      } else {
+        addAppNotification("error", "Queue Failed", err?.message || "Could not add this song to the queue.");
       }
-      addAppNotification(
-        "error",
-        "Queue Failed",
-        err?.message || "Could not add this song to the queue.",
-      );
+      return false;
     }
   }, [queuedTrackIds, addAppNotification, setQueuedTrackIds]);
 
-  const handleEnqueueRecommendation = useCallback(async (rec: DiscoveryRecommendation) => {
+  const handleEnqueueTrack = useCallback((trackId: string, playNext = false) =>
+    enqueue(trackId, { command: "EnqueueTrack", payload: { track_id: trackId, play_next: playNext, manual: true } }), [enqueue]);
+
+  const handleEnqueueRecommendation = useCallback((rec: DiscoveryRecommendation) => {
     const trackId = queueIdOf(rec);
-    const hasLocalMatch = trackId === rec.matched_local_track_id;
-    if (!hasLocalMatch) {
-      if (queuedTrackIds.has(trackId)) {
-        addAppNotification(
-          "info",
-          "Already in Queue",
-          "This song is already waiting in the queue.",
-        );
-        return;
-      }
-      try {
-        await dispatchCommand({
-          command: "EnqueueOnlineTrack",
-          payload: {
-            track_id: trackId,
-            title: rec.title,
-            artist: rec.artist,
-            album: rec.album,
-            duration_secs: rec.duration_secs,
-            cover_art_url: rec.cover_art_url,
-            preview_url: rec.preview_url,
-            play_next: false,
-            manual: true,
-          },
-        });
-        setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-      } catch (err: any) {
-        if (
-          String(err?.message || err)
-            .toLowerCase()
-            .includes("already in the queue")
-        ) {
-          setQueuedTrackIds((prev) => new Set(prev).add(trackId));
-          addAppNotification(
-            "info",
-            "Already in Queue",
-            "This song is already waiting in the queue.",
-          );
-        } else {
-          addAppNotification(
-            "error",
-            "Queue Failed",
-            err?.message || "Could not add this song to the queue.",
-          );
-        }
-      }
-      return;
-    }
-    await handleEnqueueTrack(trackId);
-  }, [queuedTrackIds, addAppNotification, setQueuedTrackIds, handleEnqueueTrack]);
+    if (trackId === rec.matched_local_track_id) return handleEnqueueTrack(trackId);
+    return enqueue(trackId, {
+      command: "EnqueueOnlineTrack",
+      payload: {
+        track_id: trackId, title: rec.title, artist: rec.artist, album: rec.album, duration_secs: rec.duration_secs,
+        cover_art_url: rec.cover_art_url, preview_url: rec.preview_url, play_next: false, manual: true,
+      },
+    });
+  }, [enqueue, handleEnqueueTrack]);
 
   const runQueueCommand = useCallback(
     async (command: Parameters<typeof dispatchCommand>[0]) => {

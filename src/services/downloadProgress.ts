@@ -58,6 +58,12 @@ export const downloadProgress = {
     const source = sourceId || (trackId.startsWith("jiosaavn:") ? trackId.slice(9) : undefined);
     return (attached ? tasksById.get(attached) : undefined) || firstOf(tasksByTrack.get(trackId), source ? tasksBySource.get(source) : undefined);
   },
+  /** The song a download task belongs to (for retrying it). */
+  trackOfTask(taskId: string): string | undefined {
+    for (const [trackId, id] of trackTasks) if (id === taskId) return trackId;
+    const task = tasksById.get(taskId);
+    return task?.track_ids?.[0] ?? (task?.source_track_id ? `jiosaavn:${task.source_track_id}` : undefined);
+  },
   attach(trackId: string, taskId: string) { trackTasks.set(trackId, taskId); taskListeners.forEach(notify => notify()); },
   update(id: string, bytes: number, total?: number) {
     const previous = snapshots.get(id);

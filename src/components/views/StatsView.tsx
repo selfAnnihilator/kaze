@@ -12,6 +12,8 @@ import { ArchivedYearHero } from "./stats/ArchivedYearHero";
 import { ArchivedTopLists } from "./stats/ArchivedTopLists";
 
 import { MONTH_NAMES } from "./stats/monthNames";
+import { cloudSyncSignal } from "../../services/cloudSyncSignal";
+import { shrinkPhoto } from "../../services/photoUpload";
 
 interface StatsViewProps {
   currentUser: UserProfile | null;
@@ -53,15 +55,25 @@ export const StatsView: React.FC<StatsViewProps> = ({
     };
   }, []);
 
+  // The system picker opens from the window itself; the backend only gets the
+  // image, so no blocking native dialog can hang the upload.
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const handlePickAvatar = async () => {
     if (!currentUser) {
       onOpenAuthModal?.();
       return;
     }
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
     setAvatarError(null);
     setIsUploadingAvatar(true);
     try {
-      const res = await dispatchCommand({ command: "UploadAvatar", payload: {} });
+      const res = await dispatchCommand({ command: "UploadAvatar", payload: { image_base64: await shrinkPhoto(file) } });
       if (res?.data) {
         onUpdateUser?.(res.data);
       }
@@ -119,6 +131,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
     loadStats();
   }, [loadStats, refreshTrigger]);
 
+  // Another device's listening arrived through cloud sync: reload in place.
+  useEffect(() => cloudSyncSignal.subscribe(() => void loadStats(true)), [loadStats]);
+
   const formatSeconds = (totalSecs: number): string => {
     if (!totalSecs || totalSecs <= 0) return "0m";
     const hours = Math.floor(totalSecs / 3600);
@@ -168,6 +183,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
         color: "var(--text-main)",
       }}
     >
+      <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleAvatarFile} aria-hidden="true" tabIndex={-1} />
       {/* Profile Section Header Card */}
       <ProfileCard c={c} />
 

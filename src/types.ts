@@ -319,6 +319,13 @@ export interface AppNotification {
   message: string;
   timestamp: number;
   read: boolean;
+  /** A toast button such as RETRY (frontend only, never sent over IPC). */
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  run: () => void;
 }
 
 export interface FlowExplanation {

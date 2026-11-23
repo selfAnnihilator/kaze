@@ -1,6 +1,5 @@
-import { PlaybackNotice } from "./components/PlaybackNotice";
-import { RecommendationNotice, type RecommendationNoticeValue } from "./components/RecommendationNotice";
-import { RecommendationSetupGate } from "./components/MusicTaste";
+import type { RecommendationNoticeValue } from "./components/RecommendationNotice";
+import { AppOverlays } from "./components/layout/AppOverlays";
 import "./App.css";
 import { useRouteScroll } from "./presentation/useRouteScroll";
 import { ViewMemoryProvider } from "./presentation/ViewMemory";
@@ -13,12 +12,7 @@ import { dispatchCommand } from "./services/api";
 import { useNavigationHistory } from "./hooks/useNavigationHistory";
 import { SpatialNavigation } from "./presentation/SpatialNavigation";
 import { NowPlayingBar } from "./components/NowPlayingBar";
-import { OnboardingModal } from "./components/OnboardingModal";
-import { WhyTrackModal } from "./components/modals/WhyTrackModal";
 import { AppToolbar } from "./components/layout/AppToolbar";
-import { ToastContainer } from "./components/notifications/ToastContainer";
-import { UpdateBanner } from "./components/UpdateBanner";
-import { ConfirmModal } from "./components/modals/ConfirmModal";
 import { useWindowShortcuts } from "./hooks/app/useWindowShortcuts";
 import { useLoadAll } from "./hooks/app/useLoadAll";
 import { useAccountSwitch } from "./hooks/app/useAccountSwitch";
@@ -39,7 +33,6 @@ import { useQueue } from "./hooks/app/useQueue";
 import type { CollectionData } from "./components/views/CollectionDetailView";
 import { InterfaceContext } from "./presentation/InterfaceContext";
 import { useInterfacePreference } from "./presentation/useInterfacePreference";
-import type { PlaybackArtworkTrack } from "./presentation/queuePresentation";
 import { linkableOrigin, type PlayingOrigin } from "./playingOrigin";
 import { usePlaybackState } from "./hooks/app/usePlaybackState";
 import { useNotifications } from "./hooks/app/useNotifications";
@@ -47,6 +40,7 @@ import { usePromptDialog } from "./hooks/app/usePromptDialog";
 import { useGlobalSearch } from "./hooks/app/useGlobalSearch";
 import { useAppNavigation, archiveSurface, findLikedSongs } from "./hooks/app/useAppNavigation";
 import { useNowPlayingArtwork, usePlaylistMembership } from "./hooks/app/useNowPlayingDetails";
+import { useNeighbourTracks } from "./hooks/app/useNeighbourTracks";
 import "./presentation/interfaces.css";
 import "./presentation/spatial.css";
 import "./presentation/familiarity-dial.css";
@@ -59,12 +53,6 @@ import { MobileApp } from "./presentation/mobile/MobileApp";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
 const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then((m) => ({ default: m.FullScreenPlayerView,
-  })),
-);
-const AuthModal = lazy(() => import("./components/modals/AuthModal").then((m) => ({ default: m.AuthModal,
-  })),
-);
-const AddToPlaylistModal = lazy(() => import("./components/modals/AddToPlaylistModal").then((m) => ({ default: m.AddToPlaylistModal,
   })),
 );
 
@@ -152,7 +140,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
   } = useCollections({ navigate, destinationRef, activeCollection, setActiveCollection, setPlayingPlaylistId, playlists, playingOrigin, setPlayingOrigin, playbackState, setPlaybackState, fetchPlaybackState, beginPlaybackLoading, endPlaybackLoading, addAppNotification, handlePlayPause, handlePlayOnlineTrack, handleToggleShuffle, handleStopOnlineAudio });
 
   const {
-    homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, whyTrackModal, setWhyTrackModal, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange, handleInspectWhyCurrentTrack,
+    homeOverview, setHomeOverview, isHomeLoading, flowPendingAction, flowSteering, homeRequestRef, flowSessionRequestRef, fetchHomeOverview, fetchFlowSession, handleStartFlow, handleToggleFlowPlayback, handleFlowSteeringChange,
   } = useFlow({ libraryAccountRef, playbackState, fetchPlaybackState, onPlayPause: handlePlayPause, addAppNotification, setPlayingOrigin });
 
   useEffect(() => {
@@ -254,20 +242,16 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
 
   const activePlayingTitle =
     playbackState.current_track?.title || "No Track Selected";
-  const nextQueuedTrack = useMemo<PlaybackArtworkTrack | undefined>(() => {
-    const entry = queueEntries[0];
-    if (!entry) return undefined;
-    return tracks.find((track) => track.id === entry.trackId) || {
-      id: entry.trackId,
-      title: entry.title || "Up next",
-      artist_name: entry.artist,
-    };
-  }, [queueEntries, tracks]);
   const activePlayingArtist = playbackState.current_track?.artist_name || "";
   const activePlayingTrackId = playbackState.current_track?.id;
   const activePlayingDuration =
     playbackState.duration_secs ?? 0;
   const activePlayingArtwork = useNowPlayingArtwork({ track: playbackState.current_track, tracks, activeCollection, discoveryRecs, albums });
+  const artworkSources = useMemo(() => ({ tracks, activeCollection, discoveryRecs, worldTrending, albums }), [tracks, activeCollection, discoveryRecs, worldTrending, albums]);
+  const { previousTrack, nextTrack: nextQueuedTrack } = useNeighbourTracks({
+    current: playbackState.current_track, currentArtwork: activePlayingArtwork,
+    previous: previousTrackRef.current, queueEntries, sources: artworkSources,
+  });
   const { likedTrackIds, isCurrentTrackLiked, regularPlaylistIds, regularTrackPlaylistMap, isCurrentTrackInPlaylist } = usePlaylistMembership({
     track: playbackState.current_track, tracks, playlists, trackPlaylistMap, likedPlaylistId,
   });
@@ -332,7 +316,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     isCollectionSaved, regularTrackPlaylistMap, regularPlaylistIds, handleOpenAddToPlaylistModal,
     handleRenamePlaylist, handleDeletePlaylist, likedTrackIds, handleToggleCollectionLike, queuedTrackIds,
     handleEnqueueRecommendation, currentView, homeOverview, isHomeLoading, flowPendingAction, fetchHomeOverview,
-    handleStartFlow, handleUnifiedPlayPause, handleToggleFlowPlayback, activePlayingArtwork, previousTrackRef,
+    handleStartFlow, handleUnifiedPlayPause, handleToggleFlowPlayback, activePlayingArtwork, previousTrackRef, previousTrack,
     nextQueuedTrack, handlePreviousTrack, handleNextTrack, handlePlayTrack, handleEnqueueTrack,
     handleSelectAlbum, flowSteering, handleFlowSteeringChange, handleHomeDiscover, tracks, libraryScoped,
     trackPage, scoped, handleLibraryRowPlay, handleLibraryPlayAll, downloadsListActive, libraryShuffle,
@@ -351,7 +335,37 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     handleTasteSaved, handleLogout, onboardingStatus, handleAddFolder, handleRemoveFolder, fetchSettings,
     isScanning,
   };
-  if (interfacePreference.style === "mobile") return <MobileApp c={viewContext} player={playerProps} />;
+  const userKey = currentUser?.id || "default";
+  const mobileDeck = {
+    flowActive: !!homeOverview?.flow_session?.is_active,
+    onToggleFlow: handleDeckFlow,
+    onOpenOrigin: openableOrigin ? handleOpenPlayingOrigin : undefined,
+    notify: addAppNotification,
+  };
+  const overlays = (
+    <AppOverlays
+      userKey={userKey}
+      mobile={interfacePreference.style === "mobile"}
+      toasts={{ toasts, onDismiss: dismissToast }}
+      playlistModal={{
+        isOpen: isPlaylistModalOpen,
+        onClose: () => { setIsPlaylistModalOpen(false); setPlaylistModalTrack(null); },
+        track: playlistModalTrack,
+        playlists: playlists.filter((p) => p.is_smart_mix === 0 && p.name !== "Liked Songs"),
+        trackPlaylistIds: (playlistModalTrack && regularTrackPlaylistMap[playlistModalTrack.id]) || [],
+        onTogglePlaylist: handleToggleTrackInPlaylist,
+        onCreatePlaylist: handleCreatePlaylist,
+      }}
+      auth={{ open: isAuthModalOpen, onClose: () => setIsAuthModalOpen(false), onLogin: handleLogin, onSignUp: handleSignUp }}
+      recommendationNotice={recommendationNotice ? { notice: recommendationNotice, onDismiss: dismissRecommendationNotice, onError: recommendationNoticeError } : null}
+      setupGate={{ ready: userHydrated && !!onboardingStatus?.completed && !showOnboarding, onSaved: handleTasteSaved }}
+      onboarding={showOnboarding && onboardingStatus ? { defaultMusicDir: onboardingStatus.default_music_dir, onComplete: handleCompleteOnboarding } : null}
+      promptDialog={promptDialog}
+    />
+  );
+  if (interfacePreference.style === "mobile") {
+    return <MobileApp c={viewContext} player={playerProps} overlays={overlays} deck={mobileDeck} />;
+  }
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (
     <InterfaceContext.Provider value={interfacePreference.style}>
@@ -405,11 +419,6 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
           onNavigate={handleSelectView}
           onOpenNowPlaying={handleOpenNowPlaying}
           onOpenOrigin={openableOrigin ? handleOpenPlayingOrigin : undefined}
-          onInspectWhyTrack={
-            playingOrigin?.type === "flow" && playbackState.current_track
-              ? handleInspectWhyCurrentTrack
-              : undefined
-          }
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
         />
@@ -421,76 +430,16 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
               {...playerProps}
               brutalist={interfacePreference.style === "brutalist" ? { entries: queueEntries, tracks, onPlayIndex: handlePlayQueueIndex, currentUser, view: currentView, onNavigate: handleSelectView, flowActive: !!homeOverview?.flow_session?.is_active, onToggleFlow: handleDeckFlow, albumId: albums.find(a => a.title === playbackState.current_track?.album_title && a.artist_name === playbackState.current_track?.artist_name)?.id, onOpenAlbum: handleSelectAlbum } : undefined}
               onOpenNowPlaying={() => { handleToggleFullscreen(false); handleOpenNowPlaying(); }}
-              previousTrack={previousTrackRef.current}
+              previousTrack={previousTrack}
               nextTrack={nextQueuedTrack}
-              onInspectWhyTrack={
-                playingOrigin?.type === "flow"
-                  ? handleInspectWhyCurrentTrack
-                  : undefined
-              }
               onToggleFullscreen={closeFullscreen}
               onOpenOrigin={openableOrigin ? () => { handleToggleFullscreen(false); handleOpenPlayingOrigin(); } : undefined}
             />
           )}
 
-          {/* Top-Right Floating Toast Notifications */}
-          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-
-          {/* Auto-update notification banner */}
-          <UpdateBanner />
-
-          {/* Center Modal Popup for Playlist Management */}
-          <AddToPlaylistModal
-            isOpen={isPlaylistModalOpen}
-            onClose={() => {
-              setIsPlaylistModalOpen(false);
-              setPlaylistModalTrack(null);
-            }}
-            track={playlistModalTrack}
-            playlists={playlists.filter(
-              (p) => p.is_smart_mix === 0 && p.name !== "Liked Songs",
-            )}
-            trackPlaylistIds={
-              playlistModalTrack &&
-              regularTrackPlaylistMap[playlistModalTrack.id]
-                ? regularTrackPlaylistMap[playlistModalTrack.id]
-                : []
-            }
-            onTogglePlaylist={handleToggleTrackInPlaylist}
-            onCreatePlaylist={handleCreatePlaylist}
-          />
-
-          {/* Auth Modal (Login / Sign Up) */}
-          {isAuthModalOpen && (
-            <AuthModal
-              isOpen={isAuthModalOpen}
-              onClose={() => setIsAuthModalOpen(false)}
-              onLogin={handleLogin}
-              onSignUp={handleSignUp}
-            />
-          )}
-
         </Suspense>
 
-        <PlaybackNotice key={`playback-notice:${currentUser?.id || "default"}`} />
-        {recommendationNotice && <RecommendationNotice key={currentUser?.id || "default"} notice={recommendationNotice} onDismiss={dismissRecommendationNotice} onError={recommendationNoticeError} />}
-        <RecommendationSetupGate userId={currentUser?.id || "default"} key={`taste:${currentUser?.id || "default"}`} ready={userHydrated && !!onboardingStatus?.completed && !showOnboarding} onSaved={handleTasteSaved} />
-
-        {/* Onboarding Modal */}
-        {showOnboarding && onboardingStatus && (
-          <OnboardingModal
-            defaultMusicDir={onboardingStatus.default_music_dir}
-            onComplete={handleCompleteOnboarding}
-          />
-        )}
-
-        {/* Themed In-App Prompt Dialog */}
-        {promptDialog}
-
-        {/* Yes/No questions (e.g. removing a download); store-driven, no App state */}
-        <ConfirmModal />
-
-        {whyTrackModal && <WhyTrackModal explained={whyTrackModal} onClose={() => setWhyTrackModal(null)} />}
+        {overlays}
       </div>
     </InterfaceContext.Provider>
   );
