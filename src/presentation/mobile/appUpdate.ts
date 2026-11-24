@@ -18,16 +18,26 @@ export function useUpdatePhase(): UpdatePhase {
   return useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l); }; }, () => phase, () => phase);
 }
 
-async function listenWhileUpdating(): Promise<() => void> {
+// Android reports a failed install after `android_install_update` returns, so
+// the listeners outlive the call; only one pair ever exists.
+let stopListening: (() => void) | null = null;
+function stopUpdateListeners() {
+  stopListening?.();
+  stopListening = null;
+}
+
+async function listenWhileUpdating() {
+  stopUpdateListeners();
   const { listen } = await import("@tauri-apps/api/event");
   const progress = await listen<{ percent: number }>("update-progress", (e) => {
     if (phase.state === "downloading") setPhase({ state: "downloading", percent: Math.min(100, e.payload.percent) });
   });
   const failed = await listen<{ message?: string }>("update-failed", (e) => {
+    stopUpdateListeners();
     setPhase({ state: "idle" });
     showPhoneToast(`The update didn’t install: ${e.payload.message ?? "unknown error"}`);
   });
-  return () => { progress(); failed(); };
+  stopListening = () => { progress(); failed(); };
 }
 
 /**
@@ -37,14 +47,13 @@ async function listenWhileUpdating(): Promise<() => void> {
 export async function startAppUpdate(_version: string) {
   if (!isTauri() || phase.state !== "idle") return;
   setPhase({ state: "downloading", percent: 0 });
-  let stop: (() => void) | undefined;
   try {
-    stop = await listenWhileUpdating();
+    await listenWhileUpdating();
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("android_install_update");
     setPhase({ state: "installing" });
   } catch (error) {
-    stop?.();
+    stopUpdateListeners();
     setPhase({ state: "idle" });
     showPhoneToast(String(error).replace(/^Error: /, ""));
   }

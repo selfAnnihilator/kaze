@@ -482,3 +482,15 @@ test("The APK installs itself through a PackageInstaller session", () => {
   assert.match(rust, /if !sha\.eq_ignore_ascii_case\(release\.sha256\.trim\(\)\) \{\n\s*let _ = tokio::fs::remove_file\(&apk\)\.await;/, "a damaged APK is never installed");
   assert.match(read("src-tauri/gen/android/app/build.gradle.kts"), /if \(hasReleaseKey\) signingConfig = signingConfigs\.getByName\("release"\)/);
 });
+
+test("Gesture and fit hooks attach once and never observe their own resizes", () => {
+  assert.match(read("src/presentation/mobile/useSideSwipe.ts"), /\n  \}, \[ref\]\);\n\}/, "listeners attach once, not on every render");
+  assert.match(read("src/presentation/mobile/fitText.ts"), /observer\.observe\(el\.parentElement \?\? el\);/);
+  assert.match(read("src/App.tsx"), /const MobileApp = lazy\(\(\) => import\("\.\/presentation\/mobile\/MobileApp"\)/, "the PC never loads the phone UI");
+});
+
+test("The updater keeps at most one pair of install listeners", () => {
+  const src = read("src/presentation/mobile/appUpdate.ts");
+  assert.match(src, /async function listenWhileUpdating\(\) \{\n  stopUpdateListeners\(\);/, "a new attempt drops the old listeners first");
+  assert.match(src, /"update-failed", \(e\) => \{\n    stopUpdateListeners\(\);/, "a reported failure removes them");
+});

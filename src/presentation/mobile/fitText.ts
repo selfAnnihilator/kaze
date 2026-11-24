@@ -17,8 +17,9 @@ export function useFitText<T extends HTMLElement>(text: string) {
       }
     };
     fit();
+    // Watch the box it sits in: our own font changes must not re-trigger a fit.
     const observer = new ResizeObserver(fit);
-    observer.observe(el);
+    observer.observe(el.parentElement ?? el);
     return () => observer.disconnect();
   }, [text]);
   return ref;

@@ -31,7 +31,7 @@ test("mobile interface is never persisted and the hubs only wire it in", () => {
   const hook = read("src/presentation/useInterfacePreference.ts");
   assert.match(hook, /next === "mobile"/);
   assert.match(read("src/presentation/InterfaceContext.tsx"), /"spatial" \| "brutalist" \| "mobile"/);
-  assert.match(read("src/App.tsx"), /style === "mobile"\) \{\s*return <MobileApp/);
+  assert.match(read("src/App.tsx"), /style === "mobile"\) \{\s*return <Suspense fallback=\{null\}><MobileApp/);
 });
 
 test("mobile screens use no HTML audio and no unvirtualized track maps", () => {

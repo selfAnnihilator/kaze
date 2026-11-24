@@ -26,5 +26,5 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, onStep: (step: 
       el.removeEventListener("touchstart", down);
       el.removeEventListener("touchend", up);
     };
-  });
+  }, [ref]);
 }

@@ -50,9 +50,10 @@ import "./presentation/pc-motion.css";
 import "./presentation/responsive.css";
 import { BrutalistNavigation } from "./presentation/BrutalistNavigation";
 import { BrutalistDeck } from "./presentation/BrutalistDeck";
-import { MobileApp } from "./presentation/mobile/MobileApp";
 
 // Lazy-loaded secondary views and modals to reduce initial memory and JS bundle overhead
+// The phone interface is its own chunk: the PC never downloads or parses it.
+const MobileApp = lazy(() => import("./presentation/mobile/MobileApp").then((m) => ({ default: m.MobileApp })));
 const FullScreenPlayerView = lazy(() => import("./components/views/FullScreenPlayerView").then((m) => ({ default: m.FullScreenPlayerView,
   })),
 );
@@ -365,7 +366,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
     />
   );
   if (interfacePreference.style === "mobile") {
-    return <MobileApp c={viewContext} player={playerProps} overlays={overlays} deck={mobileDeck} />;
+    return <Suspense fallback={null}><MobileApp c={viewContext} player={playerProps} overlays={overlays} deck={mobileDeck} /></Suspense>;
   }
   const MainPlayer = interfacePreference.style === "brutalist" ? BrutalistDeck : NowPlayingBar;
   return (

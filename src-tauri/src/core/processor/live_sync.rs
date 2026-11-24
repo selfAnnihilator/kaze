@@ -50,7 +50,7 @@ impl LiveSync {
             tick = tick.wrapping_add(1);
             let Some((user_id, token)) = self.signed_in().await else { continue };
             self.refresh_profile(&user_id, &token).await;
-            if tick % DATA_SYNC_TICKS == 0 {
+            if tick.is_multiple_of(DATA_SYNC_TICKS) {
                 self.sync_data(&user_id, &token).await;
             }
         }
