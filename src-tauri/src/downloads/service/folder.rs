@@ -3,6 +3,22 @@
 
 use super::*;
 
+/// Whether a watcher event changes what the folder holds. Reads (open, access,
+/// close without writing) and metadata touches don't: `sync_folder` reads the
+/// files itself, so counting reads re-triggered it every 500 ms forever.
+pub(crate) fn changes_folder(kind: &notify::EventKind) -> bool {
+    use notify::event::{AccessKind, AccessMode, ModifyKind};
+    use notify::EventKind;
+    match kind {
+        EventKind::Create(_) | EventKind::Remove(_) => true,
+        EventKind::Modify(ModifyKind::Metadata(_)) => false,
+        EventKind::Modify(_) => true,
+        // A file finished being written (e.g. a copy into the folder).
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        EventKind::Access(_) | EventKind::Any | EventKind::Other => false,
+    }
+}
+
 impl DownloadService {
     /// Watches the Kaze folder so added, removed or renamed files show up
     /// everywhere at once. If watching fails, the focus refresh still applies.
@@ -16,7 +32,7 @@ impl DownloadService {
         let watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
             let relevant = result.is_ok_and(|event| {
                 // Ignore in-progress partials and moves (".x.part.m4a", ".x.moving.m4a").
-                event.paths.iter().any(|path| {
+                changes_folder(&event.kind) && event.paths.iter().any(|path| {
                     !path
                         .file_name()
                         .and_then(|n| n.to_str())
@@ -252,3 +268,7 @@ pub(super) fn is_download_file(path: &Path) -> bool {
             .and_then(|e| e.to_str())
             .is_some_and(|e| e.eq_ignore_ascii_case("m4a"))
 }
+
+#[cfg(test)]
+#[path = "folder_watch_tests.rs"]
+mod watch_tests;
