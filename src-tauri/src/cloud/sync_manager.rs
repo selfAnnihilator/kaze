@@ -5,6 +5,7 @@ use crate::core::error::{AppError, AppResult};
 use chrono::Utc;
 use sqlx::SqlitePool;
 
+mod delta;
 mod incoming;
 mod outgoing;
 mod session;
@@ -69,14 +70,23 @@ impl SyncManager {
             playlist_memberships_inserted_updated
         );
 
-        // Step 3: Prepare local changes (including any local playlists and pending tombstones)
+        // Step 3: Prepare local changes (including any local playlists and pending
+        // tombstones), keeping only rows this device hasn't uploaded yet.
         let local_payload = Self::prepare_local_sync_payload(pool, user_id).await?;
+        let account = format!("{}|{}", worker_url.trim_end_matches('/'), user_id);
+        let (local_payload, uploaded) = delta::changed_only(&account, local_payload);
         let pending_local_changes_uploaded = local_payload.playlists.len()
             + local_payload.deleted_playlists.len()
             + local_payload.deleted_playlist_songs.len();
 
-        // Step 4: PUSH legitimate local changes to cloud
-        let synced_at = client.push_sync(worker_url, token, &local_payload).await?;
+        // Step 4: PUSH what changed (nothing changed: no request, no D1 writes)
+        let synced_at = if delta::is_empty(&local_payload) {
+            chrono::Utc::now().timestamp()
+        } else {
+            let at = client.push_sync(worker_url, token, &local_payload).await?;
+            delta::commit(uploaded);
+            at
+        };
         tracing::info!(
             "pending local changes uploaded: {}",
             pending_local_changes_uploaded

@@ -983,7 +983,10 @@ export default {
                 env.DB.prepare(
                   "INSERT INTO playlists (id, user_id, name, description, is_smart_mix, mix_type, created_at, updated_at) " +
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
-                  "ON CONFLICT(id, user_id) DO UPDATE SET name = excluded.name, description = excluded.description, updated_at = excluded.updated_at"
+                  "ON CONFLICT(id, user_id) DO UPDATE SET name = excluded.name, description = excluded.description, updated_at = excluded.updated_at " +
+                  // An identical row is not rewritten (D1 bills every row written).
+                  "WHERE playlists.name IS NOT excluded.name OR playlists.description IS NOT excluded.description " +
+                  "OR excluded.updated_at > playlists.updated_at"
                 ).bind(
                   pl.id,
                   userId,
@@ -1015,7 +1018,14 @@ export default {
                   "provider = COALESCE(songs.provider, excluded.provider), " +
                   "provider_id = COALESCE(songs.provider_id, excluded.provider_id), " +
                   "online_source_json = COALESCE(songs.online_source_json, excluded.online_source_json), " +
-                  "updated_at = excluded.updated_at"
+                  "updated_at = excluded.updated_at " +
+                  "WHERE songs.title IS NOT excluded.title OR songs.artist IS NOT excluded.artist " +
+                  "OR songs.album IS NOT excluded.album OR songs.duration_secs IS NOT excluded.duration_secs " +
+                  "OR (excluded.cover_art_url IS NOT NULL AND songs.cover_art_url IS NOT excluded.cover_art_url) " +
+                  "OR (excluded.preview_url IS NOT NULL AND songs.preview_url IS NOT excluded.preview_url) " +
+                  "OR (songs.provider IS NULL AND excluded.provider IS NOT NULL) " +
+                  "OR (songs.provider_id IS NULL AND excluded.provider_id IS NOT NULL) " +
+                  "OR (songs.online_source_json IS NULL AND excluded.online_source_json IS NOT NULL)"
                 ).bind(
                   s.id,
                   userId,
@@ -1043,7 +1053,8 @@ export default {
                 env.DB.prepare(
                   "INSERT INTO playlist_songs (playlist_id, song_id, user_id, position) " +
                   "VALUES (?, ?, ?, ?) " +
-                  "ON CONFLICT(playlist_id, song_id, user_id) DO UPDATE SET position = excluded.position"
+                  "ON CONFLICT(playlist_id, song_id, user_id) DO UPDATE SET position = excluded.position " +
+                  "WHERE playlist_songs.position IS NOT excluded.position"
                 ).bind(ps.playlist_id, ps.song_id, userId, ps.position || 0)
               );
             }
@@ -1064,7 +1075,10 @@ export default {
                   "completion_count = MAX(song_stats.completion_count, excluded.completion_count), " +
                   "skip_count = MAX(song_stats.skip_count, excluded.skip_count), " +
                   "manual_like = excluded.manual_like, " +
-                  "updated_at = excluded.updated_at"
+                  "updated_at = excluded.updated_at " +
+                  "WHERE excluded.play_count > song_stats.play_count OR excluded.total_seconds > song_stats.total_seconds " +
+                  "OR excluded.completion_count > song_stats.completion_count OR excluded.skip_count > song_stats.skip_count " +
+                  "OR song_stats.manual_like IS NOT excluded.manual_like"
                 ).bind(
                   ss.song_id,
                   userId,
@@ -1093,7 +1107,11 @@ export default {
                   "play_count = MAX(daily_user_stats.play_count, excluded.play_count), " +
                   "completion_count = MAX(daily_user_stats.completion_count, excluded.completion_count), " +
                   "skip_count = MAX(daily_user_stats.skip_count, excluded.skip_count), " +
-                  "updated_at = MAX(daily_user_stats.updated_at, excluded.updated_at)"
+                  "updated_at = MAX(daily_user_stats.updated_at, excluded.updated_at) " +
+                  "WHERE excluded.listening_seconds > daily_user_stats.listening_seconds " +
+                  "OR excluded.play_count > daily_user_stats.play_count " +
+                  "OR excluded.completion_count > daily_user_stats.completion_count " +
+                  "OR excluded.skip_count > daily_user_stats.skip_count"
                 ).bind(
                   userId,
                   ds.device_id,
@@ -1127,7 +1145,13 @@ export default {
                     "WHEN excluded.last_played_at IS NULL THEN track_device_stats.last_played_at " +
                     "ELSE MAX(track_device_stats.last_played_at, excluded.last_played_at) " +
                   "END, " +
-                  "updated_at = MAX(track_device_stats.updated_at, excluded.updated_at)"
+                  "updated_at = MAX(track_device_stats.updated_at, excluded.updated_at) " +
+                  "WHERE excluded.play_count > track_device_stats.play_count " +
+                  "OR excluded.total_seconds > track_device_stats.total_seconds " +
+                  "OR excluded.completion_count > track_device_stats.completion_count " +
+                  "OR excluded.skip_count > track_device_stats.skip_count " +
+                  "OR (excluded.last_played_at IS NOT NULL AND (track_device_stats.last_played_at IS NULL " +
+                  "OR excluded.last_played_at > track_device_stats.last_played_at))"
                 ).bind(
                   userId,
                   tds.device_id,
@@ -1157,7 +1181,11 @@ export default {
                 "top_songs_json = excluded.top_songs_json, " +
                 "top_artists_json = excluded.top_artists_json, " +
                 "yearly_archives_json = excluded.yearly_archives_json, " +
-                "updated_at = excluded.updated_at"
+                "updated_at = excluded.updated_at " +
+                "WHERE excluded.total_seconds > user_stats.total_seconds " +
+                "OR user_stats.top_songs_json IS NOT excluded.top_songs_json " +
+                "OR user_stats.top_artists_json IS NOT excluded.top_artists_json " +
+                "OR user_stats.yearly_archives_json IS NOT excluded.yearly_archives_json"
               ).bind(
                 userId,
                 us.total_seconds || 0.0,
@@ -1183,7 +1211,8 @@ export default {
               env.DB.prepare(
                 "INSERT INTO user_settings (user_id, settings_json, updated_at) " +
                 "VALUES (?, ?, ?) " +
-                "ON CONFLICT(user_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
+                "ON CONFLICT(user_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at " +
+                "WHERE user_settings.settings_json IS NOT excluded.settings_json"
               ).bind(userId, settingsStr, now)
             );
           }

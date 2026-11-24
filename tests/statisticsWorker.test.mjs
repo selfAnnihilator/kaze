@@ -195,3 +195,27 @@ test('Worker: additive migration preserves old backups and fills source on next 
   assert.equal(canonical.online_source, null);
   sqlite.close();
 });
+test('Worker: re-sending unchanged rows writes nothing (D1 bills rows written)',async()=>{
+  const {sqlite,request}=await setup();
+  const payload=(plays,now)=>({
+    playlists:[{id:'p',name:'Mix',updated_at:10}],
+    songs:[{id:'s',title:'Song',artist:'Art',album:'Al',duration_secs:200,cover_art_url:'https://x/c.jpg',updated_at:now}],
+    playlist_songs:[{playlist_id:'p',song_id:'s',position:0}],
+    song_stats:[{song_id:'s',play_count:plays,total_time_listened:60*plays,updated_at:now}],
+    daily_stats:[{device_id:'d',stat_date:'2026-11-24',listening_seconds:60*plays,play_count:plays,updated_at:10}],
+    track_device_stats:[{device_id:'d',track_id:'s',play_count:plays,total_seconds:60*plays,last_played_at:100*plays,updated_at:10}],
+    user_stats:{total_seconds:60*plays,top_songs_json:'[]',top_artists_json:'[]'},
+    user_settings:[{settings_json:'{"v":1}'}],
+  });
+  const changes=()=>sqlite.prepare('SELECT total_changes() AS n').get().n;
+  await request('A',payload(1,1000));
+  const before=changes();
+  await request('A',payload(1,2000)); // same data, new sync time
+  assert.equal(changes()-before,0,'an unchanged sync writes no rows');
+  await request('A',payload(2,3000));
+  // song_stats, daily, track_device and user_stats changed; songs/playlists/settings did not.
+  assert.equal(changes()-before,4);
+  const data=await request('A');
+  assert.equal(data.data.song_stats[0].play_count,2);
+  assert.equal(data.data.songs[0].title,'Song');
+});
