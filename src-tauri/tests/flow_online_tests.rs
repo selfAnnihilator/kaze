@@ -258,6 +258,11 @@ async fn steering_rebuilds_generated_upcoming_tracks_without_restarting_current_
     .await
     .unwrap();
     let before = playback.get_playback_state().await;
+    // Names travel with the ids, so a restored queue never shows placeholders.
+    assert_eq!(before.upcoming_titles.len(), before.queue_track_ids.len());
+    let manual_at = before.queue_track_ids.iter().position(|id| id == &manual).unwrap();
+    assert_eq!(before.upcoming_titles[manual_at], "Manual");
+    assert_eq!(before.upcoming_artists[manual_at], "Manual Artist");
     let original_evidence =
         serde_json::to_value(playback.flow_reason("default", &current).await).unwrap();
     let generation = playback

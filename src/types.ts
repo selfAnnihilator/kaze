@@ -74,6 +74,9 @@ export interface PlaybackState {
   queue_track_ids?: string[];
   /** Queue position of each `queue_track_ids` entry (play order; differs while shuffled). */
   upcoming_indices?: number[];
+  /** Title and artist of each `queue_track_ids` entry (names for a restored queue). */
+  upcoming_titles?: string[];
+  upcoming_artists?: string[];
   /** Songs the user queued that are still waiting (they play before the app's queue). */
   user_queue_track_ids?: string[];
   can_seek?: boolean;

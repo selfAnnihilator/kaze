@@ -47,7 +47,9 @@ export function upcomingFromPlayback(state: PlaybackState): QueueEntry[] {
   const order = state.upcoming_indices;
   return (state.queue_track_ids || []).map((trackId, offset) => {
     const index = order?.[offset] ?? start + offset;
-    return { key: `${index}:${trackId}`, trackId, index };
+    const title = state.upcoming_titles?.[offset] || undefined;
+    const artist = state.upcoming_artists?.[offset] || undefined;
+    return { key: `${index}:${trackId}`, trackId, index, title, artist };
   });
 }
 

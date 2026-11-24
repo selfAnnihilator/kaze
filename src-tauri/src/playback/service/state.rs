@@ -39,6 +39,11 @@ impl PlaybackService {
             (0..q_guard.len()).collect()
         };
         let queue_track_ids = q_guard.track_ids_at(&upcoming_indices);
+        let (upcoming_titles, upcoming_artists) = upcoming_indices
+            .iter()
+            .filter_map(|&i| q_guard.items().get(i))
+            .map(|item| (item.title.clone(), item.artist.clone()))
+            .unzip();
 
         let can_seek = match &*self.active_stream_state.read_or_recover() {
             Some(state) => state.can_seek(),
@@ -71,6 +76,8 @@ impl PlaybackService {
             current_queue_index: q_guard.current_index(),
             queue_track_ids,
             upcoming_indices,
+            upcoming_titles,
+            upcoming_artists,
             user_queue_track_ids: q_guard.waiting_manual_track_ids(),
             source: self.current_source.read().await.clone(),
         }

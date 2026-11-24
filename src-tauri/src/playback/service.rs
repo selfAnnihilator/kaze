@@ -59,6 +59,12 @@ pub struct PlaybackStateDto {
     /// order, which differs from queue order while shuffled).
     #[serde(default)]
     pub upcoming_indices: Vec<usize>,
+    /// Title and artist of each `queue_track_ids` entry, so a restored queue of
+    /// online songs has names before any QueueUpdated event arrives.
+    #[serde(default)]
+    pub upcoming_titles: Vec<String>,
+    #[serde(default)]
+    pub upcoming_artists: Vec<String>,
     /// Songs the user queued that are still waiting, in the order they were added.
     #[serde(default)]
     pub user_queue_track_ids: Vec<String>,

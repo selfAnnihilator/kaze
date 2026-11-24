@@ -77,3 +77,16 @@ test("playback snapshot keeps titles learned from queue events", () => {
   assert.equal(merged[1].title, undefined);
   assert.deepEqual(withKnownMetadata(snapshot, []), snapshot);
 });
+test("a restored queue keeps song names from the playback snapshot", () => {
+  const [a, b] = upcomingFromPlayback({
+    current_track_id: "now",
+    current_queue_index: 2,
+    queue_track_ids: ["jiosaavn:a", "jiosaavn:b"],
+    upcoming_indices: [3, 4],
+    upcoming_titles: ["Song A", ""],
+    upcoming_artists: ["Artist A", ""],
+  });
+  assert.equal(a.title, "Song A");
+  assert.equal(a.artist, "Artist A");
+  assert.equal(b.title, undefined, "an empty name still falls back to the library or event");
+});
