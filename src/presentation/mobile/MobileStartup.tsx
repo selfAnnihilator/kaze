@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import "./mobile-startup.css";
+import { remainingIntro } from "./introTiming";
 
 /** Longest the startup screen stays if the library never answers (the app then shows what it has). */
 const GIVE_UP_MS = 8000;
 
-/** Startup (Figma A1): logo between red rules, KAZE, "Opening Kaze…" and a loading bar. */
+/** Startup (Figma A1): logo between red rules, KAZE, "Opening Kaze…" and a loading bar. Stays at least 3 s after launch. */
 export function MobileStartup({ ready = false }: { ready?: boolean }) {
   const [gaveUp, setGaveUp] = useState(false);
+  const [shownLongEnough, setShownLongEnough] = useState(() => remainingIntro(performance.now()) === 0);
   useEffect(() => {
     const timer = setTimeout(() => setGaveUp(true), GIVE_UP_MS);
-    return () => clearTimeout(timer);
+    const intro = setTimeout(() => setShownLongEnough(true), remainingIntro(performance.now()));
+    return () => { clearTimeout(timer); clearTimeout(intro); };
   }, []);
-  if (ready || gaveUp) return null;
+  if ((ready && shownLongEnough) || gaveUp) return null;
   return (
     <section className="m-startup" aria-label="Opening Kaze" aria-busy="true">
       <div className="m-startup__center">
