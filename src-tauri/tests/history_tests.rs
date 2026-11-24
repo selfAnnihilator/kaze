@@ -16,7 +16,7 @@ async fn setup_history_env() -> (CoreProcessor, String, String) {
 
     let processor = CoreProcessor::new_with_backend(
         pool,
-        AppConfig::default_with_dirs(),
+        fixture_config(),
         mock_backend,
     );
 
@@ -314,4 +314,12 @@ async fn test_multi_factor_rankings() {
         }
         _ => panic!("Expected Rankings response"),
     }
+}
+
+/// The fixture songs sit in Kaze's download folder: songs from the user's own
+/// folders take no likes or dislikes, and these tests rate them.
+fn fixture_config() -> AppConfig {
+    let mut config = AppConfig::default_with_dirs();
+    config.downloads.download_dir = Some("/music".into());
+    config
 }

@@ -18,12 +18,12 @@ const songOf = (t: SheetTrack) => ({ title: t.title, subtitle: joinSub(t.artist,
 function LocalRows({ t, c, liked, then }: { t: SheetTrack; c: Ctx; liked: boolean; then: (work: () => unknown) => () => void }) {
   return (
     <>
-      <SheetRow icon={<Heart {...ICON} fill={liked ? "currentColor" : "none"} />} label="Like" note={liked ? "LIKED" : undefined} tone={liked ? "red" : undefined}
+      <SheetRow icon={<Heart {...ICON} fill={liked ? "currentColor" : "none"} />} label="Like" note={liked ? "LIKED" : undefined} tone={liked ? "red" : undefined} disabled={t.localFile}
         onPress={() => void (liked ? c.handleRemoveFeedback(t.id) : c.handleLike(t.id))} />
       <SheetRow icon={<BookmarkPlus {...ICON} />} label="Add to playlist" onPress={then(() => c.handleOpenAddToPlaylistModal({ id: t.id, title: t.title, artist: t.artist, album: t.album, cover_art_url: t.cover ?? undefined }))} />
       <SheetRow icon={<ListPlus {...ICON} />} label="Add to queue" onPress={then(() => queueTrack(c, t.id))} />
       <SheetRow icon={<ListStart {...ICON} />} label="Play next" onPress={then(() => queueTrack(c, t.id, true))} />
-      <SheetRow icon={<ThumbsDown {...ICON} />} label="Not interested" trailing={<ChevronRight size={16} strokeWidth={2} />} onPress={() => openTrackSheet("not_interested", t)} />
+      <SheetRow icon={<ThumbsDown {...ICON} />} label="Not interested" trailing={<ChevronRight size={16} strokeWidth={2} />} disabled={t.localFile} onPress={() => openTrackSheet("not_interested", t)} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import type { CollectionData, CollectionTrackItem } from "../../components/views
 import { dispatchCommand, executeQuery } from "../../services/api";
 import { isOnlineTrack } from "../../trackKind";
 import type { PlaybackState, Playlist, Track } from "../../types";
+import { canRate } from "../../services/ratingRule";
 
 interface LikesDeps {
   activeCollection: CollectionData | null;
@@ -258,6 +259,10 @@ export function useLikes({ activeCollection, setActiveCollection, addAppNotifica
         ? track.id
         : undefined);
 
+    // A matched copy from the user's own folders takes no like: the online song does.
+    const localTrack = track.rawLocalTrack ?? tracks.find((t) => t.id === localId);
+    const likeLocally = !!localId && (!localTrack || canRate(localTrack));
+
     const isLikedSongsView =
       activeCollection?.title === "Liked Songs" ||
       (likedPlaylistId &&
@@ -265,7 +270,7 @@ export function useLikes({ activeCollection, setActiveCollection, addAppNotifica
           activeCollection?.id === likedPlaylistId));
 
     try {
-      if (localId) {
+      if (likeLocally && localId) {
         if (isLiked) {
           await handleRemoveFeedback(localId);
         } else {

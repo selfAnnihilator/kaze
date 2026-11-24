@@ -31,6 +31,7 @@ import "./mobile-profile.css";
 import "./mobile-lyrics.css";
 import "./mobile-motion.css";
 import "./mobile-pull.css";
+import { useCanRate } from "../../services/ratingRule";
 
 const SCREENS: Record<MobileTab, React.ComponentType<MobileScreenProps>> = {
   home: MobileHome,
@@ -62,6 +63,7 @@ export function MobileApp({ c, player, deck, overlays }: MobileProps) {
   if (c.activeCollection) body = <CollectionPane c={c} />;
   else if (page && page !== "lyrics") body = <MobilePageView c={c} page={page} />;
 
+  const canLike = useCanRate(player.currentTrack);
   return (
     <InterfaceContext.Provider value="mobile">
       <MobileNavContext.Provider value={nav}>
@@ -78,6 +80,7 @@ export function MobileApp({ c, player, deck, overlays }: MobileProps) {
             onPlayPause={player.onPlayPause}
             onNext={player.onNext}
             onLike={handleLike}
+            canLike={canLike}
             rootRef={setMini}
           />
 

@@ -3,6 +3,7 @@ import { ThumbsDown } from "lucide-react";
 import { useNotInterested, recommendationPreferences } from "../services/recommendationPreferences";
 import { dispatchCommand } from "../services/api";
 import type { Command } from "../types";
+import { LOCAL_RATING_NOTE } from "../services/ratingRule";
 
 type Choice = "song" | "artist" | "less";
 const CHOICES: { id: Choice; label: string }[] = [
@@ -11,7 +12,7 @@ const CHOICES: { id: Choice; label: string }[] = [
   { id: "less", label: "Less like this" },
 ];
 
-export const NotInterestedButton = memo(function NotInterestedButton({ trackId, title, notInterested: initial = false }: { trackId: string; title: string; notInterested?: boolean }) {
+export const NotInterestedButton = memo(function NotInterestedButton({ trackId, title, notInterested: initial = false, rateable = true }: { trackId: string; title: string; notInterested?: boolean; rateable?: boolean }) {
   const notInterested = useNotInterested(trackId, initial);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -28,7 +29,7 @@ export const NotInterestedButton = memo(function NotInterestedButton({ trackId, 
   const run = async (command: Command, after?: () => void) => {
     setBusy(true); setError(""); setOpen(false);
     try { await dispatchCommand(command); after?.(); }
-    catch { setError("Couldn’t save your preference. Try again."); }
+    catch (failure) { setError(String(failure).includes("own folders") ? LOCAL_RATING_NOTE : "Couldn’t save your preference. Try again."); }
     finally { setBusy(false); }
   };
   const choose = (choice: Choice) => {
@@ -36,10 +37,10 @@ export const NotInterestedButton = memo(function NotInterestedButton({ trackId, 
     if (choice === "song") return run({ command: "DislikeTrack", payload }, () => recommendationPreferences.update([trackId], true));
     return run(choice === "artist" ? { command: "BlockArtist", payload } : { command: "LessLikeThis", payload });
   };
-  const label = notInterested ? `Allow ${title} in recommendations again` : `Not interested in ${title}`;
+  const label = !rateable ? LOCAL_RATING_NOTE : notInterested ? `Allow ${title} in recommendations again` : `Not interested in ${title}`;
   return <span ref={root} className="not-interested-control" onClick={event => event.stopPropagation()}>
     <button data-track-id={trackId} type="button" className="player-icon-btn not-interested-button" aria-label={label} title={label}
-      aria-pressed={notInterested} aria-haspopup={notInterested ? undefined : "menu"} aria-expanded={notInterested ? undefined : open} disabled={busy}
+      aria-pressed={notInterested} aria-haspopup={notInterested ? undefined : "menu"} aria-expanded={notInterested ? undefined : open} disabled={busy || !rateable}
       onClick={() => notInterested
         ? void run({ command: "RemoveTrackFeedback", payload: { track_id: trackId } }, () => recommendationPreferences.update([trackId], false))
         : setOpen(value => !value)}><ThumbsDown size={16} /></button>

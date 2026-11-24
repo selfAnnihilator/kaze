@@ -70,6 +70,13 @@ impl SyncManager {
             playlist_memberships_inserted_updated
         );
 
+        // The pull just wrote back the cloud's ratings: clear those on local files.
+        if let Some(dir) = crate::library::local_feedback::downloads_dir() {
+            if let Err(error) = crate::library::local_feedback::clear(pool, user_id, &dir).await {
+                tracing::warn!(%error, "couldn't clear ratings on local files");
+            }
+        }
+
         // Step 3: Prepare local changes (including any local playlists and pending
         // tombstones), keeping only rows this device hasn't uploaded yet.
         let local_payload = Self::prepare_local_sync_payload(pool, user_id).await?;

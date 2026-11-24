@@ -149,6 +149,9 @@ impl CoreProcessor {
         background_tasks.push(tokio::spawn(async move {
             sm_maint.startup_maintenance().await;
         }));
+        // Songs from the user's own folders take no likes: clear old ones.
+        crate::library::local_feedback::set_downloads_dir(download_service.download_dir());
+        background_tasks.push(tokio::spawn(crate::library::local_feedback::clear_every_profile(db_pool.clone(), download_service.download_dir().to_path_buf())));
 
         let flow_engine = Arc::new(crate::recommendations::FlowEngine::new(db_pool.clone()));
         playback_service.set_flow_engine(flow_engine.clone());

@@ -32,6 +32,7 @@ import type { QueueEntry } from "./queuePresentation";
 import { ProfileNavigation } from "./ProfileNavigation";
 import { Artwork } from "./Artwork";
 import { OverflowTitle } from "./OverflowTitle";
+import { LOCAL_RATING_NOTE, useCanRate } from "../services/ratingRule";
 
 export type BrutalistDeckExtras = {
   entries: QueueEntry[];
@@ -57,6 +58,7 @@ export const BrutalistDeck = memo(function BrutalistDeck(
   const online = kind === true;
   // A local track that is a Kaze download keeps its ✓ (click to remove).
   const kazeDownload = useSongDownloaded(track?.id ?? "") && kind === false;
+  const rateable = useCanRate(track);
   const toggleLike = () => {
     if (!track) return;
     if (online && p.onLikeOnline)
@@ -202,17 +204,17 @@ export const BrutalistDeck = memo(function BrutalistDeck(
             </button>
             <button
               className="press-icon"
-              title={liked ? "Unlike track" : "Like track"}
+              title={!rateable && track ? LOCAL_RATING_NOTE : liked ? "Unlike track" : "Like track"}
               aria-label={liked ? "Unlike track" : "Like track"}
               aria-pressed={!!liked}
-              disabled={!track}
+              disabled={!rateable}
               onClick={toggleLike}
             >
               <Heart size={20} fill={liked ? "currentColor" : "none"} />
             </button>
           </div>
           <div className="press-track-tools">
-            {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} />}
+            {track && <NotInterestedButton key={`dislike:${track.id}`} trackId={track.id} title={track.title} notInterested={track.manual_like === -1} rateable={rateable} />}
             {/* Local songs have nothing to download; a resolving track shows a neutral control. */}
             {track && (kind !== false || kazeDownload) && <DownloadButton key={`download:${track.id}`} trackId={track.id} sourceId={track.playback_source?.track_id} title={track.title} pending={kind === undefined} compact />}
             {track && p.onOpenAddToPlaylist && (

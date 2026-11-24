@@ -110,7 +110,7 @@ async fn test_taste_profile_generation() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
     let processor =
-        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+        CoreProcessor::new_with_backend(pool, fixture_config(), mock_backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
@@ -196,7 +196,7 @@ async fn test_offline_local_recommendations_and_diversity() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
     let processor =
-        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+        CoreProcessor::new_with_backend(pool, fixture_config(), mock_backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
@@ -288,7 +288,7 @@ async fn test_smart_mix_generation_and_persistence() {
     let pool = create_in_memory_pool().await.expect("DB pool");
     let mock_backend = Box::new(MockAudioBackend::new());
     let processor =
-        CoreProcessor::new_with_backend(pool, AppConfig::default_with_dirs(), mock_backend);
+        CoreProcessor::new_with_backend(pool, fixture_config(), mock_backend);
 
     let (pink_floyd_ids, _other_ids) = setup_test_library(&processor).await;
     let now = chrono::Utc::now().timestamp();
@@ -457,7 +457,7 @@ async fn test_multi_user_taste_and_stats_isolation() {
         .expect("create in-memory pool");
     let backend = Box::new(MockAudioBackend::new());
     let processor =
-        CoreProcessor::new_with_backend(pool.clone(), AppConfig::default_with_dirs(), backend);
+        CoreProcessor::new_with_backend(pool.clone(), fixture_config(), backend);
 
     let (pink_floyd_ids, other_ids) = setup_test_library(&processor).await;
     let pf_track = &pink_floyd_ids[0];
@@ -736,4 +736,12 @@ async fn test_multi_user_taste_and_stats_isolation() {
             "User B playlists must NOT contain User A's mix"
         );
     }
+}
+
+/// The fixture songs sit in Kaze's download folder: songs from the user's own
+/// folders take no likes or dislikes, and these tests rate them.
+fn fixture_config() -> AppConfig {
+    let mut config = AppConfig::default_with_dirs();
+    config.downloads.download_dir = Some("/music".into());
+    config
 }

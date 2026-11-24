@@ -4,6 +4,7 @@ import { DownloadButton } from "../../DownloadButton";
 import { NotInterestedButton } from "../../NotInterestedButton";
 import { Bookmark, BookmarkCheck, Check, Clock, Heart, ListPlus, Music2, Pause, Play, RefreshCw, Search } from "lucide-react";
 import type { CollectionDetailViewContext } from "./context";
+import { canRate, LOCAL_RATING_NOTE } from "../../../services/ratingRule";
 
 export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
   return (
@@ -163,6 +164,8 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                 ? c.likedTrackIds.has(effectiveTrackId) ||
                   c.likedTrackIds.has(track.id)
                 : c.isLikedSongs;
+              // Songs from the user's own folders take no like or dislike.
+              const rateable = !track.rawLocalTrack || canRate(track.rawLocalTrack);
               const isQueued = c.queuedTrackIds?.has(effectiveTrackId) || false;
 
               return (
@@ -363,7 +366,7 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                       {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
                     </button>
 
-                    <NotInterestedButton trackId={track.id} title={track.title} />
+                    <NotInterestedButton trackId={track.id} title={track.title} rateable={rateable} />
                     <button
                       type="button"
                       onClick={(e) => {
@@ -378,8 +381,9 @@ export function CollectionTracks({ c }: { c: CollectionDetailViewContext }) {
                         padding: "var(--space-4)",
                         display: "flex",
                       }}
-                      title={isLiked ? "Unlike track" : "Like track"}
+                      title={!rateable ? LOCAL_RATING_NOTE : isLiked ? "Unlike track" : "Like track"}
                       aria-label={isLiked ? "Unlike track" : "Like track"}
+                      disabled={!rateable}
                     >
                       <Heart size={15} fill={isLiked ? "var(--palette-pink-400)" : "none"} />
                     </button>

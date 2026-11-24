@@ -5,6 +5,10 @@ use super::*;
 impl CoreProcessor {
     pub(super) async fn set_song_feedback(&self, track_id: &str, feedback: i64) -> AppResult<()> {
         let user = self.current_user_id().await;
+        let downloads = self.download_service.download_dir();
+        if feedback != 0 && crate::library::local_feedback::is_local_file(&self.db_pool, track_id, downloads).await? {
+            return Err(AppError::Validation(crate::library::local_feedback::REFUSED.into()));
+        }
         if self
             .library_service
             .track_repo()

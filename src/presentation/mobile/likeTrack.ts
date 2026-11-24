@@ -1,5 +1,6 @@
 import { isOnlineTrack } from "../../trackKind";
 import type { MobilePlayer } from "./types";
+import { canRate } from "../../services/ratingRule";
 
 /** Liked, for a local song (its feedback) or an online one (App's online-like state). */
 export const isPlayingLiked = (player: MobilePlayer) =>
@@ -8,7 +9,7 @@ export const isPlayingLiked = (player: MobilePlayer) =>
 /** Like or unlike the playing song the way the desktop Deck does (online songs use their own path). */
 export function togglePlayingLike(player: MobilePlayer) {
   const track = player.currentTrack;
-  if (!track) return;
+  if (!track || !canRate(track)) return;
   if (isOnlineTrack(track) && player.onLikeOnline) {
     player.onLikeOnline({
       id: track.id,

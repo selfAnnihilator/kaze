@@ -10,6 +10,7 @@ import { useMobileNav } from "./mobileNav";
 import { openTrackSheet } from "./sheets/trackSheet";
 import type { MobileDeckExtras, MobilePlayer } from "./types";
 import { shareText } from "./androidBridge";
+import { useCanRate } from "../../services/ratingRule";
 
 type BarEvent = React.PointerEvent<HTMLDivElement>;
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
@@ -81,10 +82,12 @@ export const DeckActions = memo(function DeckActions({ player, deck }: { player:
   const kind = isOnlineTrack(track);
   const kazeDownload = useSongDownloaded(track?.id ?? "") && kind === false;
   const canDownload = !!track && (kind !== false || kazeDownload);
+  // Songs from the user's own folders take no like or dislike: both stay, greyed out.
+  const rateable = useCanRate(track);
 
   return (
     <div className="m-deck__actions-row">
-      <button type="button" className={`m-deck__action-icon ${liked ? "is-liked" : ""}`} disabled={!track}
+      <button type="button" className={`m-deck__action-icon ${liked ? "is-liked" : ""} ${track && !rateable ? "is-muted" : ""}`} disabled={!rateable}
         onClick={() => togglePlayingLike(player)} aria-label={liked ? "Remove like" : "Like"} aria-pressed={liked}>
         <Heart size={20} strokeWidth={2} fill={liked ? "currentColor" : "none"} />
       </button>
@@ -105,7 +108,7 @@ export const DeckActions = memo(function DeckActions({ player, deck }: { player:
         </button>
       )}
       {track && (
-        <button type="button" className={`m-deck__action-icon ${track.manual_like === -1 ? "is-red" : ""}`} aria-label="Not interested"
+        <button type="button" className={`m-deck__action-icon ${track.manual_like === -1 ? "is-red" : ""} ${rateable ? "" : "is-muted"}`} aria-label="Not interested" disabled={!rateable}
           onClick={() => openTrackSheet("not_interested", { id: track.id, title: track.title, artist: track.artist_name, album: track.album_title, cover: player.coverArtUrl })}>
           <ThumbsDown size={20} strokeWidth={2} />
         </button>

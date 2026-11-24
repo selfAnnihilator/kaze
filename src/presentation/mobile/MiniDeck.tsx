@@ -20,10 +20,12 @@ function MiniProgress() {
  * Inter 15px title, Courier 10px meta, 52x44 solid coral play block.
  */
 export const MiniDeck = memo(function MiniDeck({
-  track, coverArtUrl, isPlaying, isLoading, liked, onOpen, onPlayPause, onNext, onLike, rootRef,
+  track, coverArtUrl, isPlaying, isLoading, liked, canLike = true, onOpen, onPlayPause, onNext, onLike, rootRef,
 }: {
   track?: Track; coverArtUrl?: string | null; isPlaying: boolean; isLoading: boolean; liked: boolean;
   onOpen: () => void; onPlayPause: () => void; onNext?: () => void; onLike?: () => void;
+  /** False for songs from the user's own folders (no likes). */
+  canLike?: boolean;
   /** The bar itself, so dragging it up can pull The Deck open. */
   rootRef?: Ref<HTMLDivElement>;
 }) {
@@ -49,6 +51,7 @@ export const MiniDeck = memo(function MiniDeck({
               type="button"
               className={`m-minideck__btn-icon ${isLiked ? "is-liked" : ""}`}
               onClick={onLike}
+              disabled={!canLike}
               aria-label={isLiked ? "Unlike" : "Like"}
             >
               <Heart size={20} strokeWidth={2} fill={isLiked ? "currentColor" : "none"} className="m-minideck__heart-icon" />

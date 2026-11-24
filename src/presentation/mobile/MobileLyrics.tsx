@@ -6,6 +6,7 @@ import { useLyrics } from "./lyrics/useLyrics";
 import { isPlayingLiked, togglePlayingLike } from "./likeTrack";
 import { Sleeve } from "./Sleeve";
 import type { MobilePlayer } from "./types";
+import { useCanRate } from "../../services/ratingRule";
 
 function LyricsBody({ lyrics, onSeek }: { lyrics: ReturnType<typeof useLyrics>; onSeek: (s: number) => void }) {
   if (lyrics.synced.length) return <LyricLines lines={lyrics.synced} onSeek={onSeek} />;
@@ -27,6 +28,7 @@ function LyricsBody({ lyrics, onSeek }: { lyrics: ReturnType<typeof useLyrics>; 
 /** Lyrics (Figma E3): full screen over the app with the song, its lines, position and transport. */
 export function MobileLyrics({ player, onClose, leaving = false }: { player: MobilePlayer; onClose: () => void; leaving?: boolean }) {
   const track = player.currentTrack;
+  const rateable = useCanRate(track);
   const lyrics = useLyrics(track);
   const state = player.playbackState;
   const synced = lyrics.synced.length > 0;
@@ -42,7 +44,7 @@ export function MobileLyrics({ player, onClose, leaving = false }: { player: Mob
           <strong>{track?.title || "Nothing playing"}</strong>
           <span className="m-set-row__mono">{[track?.artist_name?.toUpperCase(), synced ? "SYNCED LYRICS" : null].filter(Boolean).join(" · ")}</span>
         </span>
-        <button type="button" className="m-backbar__btn" disabled={!track} onClick={() => togglePlayingLike(player)} aria-label="Like" aria-pressed={isPlayingLiked(player)}>
+        <button type="button" className="m-backbar__btn" disabled={!rateable} onClick={() => togglePlayingLike(player)} aria-label="Like" aria-pressed={isPlayingLiked(player)}>
           <Heart size={20} strokeWidth={2} fill={isPlayingLiked(player) ? "currentColor" : "none"} />
         </button>
       </div>

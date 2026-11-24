@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { PlaybackState, Track } from "../types";
 import { NowPlayingProgressBar } from "./NowPlayingProgressBar";
+import { LOCAL_RATING_NOTE, useCanRate } from "../services/ratingRule";
 
 export interface NowPlayingBarProps {
   onOpenQueue?: () => void;
@@ -90,6 +91,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
   }) => {
     const isOnline = isOnlineTrack(currentTrack) === true;
     const isKazeDownload = useSongDownloaded(currentTrack?.id ?? "");
+    const rateable = useCanRate(currentTrack);
     const activeTitle = currentTrack?.title || "No Track Selected";
     const activeArtist =
       currentTrack?.artist_name?.trim() ||
@@ -202,11 +204,12 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = React.memo(
           {/* Heart — works for all tracks */}
           {currentTrack && (
             <div style={{ display: "flex", gap: "var(--space-6)", marginLeft: "var(--space-6)" }}>
-              <NotInterestedButton key={`dislike:${currentTrack.id}`} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} />
+              <NotInterestedButton key={`dislike:${currentTrack.id}`} trackId={currentTrack.id} title={currentTrack.title} notInterested={currentTrack.manual_like === -1} rateable={rateable} />
               <button
                 className="player-icon-btn"
+                disabled={!rateable}
                 title={
-                  currentTrack.manual_like === 1 || isOnlineLiked
+                  !rateable ? LOCAL_RATING_NOTE : currentTrack.manual_like === 1 || isOnlineLiked
                     ? "Unlike track"
                     : "Like track"
                 }

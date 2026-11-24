@@ -15,7 +15,7 @@ async fn setup_processor() -> CoreProcessor {
         .await
         .expect("create in-memory pool");
     sqlx::query("INSERT OR REPLACE INTO application_settings(key,value,updated_at) VALUES('enable_jiosaavn','false',0)").execute(&pool).await.unwrap();
-    let config = AppConfig::default_with_dirs();
+    let config = fixture_config();
     let backend = Box::new(MockAudioBackend::new());
     CoreProcessor::new_with_backend(pool, config, backend)
 }
@@ -723,7 +723,7 @@ async fn natural_completion_advances_flow_with_the_real_session_identity() {
     let backend = MockAudioBackend::new();
     let processor = CoreProcessor::new_with_backend(
         pool,
-        AppConfig::default_with_dirs(),
+        fixture_config(),
         Box::new(backend.clone()),
     );
     for i in 0..3 {
@@ -1229,7 +1229,7 @@ async fn preserved_current_finishes_with_original_history_session_then_flow_adva
     let backend = MockAudioBackend::new();
     let processor = CoreProcessor::new_with_backend(
         create_in_memory_pool().await.unwrap(),
-        AppConfig::default_with_dirs(),
+        fixture_config(),
         Box::new(backend.clone()),
     );
     let current = add_track(&processor, "Current", "One", "A", "Rock", 2020).await;
@@ -2083,4 +2083,12 @@ async fn session_resets_on_start_flow() {
         reason.session_adjustment.is_none(),
         "fresh Flow must not carry the old session steer"
     );
+}
+
+/// The fixture songs sit in Kaze's download folder: songs from the user's own
+/// folders take no likes or dislikes, and these tests rate them.
+fn fixture_config() -> AppConfig {
+    let mut config = AppConfig::default_with_dirs();
+    config.downloads.download_dir = Some("/music".into());
+    config
 }

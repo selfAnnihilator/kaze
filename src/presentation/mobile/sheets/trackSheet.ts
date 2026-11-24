@@ -11,6 +11,8 @@ export interface SheetTrack {
   /** Online (JioSaavn) source id: the song can be downloaded. */
   sourceId?: string;
   online?: boolean;
+  /** From the user's own folders: takes no like or dislike. */
+  localFile?: boolean;
   /** Set for online songs: queueing goes through the recommendation. */
   rec?: DiscoveryRecommendation;
 }

@@ -8,7 +8,7 @@ use music_player_backend::{
 use serde_json::{json, Value};
 
 async fn processor() -> CoreProcessor {
-    let mut config = AppConfig::default_with_dirs();
+    let mut config = fixture_config();
     config.cache_dir = tempfile::tempdir().unwrap().keep();
 
     let p = CoreProcessor::new_with_backend(
@@ -526,4 +526,12 @@ async fn existing_account_with_positive_feedback_does_not_get_first_use_prompt()
     let setup = setup(&p).await;
     assert_eq!(setup["status"], "pending");
     assert_eq!(setup["should_prompt"], false);
+}
+
+/// The fixture songs sit in Kaze's download folder: songs from the user's own
+/// folders take no likes or dislikes, and these tests rate them.
+fn fixture_config() -> AppConfig {
+    let mut config = AppConfig::default_with_dirs();
+    config.downloads.download_dir = Some("/fixture".into());
+    config
 }

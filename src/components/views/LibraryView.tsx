@@ -5,6 +5,7 @@ import { Pause, Play, Search, RotateCw, Shuffle, Heart, Check, Bookmark, Bookmar
 } from "lucide-react";
 import { Track } from "../../types";
 import { DownloadButton } from "../DownloadButton";
+import { LOCAL_RATING_NOTE, useCanRate } from "../../services/ratingRule";
 
 interface LibraryViewProps {
   tracks: Track[];
@@ -90,6 +91,7 @@ const LibraryRow = ({
   const isLiked =
     track.manual_like === 1 ||
     (likedTrackIds ? likedTrackIds.has(track.id) : false);
+  const rateable = useCanRate(track);
   const isEnqueued = queuedTrackIds ? queuedTrackIds.has(track.id) : false;
   const playlistIds = trackPlaylistMap?.[track.id] || [];
   const isInPlaylist = playlistIds.length > 0;
@@ -218,8 +220,9 @@ const LibraryRow = ({
         </button>
         <button
           className="player-icon-btn"
-          title={isLiked ? "Unlike track" : "Like track"}
+          title={!rateable ? LOCAL_RATING_NOTE : isLiked ? "Unlike track" : "Like track"}
           aria-label={isLiked ? "Unlike track" : "Like track"}
+          disabled={!rateable}
           onClick={(e) => {
             e.stopPropagation();
             if (isLiked) {
