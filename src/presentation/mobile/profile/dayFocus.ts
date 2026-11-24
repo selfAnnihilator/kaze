@@ -26,3 +26,10 @@ export function dayFocus(graph: DayPoint[], date: string): DayFocus | null {
     weekSeconds,
   };
 }
+
+/** The bar shown bright: the tapped day, or today when none is tapped. */
+export function shownDay(selected: string | null, now: Date = new Date()): string {
+  if (selected) return selected;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}

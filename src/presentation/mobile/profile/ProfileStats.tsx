@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MONTHS, hoursMinutes, type ProfileStats } from "./useProfileStats";
-import { dayFocus } from "./dayFocus";
+import { dayFocus, shownDay } from "./dayFocus";
 
 /** Year chips (current year red, earlier years "· ARCHIVED"); pull down refreshes. */
 export function YearChips({ p }: { p: ProfileStats }) {
@@ -38,12 +38,13 @@ export function TimeBoxes({ p }: { p: ProfileStats }) {
   );
 }
 
-/** Month bars, day by day (busiest day red), with Active Days and Daily Avg. */
+/** Month bars, day by day (busiest day red; today, or the tapped day, bright), with Active Days and Daily Avg. */
 export function MonthGraph({ p }: { p: ProfileStats }) {
   const graph = p.stats?.monthly_graph ?? [];
   const peak = Math.max(1, ...graph.map((d) => d.total_seconds));
   const active = graph.filter((d) => d.total_seconds > 0).length;
   const avg = graph.length ? Math.round((p.stats?.monthly_seconds ?? 0) / graph.length) : 0;
+  const bright = shownDay(p.selectedDay);
   return (
     <div className="m-profile-month">
       <div className="m-profile-month__head">
@@ -56,8 +57,8 @@ export function MonthGraph({ p }: { p: ProfileStats }) {
       </div>
       <div className="m-profile-bars" role="group" aria-label={`Listening per day in ${MONTHS[p.viewingMonth - 1]}. Tap a day to see it above.`}>
         {graph.map((d) => (
-          <button key={d.date} type="button" className={`m-profile-bar-hit ${p.selectedDay === d.date ? "is-selected" : ""}`}
-            aria-pressed={p.selectedDay === d.date} aria-label={`${MONTHS[p.viewingMonth - 1]} ${d.day}: ${hoursMinutes(d.total_seconds)}`}
+          <button key={d.date} type="button" className={`m-profile-bar-hit ${bright === d.date ? "is-selected" : ""}`}
+            aria-pressed={bright === d.date} aria-label={`${MONTHS[p.viewingMonth - 1]} ${d.day}: ${hoursMinutes(d.total_seconds)}`}
             onClick={() => p.selectDay(d.date)}>
             <span className={`m-profile-bar ${d.total_seconds === peak ? "is-peak" : ""} ${d.total_seconds ? "" : "is-empty"}`}
               style={{ transform: `scaleY(${d.total_seconds ? Math.max(0.03, d.total_seconds / peak) : 1})` }} />
