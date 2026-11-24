@@ -146,7 +146,29 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
+    /** Back from "Display over other apps": install whatever the user chose. */
+    @ActivityCallback
+    fun overlayAnswered(invoke: Invoke, result: ActivityResult) {
+        installNow(invoke, invoke.parseArgs(InstallArgs::class.java).path)
+    }
+
+    /**
+     * Before the first in-app update, offers "Display over other apps" once,
+     * so the new version can open itself (see [UpdateRelaunch]). The update
+     * goes ahead either way.
+     */
     private fun commitInstall(invoke: Invoke, path: String) {
+        val context = activity.applicationContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && UpdateRelaunch.shouldAsk(context)) {
+            UpdateRelaunch.markAsked(context)
+            val overlay = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}"))
+            startActivityForResult(invoke, overlay, "overlayAnswered")
+        } else {
+            installNow(invoke, path)
+        }
+    }
+
+    private fun installNow(invoke: Invoke, path: String) {
         try {
             ApkInstaller.install(activity.applicationContext, java.io.File(path))
             invoke.resolve()

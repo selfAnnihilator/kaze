@@ -477,7 +477,6 @@ test("The APK installs itself through a PackageInstaller session", () => {
   const manifest = read("plugins/kaze-media/android/src/main/AndroidManifest.xml");
   assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
   assert.match(manifest, /UPDATE_PACKAGES_WITHOUT_USER_ACTION/);
-  assert.doesNotMatch(manifest, /MY_PACKAGE_REPLACED/, "Android 14 blocks reopening from the background");
   const rust = read("src-tauri/src/platform/android_update.rs");
   assert.match(rust, /if !sha\.eq_ignore_ascii_case\(release\.sha256\.trim\(\)\) \{\n\s*let _ = tokio::fs::remove_file\(&apk\)\.await;/, "a damaged APK is never installed");
   assert.match(read("src-tauri/gen/android/app/build.gradle.kts"), /if \(hasReleaseKey\) signingConfig = signingConfigs\.getByName\("release"\)/);
@@ -552,4 +551,27 @@ test("the month chart shows today bright until a day is tapped", async () => {
   assert.equal(shownDay(null, now), "2026-11-04", "today, in local time and zero-padded");
   assert.equal(shownDay("2026-11-02", now), "2026-11-02", "a tapped day wins");
   assert.match(read("src/presentation/mobile/profile/ProfileStats.tsx"), /const bright = shownDay\(p\.selectedDay\)[\s\S]*bright === d\.date \? "is-selected"/);
+});
+
+test("the phone's startup screen stays at least 3 seconds after launch", async () => {
+  const { remainingIntro, MIN_SHOW_MS } = await import("../src/presentation/mobile/introTiming.ts");
+  assert.equal(MIN_SHOW_MS, 3000);
+  assert.equal(remainingIntro(400), 2600, "a fast load still waits out the intro");
+  assert.equal(remainingIntro(5000), 0, "a slow load isn't held any longer");
+  const startup = read("src/presentation/mobile/MobileStartup.tsx");
+  assert.match(startup, /if \(\(ready && shownLongEnough\) \|\| gaveUp\) return null;/);
+});
+
+test("after an in-app update Kaze reopens itself when it may display over other apps", () => {
+  const dir = "plugins/kaze-media/android/src/main/";
+  const manifest = read(dir + "AndroidManifest.xml");
+  assert.match(manifest, /android\.permission\.SYSTEM_ALERT_WINDOW/);
+  assert.match(manifest, /UpdateRelaunch\$Receiver"\s+android:exported="true">\s*<intent-filter>\s*<action android:name="android\.intent\.action\.MY_PACKAGE_REPLACED" \/>/);
+  const relaunch = read(dir + "java/org/intelligentmusicplayer/kazemedia/UpdateRelaunch.kt");
+  assert.match(relaunch, /if \(!store\.getBoolean\(PENDING, false\)\) return/, "only updates started inside Kaze reopen it");
+  assert.match(relaunch, /if \(!canRelaunch\(context\)\)/, "without the permission Android would block the start");
+  assert.match(read(dir + "java/org/intelligentmusicplayer/kazemedia/ApkInstaller.kt"), /UpdateRelaunch\.markPending\(context\)\s+val status/);
+  const plugin = read(dir + "java/org/intelligentmusicplayer/kazemedia/KazeMediaPlugin.kt");
+  assert.match(plugin, /UpdateRelaunch\.shouldAsk\(context\)[\s\S]*markAsked[\s\S]*ACTION_MANAGE_OVERLAY_PERMISSION[\s\S]*"overlayAnswered"/, "offered once, before the first update");
+  assert.match(plugin, /fun overlayAnswered[\s\S]*installNow\(/, "the update goes ahead whatever the answer");
 });

@@ -2,10 +2,20 @@
     <!-- In-app updates: Kaze installs its own new version (ApkInstaller). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- Lets the updated app open itself again (UpdateRelaunch); asked once, optional. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application>
         <receiver
             android:name="org.intelligentmusicplayer.kazemedia.ApkInstaller$StatusReceiver"
             android:exported="false" />
+        <!-- MY_PACKAGE_REPLACED is a protected broadcast only the system sends. -->
+        <receiver
+            android:name="org.intelligentmusicplayer.kazemedia.UpdateRelaunch$Receiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

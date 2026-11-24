@@ -14,6 +14,7 @@ import java.io.File
  * the update happens inside the app. From Android 12 an app updating itself
  * may skip the confirmation (USER_ACTION_NOT_REQUIRED); if Android still
  * asks, its confirmation screen is shown and the install continues.
+ * [UpdateRelaunch] opens the new version afterwards when Android allows it.
  */
 object ApkInstaller {
     const val ACTION_STATUS = "org.intelligentmusicplayer.kazemedia.INSTALL_STATUS"
@@ -36,6 +37,7 @@ object ApkInstaller {
                 apk.inputStream().use { it.copyTo(out) }
                 session.fsync(out)
             }
+            UpdateRelaunch.markPending(context)
             val status = Intent(context, StatusReceiver::class.java).setAction(ACTION_STATUS)
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                 (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)

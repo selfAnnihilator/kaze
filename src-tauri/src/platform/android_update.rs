@@ -2,7 +2,8 @@
 //! from Settings), shows the update banner through the same
 //! `update-available` event as the PC, then downloads the APK, verifies its
 //! SHA-256 and has the kaze-media plugin install it in place. Android closes
-//! Kaze to replace it; it can't reopen itself (background starts are blocked).
+//! Kaze to replace it; with "Display over other apps" allowed the new version
+//! reopens itself (kaze-media UpdateRelaunch), otherwise the user reopens it.
 
 use super::update_manifest::{is_newer, means_no_release, parse_manifest, AndroidRelease, MANIFEST_URL, UNREACHABLE};
 use std::sync::Mutex;
