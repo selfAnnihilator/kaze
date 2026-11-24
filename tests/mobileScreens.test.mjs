@@ -508,3 +508,7 @@ test("tapping the album card or PLAY plays the whole album (Figma D1 has no albu
   const play = read("src/presentation/mobile/playAlbum.ts");
   assert.match(play, /GetAlbumDetails[\s\S]*PlayTrackList[\s\S]*track_ids: ids/);
 });
+
+test("the phone app stays in portrait (Figma has no landscape layout)", () => {
+  assert.match(read("src-tauri/gen/android/app/src/main/AndroidManifest.xml"), /<activity\s+android:screenOrientation="portrait"/);
+});
