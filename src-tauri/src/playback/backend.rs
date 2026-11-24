@@ -71,6 +71,22 @@ impl RodioAudioBackend {
     }
 }
 
+/// rodio's `Sink::try_seek` waits until the audio thread applies the seek,
+/// and that thread only runs while the output device does. A paused player
+/// suspends the device after `IDLE_AFTER`, so a seek then waited forever while
+/// holding the player lock, freezing every later command. Wake the device for
+/// the seek; reporting idle again restarts its timer.
+pub(crate) fn seek_awake<T>(paused: bool, set_activity: impl Fn(Activity), seek: impl FnOnce() -> T) -> T {
+    if paused {
+        set_activity(Activity::Playing);
+    }
+    let result = seek();
+    if paused {
+        set_activity(Activity::Idle);
+    }
+    result
+}
+
 impl Default for RodioAudioBackend {
     fn default() -> Self {
         Self::new()
@@ -155,7 +171,7 @@ impl AudioBackend for RodioAudioBackend {
 
     fn seek(&mut self, position: Duration) -> AppResult<()> {
         if let Some(ref sink) = self.sink {
-            sink.try_seek(position).map_err(|e| {
+            seek_awake(self.is_paused, |a| self.set_activity(a), || sink.try_seek(position)).map_err(|e| {
                 AppError::Playback(format!("Audio seek error: {}", e))
             })?;
             debug!(seek_secs = position.as_secs_f64(), "Audio seek performed");
@@ -285,3 +301,7 @@ impl AudioBackend for MockAudioBackend {
         self.is_finished_flag.load(Ordering::SeqCst)
     }
 }
+
+#[cfg(test)]
+#[path = "backend_seek_tests.rs"]
+mod seek_tests;
