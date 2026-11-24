@@ -191,6 +191,7 @@ fn start_backend(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn run() {
+    crate::logging::init_logging();
     shared::init_async_runtime();
     tauri::Builder::default()
         .plugin(tauri_plugin_kaze_media::init())

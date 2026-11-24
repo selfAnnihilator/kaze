@@ -83,7 +83,7 @@ pub async fn clear(pool: &SqlitePool, user_id: &str, downloads_dir: &Path) -> Ap
     let liked = liked_playlist(pool, user_id).await?.unwrap_or_default();
     let own = rated_own_files(pool, user_id, &liked, downloads_dir).await?;
     let stamp = chrono::Utc::now().timestamp_millis();
-    let mut tx = pool.begin().await?;
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await?;
     for id in &own {
         sqlx::query("UPDATE track_statistics SET manual_like = 0 WHERE user_id = ? AND track_id = ?")
             .bind(user_id).bind(id).execute(&mut *tx).await?;

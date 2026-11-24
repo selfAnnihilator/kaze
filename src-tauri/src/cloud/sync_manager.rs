@@ -8,6 +8,7 @@ use sqlx::SqlitePool;
 mod delta;
 mod incoming;
 mod outgoing;
+mod retry;
 mod session;
 
 #[derive(Debug, Clone, Default)]

@@ -163,7 +163,7 @@ impl CoreProcessor {
                     let user_id_clone = profile.id.clone();
                     let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        match SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud_retrying(
                             &pool_clone,
                             &client_clone,
                             &worker_url,
@@ -377,7 +377,7 @@ impl CoreProcessor {
                     let user_id_clone = profile.id.clone();
                     let event_bus_clone = self.event_bus.clone();
                     tokio::spawn(async move {
-                        match SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud_retrying(
                             &pool_clone,
                             &client_clone,
                             &worker_url,

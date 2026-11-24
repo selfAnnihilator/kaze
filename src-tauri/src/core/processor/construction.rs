@@ -348,7 +348,7 @@ impl CoreProcessor {
                         let _ = event_bus_init.publish(Event::SessionChanged { user: user_val });
 
                         // Automatically sync with server on launch: Pull first, reconcile, push
-                        match SyncManager::sync_with_cloud(
+                        match SyncManager::sync_with_cloud_retrying(
                             &pool_init,
                             &cloud_client_init,
                             &worker_url,

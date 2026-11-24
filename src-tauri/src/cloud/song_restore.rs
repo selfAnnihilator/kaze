@@ -119,7 +119,9 @@ async fn normalize_legacy_owners(
 }
 
 pub(super) async fn restore_song(pool: &SqlitePool, song: &CloudSong, now: i64) -> AppResult<()> {
-    let mut transaction = pool.begin().await?;
+    // IMMEDIATE takes the write lock up front: a read-then-write transaction
+    // fails outright (SQLITE_BUSY_SNAPSHOT) when another writer got in between.
+    let mut transaction = pool.begin_with("BEGIN IMMEDIATE").await?;
     // A cloud metadata placeholder must never rewrite a physical library file.
     let physical: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM tracks WHERE id=? AND file_path NOT LIKE 'online://%')",

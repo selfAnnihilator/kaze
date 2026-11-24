@@ -512,3 +512,44 @@ test("tapping the album card or PLAY plays the whole album (Figma D1 has no albu
 test("the phone app stays in portrait (Figma has no landscape layout)", () => {
   assert.match(read("src-tauri/gen/android/app/src/main/AndroidManifest.xml"), /<activity\s+android:screenOrientation="portrait"/);
 });
+
+test("a new install never restores old app data (its sign-in token can't be read)", () => {
+  const manifest = read("src-tauri/gen/android/app/src/main/AndroidManifest.xml");
+  assert.match(manifest, /android:allowBackup="false"/);
+  assert.match(manifest, /android:dataExtractionRules="@xml\/data_extraction_rules"/);
+  const rules = read("src-tauri/gen/android/app/src/main/res/xml/data_extraction_rules.xml");
+  for (const part of ["cloud-backup", "device-transfer"]) {
+    const block = rules.match(new RegExp(`<${part}>([\\s\\S]*?)</${part}>`))?.[1] ?? "";
+    for (const domain of ["root", "file", "database", "sharedpref", "external"]) {
+      assert.match(block, new RegExp(`<exclude domain="${domain}" />`), `${part} keeps ${domain}`);
+    }
+  }
+});
+
+test("an unreadable secret store is replaced instead of failing every sign-in", () => {
+  const store = read("plugins/kaze-media/android/src/main/java/org/intelligentmusicplayer/kazemedia/SecretStore.kt");
+  assert.match(store, /catch \(error: Exception\)[\s\S]*deleteSharedPreferences\(FILE_NAME\)[\s\S]*open\(\)/);
+  assert.match(store, /fun get\(key: String\): String\? = try/);
+});
+
+test("the phone's Rust log reaches logcat", () => {
+  assert.match(read("src-tauri/src/platform/android.rs"), /pub fn run\(\) \{\s+crate::logging::init_logging\(\);/);
+  assert.match(read("src-tauri/src/logging/mod.rs"), /with_writer\(\|\| logcat::Logcat\)/);
+});
+
+test("on the month chart red means only the busiest day; a tapped day is white", () => {
+  const css = read("src/presentation/mobile/mobile-profile.css");
+  const tapped = css.match(/\.is-selected \.m-profile-bar \{([^}]*)\}/)?.[1] ?? "";
+  assert.match(tapped, /background: var\(--m-ink\)/);
+  assert.doesNotMatch(tapped, /--m-red/);
+  assert.match(css, /\.m-profile-bar\.is-peak \{ background: var\(--m-red\); \}/);
+});
+
+
+test("the month chart shows today bright until a day is tapped", async () => {
+  const { shownDay } = await import("../src/presentation/mobile/profile/dayFocus.ts");
+  const now = new Date(2026, 10, 4, 23, 30);
+  assert.equal(shownDay(null, now), "2026-11-04", "today, in local time and zero-padded");
+  assert.equal(shownDay("2026-11-02", now), "2026-11-02", "a tapped day wins");
+  assert.match(read("src/presentation/mobile/profile/ProfileStats.tsx"), /const bright = shownDay\(p\.selectedDay\)[\s\S]*bright === d\.date \? "is-selected"/);
+});
