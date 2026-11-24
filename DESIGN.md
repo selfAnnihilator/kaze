@@ -108,7 +108,7 @@ Both production themes support windows down to 800×600 logical pixels. Keep the
 
 `src/presentation/responsive.css` is the final production sizing layer; it does not affect either standalone study. Discovery shelves reserve enough height for artwork, metadata and actions, with the chapter stage owning overflow. A wheel over a heading routes to its overflowing shelf. While overflow exists, neither wheel boundaries nor Page Up/Down change chapters. No resize/scroll state belongs in App.
 
-Run `scripts/test-responsive-layout.mjs` for both themes at eight viewport sizes, all chapters and main routes, resize/playback continuity, compact dialogs/collections, and long/empty/error/loading content. Run `scripts/test-spatial-narrow-webkit.py` for the same Discovery matrix in real WebKitGTK, plus the existing reference-layout, search and rendering guardrails. Native offscreen views must be recreated for each requested viewport.
+Run `scripts/test-spatial-narrow-webkit.py` for the same Discovery matrix in real WebKitGTK, plus the existing reference-layout, search and rendering guardrails. Native offscreen views must be recreated for each requested viewport.
 
 ## First-use recommendations and notices
 

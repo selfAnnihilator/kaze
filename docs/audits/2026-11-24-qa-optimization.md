@@ -99,7 +99,6 @@ writes 0 rows and that one changed play writes 4.
 
 ### Open: decisions for the user
 
-- **Landscape:** the app rotates, but the phone layout (no landscape design in Figma) squeezes Home. Lock to portrait?
 
 ### PC UI scripts (`scripts/test-*.mjs`, worktree vs prod 2.1.1)
 
@@ -114,3 +113,42 @@ writes 0 rows and that one changed play writes 4.
 - Screen-off playback CPU: wireless adb drops when the screen turns off.
 - Cold start of the release APK: release builds have no devtools, and the dev build measured 1.1 s.
 - Jank measurement (`gfxinfo`), and a full manual click-through of the native PC window. The PC is covered by the 31 browser UI scripts and the native benchmark instead.
+
+### Portrait lock and smoothness (2026-11-24)
+
+- **Portrait (user decision):** `MainActivity` has `screenOrientation="portrait"`. Checked on the phone: with rotation forced to landscape, the activity still requests portrait and the display stays at ROTATION_0.
+- **Production APK** (release Rust and frontend, signed with the debug key so it installs over the dev build), at 60 Hz:
+
+  | Interaction | Frames over deadline | Median frame | 95th percentile |
+  |---|---|---|---|
+  | Home scroll | 2.8% | 12 ms | 18 ms |
+  | Discover chapter swipes | 23% | 15 ms | 28 ms |
+  | Albums swipes | 20% | 17 ms | 28 ms |
+  | Deck open and close | 19% | 19 ms | 30 ms |
+
+- **What the "over deadline" share means:** per-frame timings show a new frame every 16.7 ms with no gaps, and 0 missed vsyncs. The frames over deadline finish a few milliseconds late inside the WebView's draw step, and buffering absorbs that, so the animations play at a steady 60 fps. JavaScript per swipe is small (a CPU profile showed tens of ms in total).
+- **Cold start (production APK):** 0.35–0.39 s. The first launch after an install took 1.6 s, which includes one-time setup.
+- **Open:** a 200–250 ms React render occasionally runs with no touch input, in the dev build, which is slower than production. It probably comes from data refreshing (for example the 2-minute cloud sync), but the cause isn't confirmed.
+
+### PC walkthrough of the worktree build (real profile, 2026-11-24)
+
+Driven through the WebKit inspector (`WEBKIT_INSPECTOR_HTTP_SERVER`), with window screenshots.
+- **Checked, working:**
+  - Home, Discover, Library (Albums, an album spine opening its songs, Local, Liked), Queue, Settings
+  - playing a local song
+  - the heart and dislike are greyed out on a local song, with an explanation
+  - Liked Songs shows only online songs
+  - no JavaScript errors
+- **Freeze fix on the PC:** after 75 s paused, a seek returned in 22 ms and Play resumed at 1:02.
+- **Fixed: a refetch loop in the Kaze folder watcher (also in 2.1.1).**
+  - **Symptom:** the PC app re-ran `GetDownloads`, `GetLibraryTracksPage` and `GetTrackPlaylistMemberships` every 500 ms, forever.
+  - **Cause:** the `notify` watcher treated reads (`Access` open, read and close events) as changes. `sync_folder` reads the folder's files, so each sync triggered the next one. inotify showed 404 ACCESS and 30 OPEN events, and no writes, in 3 s.
+  - **Fix:** `changes_folder` counts only Create, Remove, Modify (except metadata) and close-after-write.
+  - **Result:** 3 `GetDownloads` calls at startup, then none, and 0% CPU while idle.
+  - **Tests:** `folder_watch_tests.rs`.
+- **Every sync reports `foreign=2`:** two old likes from a library that no longer syncs are hidden each time. That costs two local rows per sync and no cloud writes.
+- **Removed:** seven outdated browser UI scripts, which fail the same way on prod 2.1.1. Five wait for UI that no longer exists, and two time out.
+
+### Screen-off playback CPU
+
+This is not measured: wireless adb drops when the screen turns off. It is at most the screen-on background number, because with the screen off the WebView stops drawing and only the Rust audio path runs.
