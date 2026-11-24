@@ -4,7 +4,7 @@
 //! SHA-256 and has the kaze-media plugin install it in place. Android closes
 //! Kaze to replace it; it can't reopen itself (background starts are blocked).
 
-use super::update_manifest::{is_newer, parse_manifest, AndroidRelease, MANIFEST_URL};
+use super::update_manifest::{is_newer, means_no_release, parse_manifest, AndroidRelease, MANIFEST_URL, UNREACHABLE};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
@@ -31,15 +31,23 @@ fn manifest_url() -> &'static str {
     test_manifest().unwrap_or(MANIFEST_URL)
 }
 
-async fn fetch_release() -> Result<AndroidRelease, String> {
-    let response = client()?.get(manifest_url()).send().await.map_err(|e| e.to_string())?;
-    let body = response.error_for_status().map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?;
-    parse_manifest(&body, test_manifest().is_some())
+/// The latest Android release, or `None` when the latest release has no APK.
+async fn fetch_release() -> Result<Option<AndroidRelease>, String> {
+    let unreachable = |e: reqwest::Error| {
+        tracing::warn!("Update check failed: {}", e);
+        UNREACHABLE.to_string()
+    };
+    let response = client()?.get(manifest_url()).send().await.map_err(unreachable)?;
+    if means_no_release(response.status().as_u16()) {
+        return Ok(None);
+    }
+    let body = response.error_for_status().map_err(unreachable)?.text().await.map_err(unreachable)?;
+    parse_manifest(&body, test_manifest().is_some()).map(Some)
 }
 
 /// Looks for a newer release; shows the banner and remembers it when there is one.
 pub async fn check(app: &tauri::AppHandle) -> Result<Option<String>, String> {
-    let release = fetch_release().await?;
+    let Some(release) = fetch_release().await? else { return Ok(None) };
     let current = app.package_info().version.to_string();
     if !is_newer(&release.version, &current) {
         return Ok(None);
@@ -109,7 +117,7 @@ pub async fn android_install_update(app: tauri::AppHandle) -> Result<(), String>
     let pending = app.state::<PendingUpdate>().0.lock().map_err(|e| e.to_string())?.clone();
     let release = match pending {
         Some(release) => release,
-        None => fetch_release().await?,
+        None => fetch_release().await?.ok_or("Kaze is up to date")?,
     };
     let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("update");
     tokio::fs::create_dir_all(&dir).await.map_err(|e| e.to_string())?;

@@ -12,6 +12,8 @@ import { TrackRow } from "./TrackRow";
 import { joinMeta } from "./format";
 import type { Playlist, Track } from "../../types";
 import type { MobileScreenProps } from "./types";
+import { canRate } from "../../services/ratingRule";
+import { playAlbum } from "./playAlbum";
 
 const ROW_HEIGHT = 67;
 const pad3 = (n: number) => String(n).padStart(3, "0");
@@ -50,7 +52,7 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
         <span className="m-albums__side">{prev && <Sleeve key={prev.id} size="edge" src={prev.cover_art_path} trackId={prev.first_track_id} title={prev.title} onPress={earlier} />}</span>
         <div key={album.id} className={slide}>
           <Sleeve size="album" src={album.cover_art_path} trackId={album.first_track_id} title={album.title}
-            onPress={() => c.handleSelectAlbum(album.id)} />
+            onPress={() => void playAlbum(album.id)} />
         </div>
         <span className="m-albums__side">{next && <Sleeve key={next.id} size="edge" src={next.cover_art_path} trackId={next.first_track_id} title={next.title} onPress={later} />}</span>
       </div>
@@ -65,7 +67,7 @@ export const AlbumsPane = memo(function AlbumsPane({ c, focusId }: MobileScreenP
           <ArrowLeft size={18} strokeWidth={2} /><span>EARLIER</span>
         </button>
         <button type="button" className="m-btn m-btn--sm m-albums__play" disabled={!album.first_track_id}
-          onClick={() => album.first_track_id && void c.handlePlayTrack(album.first_track_id)}>
+          onClick={() => void playAlbum(album.id)}>
           <Play size={18} strokeWidth={2} /><span>PLAY</span>
         </button>
         <button type="button" className="m-btn m-btn--outline m-btn--sm m-btn--grow" disabled={at >= total - 1} onClick={later}>
@@ -100,7 +102,7 @@ const TracksToolbar = memo(function TracksToolbar({ play, playing, onRescan }: {
 
 /** Right side of a Local row (format over time) or a Downloads row (remove download). */
 const sheetTrack = (t: Track): SheetTrack => ({
-  id: t.id, title: t.title, artist: t.artist_name, album: t.album_title, cover: t.cover_art_url,
+  id: t.id, title: t.title, artist: t.artist_name, album: t.album_title, cover: t.cover_art_url, localFile: !canRate(t),
 });
 
 function trackTrailing(t: Track, downloads: boolean) {

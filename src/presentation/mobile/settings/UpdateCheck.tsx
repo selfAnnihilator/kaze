@@ -16,7 +16,7 @@ export function UpdateCheck() {
       const next = await checkForUpdate();
       setFound(next ? { kind: "update", version: next } : { kind: "latest" });
     } catch (error) {
-      setFound({ kind: "error", text: `Couldn’t check for updates: ${String(error)}` });
+      setFound({ kind: "error", text: String(error).replace(/^Error: /, "") });
     }
   };
   return (

@@ -47,9 +47,24 @@ pub fn sha256_matches(bytes: &[u8], expected: &str) -> bool {
     format!("{:x}", Sha256::digest(bytes)).eq_ignore_ascii_case(expected.trim())
 }
 
+/// A release without `android.json` (older releases, PC-only fixes) has no
+/// Android update: that is "up to date", not an error.
+pub fn means_no_release(status: u16) -> bool {
+    status == 404
+}
+
+/// What the phone shows when the manifest can't be fetched; details go to the log.
+pub const UNREACHABLE: &str = "Couldn’t reach the update server. Check your connection and try again.";
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_missing_manifest_is_no_update() {
+        assert!(means_no_release(404));
+        assert!(!means_no_release(500) && !means_no_release(403));
+    }
 
     #[test]
     fn compares_versions_numerically() {

@@ -494,3 +494,17 @@ test("The updater keeps at most one pair of install listeners", () => {
   assert.match(src, /async function listenWhileUpdating\(\) \{\n  stopUpdateListeners\(\);/, "a new attempt drops the old listeners first");
   assert.match(src, /"update-failed", \(e\) => \{\n    stopUpdateListeners\(\);/, "a reported failure removes them");
 });
+
+test("The lyrics header keeps a long title on one line inside its bar", () => {
+  const css = read("src/presentation/mobile/mobile-lyrics.css");
+  assert.match(css, /\.m-lyrics__song \.m-set-row__text \{ flex: 1; min-width: 0; \}/);
+  assert.match(css, /\.m-lyrics__song strong, \.m-lyrics__song \.m-set-row__mono \{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \}/);
+});
+
+test("tapping the album card or PLAY plays the whole album (Figma D1 has no album page)", () => {
+  const panes = read("src/presentation/mobile/LibraryPanes.tsx");
+  assert.doesNotMatch(panes, /handleSelectAlbum/, "the PC's open-album action shows nothing on the phone");
+  assert.equal(panes.match(/playAlbum\(album\.id\)/g)?.length, 2);
+  const play = read("src/presentation/mobile/playAlbum.ts");
+  assert.match(play, /GetAlbumDetails[\s\S]*PlayTrackList[\s\S]*track_ids: ids/);
+});

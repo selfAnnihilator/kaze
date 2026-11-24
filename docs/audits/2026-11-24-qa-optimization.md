@@ -67,3 +67,50 @@ change when a counter grows (they already merge with `MAX`), likes when they fli
 when a field changes or gets filled in. This protects old clients too, as soon as it is
 deployed. Test: `tests/statisticsWorker.test.mjs` checks that resending unchanged data
 writes 0 rows and that one changed play writes 4.
+
+## Remaining pass (functional QA)
+
+### Fixed
+
+6. **Playback froze after seeking while paused (PC and Android, also in 2.1.1).**
+   - **Cause:** rodio's `Sink::try_seek` waits until the audio thread applies the seek, and Kaze suspends the output device 60 s after a pause. A seek after that waited forever while holding the player lock, so play, pause, next and the media-notification buttons all hung until restart.
+   - **Fix:** `backend.rs` `seek_awake` wakes the device for the seek, then reports idle again.
+   - **Tests:** `backend_seek_tests.rs` (a sink whose audio thread sleeps): the seek hangs without the fix and completes with it.
+7. **Settings › Check for updates showed a raw HTTP 404 with the URL.** A release without `android.json` now means "up to date". Network failures show a short message, with the details in the log.
+8. **The lyrics header spilled out of its 64 px bar on long titles.** Title and artist are now one line each, ending in "…", like the Deck.
+
+9. **Local files can't be liked or disliked (user decision, 2026-11-24), on PC and Android.** Only online songs and Kaze downloads (files in Kaze's folder) take ratings. This also resolves the "LIKED 15 vs 13" mismatch.
+   - **Backend:** `library/local_feedback.rs`. `LikeTrack` and `DislikeTrack` on a local file are refused.
+   - **Cleanup:** at startup and in every sync after the pull, existing ratings on this device's own files are cleared. A tombstone takes the Liked Songs removal to the cloud.
+   - **Another device's files** leave Liked Songs here, but nothing is uploaded. A Kaze download from another device is also synced as provider `local`, so clearing it in the cloud would wipe a valid like.
+   - **Frontend:** `services/ratingRule.ts` greys out the heart and dislike controls on local songs. The Figma layout keeps its slots.
+   - **Tests:** `local_feedback_tests.rs`, `tests/local_rating_tests.rs`, `tests/ratingRule.test.mjs`. Seven older recommendation tests rated local fixture files; their fixtures now sit in a downloads folder.
+
+### Checked on the phone (RMX3471), working
+
+- the four tabs and every Library sub-tab
+- pull-to-refresh on Home and Discover
+- Discover chapter swipes (up = next, quick down = previous)
+- online search
+- the Deck: opening it, seek, lyrics
+- back-button steps (lyrics → Deck → screen)
+- the media session is registered as the media-button target
+- backgrounding and resuming
+
+### Open: decisions for the user
+
+- **Landscape:** the app rotates, but the phone layout (no landscape design in Figma) squeezes Home. Lock to portrait?
+
+### PC UI scripts (`scripts/test-*.mjs`, worktree vs prod 2.1.1)
+
+- **Pass:** 24 of 31 on both. `test-search-flow-controls-ui` was flaky (failed once, then passed on both).
+- **Fail identically on prod:**
+  - `five-defects`, `qa-remediation` and `responsive-layout` wait for a "Tracks" tab, and `library-moment-ui` for the text "Couldn't open album"; the current UI has neither.
+  - `hover-stability`, `recommendation-feedback-ui` and `song-controls-ui` time out on prod as well.
+  - These failures predate this branch; the scripts need updating.
+
+### Not done
+
+- Screen-off playback CPU: wireless adb drops when the screen turns off.
+- Cold start of the release APK: release builds have no devtools, and the dev build measured 1.1 s.
+- Jank measurement (`gfxinfo`), and a full manual click-through of the native PC window. The PC is covered by the 31 browser UI scripts and the native benchmark instead.
