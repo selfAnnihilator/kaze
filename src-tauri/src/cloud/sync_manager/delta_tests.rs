@@ -49,3 +49,18 @@ fn deletions_always_go_and_accounts_are_separate() {
     let (other, _) = changed_only("worker-a|two", payload(1, 1));
     assert_eq!(other.song_stats.len(), 2, "another account has its own ledger");
 }
+
+#[test]
+fn a_re_stamped_yearly_summary_is_not_a_change() {
+    let summary = |stamp: i64, seconds: f64| -> SyncPayload {
+        serde_json::from_value(serde_json::json!({
+            "user_stats": [{ "year": 2025, "total_seconds": seconds, "updated_at": stamp }],
+        }))
+        .expect("payload")
+    };
+    let account = "worker-a|yearly";
+    let (_, pending) = changed_only(account, summary(1, 10.0));
+    commit(pending);
+    assert!(is_empty(&changed_only(account, summary(2, 10.0)).0), "only the stamp moved");
+    assert!(changed_only(account, summary(3, 20.0)).0.user_stats.is_some(), "real change still goes");
+}

@@ -29,10 +29,15 @@ pub struct Pending {
     fingerprints: Fingerprints,
 }
 
-/// A row's content, ignoring `updated_at` (stamped with the sync time).
+/// A row's content, ignoring `updated_at` (stamped with the sync or archive time).
 fn fingerprint<T: Serialize>(row: &T) -> u64 {
     let mut value = serde_json::to_value(row).unwrap_or_default();
-    if let Some(object) = value.as_object_mut() {
+    // A list (the yearly stats summary) carries one stamp per entry.
+    let objects: Vec<&mut serde_json::Value> = match &mut value {
+        serde_json::Value::Array(items) => items.iter_mut().collect(),
+        other => vec![other],
+    };
+    for object in objects.into_iter().filter_map(|v| v.as_object_mut()) {
         object.remove("updated_at");
     }
     let mut hasher = DefaultHasher::new();
