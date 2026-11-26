@@ -1,0 +1,40 @@
+{
+  "package": "org.intelligentmusicplayer.lifecycleqa",
+  "results": [
+    {
+      "case": "terminal playback removes empty media",
+      "passed": true
+    },
+    {
+      "case": "Home preserves playback; paused dismissal cleans up",
+      "passed": true
+    },
+    {
+      "case": "playing task dismissal stops backend and media",
+      "passed": true
+    },
+    {
+      "case": "finishing Activity stops backend and media",
+      "passed": true
+    },
+    {
+      "case": "late playback cannot revive a dismissed task",
+      "passed": true
+    },
+    {
+      "case": "closed bridge cannot strand the native player",
+      "passed": true
+    },
+    {
+      "case": "immediate restart and external Stop",
+      "passed": true
+    },
+    {
+      "case": "empty service and reopening",
+      "passed": true
+    }
+  ],
+  "complete": true,
+  "error": null,
+  "cleanup_errors": []
+}

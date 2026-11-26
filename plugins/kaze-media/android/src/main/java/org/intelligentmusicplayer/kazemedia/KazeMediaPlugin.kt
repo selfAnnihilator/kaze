@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.result.ActivityResult
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -61,21 +62,40 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
     private val secrets by lazy { SecretStore(activity.applicationContext) }
 
     override fun load(webView: android.webkit.WebView) {
+        connectMedia()
+    }
+
+    override fun onResume(activity: AppCompatActivity) {
+        connectMedia()
+    }
+
+    private fun connectMedia() {
+        PlaybackService.onAppOpened()
         PlaybackService.commandSink = { name, pos ->
             trigger("mediaCommand", JSObject().put("command", name).put("positionMs", pos))
         }
         ApkInstaller.onFailure = { message -> trigger("updateFailed", JSObject().put("message", message)) }
     }
 
+    override fun onDestroy(activity: AppCompatActivity) {
+        if (activity.isFinishing && !activity.isChangingConfigurations) {
+            PlaybackService.closeForAppExit(activity.applicationContext)
+        }
+    }
+
     @Command
     fun updatePlayback(invoke: Invoke) {
+        if (!PlaybackService.acceptsUpdates()) {
+            invoke.resolve()
+            return
+        }
         val args = invoke.parseArgs(PlaybackArgs::class.java)
         val state = MirrorState(
             args.playing, args.title, args.artist, args.album, args.durationMs, args.positionMs ?: 0,
         )
         PlaybackService.latest = state
         val running = PlaybackService.instance
-        if (running != null) {
+        if (running != null && !running.isStopping) {
             running.apply(state)
         } else if (args.playing) {
             ContextCompat.startForegroundService(activity, Intent(activity, PlaybackService::class.java))

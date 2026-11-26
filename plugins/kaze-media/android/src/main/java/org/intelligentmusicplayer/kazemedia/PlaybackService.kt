@@ -5,6 +5,7 @@ import android.media.AudioManager
 import android.content.Intent
 import android.os.Looper
 import android.os.PowerManager
+import android.util.Log
 import androidx.media.AudioAttributesCompat
 import androidx.media.AudioFocusRequestCompat
 import androidx.media.AudioManagerCompat
@@ -43,6 +44,7 @@ class ForwardingPlayer(looper: Looper, private val onCommand: (String, Long) -> 
     override fun getState(): State {
         val commands = Player.Commands.Builder().addAll(
             COMMAND_PLAY_PAUSE,
+            COMMAND_STOP,
             COMMAND_SEEK_TO_NEXT,
             COMMAND_SEEK_TO_PREVIOUS,
             COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
@@ -72,6 +74,12 @@ class ForwardingPlayer(looper: Looper, private val onCommand: (String, Long) -> 
         return Futures.immediateVoidFuture()
     }
 
+    override fun handleStop(): ListenableFuture<*> {
+        onCommand("stop", 0)
+        update(MirrorState())
+        return Futures.immediateVoidFuture()
+    }
+
     override fun handleSeek(
         mediaItemIndex: Int,
         positionMs: Long,
@@ -94,6 +102,8 @@ class PlaybackService : MediaSessionService() {
     private var focusRequest: AudioFocusRequestCompat? = null
     private val policy = FocusPolicy()
     private var hasAudioFocus = false
+    var isStopping = false
+        private set
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
@@ -117,6 +127,12 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
+        apply(latest)
+    }
+
+    private fun ensureSession() {
+        if (session != null) return
         val forwarding = ForwardingPlayer(Looper.getMainLooper()) { name, pos -> commandSink?.invoke(name, pos) }
         player = forwarding
         val created = MediaSession.Builder(this, forwarding).build()
@@ -124,18 +140,27 @@ class PlaybackService : MediaSessionService() {
         // Attaches the notification manager so the service is promoted to the
         // foreground without an external controller connecting first.
         addSession(created)
-        instance = this
-        forwarding.update(latest)
-        syncWakeLock(latest.playing)
-        syncFocus(latest.playing)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        apply(latest)
+        if (!isStopping) super.onStartCommand(intent, flags, startId)
+        // A killed process has no Rust player to resume. Never restore an empty sticky session.
+        return START_NOT_STICKY
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     fun apply(state: MirrorState) {
+        if (!acceptsUpdates() || state.title == null) {
+            stopSession()
+            return
+        }
+        isStopping = false
+        ensureSession()
         player?.update(state)
         syncWakeLock(state.playing)
-        policy.onState(state.playing, state.title != null)
+        policy.onState(state.playing, hasTrack = true)
         syncFocus(state.playing)
     }
 
@@ -188,10 +213,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (player?.playWhenReady != true) stopSelf()
+        closeForAppExit(applicationContext)
     }
 
-    override fun onDestroy() {
+    private fun releaseSession() {
+        policy.onLoss()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         abandonFocus()
         session?.let {
@@ -201,13 +227,44 @@ class PlaybackService : MediaSessionService() {
         player?.release()
         session = null
         player = null
-        instance = null
+    }
+
+    private fun stopSession() {
+        isStopping = true
+        releaseSession()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    override fun onDestroy() {
+        releaseSession()
+        if (instance === this) instance = null
         super.onDestroy()
     }
 
     companion object {
+        @Volatile private var appClosed = false
         @Volatile var latest = MirrorState()
         @Volatile var instance: PlaybackService? = null
         @Volatile var commandSink: ((String, Long) -> Unit)? = null
+
+        fun onAppOpened() { appClosed = false }
+
+        fun acceptsUpdates(): Boolean = !appClosed
+
+        /** Full dismissal stops Rust too; backgrounding and screen locking never call this. */
+        fun closeForAppExit(context: Context) {
+            if (appClosed) return
+            appClosed = true
+            try {
+                commandSink?.invoke("stop", 0)
+            } catch (error: Exception) {
+                Log.w("KazeMedia", "Could not forward Stop after app dismissal", error)
+            }
+            commandSink = null
+            latest = MirrorState()
+            instance?.stopSession()
+            context.stopService(Intent(context, PlaybackService::class.java))
+        }
     }
 }

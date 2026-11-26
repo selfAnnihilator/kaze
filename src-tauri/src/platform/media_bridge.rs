@@ -63,6 +63,7 @@ pub fn command_for(name: &str, position_ms: Option<u64>) -> Option<Command> {
     match name {
         "play" => Some(Command::Resume),
         "pause" => Some(Command::Pause),
+        "stop" => Some(Command::Stop),
         "next" => Some(Command::NextTrack),
         "previous" => Some(Command::PreviousTrack),
         "seek" => Some(Command::Seek { position_secs: position_ms? as f64 / 1000.0 }),
@@ -119,6 +120,7 @@ mod tests {
     fn commands_map_to_backend_commands() {
         assert!(matches!(command_for("play", None), Some(Command::Resume)));
         assert!(matches!(command_for("pause", None), Some(Command::Pause)));
+        assert!(matches!(command_for("stop", None), Some(Command::Stop)));
         assert!(matches!(command_for("next", None), Some(Command::NextTrack)));
         assert!(matches!(command_for("previous", None), Some(Command::PreviousTrack)));
         match command_for("seek", Some(2_500)) {
