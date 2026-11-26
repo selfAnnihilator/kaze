@@ -28,7 +28,7 @@ object UpdateRelaunch {
 
     /** The "Display over other apps" page is offered once; the user's answer stands after that. */
     fun shouldAsk(context: Context): Boolean =
-        !canRelaunch(context) && !prefs(context).getBoolean(ASKED, false)
+        UpdateRestartChoice.shouldAsk(canRelaunch(context), prefs(context).getBoolean(ASKED, false))
 
     fun markAsked(context: Context) = prefs(context).edit().putBoolean(ASKED, true).apply()
 

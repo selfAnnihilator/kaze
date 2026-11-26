@@ -120,6 +120,12 @@ pub async fn android_install_update(app: tauri::AppHandle) -> Result<(), String>
         Some(release) => release,
         None => fetch_release().await?.ok_or("Kaze is up to date")?,
     };
+    let prepare = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        prepare.try_state::<KazeMedia<tauri::Wry>>().ok_or("kaze-media not ready")?.prepare_update()
+    })
+    .await
+    .map_err(|e| e.to_string())??;
     let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("update");
     tokio::fs::create_dir_all(&dir).await.map_err(|e| e.to_string())?;
     let apk = dir.join("Kaze.apk");

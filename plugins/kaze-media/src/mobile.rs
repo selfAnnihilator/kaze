@@ -67,6 +67,11 @@ impl<R: Runtime> KazeMedia<R> {
         self.call::<()>("share", ShareArgs { title, text })
     }
 
+    /// Offers optional restart access once; waits for the answer or return from Settings.
+    pub fn prepare_update(&self) -> Result<(), String> {
+        self.call::<()>("prepareUpdate", ())
+    }
+
     /// Installs the downloaded update APK at `path` in place (PackageInstaller
     /// session); asks once to allow installing apps when Android requires it.
     pub fn install_apk(&self, path: &str) -> Result<(), String> {

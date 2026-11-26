@@ -572,6 +572,8 @@ test("after an in-app update Kaze reopens itself when it may display over other 
   assert.match(relaunch, /if \(!canRelaunch\(context\)\)/, "without the permission Android would block the start");
   assert.match(read(dir + "java/org/intelligentmusicplayer/kazemedia/ApkInstaller.kt"), /UpdateRelaunch\.markPending\(context\)\s+val status/);
   const plugin = read(dir + "java/org/intelligentmusicplayer/kazemedia/KazeMediaPlugin.kt");
-  assert.match(plugin, /UpdateRelaunch\.shouldAsk\(context\)[\s\S]*markAsked[\s\S]*ACTION_MANAGE_OVERLAY_PERMISSION[\s\S]*"overlayAnswered"/, "offered once, before the first update");
-  assert.match(plugin, /fun overlayAnswered[\s\S]*installNow\(/, "the update goes ahead whatever the answer");
+  const prompt = read(dir + "java/org/intelligentmusicplayer/kazemedia/UpdateRestartPrompt.kt");
+  assert.match(prompt, /UpdateRelaunch\.shouldAsk\(context\)[\s\S]*markAsked/, "offered once, before the first update");
+  assert.match(plugin, /ACTION_MANAGE_OVERLAY_PERMISSION[\s\S]*"overlayAnswered"/);
+  assert.match(plugin, /fun overlayAnswered[^}]*invoke\.resolve\(\)/, "returning from Settings lets the update proceed whatever the answer");
 });

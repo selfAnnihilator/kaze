@@ -2,10 +2,12 @@ package org.intelligentmusicplayer.kazemedia
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.result.ActivityResult
 import androidx.core.content.ContextCompat
 import app.tauri.annotation.ActivityCallback
@@ -133,38 +135,43 @@ class KazeMediaPlugin(private val activity: Activity) : Plugin(activity) {
             val allow = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}"))
             startActivityForResult(invoke, allow, "installAllowed")
         } else {
-            commitInstall(invoke, path)
+            installNow(invoke, path)
         }
     }
 
     @ActivityCallback
     fun installAllowed(invoke: Invoke, result: ActivityResult) {
         if (activity.packageManager.canRequestPackageInstalls()) {
-            commitInstall(invoke, invoke.parseArgs(InstallArgs::class.java).path)
+            installNow(invoke, invoke.parseArgs(InstallArgs::class.java).path)
         } else {
             invoke.reject("Allow Kaze to install apps to update it")
         }
     }
 
-    /** Back from "Display over other apps": install whatever the user chose. */
+    /** Back from Settings: download and install regardless of whether access was granted. */
     @ActivityCallback
     fun overlayAnswered(invoke: Invoke, result: ActivityResult) {
-        installNow(invoke, invoke.parseArgs(InstallArgs::class.java).path)
+        invoke.resolve()
     }
 
     /**
-     * Before the first in-app update, offers "Display over other apps" once,
-     * so the new version can open itself (see [UpdateRelaunch]). The update
-     * goes ahead either way.
+     * Offers optional restart access before the download. Declining or returning
+     * from Settings lets the Rust updater proceed; the answer is remembered.
      */
-    private fun commitInstall(invoke: Invoke, path: String) {
-        val context = activity.applicationContext
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && UpdateRelaunch.shouldAsk(context)) {
-            UpdateRelaunch.markAsked(context)
-            val overlay = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}"))
+    @Command
+    fun prepareUpdate(invoke: Invoke) {
+        activity.runOnUiThread {
+            UpdateRestartPrompt.show(activity, { openOverlaySettings(invoke) }, { invoke.resolve() })
+        }
+    }
+
+    private fun openOverlaySettings(invoke: Invoke) {
+        val overlay = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}"))
+        try {
             startActivityForResult(invoke, overlay, "overlayAnswered")
-        } else {
-            installNow(invoke, path)
+        } catch (error: ActivityNotFoundException) {
+            Log.w("KazeUpdate", "Restart permission settings unavailable", error)
+            invoke.resolve()
         }
     }
 
