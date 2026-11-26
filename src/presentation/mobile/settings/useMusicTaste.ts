@@ -4,7 +4,6 @@ import type { RecommendationSetup } from "../../../types";
 
 export const TASTE_GENRES = ["Pop", "Rock", "Hip-Hop", "R&B", "Electronic", "Indie", "Jazz", "Classical", "Country", "Folk", "Metal", "Devotional"];
 export { TASTE_LANGUAGES } from "./tasteLanguages";
-export const ARTIST_LIMIT = 5;
 
 /** The account's saved artists and genres (skipped when the caller already has them). */
 function useSavedTaste(userId: string, initial: RecommendationSetup | undefined) {
@@ -29,10 +28,10 @@ function useSavedTaste(userId: string, initial: RecommendationSetup | undefined)
   return { artists, setArtists, genres, setGenres, languages, setLanguages, loading, loadError };
 }
 
-const toggleIn = (value: string, values: string[], limit = Infinity) =>
+const toggleIn = (value: string, values: string[]) =>
   values.some((v) => v.toLowerCase() === value.toLowerCase())
     ? values.filter((v) => v.toLowerCase() !== value.toLowerCase())
-    : values.length < limit ? [...values, value] : values;
+    : [...values, value];
 
 /** Loads, edits and saves the account's music taste (same queries as the PC Music Taste). */
 export function useMusicTaste(userId: string, initial: RecommendationSetup | undefined, onSaved: () => void) {
@@ -61,7 +60,7 @@ export function useMusicTaste(userId: string, initial: RecommendationSetup | und
     artists, genres, languages, busy, save,
     loading: saved.loading,
     error: saveError || saved.loadError,
-    toggleArtist: (name: string) => saved.setArtists((values) => toggleIn(name, values, ARTIST_LIMIT)),
+    toggleArtist: (name: string) => saved.setArtists((values) => toggleIn(name, values)),
     toggleGenre: (genre: string) => saved.setGenres((values) => toggleIn(genre, values)),
     toggleLanguage: (language: string) => saved.setLanguages((values) => toggleIn(language, values)),
   };

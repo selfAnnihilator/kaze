@@ -84,9 +84,6 @@ impl Selection {
         self.artists = clean_artists(clean(self.artists)?);
         self.genres = clean(self.genres)?;
         self.languages = self.languages.map(clean).transpose()?;
-        if self.artists.len() > 5 {
-            return Err(AppError::Validation("Choose up to five artists".into()));
-        }
         if self.artists.is_empty() && self.genres.is_empty() && self.languages.as_ref().is_none_or(Vec::is_empty) {
             return Err(AppError::Validation("Choose a language, artist or genre, or skip for now".into()));
         }

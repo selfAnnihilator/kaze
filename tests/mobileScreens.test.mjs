@@ -293,6 +293,9 @@ test("Phone motion uses transform and opacity only, and respects reduced motion"
 test("The top bar shows the uploaded photo, and the search field has one focus border", () => {
   const bar = read("src/presentation/mobile/MobileTopBar.tsx");
   assert.match(bar, /nav\.initials && nav\.avatarUrl\) return <img className="m-topbar__avatar-img" src=\{nav\.avatarUrl\}/);
+  assert.match(bar, /\{!nav\.initials && \(\s*<button[^>]*onClick=\{\(\) => nav\.openPage\("settings"\)\} aria-label="Settings">/,
+    "signed out, a Settings gear sits left of the profile tile");
+  assert.ok(bar.indexOf('aria-label="Settings"') < bar.indexOf("m-topbar__avatar-btn"));
   assert.match(read("src/presentation/mobile/useMobileShell.ts"), /const avatarUrl = currentUser\?\.avatar_data_url \|\| null;/);
   const css = read("src/presentation/mobile/mobile.css");
   assert.match(css, /\.m-shell \.m-field__input:focus-visible \{ outline: none; \}/);

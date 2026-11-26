@@ -83,7 +83,7 @@ Adding a like requires signing in. If signed out, tapping Like on an eligible so
 shows a toast with the sign-in requirement.
 
 Music Taste in onboarding and Settings supports multiple song languages and any
-number of the offered genres. Artist choices are capped at five. For You and
+number of the offered genres and artists. For You and
 Flow begin with the selected languages and include more as listening history
 builds up. These choices are saved for the current profile on this device.
 The artist picker is the final step. It starts with artists from the chosen

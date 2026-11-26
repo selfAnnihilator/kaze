@@ -26,11 +26,13 @@ test("the last step offers a language pool and related artists while retaining p
   ]);
 });
 
-test("Android can select every offered genre while artists are still capped", () => {
+test("Android can select every offered genre and any number of artists", () => {
   const screen = read("MobileMusicTaste.tsx");
   const hook = read("useMusicTaste.ts");
   assert.match(screen, /label="GENRES".+disabled=\{blocked\} onToggle=\{t\.toggleGenre\}/);
   assert.match(hook, /toggleGenre:.+toggleIn\(genre, values\)/);
-  assert.match(hook, /toggleArtist:.+toggleIn\(name, values, ARTIST_LIMIT\)/);
+  assert.match(hook, /toggleArtist:.+toggleIn\(name, values\)\)/);
+  assert.doesNotMatch(hook, /ARTIST_LIMIT|limit/);
+  assert.match(read("TasteArtists.tsx"), /aria-pressed=\{on\}\s*disabled=\{disabled\} onClick/);
   assert.match(read("TasteChoices.tsx"), /disabled=\{disabled\} onClick=\{\(\) => onToggle\(name\)\}/);
 });

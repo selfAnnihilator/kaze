@@ -77,6 +77,15 @@ async fn all_genres_round_trip_and_legacy_saves_preserve_language_choices() {
         "Devotional",
     ];
     save_taste(&core, &genres, &[" Hindi ", "hindi", "Malayalam"]).await;
+    let artists: Vec<String> = (1..=8).map(|n| format!("Artist {n}")).collect();
+    setup::save(core.db_pool(), "many", artists.clone(), vec![], false)
+        .await
+        .unwrap();
+    assert_eq!(
+        setup::load(core.db_pool(), "many").await.unwrap().artists,
+        artists,
+        "more than five artists save"
+    );
     let saved = setup::load(core.db_pool(), "default").await.unwrap();
     assert_eq!(saved.genres, genres);
     assert_eq!(saved.languages, ["Hindi", "Malayalam"]);
