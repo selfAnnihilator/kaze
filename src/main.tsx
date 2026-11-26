@@ -1,25 +1,16 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { executeQuery } from "./services/api";
+import { readStartupSettings } from "./services/startupSettings";
 import { StartupScreen } from "./components/StartupScreen";
 import { MobileStartup } from "./presentation/mobile/MobileStartup";
 import { isMobileDevice } from "./presentation/mobile/platform";
-import type { AppSettings } from "./types";
 import "./styles/tokens.css";
 import "./index.css";
 import "./kaze-theme.css";
 
 // Disable the native right-click context menu (Inspect Element, Reload, etc.)
 document.addEventListener("contextmenu", (e) => e.preventDefault());
-
-/** The saved settings, which decide the interface before anything is shown. */
-async function readStartupSettings(): Promise<AppSettings> {
-  const response = await executeQuery({ query: "GetSettings" });
-  if (response.type !== "Settings" || !response.data || typeof response.data !== "object") {
-    throw new Error("Startup settings are unavailable");
-  }
-  return response.data as AppSettings;
-}
 
 const rootElement = document.getElementById("root");
 
@@ -42,7 +33,7 @@ if (rootElement) {
     render(opening);
     let cancelled = false;
     const loadSettingsAndIntro = async () => {
-      const settings = await readStartupSettings();
+      const settings = await readStartupSettings(executeQuery, phone);
       // A rejected App chunk can finish before this read. Do not revive its
       // cancelled startup screen after showing the error/retry surface.
       if (cancelled) throw new Error("Startup interrupted");
