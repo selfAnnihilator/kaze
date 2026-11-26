@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-26",
+  "device": "Realme RMX3471, Android 14",
+  "test_package": "org.intelligentmusicplayer.fullqa",
+  "test_package_removed": true,
+  "full_app": {
+    "playing_dismissal_service_removed": true,
+    "playing_dismissal_notification_removed": true,
+    "unknown_overlay_prompt_before_download": true,
+    "decline_download_and_install": true,
+    "decline_stays_closed": true,
+    "remembered_decline_no_prompt": true,
+    "settings_route_correct": true,
+    "grant_update_auto_reopened": true,
+    "packaged_startup_injected_failures": 2,
+    "packaged_startup_settings_attempts": 3,
+    "packaged_startup_auto_recovered": true,
+    "granted_without_history_skips_prompt": true,
+    "granted_without_history_auto_reopened": true,
+    "cold_launches": [
+      {
+        "home": true,
+        "retry": false
+      },
+      {
+        "home": true,
+        "retry": false
+      },
+      {
+        "home": true,
+        "retry": false
+      },
+      {
+        "home": true,
+        "retry": false
+      },
+      {
+        "home": true,
+        "retry": false
+      }
+    ],
+    "real_playback_notification": true,
+    "home_retains_playback": true,
+    "stop_clears_notification": true,
+    "stop_clears_service": true
+  },
+  "release": {
+    "apk": "target/android-verification/Kaze_2.2.2_fixes_arm64.apk",
+    "sha256": "58b38a924f207c7d353a36eb37292109d604ab5311b15b08e39bbc493e41c8c9",
+    "bytes": 40983075,
+    "signature_matches_installed": true,
+    "qa_paths_absent": true,
+    "installed_binary_matches": true,
+    "installed_launch_home": true,
+    "main_idle_media_notification_absent": true,
+    "data_preserved_via_replace": true
+  }
+}
