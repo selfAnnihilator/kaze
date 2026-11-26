@@ -15,6 +15,20 @@ pub(super) struct HistorySessionRow {
     pub(super) skipped: i64,
 }
 
+pub(super) fn heard_languages(
+    rows: &[HistorySessionRow],
+    signals: &super::super::signals::SongSignals,
+) -> std::collections::HashSet<String> {
+    rows.iter()
+        .filter(|row| super::super::engagement::Engagement::from_listening(
+            row.seconds_listened, row.duration_secs, row.skipped == 1,
+        ).qualified)
+        .filter_map(|row| signals.identities.get(&row.track_id)?.language.as_deref())
+        .map(super::super::setup::language_key)
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
 #[derive(Debug, FromRow)]
 #[allow(dead_code)]
 pub(super) struct FeedbackRow {

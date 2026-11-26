@@ -77,12 +77,15 @@
 .m-taste .m-taste__search, .m-onboard__choices .m-field { height: var(--space-48); flex-shrink: 0; }
 .m-taste__label { display: flex; justify-content: space-between; padding-top: var(--space-6); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.045em; color: var(--m-ink); }
 .m-taste__count { color: var(--m-red); }
-.m-taste__chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .m-taste__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-8); }
 .m-taste__chip { display: flex; align-items: center; justify-content: center; gap: var(--space-6); height: calc(34 * var(--space-unit)); padding: 0 var(--space-12); border: 1px solid var(--m-line); background: transparent; color: var(--m-ink); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: 0.045em; cursor: pointer; }
 .m-taste__genre { height: var(--space-44); padding: 0 var(--space-4); }
 .m-taste__chip.is-on { border-color: var(--m-red); background: var(--m-red); color: var(--m-paper); }
 .m-taste__chip:disabled:not(.is-on) { opacity: 0.4; }
+.m-taste-artist { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--space-8); padding: var(--space-8) var(--space-4); border: 0; background: transparent; color: var(--m-ink); font: var(--weight-bold) var(--fs-12) var(--font-sans); cursor: pointer; overflow-wrap: anywhere; }
+.m-taste-artist__badge { display: grid; place-items: center; width: var(--space-64); aspect-ratio: 1; border: var(--space-2) solid var(--m-line); border-radius: var(--radius-pill); background: var(--m-wash); font-size: var(--fs-24); }
+.m-taste-artist[aria-pressed="true"] .m-taste-artist__badge { border-color: var(--m-red); background: var(--m-red); color: var(--m-paper); }
+.m-taste-artist:disabled { opacity: 0.4; }
 .m-taste__actions, .m-onboard__actions { display: flex; gap: var(--space-10); margin-top: auto; padding: var(--space-20); }
 .m-taste__skip { width: calc(100 * var(--space-unit)); height: var(--space-56); }
 .m-taste__go { height: var(--space-56); font-size: var(--fs-14); }

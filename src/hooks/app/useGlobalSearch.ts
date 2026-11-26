@@ -3,7 +3,7 @@ import type { SetStateAction } from "react";
 import { executeQuery } from "../../services/api";
 import { recommendationPreferences } from "../../services/recommendationPreferences";
 import { attachLocalSearchMatches } from "../../localTrackMatch";
-import { viewDestination, type NavigationDestination } from "../../navigationHistory";
+import { viewDestination, type CatalogPlaylist, type NavigationDestination } from "../../navigationHistory";
 import type { DiscoveryRecommendation, Track } from "../../types";
 
 /** Debounce before an online search runs (performance guardrail: 150–250 ms). */
@@ -34,7 +34,8 @@ const searchFailure = (err: unknown) => (typeof err === "string" ? err : "Couldn
 
 interface SearchRun {
   cancelled: () => boolean;
-  show: (results: DiscoveryRecommendation[]) => void;
+  show: (results: DiscoveryRecommendation[], playlists?: CatalogPlaylist[]) => void;
+  mobile: boolean;
   notify: Notify;
   done: () => void;
 }
@@ -42,9 +43,10 @@ interface SearchRun {
 /** One online search; a cancelled run only clears or keeps the entry it belongs to. */
 async function runSearch(q: string, run: SearchRun) {
   try {
-    const results = await searchOnline(q);
+    const result = run.mobile ? await executeQuery({ query: "SearchMobileCatalog", payload: { query: q, limit: 35 } }) : undefined;
+    const songs = result ? (result.data?.songs ?? []) : await searchOnline(q);
     if (!run.cancelled()) void recommendationPreferences.refresh().catch(console.error);
-    run.show(results);
+    run.show(songs, result?.data?.playlists);
   } catch (err) {
     console.error("Global online music search failed:", err);
     if (!run.cancelled()) run.notify("error", "Online search unavailable", searchFailure(err));
@@ -55,12 +57,13 @@ async function runSearch(q: string, run: SearchRun) {
 }
 
 /** Runs the destination's online search after a short debounce; results go into the entry. */
-function useDebouncedOnlineSearch({ destination, updateDestination, addAppNotification, revision }: {
+function useDebouncedOnlineSearch({ destination, updateDestination, addAppNotification, revision, mobile }: {
   destination: NavigationDestination;
   updateDestination: (update: (current: NavigationDestination) => NavigationDestination) => void;
   addAppNotification: Notify;
   /** Bumped to re-run the same query. */
   revision: number;
+  mobile: boolean;
 }) {
   const [isSearching, setIsSearching] = useState(false);
   const q = destination.searchQuery;
@@ -72,15 +75,15 @@ function useDebouncedOnlineSearch({ destination, updateDestination, addAppNotifi
     }
     let cancelled = false;
     setIsSearching(true);
-    const show = (results: DiscoveryRecommendation[]) => updateDestination((current) =>
-      !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: results } : current);
-    const run: SearchRun = { cancelled: () => cancelled, show, notify: addAppNotification, done: () => setIsSearching(false) };
+    const show: SearchRun["show"] = (results, catalogPlaylists) => updateDestination((current) =>
+      !cancelled && current.view === "discovery" && current.searchQuery === q ? { ...current, searchResults: results, catalogPlaylists } : current);
+    const run: SearchRun = { cancelled: () => cancelled, show, mobile, notify: addAppNotification, done: () => setIsSearching(false) };
     const timer = setTimeout(() => void runSearch(q, run), SEARCH_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [active, q, revision, updateDestination, addAppNotification]);
+  }, [active, q, revision, updateDestination, addAppNotification, mobile]);
   return isSearching;
 }
 
@@ -88,7 +91,7 @@ function useDebouncedOnlineSearch({ destination, updateDestination, addAppNotifi
  * The persistent top search bar: the typed query, the debounced online search
  * (results live in the navigation entry), clear and the global refresh.
  */
-export function useGlobalSearch({ destination, navigate, updateDestination, tracks, addAppNotification, refreshAll }: {
+export function useGlobalSearch({ destination, navigate, updateDestination, tracks, addAppNotification, refreshAll, mobile }: {
   destination: NavigationDestination;
   navigate: (destination: NavigationDestination) => void;
   updateDestination: (update: (current: NavigationDestination) => NavigationDestination) => void;
@@ -96,6 +99,7 @@ export function useGlobalSearch({ destination, navigate, updateDestination, trac
   addAppNotification: Notify;
   /** Reloads discovery, home and library after a manual refresh. */
   refreshAll: () => Promise<unknown>;
+  mobile?: boolean;
 }) {
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [searchRefreshRevision, setSearchRefreshRevision] = useState(0);
@@ -123,7 +127,7 @@ export function useGlobalSearch({ destination, navigate, updateDestination, trac
     setSearchRefreshRevision((revision) => revision + 1);
   }, [globalSearchQuery, navigate]);
 
-  const isGlobalSearching = useDebouncedOnlineSearch({ destination, updateDestination, addAppNotification, revision: searchRefreshRevision });
+  const isGlobalSearching = useDebouncedOnlineSearch({ destination, updateDestination, addAppNotification, revision: searchRefreshRevision, mobile: !!mobile });
 
   const handleGlobalClearSearch = useCallback(() => navigate(viewDestination("discovery")), [navigate]);
 

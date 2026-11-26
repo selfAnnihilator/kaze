@@ -150,7 +150,7 @@ export interface DiscoveryRecommendation {
   in_wishlist: boolean;
 }
 
-export interface RecommendationSetup { user_id: string; status: "pending" | "completed" | "skipped"; artists: string[]; genres: string[]; revision: number; should_prompt: boolean; }
+export interface RecommendationSetup { user_id: string; status: "pending" | "completed" | "skipped"; artists: string[]; genres: string[]; languages?: string[]; revision: number; should_prompt: boolean; }
 
 export interface OnboardingStatus {
   completed: boolean;

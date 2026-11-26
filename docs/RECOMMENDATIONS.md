@@ -19,6 +19,15 @@ The taste profile captures user musical affinities across three dimensions:
 * **Blended Weighting**:
   $$\text{Affinity} = 0.6 \times \text{ShortTerm} + 0.4 \times \text{LongTerm}$$
 
+### Song languages in Android taste setup
+
+The user's selected languages seed For You and Flow. An additional language
+becomes eligible after a qualified play, using the same minimum listening time
+that the taste engine uses for its other listening signals. Starter searches
+verify the catalog's song language metadata. Manual search and public charts
+remain available in all languages. Settings allows users to edit their choices
+later.
+
 ---
 
 ## 3. Transparent Scoring Algorithm (`recommendations/scoring.rs`)

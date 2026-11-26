@@ -72,6 +72,9 @@ impl DiscoveryCoordinator {
     ) -> AppResult<Vec<ExternalTrackRecord>> {
         self.seed_artist_editions(user_id, force_refresh).await?;
         let mut tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
+        if taste.profile.language_preference.is_active() {
+            return self.language_catalog(user_id, tracks).await;
+        }
         if self.provider_coordinator.is_none() {
             return Ok(tracks);
         }
@@ -84,6 +87,14 @@ impl DiscoveryCoordinator {
             tracks = self.wishlist_repo.list_catalog_tracks(1000).await?;
         }
         self.add_artist_candidates(&mut tracks, taste, force_refresh).await;
+        Ok(tracks)
+    }
+
+    async fn language_catalog(&self, user: &str, mut tracks: Vec<ExternalTrackRecord>) -> AppResult<Vec<ExternalTrackRecord>> {
+        use crate::database::repositories::taste_setup::starter_catalog;
+        let mut seen: HashSet<_> = tracks.iter().map(|track| track.id.clone()).collect();
+        tracks.extend(starter_catalog(self.taste_engine.pool(), user).await?
+            .into_iter().filter(|track| seen.insert(track.id.clone())));
         Ok(tracks)
     }
 

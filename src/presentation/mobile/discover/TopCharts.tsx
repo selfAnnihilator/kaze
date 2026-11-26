@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { chartCollection, chartFilters, useCharts, type ChartCard } from "./useCharts";
 import type { MobileScreenProps } from "../types";
 
@@ -17,20 +17,18 @@ function Chart({ chart, c }: { chart: ChartCard; c: Ctx }) {
         <span className="m-chart__rule" />
       </span>
       <strong className="m-chart__title">{chart.title}</strong>
-      <span className="m-profile-meta">UPDATED WEEKLY</span>
     </button>
   );
 }
 
 /** Top Charts (Figma C3): filter chips, then the charts in one row that scrolls sideways. */
-export function TopCharts({ c, force }: { c: Ctx; force: boolean }) {
-  const { charts, failed, refresh } = useCharts();
+export function TopCharts({ c, revision }: { c: Ctx; revision: number }) {
   const [filter, setFilter] = useState("ALL");
-  useEffect(() => { if (force) void refresh(); }, [force]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { charts, allCharts, failed, regional } = useCharts(filter, revision);
   const all = charts ?? [];
-  const filters = chartFilters(all);
-  const active = filters.includes(filter) ? filter : "ALL";
-  const shown = active === "ALL" ? all : all.filter((ch) => ch.group === active);
+  const filters = chartFilters(allCharts);
+  const active = filter;
+  const shown = active === "ALL" || regional ? all : all.filter((ch) => ch.group === active);
   return (
     <>
       {filters.length > 1 && (

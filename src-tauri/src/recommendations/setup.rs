@@ -4,29 +4,31 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use std::collections::{HashMap, HashSet};
 
+mod languages;
+pub(crate) use languages::{language_key, LanguagePreference};
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecommendationSetup {
     pub user_id: String,
     pub status: String,
     pub artists: Vec<String>,
     pub genres: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub languages: Vec<String>,
     pub revision: i64,
     pub should_prompt: bool,
 }
 pub async fn load(pool: &SqlitePool, user: &str) -> AppResult<RecommendationSetup> {
-    let row: Option<(String, String, String, i64)> = sqlx::query_as(
-        "SELECT status,artists_json,genres_json,revision FROM recommendation_setup WHERE user_id=?",
-    )
-    .bind(user)
-    .fetch_optional(pool)
-    .await?;
+    use crate::database::repositories::taste_setup as storage;
+    let row = storage::load(pool, user).await?;
     match row {
-        Some((status, artists, genres, revision)) => Ok(RecommendationSetup {
+        Some((status, artists, genres, languages, revision)) => Ok(RecommendationSetup {
             user_id: user.into(),
             status,
             artists: serde_json::from_str(&artists)
                 .map_err(|e| AppError::Database(e.to_string()))?,
             genres: serde_json::from_str(&genres).map_err(|e| AppError::Database(e.to_string()))?,
+            languages: serde_json::from_str(&languages).map_err(|e| AppError::Database(e.to_string()))?,
             revision,
             should_prompt: false,
         }),
@@ -38,11 +40,6 @@ pub async fn load(pool: &SqlitePool, user: &str) -> AppResult<RecommendationSetu
     }
 }
 fn clean(values: Vec<String>) -> AppResult<Vec<String>> {
-    if values.len() > 5 {
-        return Err(AppError::Validation(
-            "Choose up to five artists and five genres".into(),
-        ));
-    }
     let mut seen = HashSet::new();
     let mut result = Vec::new();
     for value in values {
@@ -66,33 +63,69 @@ pub async fn save(
     genres: Vec<String>,
     skipped: bool,
 ) -> AppResult<()> {
-    let (artists, genres) = if skipped {
-        (vec![], vec![])
-    } else {
-        (clean(artists)?, clean(genres)?)
-    };
+    save_selection(pool, user, Selection { artists, genres, languages: None, skipped }).await
+}
+
+pub(crate) struct Selection {
+    pub artists: Vec<String>,
+    pub genres: Vec<String>,
+    pub languages: Option<Vec<String>>,
+    pub skipped: bool,
+}
+
+impl Selection {
+    fn validated(mut self) -> AppResult<Self> {
+        if self.skipped {
+            self.artists.clear();
+            self.genres.clear();
+            self.languages = self.languages.map(|_| vec![]);
+            return Ok(self);
+        }
+        self.artists = clean_artists(clean(self.artists)?);
+        self.genres = clean(self.genres)?;
+        self.languages = self.languages.map(clean).transpose()?;
+        if self.artists.len() > 5 {
+            return Err(AppError::Validation("Choose up to five artists".into()));
+        }
+        if self.artists.is_empty() && self.genres.is_empty() && self.languages.as_ref().is_none_or(Vec::is_empty) {
+            return Err(AppError::Validation("Choose a language, artist or genre, or skip for now".into()));
+        }
+        Ok(self)
+    }
+}
+
+fn clean_artists(artists: Vec<String>) -> Vec<String> {
     let mut artist_keys = HashSet::new();
-    let artists: Vec<_> = artists
+    artists
         .into_iter()
         .filter(|a| artist_keys.insert(super::signals::artist_credits(a)))
-        .collect();
-    if !skipped && artists.is_empty() && genres.is_empty() {
-        return Err(AppError::Validation(
-            "Choose an artist or genre, or skip for now".into(),
-        ));
-    }
-    let mut tx = pool.begin().await?;
-    sqlx::query("INSERT INTO recommendation_setup(user_id,status,artists_json,genres_json,revision,updated_at) VALUES(?,?,?,?,1,?) ON CONFLICT(user_id) DO UPDATE SET status=excluded.status,artists_json=excluded.artists_json,genres_json=excluded.genres_json,revision=revision+1,updated_at=excluded.updated_at")
-        .bind(user).bind(if skipped{"skipped"}else{"completed"}).bind(serde_json::to_string(&artists).unwrap()).bind(serde_json::to_string(&genres).unwrap()).bind(chrono::Utc::now().timestamp()).execute(&mut *tx).await?;
-    sqlx::query("DELETE FROM recommendation_starter_tracks WHERE user_id=?")
-        .bind(user)
-        .execute(&mut *tx)
-        .await?;
-    tx.commit().await?;
-    Ok(())
+        .collect()
 }
-pub async fn apply(pool: &SqlitePool, user: &str, profile: &mut TasteProfile) -> AppResult<()> {
+
+pub(crate) async fn save_selection(pool: &SqlitePool, user: &str, selection: Selection) -> AppResult<()> {
+    crate::database::repositories::taste_setup::save(pool, user, selection.validated()?).await
+}
+
+pub(crate) async fn remember_returning_listener(pool: &SqlitePool, user: &str) {
+    if cfg!(target_os = "android") {
+        if let Err(error) = crate::database::repositories::taste_setup::skip_missing(pool, user).await {
+            tracing::warn!(%error, "Could not record returning listener's taste setup status");
+        }
+    }
+}
+pub(crate) async fn apply(
+    pool: &SqlitePool,
+    user: &str,
+    profile: &mut TasteProfile,
+    heard: impl FnOnce() -> HashSet<String>,
+) -> AppResult<()> {
     let setup = load(pool, user).await?;
+    if !setup.languages.is_empty() {
+        profile.language_preference = LanguagePreference::new(&setup.languages, heard());
+        for language in &setup.languages {
+            profile.language_affinities.entry(language_key(language)).or_insert(0.35);
+        }
+    }
     for artist in setup.artists {
         let credits = super::signals::artist_credits(&artist);
         if profile.top_artists.iter().any(|a| {
@@ -159,6 +192,7 @@ pub async fn members(
                         .genre_affinities
                         .iter()
                         .any(|(g, a)| g.eq_ignore_ascii_case(value) && *a > 0.0))
+                || (source == "language" && profile.language_preference.allows(Some(value)))
         })
         .map(|(id, source, value)| (id, (source, value)))
         .collect())
@@ -167,6 +201,7 @@ pub fn explanation(source: &str, value: &str) -> String {
     match source {
         "artist" => format!("From an artist you chose: {value}"),
         "genre" => format!("From your {value} starter selection"),
+        "language" => format!("Matches your taste for {value} songs"),
         _ => "Popular songs to get you started".into(),
     }
 }

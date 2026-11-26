@@ -7,10 +7,10 @@ use crate::recommendations::TasteProfileEngine;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-
 mod charts;
 mod starters;
 mod for_you;
+mod starter_languages;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryRecommendation {
@@ -49,7 +49,7 @@ pub struct DiscoveryCoordinator {
         tokio::sync::Mutex<HashMap<String, (std::time::Instant, Vec<ExternalTrackRecord>)>>,
     for_you_selections: tokio::sync::Mutex<HashMap<String, ForYouSelection>>,
     starter_fetch_lock: tokio::sync::Mutex<()>,
-    starter_attempts: tokio::sync::Mutex<HashMap<String, (i64, std::time::Instant)>>,
+    starter_attempts: tokio::sync::Mutex<HashMap<String, starter_languages::StarterAttempt>>,
     world_fetch_lock: tokio::sync::Mutex<()>,
     world_chart_cache:
         tokio::sync::RwLock<Option<(std::time::Instant, Vec<DiscoveryRecommendation>)>>,
@@ -224,7 +224,7 @@ impl DiscoveryCoordinator {
 
 }
 
-fn recommendation(row: ExternalTrackRecord, reason: &str) -> DiscoveryRecommendation {
+pub(crate) fn recommendation(row: ExternalTrackRecord, reason: &str) -> DiscoveryRecommendation {
     DiscoveryRecommendation {
         external_track_id: row.id,
         provider: row.provider,

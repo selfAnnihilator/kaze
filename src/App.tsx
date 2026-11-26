@@ -223,7 +223,7 @@ export const App: React.FC<{ initialSettings: AppSettings }> = ({ initialSetting
   const {
     globalSearchQuery, setGlobalSearchQuery, isGlobalSearching, isGlobalRefreshing, currentSearchResults, setGlobalSearchResults,
     handleInitiateDirectDownloadSearch, handleGlobalOnlineSearch, handleGlobalClearSearch, handleGlobalRefresh,
-  } = useGlobalSearch({ destination, navigate, updateDestination, tracks, addAppNotification, refreshAll });
+  } = useGlobalSearch({ destination, navigate, updateDestination, tracks, addAppNotification, refreshAll, mobile: interfacePreference.style === "mobile" });
 
   // Onboarding completion
   const handleCompleteOnboarding = async (

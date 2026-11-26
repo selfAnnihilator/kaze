@@ -27,7 +27,10 @@ impl DiscoveryCoordinator {
         let pool = self.taste_engine.pool();
         let signals = SongSignals::load(pool, user_id).await?;
         let starters = setup::members(pool, user_id, &taste.profile).await?;
-        let catalog = inputs::preferred_releases(catalog, &signals);
+        let catalog = inputs::preferred_releases(catalog.into_iter().filter(|track| {
+            let language = signals.identities.get(&track.id).and_then(|song| song.language.as_deref());
+            taste.profile.language_preference.allows(language)
+        }).collect(), &signals);
 
         // Listening strength drives ordering; refreshing never adds random score noise.
         let scorer = ForYouScorer { taste: &taste, signals: &signals, starters: &starters };

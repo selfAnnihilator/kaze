@@ -120,7 +120,7 @@ export function DiscoverChapters({ c }: { c: Ctx }) {
       {mixes.length ? <div className="m-dmix-row">{mixes.map((mix) => <MixCard key={mix.id} mix={mix} c={c} />)}</div>
         : <Empty>No mixes yet. Kaze builds them from what you play.</Empty>}</>,
     <><ChapterHead n={4} title="TOP CHARTS" onJump={jump} />
-      <TopCharts key={chartsKey} c={c} force={chartsKey > 0} /></>,
+      <TopCharts c={c} revision={chartsKey} /></>,
   ];
   return (
     <div ref={stage} className="m-discover-stage">

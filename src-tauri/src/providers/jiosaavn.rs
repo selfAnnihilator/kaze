@@ -9,6 +9,7 @@ use des::{
 use serde_json::Value;
 
 mod parse;
+mod mobile_discovery;
 pub use parse::parse_track;
 use parse::*;
 use std::{
@@ -16,7 +17,6 @@ use std::{
     sync::Mutex,
     time::{Duration, Instant},
 };
-
 #[derive(Debug, thiserror::Error)]
 pub enum JioSaavnError {
     #[error("JioSaavn network request failed: {0}")]

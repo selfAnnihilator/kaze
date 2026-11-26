@@ -90,7 +90,7 @@ export type Command =
   | { command: "SetFlowSteering"; payload: { familiarity_ratio: number } }
   | { command: "CompleteOnboarding"; payload: { music_folders: string[]; start_scan: boolean };
     }
-  | { command: "SaveRecommendationSetup"; payload: { expected_user_id?: string; artists: string[]; genres: string[]; skipped: boolean } }
+  | { command: "SaveRecommendationSetup"; payload: { expected_user_id?: string; artists: string[]; genres: string[]; languages?: string[]; skipped: boolean } }
   | { command: "ResetOnboarding" }
   | { command: "AddLibraryFolder"; payload: { path: string } }
   | { command: "RemoveLibraryFolder"; payload: { folder_id: string } }
@@ -185,6 +185,9 @@ export type Query =
   | { query: "SearchLibrary"; payload: { query_text: string; limit: number } }
   | { query: "GetSettings" }
   | { query: "GetCharts" }
+  | { query: "GetLanguageCharts"; payload: { language: string; force_refresh?: boolean } }
+  | { query: "SearchMobileCatalog"; payload: { query: string; limit?: number } }
+  | { query: "GetTasteArtists"; payload: { languages?: string[]; artist?: string } }
   | { query: "ImportJioSaavnPlaylist"; payload: { url_or_id: string } }
   | { query: "SearchOnlineMusic"; payload: { query: string; limit?: number; provider?: "jiosaavn" } }
   | { query: "GetTrackCoverArt"; payload: { track_id: string } }

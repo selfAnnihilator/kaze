@@ -2,10 +2,17 @@
 
 use super::routing::misrouted;
 use super::*;
+mod mobile_catalog;
 
 impl CoreProcessor {
     pub(super) async fn discovery_query(&self, query: Query) -> AppResult<QueryResponse> {
         match query {
+            Query::GetLanguageCharts { language, force_refresh } =>
+                self.mobile_language_charts(&language, force_refresh.unwrap_or(false)).await,
+            Query::SearchMobileCatalog { query, limit } =>
+                self.search_mobile_catalog(&query, limit.unwrap_or(35).min(50) as usize).await,
+            Query::GetTasteArtists { languages, artist } =>
+                self.mobile_taste_artists(&languages, artist.as_deref()).await,
             Query::RefreshCharts => Ok(QueryResponse::Charts(
                 self.discovery_coordinator.charts(true).await?,
             )),

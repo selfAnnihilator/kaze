@@ -16,6 +16,7 @@ import { canRate } from "../../services/ratingRule";
 import { playAlbum } from "./playAlbum";
 
 const ROW_HEIGHT = 67;
+const PLAYLIST_ROW_HEIGHT = 106;
 const pad3 = (n: number) => String(n).padStart(3, "0");
 
 /** Albums record browser (Figma D1): one record at a time; swipe sideways or use Earlier / Later. */
@@ -181,7 +182,9 @@ function formatTime(secs: number | undefined): string {
 }
 
 /** Playlists (Figma D4): New / Import, then numbered red-index rows. */
-export const PlaylistsPane = memo(function PlaylistsPane({ c, onOpen }: MobileScreenProps & { onOpen: (p: Playlist) => void }) {
+export const PlaylistsPane = memo(function PlaylistsPane({
+  c, playlists, onOpen,
+}: MobileScreenProps & { playlists: Playlist[]; onOpen: (p: Playlist) => void }) {
   const { requestPrompt, promptDialog } = usePromptDialog();
   const [importing, setImporting] = useState(false);
   const create = async () => {
@@ -200,24 +203,35 @@ export const PlaylistsPane = memo(function PlaylistsPane({ c, onOpen }: MobileSc
       </div>
       {importing && <ImportPlaylistSheet c={c} onClose={() => setImporting(false)} />}
       {promptDialog}
-      {c.playlists.map((p, idx) => (
-        <div key={p.id} className="m-playlist-row">
-          <button type="button" className="m-playlist-row__main" onClick={() => onOpen(p)} aria-label={`Open ${p.name}`}>
-            <span className="m-playlist-row__index">{String(idx + 1).padStart(2, "0")}</span>
-            <Sleeve size="playlist" src={p.cover_art_url} trackId={p.first_track_id} title={p.name} />
-            <span className="m-playlist-row__text">
-              <span className="m-playlist-row__title">{p.name}</span>
-              <span className="m-kicker m-kicker--muted">
-                {joinMeta(p.is_smart_mix === 1 ? "SMART MIX" : undefined, `${p.track_count ?? 0} TRACKS`)}
-              </span>
-            </span>
-          </button>
-          <button type="button" className="m-home-row__play" onClick={() => void c.handlePlayPlaylist(p.id)} aria-label={`Play ${p.name}`}>
-            <Play size={18} strokeWidth={2} />
-          </button>
+      {playlists.length ? (
+        <div className="m-tracks__list">
+          <WindowedList items={playlists} rowHeight={PLAYLIST_ROW_HEIGHT} label="Playlists" fill
+            renderItem={(p, index) => <PlaylistRow key={p.id} playlist={p} index={index} onOpen={onOpen} onPlay={c.handlePlayPlaylist} />} />
         </div>
-      ))}
-      {!c.playlists.length && <p className="m-empty-msg">No playlists yet. Make one with New Playlist, or import one from a link.</p>}
+      ) : <p className="m-empty-msg">No playlists yet. Make one with New Playlist, or import one from a link.</p>}
     </div>
   );
 });
+
+function PlaylistRow({ playlist, index, onOpen, onPlay }: {
+  playlist: Playlist;
+  index: number;
+  onOpen: (playlist: Playlist) => void;
+  onPlay: MobileScreenProps["c"]["handlePlayPlaylist"];
+}) {
+  return (
+    <div className="m-playlist-row">
+      <button type="button" className="m-playlist-row__main" onClick={() => onOpen(playlist)} aria-label={`Open ${playlist.name}`}>
+        <span className="m-playlist-row__index">{String(index + 1).padStart(2, "0")}</span>
+        <Sleeve size="playlist" src={playlist.cover_art_url} trackId={playlist.first_track_id} title={playlist.name} />
+        <span className="m-playlist-row__text">
+          <span className="m-playlist-row__title">{playlist.name}</span>
+          <span className="m-kicker m-kicker--muted">{playlist.track_count ?? 0} TRACKS</span>
+        </span>
+      </button>
+      <button type="button" className="m-home-row__play" onClick={() => void onPlay(playlist.id)} aria-label={`Play ${playlist.name}`}>
+        <Play size={18} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}

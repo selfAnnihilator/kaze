@@ -4,6 +4,7 @@ import { WindowedList } from "../../WindowedList";
 import { playlistCollection } from "../playlistCollection";
 import { Sleeve } from "../Sleeve";
 import { ForYouRow } from "./DiscoverChapters";
+import { CatalogPlaylistRow } from "./CatalogPlaylists";
 import type { DiscoveryRecommendation, Playlist } from "../../../types";
 import type { MobileScreenProps } from "../types";
 
@@ -14,6 +15,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "albums", label: "ALBUMS" }, { id: "playlists", label: "PLAYLISTS" },
 ];
 const ROW = 67;
+const PLAYLIST_ROW = 77;
 const key = (s: string) => s.toLowerCase().trim();
 
 /** Artists and albums found among the songs, and your playlists that match (same as the PC). */
@@ -96,13 +98,17 @@ function ArtistsTab({ g, query, onSearch }: TabProps) {
 const AlbumsTab = ({ g, query, onSearch }: TabProps) => (g.albums.length ? <AlbumCards albums={g.albums} onPick={onSearch} /> : <NoMatch query={query} />);
 
 function PlaylistsTab({ c, g, query }: TabProps) {
-  if (!g.lists.length) return <p className="m-empty-msg">None of your playlists match “{query}”.</p>;
-  return <>{g.lists.map((p) => (
+  const online = c.destination.catalogPlaylists ?? [];
+  const lists = [...online, ...g.lists];
+  if (!lists.length) return <NoMatch query={query} />;
+  return <WindowedList items={lists} rowHeight={PLAYLIST_ROW} label="Playlists" fill renderItem={(p) => "title" in p
+    ? <CatalogPlaylistRow key={p.id} c={c} playlist={p} />
+    : (
     <button key={p.id} type="button" className="m-search-artist" onClick={() => c.handleOpenCollection(playlistCollection(p))}>
       <Sleeve size="edge" src={p.cover_art_url} trackId={p.first_track_id} title={p.name} />
       <span className="m-search-artist__text"><strong>{p.name}</strong><span className="m-kicker m-kicker--muted">{p.track_count ?? 0} TRACKS</span></span>
     </button>
-  ))}</>;
+  )} />;
 }
 
 function SongsTab({ c, results, query }: TabProps) {
@@ -111,8 +117,12 @@ function SongsTab({ c, results, query }: TabProps) {
 }
 
 function AllTab({ c, results, query, onClear }: TabProps) {
-  if (!results.length) return <NoMatch query={query} />;
-  return <><TopResult rec={results[0]} c={c} onClear={onClear} />{results.slice(1, 8).map((rec, i) => <ForYouRow key={rec.external_track_id || i} rec={rec} c={c} />)}</>;
+  const playlists = c.destination.catalogPlaylists ?? [];
+  if (!results.length && !playlists.length) return <NoMatch query={query} />;
+  return <>
+    {playlists.length > 0 && <><span className="m-kicker m-kicker--ink m-search-label">PLAYLISTS</span>{playlists.slice(0, 3).map((playlist) => <CatalogPlaylistRow key={playlist.id} c={c} playlist={playlist} />)}</>}
+    {results.length > 0 && <><TopResult rec={results[0]} c={c} onClear={onClear} />{results.slice(1, 8).map((rec, i) => <ForYouRow key={rec.external_track_id || i} rec={rec} c={c} />)}</>}
+  </>;
 }
 
 const BODIES: Record<Tab, (p: TabProps) => ReactElement> = { all: AllTab, songs: SongsTab, artists: ArtistsTab, albums: AlbumsTab, playlists: PlaylistsTab };
@@ -133,7 +143,7 @@ export function SearchResults({ c, results, query, onSearch, onClear }: {
           </button>
         ))}
       </div>
-      <div className={`m-search-body ${tab === "songs" ? "is-list" : ""}`}><Body c={c} results={results} query={query} g={g} onSearch={onSearch} onClear={onClear} /></div>
+      <div className={`m-search-body ${tab === "songs" || tab === "playlists" ? "is-list" : ""}`}><Body c={c} results={results} query={query} g={g} onSearch={onSearch} onClear={onClear} /></div>
     </div>
   );
 }

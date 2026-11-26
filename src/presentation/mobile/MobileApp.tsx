@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { InterfaceContext } from "../InterfaceContext";
 import { CollectionPane } from "./CollectionPane";
 import { MiniDeck } from "./MiniDeck";
@@ -13,6 +13,7 @@ import { MobileQueue } from "./MobileQueue";
 import { TabBar } from "./TabBar";
 import { TrackSheets } from "./sheets/TrackSheets";
 import { isPlayingLiked, togglePlayingLike } from "./likeTrack";
+import { mobileLikeActions } from "./mobileLikeActions";
 import { MobileNavContext } from "./mobileNav";
 import { useMobileShell } from "./useMobileShell";
 import { usePresence } from "./usePresence";
@@ -47,7 +48,8 @@ const SCREENS: Record<MobileTab, React.ComponentType<MobileScreenProps>> = {
  * the app's shared overlays (sign in, toasts, dialogs). Android Back closes the
  * top layer.
  */
-export function MobileApp({ c, player, deck, overlays }: MobileProps) {
+export function MobileApp({ c: viewContext, player: playback, deck, overlays }: MobileProps) {
+  const { c, player } = useMemo(() => mobileLikeActions(viewContext, playback), [viewContext, playback]);
   const { tab, page, deckOpen, nav, closeTop } = useMobileShell(c);
   const handleLike = useCallback(() => togglePlayingLike(player), [player]);
   const lyrics = usePresence(page === "lyrics");

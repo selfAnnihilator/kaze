@@ -124,6 +124,9 @@ impl CoreProcessor {
             | Query::GetWorldTrending { .. }
             | Query::GetCachedWorldTrending { .. }
             | Query::RefreshCharts
+            | Query::GetLanguageCharts { .. }
+            | Query::SearchMobileCatalog { .. }
+            | Query::GetTasteArtists { .. }
             | Query::SearchOnlineMusic { .. }
             | Query::ImportJioSaavnPlaylist { .. } => self.discovery_query(query).await,
             Query::GetStatsOverview { .. } | Query::GetTopRankings { .. } => {

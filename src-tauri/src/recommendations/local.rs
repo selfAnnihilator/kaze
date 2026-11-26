@@ -94,7 +94,9 @@ impl LocalRecommender {
         let mut scored_tracks: Vec<(CandidateRow, TrackRecommendationScore)> = Vec::new();
 
         for mut c in candidates {
-            if signals.blocked(&c.id, &c.title, c.artist_name.as_deref().unwrap_or("")) {
+            let identity = signals.identities.get(&c.id);
+            if !profile.language_preference.allows(identity.and_then(|song| song.language.as_deref()))
+                || signals.blocked(&c.id, &c.title, c.artist_name.as_deref().unwrap_or("")) {
                 continue;
             }
             let signal = signals.signal(&c.id, &c.title, c.artist_name.as_deref().unwrap_or(""));
@@ -103,7 +105,6 @@ impl LocalRecommender {
             c.skip_count = Some(signal.skip_count);
             c.last_played_at = signal.last_played_at;
             c.manual_like = Some(signal.manual_like);
-            let identity = signals.identities.get(&c.id);
 
             let feedback = match c.manual_like {
                 Some(1) => Some("like".to_string()),

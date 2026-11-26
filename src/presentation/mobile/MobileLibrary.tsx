@@ -1,5 +1,5 @@
-import { playlistCollection } from "./playlistCollection";
-import { memo, useEffect, useState } from "react";
+import { isPersonalPlaylist, playlistCollection } from "./playlistCollection";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { useDebouncedValue } from "../useDebouncedValue";
 import { AlbumsPane, PlaylistsPane, TracksPane } from "./LibraryPanes";
@@ -9,7 +9,6 @@ import type { Playlist } from "../../types";
 import type { MobileScreenProps } from "./types";
 
 type LibraryTab = "albums" | "local" | "downloads" | "playlists" | "liked";
-type Ctx = MobileScreenProps["c"];
 const LIKED_NAME = "Liked Songs";
 const TABS: ReadonlyArray<{ id: LibraryTab; label: string }> = [
   { id: "albums", label: "ALBUMS" },
@@ -22,12 +21,12 @@ const TABS: ReadonlyArray<{ id: LibraryTab; label: string }> = [
 /** Mono counts with thousands separators, as in Figma ("2,481"). */
 const count = (n: number) => n.toLocaleString("en-US");
 
-function libraryCounts(c: Ctx): Record<LibraryTab, number> {
+function libraryCounts(c: MobileScreenProps["c"], playlistCount: number): Record<LibraryTab, number> {
   return {
     albums: c.albumPage.total || c.albums.length,
     local: c.libraryScoped ? c.tracks.length : c.trackPage.total,
     downloads: c.downloadsPage.total,
-    playlists: c.playlists.length,
+    playlists: playlistCount,
     liked: c.likedTrackIds.size,
   };
 }
@@ -90,22 +89,25 @@ export const MobileLibrary = memo(function MobileLibrary({ c }: MobileScreenProp
     if (tab === "local") handleSearchLibrary(debounced);
   }, [debounced, tab, handleSearchLibrary]);
 
-  const openPlaylist = (p: Playlist) => c.handleOpenCollection(playlistCollection(p));
-  const select = (id: LibraryTab) => {
+  const playlists = useMemo(() => c.playlists.filter(isPersonalPlaylist), [c.playlists]);
+  const { handleOpenCollection } = c;
+  const openPlaylist = useCallback((p: Playlist) => handleOpenCollection(playlistCollection(p)), [handleOpenCollection]);
+  const select = useCallback((id: LibraryTab) => {
     if (id !== "liked") return setTab(id);
     const liked = c.playlists.find((p) => p.name === LIKED_NAME);
     if (liked) openPlaylist(liked);
-  };
-  const listTab = tab === "local" || tab === "downloads";
+  }, [c.playlists, openPlaylist]);
+  const trackTab = tab === "local" || tab === "downloads";
+  const listTab = trackTab || tab === "playlists";
 
   return (
     <div className="m-screen__container">
       <MobileTopBar num="03" name="LIBRARY" />
       <div className={`m-screen__content ${listTab ? "m-screen__content--list m-library--fixed" : ""}`}>
-        <LibraryHeader tab={tab} counts={libraryCounts(c)} onSelect={select} />
+        <LibraryHeader tab={tab} counts={libraryCounts(c, playlists.length)} onSelect={select} />
         {tab === "albums" && <AlbumsPane c={c} focusId={albumFocus} />}
-        {listTab && <TracksPane c={c} downloads={tab === "downloads"} query={query} onQuery={setQuery} />}
-        {tab === "playlists" && <PlaylistsPane c={c} onOpen={openPlaylist} />}
+        {trackTab && <TracksPane c={c} downloads={tab === "downloads"} query={query} onQuery={setQuery} />}
+        {tab === "playlists" && <PlaylistsPane c={c} playlists={playlists} onOpen={openPlaylist} />}
       </div>
     </div>
   );

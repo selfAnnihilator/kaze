@@ -7,11 +7,8 @@ use std::collections::HashMap;
 
 mod curves;
 mod rows;
-
 pub(crate) use curves::saturate;
 use curves::*;
-
-/// Represents the user's computed musical affinities across artists, genres, and eras.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TasteProfile {
     /// Artist ID -> Blended affinity [0.0, 1.0]
@@ -22,6 +19,8 @@ pub struct TasteProfile {
     pub era_affinities: HashMap<String, f64>,
     #[serde(default)]
     pub language_affinities: HashMap<String, f64>,
+    #[serde(skip)]
+    pub(crate) language_preference: super::setup::LanguagePreference,
     /// Top artists with their names and affinities
     pub top_artists: Vec<EntityAffinity>,
     /// Top genres with their names and affinities
@@ -466,6 +465,7 @@ impl TasteProfileEngine {
             .filter(|(_, affinity)| *affinity > 0.0)
             .collect();
         let mut profile = TasteProfile {
+            language_preference: Default::default(),
             has_learned_taste,
             language_affinities,
             artist_affinities,
@@ -478,7 +478,7 @@ impl TasteProfileEngine {
             computed_at: now,
             context_affinity: context.finish(),
         };
-        super::setup::apply(&self.pool, user_id, &mut profile).await?;
+        super::setup::apply(&self.pool, user_id, &mut profile, || rows::heard_languages(&rows, &signals)).await?;
         super::entity_feedback::EntityFeedbackSet::load(&self.pool, user_id)
             .await?
             .apply_to_profile(&mut profile, chrono::Utc::now().timestamp());

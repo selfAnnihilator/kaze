@@ -67,13 +67,15 @@ function Hero() {
 export const MobileDiscover = memo(function MobileDiscover({ c }: MobileScreenProps) {
   const search = useDiscoverSearch(c);
   const results = c.currentSearchResults;
+  const pending = c.isGlobalSearching && results?.length === 0 && !c.destination.catalogPlaylists?.length;
   const online = useOnline();
   return (
     <div className="m-screen__container">
       <MobileTopBar num="02" name={results ? "SEARCH" : "DISCOVER"} />
       <div className="m-screen__content">
         {(online || results) && <SearchRow s={search} />}
-        {results ? <SearchResults c={c} results={results} query={search.query} onSearch={search.setQuery} onClear={() => search.setQuery("")} />
+        {results ? (pending ? <p className="m-empty-msg" role="status">Searching…</p>
+          : <SearchResults c={c} results={results} query={c.destination.searchQuery} onSearch={search.setQuery} onClear={() => search.setQuery("")} />)
           : online ? <><Hero /><DiscoverChapters c={c} /></> : <Offline />}
       </div>
     </div>

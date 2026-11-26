@@ -108,6 +108,22 @@ pub enum Query {
     GetSettings,
     GetCharts,
     RefreshCharts,
+    GetLanguageCharts {
+        language: String,
+        #[serde(default)]
+        force_refresh: Option<bool>,
+    },
+    SearchMobileCatalog {
+        query: String,
+        #[serde(default)]
+        limit: Option<u32>,
+    },
+    GetTasteArtists {
+        #[serde(default)]
+        languages: Vec<String>,
+        #[serde(default)]
+        artist: Option<String>,
+    },
     GetPlaybackState,
     ImportJioSaavnPlaylist {
         url_or_id: String,
@@ -176,6 +192,8 @@ pub enum QueryResponse {
     LibraryTracksPage(serde_json::Value),
     LibraryAlbumsPage(serde_json::Value),
     Charts(Vec<serde_json::Value>),
+    MobileCatalogSearch(serde_json::Value),
+    TasteArtists(Vec<String>),
     Track(Option<serde_json::Value>),
     Artists(Vec<serde_json::Value>),
     Albums(Vec<serde_json::Value>),

@@ -13,9 +13,9 @@ let toasts: AppNotification[] = [];
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-export function showPhoneToast(title: string, action?: ToastAction) {
+export function showPhoneToast(title: string, action?: ToastAction, type: AppNotification["type"] = "success") {
   const id = `phone_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  toasts = [...toasts, { id, type: "success", title, message: "", timestamp: Date.now(), read: true, action }];
+  toasts = [...toasts, { id, type, title, message: "", timestamp: Date.now(), read: true, action }];
   emit();
 }
 

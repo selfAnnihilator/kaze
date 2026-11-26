@@ -77,6 +77,24 @@ Do not re-run `npm run tauri android init` on the committed project casually. It
 
 ## Architecture
 
+In Library, Playlists lists created, imported and saved playlists. Generated Daily Mixes
+are available from Smart Mixes and Discover. Liked Songs has its own tab.
+Adding a like requires signing in. If signed out, tapping Like on an eligible song
+shows a toast with the sign-in requirement.
+
+Music Taste in onboarding and Settings supports multiple song languages and any
+number of the offered genres. Artist choices are capped at five. For You and
+Flow begin with the selected languages and include more as listening history
+builds up. These choices are saved for the current profile on this device.
+The artist picker is the final step. It starts with artists from the chosen
+languages, then uses known similarities and collaborations to suggest new artists.
+Returning account sign-in skips automatic Music Taste onboarding.
+
+Discover's Top Charts has separate language feeds. Search uses song language
+metadata for queries such as “Malayalam top hits” and shows relevant JioSaavn
+playlists under All and Playlists when the catalog returns them. Opening a
+playlist loads its songs by the provider's playlist ID.
+
 ```
 src-tauri/src/lib.rs                run()  (#[mobile_entry_point] on Android)
 src-tauri/src/app.rs               thin main() for the desktop binary `kaze`

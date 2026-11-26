@@ -128,10 +128,9 @@ impl SmartMixGenerator {
 
     pub(super) async fn starter_mix(&self, user: &str) -> AppResult<Option<Vec<String>>> {
         let profile = self.taste_engine.compute_taste_profile(user).await?;
-        if profile.has_learned_taste
-            || super::super::setup::members(&self.pool, user, &profile)
-                .await?
-                .is_empty()
+        let use_starters = !profile.has_learned_taste
+            && !super::super::setup::members(&self.pool, user, &profile).await?.is_empty();
+        if !profile.language_preference.is_active() && !use_starters
         {
             return Ok(None);
         }

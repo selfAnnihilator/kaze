@@ -6,6 +6,7 @@ pub mod playlist_repo;
 pub mod recommendation_repo;
 pub mod settings_repo;
 pub mod stats_repo;
+pub(crate) mod taste_setup;
 pub mod track_repo;
 pub mod wishlist_repo;
 pub mod download_repo;

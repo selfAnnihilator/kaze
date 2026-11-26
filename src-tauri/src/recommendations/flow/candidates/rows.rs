@@ -35,13 +35,15 @@ const ONLINE_CANDIDATES: &str = "SELECT e.id, e.title, a.id as artist_id, e.arti
     JOIN playlists p ON p.id = pt.playlist_id
     WHERE p.user_id = ? AND p.name = 'Liked Songs' AND p.is_smart_mix = 0
  ) liked ON liked.track_id = e.id
+ LEFT JOIN recommendation_starter_tracks starter
+   ON starter.user_id = ? AND starter.track_id = e.id AND starter.source = 'language'
  WHERE (e.provider = 'jiosaavn' OR EXISTS (SELECT 1 FROM online_track_sources source WHERE source.track_id=e.id)) AND (t.id IS NULL OR t.format = 'online' OR t.file_path LIKE 'online://%')
    AND NOT EXISTS (
        SELECT 1 FROM tracks local WHERE local.id = e.matched_local_track_id
          AND local.format != 'online' AND local.file_path NOT LIKE 'online://%'
    )
  ORDER BY (liked.track_id IS NOT NULL OR COALESCE(ts.play_count, 0) > 0) DESC,
-          COALESCE(ts.play_count, 0) DESC, e.created_at DESC, e.id
+          (starter.track_id IS NOT NULL) DESC, COALESCE(ts.play_count, 0) DESC, e.created_at DESC, e.id
  LIMIT 2000";
 
 impl FlowEngine {
@@ -62,6 +64,7 @@ impl FlowEngine {
             let online = sqlx::query_as::<_, FlowCandidateRow>(ONLINE_CANDIDATES)
                 .bind(user_id)
                 .bind(user_id)
+                .bind(user_id)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
@@ -72,6 +75,10 @@ impl FlowEngine {
                     .filter(|c| online_is_relevant(c, inputs, session)),
             );
         }
+        candidates.retain(|candidate| {
+            let language = inputs.signals.identities.get(&candidate.id).and_then(|song| song.language.as_deref());
+            inputs.profile.language_preference.allows(language)
+        });
         Ok(candidates)
     }
 }

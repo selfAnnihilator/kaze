@@ -198,12 +198,10 @@ impl CoreProcessor {
                 if password.is_empty() {
                     return Err(AppError::Validation("Password cannot be empty".to_string()));
                 }
-
                 let worker_url = self.get_cloud_worker_url().await;
                 let device_id = device::get_or_create_device_id(&self.db_pool).await?;
                 let device_name = device::get_device_name();
                 let client_ver = device::get_client_version();
-
                 let auth_res = self
                     .cloud_client
                     .login(
@@ -215,7 +213,6 @@ impl CoreProcessor {
                         Some(&client_ver),
                     )
                     .await?;
-
                 if let (Some(cloud_user), Some(token)) = (auth_res.user, auth_res.token) {
                     let has_avatar = cloud_user.has_avatar.unwrap_or(false);
                     let mut avatar_data_url = self
@@ -301,7 +298,6 @@ impl CoreProcessor {
                         .map(|s| s.absolute_expires_at)
                         .unwrap_or(now + 90 * 86400);
 
-                    // Upsert local user profile (without password hash)
                     let _ = sqlx::query("DELETE FROM users WHERE username = ? OR id = ?")
                         .bind(&profile.username)
                         .bind(&profile.id)
@@ -331,7 +327,6 @@ impl CoreProcessor {
                     .execute(&self.db_pool)
                     .await;
 
-                    // Store raw bearer token securely in OS keyring (fallback to private local file)
                     if let Err(e) = credentials::store_session_token(&profile.id, &token) {
                         tracing::warn!(
                             "Failed to store session token in secure credentials: {}",
@@ -339,7 +334,6 @@ impl CoreProcessor {
                         );
                     }
 
-                    // Cache session metadata only in cloud_sessions (never store raw tokens in SQLite)
                     let session = CloudSessionMetadata {
                         user_id: profile.id.clone(),
                         username: profile.username.clone(),
@@ -356,7 +350,7 @@ impl CoreProcessor {
                     };
                     let _ = SyncManager::save_session(&self.db_pool, &session).await;
 
-                    // Reassign orphan playlists to this user
+                    crate::recommendations::setup::remember_returning_listener(&self.db_pool, &profile.id).await;
                     let _ = self
                         .playlist_repo
                         .reassign_orphan_playlists_to_user(&profile.id)
@@ -368,10 +362,8 @@ impl CoreProcessor {
                         user: cloud_user,
                         session_id,
                     };
-
                     tracing::info!("LOGIN SUCCESS: authenticated user_id = {}", profile.id);
 
-                    // Deterministic bidirectional sync: pull remote D1 data down first, reconcile, then push local
                     let pool_clone = self.db_pool.clone();
                     let client_clone = self.cloud_client.clone();
                     let user_id_clone = profile.id.clone();

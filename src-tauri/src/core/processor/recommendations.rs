@@ -10,6 +10,7 @@ impl CoreProcessor {
                 expected_user_id,
                 artists,
                 genres,
+                languages,
                 skipped,
             } => {
                 let user = self.current_user_id().await;
@@ -21,8 +22,9 @@ impl CoreProcessor {
                         "Account changed. Reopen music taste and try again.".into(),
                     ));
                 }
-                crate::recommendations::setup::save(&self.db_pool, &user, artists, genres, skipped)
-                    .await?;
+                crate::recommendations::setup::save_selection(
+                    &self.db_pool, &user, crate::recommendations::setup::Selection { artists, genres, languages, skipped },
+                ).await?;
                 self.flow_engine.invalidate_home_picks(&user).await;
                 sqlx::query("UPDATE playlists SET expires_at=0 WHERE user_id=? AND is_smart_mix=1")
                     .bind(&user)

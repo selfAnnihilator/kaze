@@ -1,6 +1,9 @@
 import type { CollectionData } from "../../components/views/collection/types";
 import type { Playlist } from "../../types";
 
+export const isPersonalPlaylist = (playlist: Playlist) =>
+  playlist.is_smart_mix !== 1 && playlist.name !== "Liked Songs";
+
 /** A playlist or smart mix as the collection the Collection pane opens. */
 export function playlistCollection(p: Playlist): CollectionData {
   const mix = p.is_smart_mix === 1;

@@ -311,6 +311,13 @@ export function installDualInterfaceFixture() {
           };
         case "GetCharts":
           return { type: "Charts", data: [{ id: "1134548194", title: "India Superhits Top 50" }, { id: "110858205", title: "English chart" }] };
+        case "GetLanguageCharts":
+          return { type: "Charts", data: [{ id: "110858205", title: "Malayalam Top Hits", language: "malayalam" }] };
+        case "SearchMobileCatalog":
+          if (f.failSearch) throw Error("Fixture search failure");
+          return { type: "MobileCatalogSearch", data: { songs: recs, playlists: [] } };
+        case "GetTasteArtists":
+          return { type: "TasteArtists", data: ["Fixture Artist"] };
         case "GetWorldTrending":
           return { type: "WorldTrending", data: f.empty ? [] : recs };
         case "SearchOnlineMusic":

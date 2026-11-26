@@ -135,6 +135,8 @@ pub enum Command {
         expected_user_id: Option<String>,
         artists: Vec<String>,
         genres: Vec<String>,
+        #[serde(default)]
+        languages: Option<Vec<String>>,
         skipped: bool,
     },
     CompleteOnboarding {

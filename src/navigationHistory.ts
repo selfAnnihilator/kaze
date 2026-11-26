@@ -10,7 +10,9 @@ export interface NavigationDestination {
   libraryAlbumId?: string;
   searchQuery: string;
   searchResults: DiscoveryRecommendation[] | null;
+  catalogPlaylists?: CatalogPlaylist[];
 }
+export interface CatalogPlaylist { id: string; title: string; image?: string }
 export interface NavigationHistory { entries: NavigationDestination[]; index: number }
 export const viewDestination = (view: ViewType): NavigationDestination => ({ view, collection: null, lyrics: false, libraryQuery: "", searchQuery: "", searchResults: null });
 const key = (d: NavigationDestination) => JSON.stringify([d.view, d.collection?.type, d.collection?.id, d.collection?.playlistId, d.collection?.searchQuery, d.lyrics, d.libraryQuery, d.libraryAlbumId, d.searchQuery]);
